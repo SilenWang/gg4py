@@ -18,7 +18,7 @@ Python 模块，反之亦然。
 | `ggcore.aes` | `R/aes.R:93` | `aes()` | 未实现 |
 | `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 未实现 |
 | `ggcore.aes_eval` | `R/aes-evaluation.R` | 表达式求值（tidy-eval 对等物） | 未实现 |
-| `ggcore.scene` | — | IR（本项目自造，上游无对应） | 占位（`Scene`） |
+| `ggcore.ir` | — | IR（本项目自造，上游无对应） | 已实现（v0：18 种节点 + CBOR，`docs/notes/ir.md`） |
 
 ## geom
 
