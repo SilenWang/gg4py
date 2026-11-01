@@ -234,4 +234,9 @@ pixi run -e refs refs:device-render             # 设备级渲染夹具（R 真�
 pixi run render --scene <file.ggir.cbor> --out x.png
 pixi run render --scene <file.ggir.cbor> --out x.svg
 pixi run render --scene <file.ggir.cbor> --out x.pdf
+pixi run render docs/cases/<case> --format svg --out docs/cases/<case>/current
+pixi run diff docs/cases/<case> --json          # 差分（M0-9，见 docs/notes/diff.md）
 ```
+
+`render` 的第二种形态（case 目录）是 M0-9 补的适配层：读 `plot.py` →
+`ggcore.plotspec` → IR → 设备，文件名 `<case>.<format>`。`--scene` 入口的行为不变。

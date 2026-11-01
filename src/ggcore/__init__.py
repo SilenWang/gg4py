@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import ggcore.grobs as grobs
 import ggcore.gtable as gtable
+import ggcore.plotspec as plotspec
 import ggcore.units as units
 import ggcore.viewport as viewport
 
-__all__ = ["__version__", "grobs", "gtable", "units", "viewport"]
+__all__ = ["__version__", "grobs", "gtable", "plotspec", "units", "viewport"]
 
 __version__ = "0.1.0"

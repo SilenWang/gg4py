@@ -19,6 +19,7 @@ Python 模块，反之亦然。
 | `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 未实现 |
 | `ggcore.aes_eval` | `R/aes-evaluation.R` | 表达式求值（tidy-eval 对等物） | 未实现 |
 | `ggcore.ir` | — | IR（本项目自造，上游无对应） | 已实现（v0：18 种节点 + CBOR，`docs/notes/ir.md`） |
+| `ggcore.plotspec` | `R/plot.R:106`（`ggplot()` 的极小子集）、`R/theme.R:341`（`theme_void()` 口径） | 案例适配层：plot 规格 → grob → IR（M0-9；不是语法层） | 已实现（point / bar / col / text / curve + `size` / `limits` / `palette`） |
 
 ## geom
 
@@ -56,6 +57,7 @@ Python 模块，反之亦然。
 | `ggcore.io.save` | `R/save.R:92` | `ggsave()` | 未实现 |
 | `ggskia`（协议 `ggcore.device`） | `src/library/grid/src/grid.c`（`L_points` / `L_xspline`）、`src/main/engine.c`（`GESymbol` / `GEXspline`） | 桌面/服务端渲染（skia-python，PNG / SVG / PDF） | 已实现（M0-8）：三路出图 + pch 全表 + xspline/curve 对拍 |
 | `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 未实现 |
+| `ggdiff`（包外） | — | 差分：resvg 统一栅格 + 像素判据 + 报告（上游无对应） | 已实现（M0-9，`docs/notes/diff.md`） |
 
 ## 基础设施（grid 对等）
 

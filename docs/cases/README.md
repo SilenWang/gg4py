@@ -48,27 +48,49 @@ def build():
     }
 ```
 
-`cases:matrix` 只钉最小契约（再多的键都允许，留给 plot API 落地后扩展）：
+`cases:matrix` 钉最小契约（再多的键都允许，留给 plot API 落地后扩展）：
 
 | 键 | 必填 | 检查 |
 | --- | --- | --- |
 | `data` | 是 | 非空映射（DataFrame-like 也行）；不要在这里读文件 |
 | `layers` | 是 | 非空数组，每项是 dict 且 `geom` 是非空字符串 |
 | `mapping` | 否 | 若给，必须是 dict |
+| `size` | 否 | `[宽 in, 高 in]`，缺省 `[4, 3]`（与 R 侧 `svglite(width=4, height=3)` 同纸） |
+| `limits` | 否 | `{x = [lo, hi], y = [lo, hi]}`；缺省按数据范围加 ggplot2 的 5% 扩张 |
+| `palette` | 否 | `{类别: "#RRGGBB"}`；`colour` / `fill` 映射到离散列时必须覆盖每个取值 |
 
 `build()` 抛异常、返回非 dict、缺 `data` / `layers` 都会让该 case 在矩阵里标 `⛔
-invalid` 并让 CI 红。
+invalid` 并让 CI 红。`size` / `limits` / `palette` 由渲染期的适配层
+（`ggcore.plotspec`）校验；不合规时该 case 以 `render 退出 2` 判红，消息里带具体
+原因。
+
+当前支持的 `geom`（与 `tools/refs/cases_ref.R` 一一对应）：
+
+| geom | 参数 | R 侧等价物 |
+| --- | --- | --- |
+| `point` | `size_pt`（字号 pt，半径 = 0.375 × size_pt）、`alpha` | `geom_point(size = size_pt/.pt, stroke = 0)` |
+| `bar` / `col` | `width`（数据单位）、`ymin` 映射 | `geom_col(width = …)` |
+| `text` | `size_pt`、`hjust` / `vjust`（缺省 0.5） | `geom_text(size = size_pt/.pt, family = "Noto Sans CJK SC")` |
+| `curve` | `curvature`、`angle`、`ncp`、`lwd`（pt） | `geom_curve(...)` |
+
+颜色不做调色板推导：`palette` 写死，R 侧用同值的 `scale_*_manual()`。
 
 ### `expected.svg` / `expected.png`：参考
 
 二选一，**必须有一个**。它是判定「我们画得像不像」的参考：
 
 - 上游 ggplot2 v4.0.3 快照（`docs/notes/upstream.md` 钉的 commit）；
-- 或 R + svglite 重新生成的参考（M0-9 的产线）；
-- 或本仓库已人工核过、作为该 case 判据的基线。
+- 或 R + svglite 重新生成的参考（`pixi run -e refs refs:cases`，`tools/refs/cases_ref.R`）。
 
-参考图按 X4 的容差口径比对（`docs/notes/snapshot-policy.md`）。PNG 要有合法文件头，
-SVG 要有 XML 声明或 `<svg` 根——格式不对同样标 `⛔`。
+**`ci = true` 的 case 只能来自这两类外部来源**（`meta.source` 以 `upstream:` 或
+`svglite:` 开头）；本仓库自录的 `source = "local"` 只允许配 `ci = false` 的探索
+case——自录基线让「基线 == 当前输出」永远绿，等于没有判据（SIL-599 硬要求 1）。
+
+参考图按 X4 的容差口径比对（`docs/notes/snapshot-policy.md`）。**所有 case 都按
+像素比**：`expected.svg` 与 `expected.png` 都先由 resvg 光栅化成 PNG（72 dpi，
+1 pt = 1 px）再比；渲染格式由 `expected.*` 的后缀决定，`tolerance.svg` 已删除
+（写进 `meta.toml` 是契约错）。PNG 要有合法文件头，SVG 要有 XML 声明或 `<svg`
+根——格式不对同样标 `⛔`。
 
 ### `meta.toml`：元数据
 
@@ -78,15 +100,22 @@ features = ["aes-mapping", "aes-grouping"]  # 必填：矩阵的列（可为空�
 ci = true                             # 可选，缺省 true；false = 只登记，不跑 render/diff
 
 title = "geom_point：基础散点 + 分组着色"   # 可选
-source = "upstream:ggplot2 v4.0.3 tests/testthat/_snaps/geom-point"  # 可选，缺省 local
-tolerance = { png = 0.001 }           # 可选：覆盖 X4 默认容差（比例，[0, 1)）
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"  # ci = true 时必填且必须是外部来源
+tolerance = { png = 0.02 }            # 可选：覆盖图级差异阈值（比例，[0, 1)）
 notes = "…"                           # 可选：自由文本
 ```
 
 - 必填只有 `family` / `features`；`ci` 可省略，**缺省 `true`**（照常进 render/diff）。
+- **`ci = true` 时 `source` 必须以 `upstream:` / `svglite:` 开头**；缺省 `local` 只
+  能和 `ci = false` 一起用（契约错会让 case 标 `⛔`）。
 - `family` / `features` 的取值优先用 `taxonomy.toml` 里登记过的；没登记不会失败，
   矩阵会自动加行/列，并在「未登记的族 / 特性」一节点名。
 - `ci = false` 用于「先登记、参考图后补」的草稿 case：矩阵里有它，CI 不跑它。
+- `tolerance` 只认 `png`（所有 case 都按像素比）；它收紧的是**图级差异**上限，
+  平均差异仍按 `docs/notes/snapshot-policy.md` 的 1%。
+- 默认 2% 抓不住文字宽度这一级的偏差：文字类 case 要在 `tolerance` 里收紧
+  （`geom-text-cjk` 用 `0.014`），理由与实测数字见 `docs/notes/snapshot-policy.md`
+  §文字类 case。
 - 未登记的键只报警告（不红），所以可以随手记 `notes`。
 
 **忘写 `meta.toml` 不是「这个目录不存在」**：只要目录里有 `plot.py` 或 `expected.*`，
@@ -134,52 +163,45 @@ summary 步骤目前直接贴完整 `report.md`；需要 ≤60 行的短版本�
 | `⏳ pending` | render / diff 报未实现（退出码 3） | 否（`--strict` 下是） |
 | `⏭ skipped` | `meta.ci = false` 或 `--no-run` | 否 |
 
-`pending` 不是「通过」：它表示 `pixi run render` / `pixi run diff` 还没有按上面的
-case 目录契约接线（M0-8 的入口已落地，但参数是 `--scene`，见「现在有什么」）。
-接线完成后矩阵自动转真跑，不需要改本工具。
+`pending` 不是「通过」：它表示 `pixi run render` / `pixi run diff` 报「未实现」
+（退出码 3），矩阵什么都没比过。`report.md` / `--summary` 的结论因此写
+**待落地（未判绿）**，`report.json` 的 `verdict` 是 `pending` 且 `ok = false`；
+`--strict` 下直接计为失败，结论写红（SIL-644 S1 / S2）。
+
+机读结论四态：`pass` / `empty`（0 个 case）/ `pending` / `fail`，`ok` 只在 `pass`
+时为 true。下游脚本只看 `report.json`，不要解析人读文本。
 
 ## 接线点：render / diff
 
 生成器**不另造命令**，只调用 `pixi.toml` 里已有的两个任务名：
 
 ```bash
-# 渲染：退出码 0 = 写出 PNG；3 = 未实现；其余 = 失败
-pixi run render <case-dir> --format png --out <case-dir>/current
+# 渲染：退出码 0 = 写出产物；3 = 未实现；其余 = 失败
+# 格式由 expected.* 的后缀决定（expected.svg → --format svg）
+pixi run render <case-dir> --format <svg|png> --out <case-dir>/current
 
 # 比对：退出码 0 = 通过；1 = 超容差；3 = 未实现；其余 = 失败
-pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --tolerance <png 容差>
+# --json 让矩阵稳定拿到两个百分比（不再截 stdout 末尾）
+pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--tolerance <png 容差>]
 ```
 
-这条契约只有一处实现（`tools/cases/matrix.py` 的 `TaskBackend`）。M0-8 / M0-9 改
-入口参数时改它一处即可。
-
-> **已知缺口（交给 SIL-599 差分管线定案，本阶段不生效）**：`TaskBackend` 目前固定
-> `--format png`、只传 `tolerance.png`，而 `meta.toml` 接受 `tolerance.svg`、本文件
-> 也允许 `expected.svg`——所以 **SVG 的文本级容差现在永远不会生效**。定案前不要把
-> `tolerance.svg` 当判据：要么按 `expected.*` 后缀选格式，要么删掉 `tolerance.svg`
-> 并明确全部按像素比。
->
-> 同一条线上还有来源问题：`ci = true` 的 case 目前仍允许 `source = local`（本仓库
-> 自录基线），等于让「基线自己录、自洽快照永远绿」的洞留在 CI 里。SIL-599 的硬要求
-> 是 `ci = true` 的 case 必须 `source` 非 `local`；闸门随 M0-9 一起打开。
+这条契约只有一处实现（`tools/cases/matrix.py` 的 `TaskBackend`）。改入口参数时改
+它一处即可。口径全文见 `docs/notes/diff.md`。
 
 ## 现在有什么
 
-**仓库里目前 0 个三文件 case**，所以 `cases matrix` 这条 CI job 是**空跑绿**：它只验证
-`docs/cases/matrix.md` 是否最新，没有任何一条 render → diff 的真实路径被走过。这不是
-「矩阵守住了」，所以两处都显式写出来：
+**四张带外部参考的基准图**（`ci = true`，来源全是 `svglite:`）：
 
-- `cases:matrix` 在 0 个 case 时往 stderr 打一行「没有真实渲染 / 比对覆盖」，报告的
-  结论标成 **空**（不是「绿」）；
-- 真实覆盖挂到 **SIL-599（M0-9）** 的验收里：至少一个 `ci = true`、`source` 为
-  `upstream:` / `svglite:` 的 case 走完整 render + diff 判绿，并做负向验证（改坏设备
-  后必须判红）。
+| case | 演示什么 |
+| --- | --- |
+| `geom-point-basic/` | 25 个点的分组散点（`colour` 映射 + `palette`） |
+| `geom-col-basic/` | 连续 x 上的四根柱子（宽度是数据单位） |
+| `geom-text-cjk/` | 长中文标签（18 字左对齐 + 短标签，Noto Sans CJK SC）；文字宽度 +2% 会红，阈值按 case 收紧到 1.4% |
+| `geom-curve-basic/` | 两条拐弯曲线；设备 curve 的 y 翻转镜像会让它红（SIL-636 回归） |
 
-现在就放一个 case 会先撞上接线缺口：`TaskBackend` 调的是
-`pixi run render <case-dir> --format png --out <case-dir>/current`，而 M0-8 落地的入口
-是 `pixi run render --scene <file.ggir.cbor> --out x.png|svg|pdf`——case 目录 → IR 场景
-的适配层还不存在，真放一个 case 只会以「render 退出 2」判红。适配层随 M0-9 一起补
-（`TaskBackend` 是唯一接线点，见下一节）；在此之前矩阵的骨架、缺口视图与 CI 报告可用。
+`pixi run cases:matrix` 对它们真跑 render + diff；`pixi run -e refs refs:cases`
+重生成参考 SVG。正确实现全绿，人为平移 (2, 2) 像素则四张全红——数字与负向验证记录
+见 `docs/notes/diff.md` §6。
 
 历史快照（不计入 geom 矩阵）：
 

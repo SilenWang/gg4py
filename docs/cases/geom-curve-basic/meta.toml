@@ -1,0 +1,7 @@
+family = "geom-curve"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_curve：两条拐弯曲线（设备 curve 集成级回归）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-599 负向验证用：curve 的 y 翻转镜像会让本 case 判红。"

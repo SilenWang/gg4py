@@ -1,0 +1,10 @@
+family = "geom-text"
+features = ["aes-mapping", "colour-aes", "cjk-text"]
+ci = true
+title = "geom_text：长中文标签（文字宽度基准）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.014 }
+notes = """标签必须原样落字：R 侧在 LC_ALL=C.UTF-8 下生成，字体是 Noto Sans CJK SC。
+SIL-649：一条 18 字的左对齐长标签（10 pt）+ 一条短标签。实测侧把文字宽度推进
++2% 必须判红——图级阈值因此按 case 收紧到 1.4%（默认 2%），实测基线 1.15%、
++1% → 1.59%、+2% → 1.78%，理由见 docs/notes/snapshot-policy.md §文字类 case。"""
