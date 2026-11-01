@@ -299,6 +299,17 @@ cases <- list(
                           unit.c(unit(1, "null"), unit(3, "pt"),
                                  unit(1, "null"), unit(3, "pt"))),
        note = "null 边距与表内 null 一起按权重分剩余空间"),
+  case("padding-mixed-units",
+       paste0("gtable_add_padding(gtable(widths = unit(1,'null'), heights = unit(1,'null')), ",
+              "unit.c(unit(1,'mm'), unit(2,'pt'), unit(1,'null'), unit(3,'mm')))"),
+       paste0('{"op":"padding","x":{"op":"gtable","widths":{"kind":"null","amount":1},',
+              '"heights":{"kind":"null","amount":1}},"padding":{"op":"unit_c","args":[',
+              '{"kind":"mm","amount":1},{"kind":"points","amount":2},',
+              '{"kind":"null","amount":1},{"kind":"mm","amount":3}]}}'),
+       gtable_add_padding(gtable(widths = null1(1), heights = null1(1)),
+                          unit.c(unit(1, "mm"), unit(2, "pt"),
+                                 unit(1, "null"), unit(3, "mm"))),
+       note = "mm / pt / null 三种单位混在 padding 里：固定边距先扣，剩下的归 null"),
 
   # ---- 嵌套 + span -------------------------------------------------------
   case("nested-two-levels",
@@ -362,7 +373,16 @@ cases <- list(
               '{"kind":"null","amount":1}]},"heights":{"kind":"null","amount":1}}'),
        gtable(widths = unit.c(unit(4, "cm"), unit(1, "null")), heights = null1(1)),
        width_cm = 3, height_cm = 3,
-       note = "固定列比视口还宽：null 列归 0，单元格照旧溢出")
+       note = "固定列比视口还宽：null 列归 0，单元格照旧溢出"),
+  case("zero-viewport-fixed-col",
+       "gtable(widths = unit.c(unit(2,'cm'), unit(1,'null')), heights = unit(1,'null'))  # 0x10 cm 视口",
+       paste0('{"op":"gtable","widths":{"op":"unit_c","args":[{"kind":"cm","amount":2},',
+              '{"kind":"null","amount":1}]},"heights":{"kind":"null","amount":1}}'),
+       gtable(widths = unit.c(unit(2, "cm"), unit(1, "null")), heights = null1(1)),
+       width_cm = 0, height_cm = 10,
+       note = paste0("R 4.5.3 的 allocationRemaining(initial == 0) 返回 TRUE：",
+                     "视口宽 0、固定列 2cm 时剩余 -2cm 全给 null 列，得到 2, -2；",
+                     "纯 null 的零视口才是 0, 0"))
 )
 
 # ---------------------------------------------------------------------------

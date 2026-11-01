@@ -53,8 +53,15 @@ grob 在 gg4py 里是**任意对象**：M0-6 的 grob 系统还没落地，gtabl
 
 另外两条不显眼但决定结果的分支：
 
-- **`allocationRemaining()`**：固定部分超宽（剩余为负）时，null 列/行直接归
-  0，不会出现负宽度；视口尺寸为 0 时仍然走分配，结果是 0。
+- **`allocationRemaining()`** 的 guard 是 `initial == 0 → TRUE`：视口尺寸为 0
+  时**分不分，取决于表里有没有固定部分**。纯 null 时初始余量就是 0，分出来仍是
+  0；含固定部分时余量已经是负的，R 4.5.3 照样把它分给 null 列/行，于是出现
+  **负的 null 宽高**——`2cm,1null` 在 `0×10` 视口里是 `2, -2`，ggcore 照抄。
+  视口非 0 而固定部分超宽（`initial > 0, remaining < 0`）时 guard 取 FALSE，
+  null 归 0，不会出现负值（`fixed-overflow-eats-null`）。
+  版本事实：R-devel 已把这条 guard 改成 FALSE（零余量不再分配），真升级钉住的
+  R 时 `zero-viewport-fixed-col` 会变成 `2, 0`；本仓库钉 R 4.5.3，按 4.5.3 的
+  结果对齐。
 - **没有 null 时**：单元格保持固定尺寸，多出来的空间**不是**分给单元格，而是由
   布局的 `just="centre"` 摊在四周（`subRegion()`）。10cm 视口里的 `2cm,3cm`
   两列就是 `2,3`，不是 `4,6`。
@@ -66,6 +73,10 @@ grob 在 gg4py 里是**任意对象**：M0-6 的 grob 系统还没落地，gtabl
 | `0null, 0null` | `0, 0` | 权重和 0 → 两列 0，不除零 |
 | `0null, 1null` | `0, 10` | 只有第二列有权重 |
 | `1null+2cm, 1null` | `2, 8` | 混合元素按 2cm 固定，剩余 8cm 给真 null |
+
+0 视口的那个怪癖单独钉住（`zero-viewport-fixed-col`）：`widths = 2cm,1null`、
+`heights = 1null`、视口 `0×10` cm → 列 `2, -2`、行 `10`。纯 null 的 0 视口
+（`zero-viewport`）是 `0, 0`，两者不矛盾——差别就在初始余量是不是 0。
 
 ### `respect` 的含义
 
@@ -119,7 +130,11 @@ ggplot2 是在组版时显式 `widths = unit.pmax(...)`。gg4py 保持同一口�
   最底/最顶。实测 `z = 5` 之后再加 `Inf` 得 6，再加 `-Inf` 得 **4**。
 - `drawing_order()` 是稳定排序（R `makeContent.gtable()` 的 `order(z)`），
   同 z 保持添加顺序。
-- `clip` 接受 `"on"` / `"off"` 或逻辑值（`True → "on"`），与 R 一致。
+- `clip` 接受 `"on"` / `"off"` / `"inherit"` 或逻辑值（`True → "on"`）。前两个
+  与 R 一致；`"inherit"` 只**照抄存储**：gtable 0.3.6 的 `gtable_add_grob()`
+  文档列了这三个值（R 本身不校验），「继承父视口 clip」要等绘制期的视口栈，
+  见下面 `vp` 决策点。取到 `"inherit"` 的渲染器应当取父视口的 clip，不能当成
+  `"off"`。
 - `placements(name)` / `grob(name)` 是 ggplot2 `g$layout[g$layout$name == "panel", ]`
   这类查询的对等物；`gtable_layout(x)` 给出等价于 `grid.layout()` 的
   `Layout` 对象（行数、列数、两个单位向量、respect）。
@@ -154,10 +169,11 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 的 `nullGrob` 覆盖 `t:b / l:r` 区域直接量。
 
 `tests/test_gtable_r_parity.py` 用 `1e-9` cm 的容差比（0.01 pt ≈ 3.5e-4 cm，
-这里严了五个数量级），覆盖 20 组布局：纯 null、混合固定+null、不等权、
+这里严了五个数量级），覆盖 22 组布局：纯 null、混合固定+null、不等权、
 纯固定（居中）、单格、0 宽列、0 权重 null、respect（含固定部分）、
-`lines`/`pt`/`mm`、padding 叠加（mm / pt / null）、嵌套两层、嵌套 + span、
-插行插列的索引位移、0 尺寸视口、固定部分超宽的视口。
+`lines`/`pt`/`mm`、padding 叠加（mm / pt / null 两两组合与三者混合）、嵌套
+两层、嵌套 + span、插行插列的索引位移、0 尺寸视口（纯 null / 含固定列）、
+固定部分超宽的视口。
 
 另外做过一轮 40 组随机布局的对拍（随机单位种类与权重、随机视口尺寸，不入户
 夹具）：单元格宽高与坐标全部落在同一容差内，唯一的差异是下面记的 NaN 那条。
@@ -169,6 +185,7 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 | `respect` 且分母为 0（两轴 null 权重全 0，或只有一个 null 列且权重 0） | `0/0 = NaN`，grid 报 `non-finite location and/or size for viewport` | 该列/行给 0：0 权重本来就该拿 0 的份额 |
 | 空表（0 列或 0 行） | 报错（`'x' and 'units' must have length > 0`） | 允许：0 列不调用宽度分配，`gtable_width()` 求值为 0 |
 | `respect` 传矩阵（grid 的 `nrow × ncol` 逐格 respect） | `grid.layout()` 支持 | 只支持逻辑值——gtable 自己的 `respect` 就是逻辑值，矩阵属于直接调 grid.layout 的用法 |
+| `clip = "inherit"` 的绘制语义 | 继承父视口的 clip | 只存值不解析（`GTable.layout` 里原样保留）；真正的继承要等 M0-6 的视口栈，在那之前渲染器必须取父视口的 clip，**不能**当 `"off"` |
 | 越界单元格（`t` / `l` 超出表、`b < t`） | 不校验，画的时候才出错或静默不画 | 添加/取框时立即 `ValueError` |
 | grob 必须是 grob 对象 | `stop_input_type()` | 任意对象都可以（M0-6 前没有 grob 类型） |
 | `gtable_row` / `gtable_col` / `gtable_matrix`、`gtable_filter`、`gtable_trim`、`rbind` / `cbind`、`gtable_add_row_space` / `col_space` | 有 | 未实现，等 ggplot2 实际调用面需要时补 |
@@ -184,3 +201,24 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 - **`strwidth` / `strheight` 单位**：`resolve(ctx=UnitContext(metrics=...))`
   透传度量提供者；不传 `metrics` 时带 `strwidth` 的表会报 `UnitError`
   （与 `units` 一致，不静默给 0）。
+
+## `vp`：M0-6 的决策点
+
+R 的 gtable 本身是个 grob，带 `vp` 字段（`gtable(vp = viewport(...))` / `x$vp`），
+用来表达「这张表画在哪个视口里」——带 `clip` / `gp` / `angle` 的真实 viewport
+可以挂在子表上，绘制时再包一层。gg4py 的 `GTable` 没有这个字段。
+
+纯尺寸解析不需要它：`resolve(width_cm, height_cm, ctx=UnitContext(...))` 把视口
+尺寸和度量显式传进来就够（嵌套走的就是这条路，见「嵌套」）。表达不了的是
+**带 clip / gp / angle 的视口栈**——子表要按自己的 clip/gp 绘制、或者整体按
+`angle` 旋转时，没有地方挂。
+
+M0-6 需要在这里做决定：
+
+- **只做几何**（行列尺寸、`region_box()`、`drawing_order()`）→ 可以不管 `vp`，
+  调用方继续显式传尺寸；
+- **要做 viewport 栈**（绘制期包视口、`clip="inherit"` 的继承、`gp` 传递、
+  `angle` 旋转）→ 必须补 `GTable.vp` 或等价的绘制上下文参数，并让渲染器在
+  按 `<placement name>.<t>-<r>-<b>-<l>` 建单元格包装视口时把它带上。
+
+在那之前 `clip="inherit"` 只存值不解析（见「刻意不复制」表）。
