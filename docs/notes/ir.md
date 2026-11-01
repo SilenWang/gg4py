@@ -126,7 +126,16 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
 ## 4. 节点类型表
 
-18 种节点 = `viewport` + `clip` + 14 个原语（M0-6 名单，含 `nullGrob`）+ `gtree` + `zeroGrob`。
+18 种节点 = 3 个容器（`viewport` / `gtree` / `clip`）+ 15 个叶子（13 个可绘制原语
++ `null` + `zero`）。计数口径只有这一份，三种数别混（`docs/notes/grobs.md` §1）：
+
+- 18 = grob 构造器个数（13 种可绘制原语 + `clipPath` + `nullGrob` + `zeroGrob` +
+  `gTree` + `gtable` 的 grob 视图）；
+- 18 = 本表的节点 kind；
+- 14 = `ggcore.grobs.Scene.to_ir_scene()` **实际产出**的 kind（13 种可绘制原语 +
+  `viewport`）。`null` / `zero` / `gtree` / `clip` 不会从 grob 路径来——`null` /
+  `zero` 只有布局语义（布局在写 IR 前消费掉），`gTree` / `clipPath` 是遍历容器
+  （顺序与裁剪已经落到子节点上）。它们保留在表里是给别的写方用。
 
 | kind | 用途 | 缓冲（dtype / shape） | 参数（缺省） |
 | --- | --- | --- | --- |
@@ -159,6 +168,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   子节点在裁剪形状内绘制。
 - **viewport.clip**：`clip=true` 时 `clip_rect` 必填（**页面绝对坐标**，见下条），
   不存在“猜一个单位框”的默认；宁可报错也不要两端各猜一个。`clip=false` 时可以不带。
+  **零面积的 `clip_rect` 就是裁掉一切**，不代表 `inherit` / “不裁剪”：那两种语义在
+  写 IR 之前就折成具体矩形了（`docs/notes/grobs.md` §6 / §7.3）。
 - **`viewport.clip_rect` 的坐标系**：页面绝对坐标（pt、y 向下、原点页面左上），
   **不是子坐标**；与 `Scene.size` 同一套坐标，和节点自身的 `transform` 无关。
   旋转 `inherit` 的生效裁剪框在子坐标里不是轴对齐矩形，4 元组表达不了，页面坐标无损。
@@ -180,6 +191,10 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   所以 round-trip 是**逐位**相同（dtype + shape + 原始字节），不是 `allclose`。
 - 解码用 `np.frombuffer` 直接看线格式里的 bytes，不复制；形状与字节长度不符直接报错。
 - 允许缓冲里出现 NaN / ±Inf / -0.0（缺失点、断线用 NaN 表达），但**参数字段**必须是有限值。
+- **设备输入就是本格式的 `Scene`**：`ggcore.grobs.Scene` 的 `Instruction.bufs` 是
+  遍历期的 float64 中间形态，**不进设备接口**——要出图先
+  `scene(...).to_ir_scene()`（一次性 float32 舍入）。设备只读 IR，所以不会在
+  float64 与 float32 两边各背一份几何（`docs/notes/grobs.md` §7.2）。
 
 ## 6. gpar
 
@@ -214,7 +229,20 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 | `size` | float | 字号 pt |
 | `anchor` | "left" / "center" / "right" | `pos` 指文本的哪一边 |
 | `baseline` | "top" / "middle" / "bottom" / "alphabetic" | 竖直锚定方式（不是数值偏移） |
-| `angle` | float | 旋转角，度 |
+| `angle` | float | **局部**旋转角，度（逆时针，绕 `pos`；**不含视口旋转**） |
+
+`angle` 的口径（SIL-634）：视口旋转已经在祖先 `viewport.transform` 的线性部分里，
+`text.angle` 只表达 grob 自己的 `rot`。设备按「先合成 `transform`，再绕锚点转
+`angle`」落字，所以页面上的最终方向 = 视口旋转 ∘ `angle`：
+
+| 写方给的 | `angle` | 页面方向 |
+| --- | --- | --- |
+| 视口 20° + `rot = 0` | 0 | 20° |
+| 无旋转视口 + `rot = 40` | 40 | 40° |
+| 视口 20° + `rot = 20` | 20 | 40°（两段各算一次） |
+
+写方**不要**把视口旋转预乘进 `angle`——那是重复应用（`docs/notes/grobs.md` §7.1
+记的就是这次修正）。
 
 **不携带**测量意图：没有 `font_stack` / `fallback` / `glyphs` / `advance` / `shaping` /
 `hjust` / `vjust` 之类的字段（`tests/test_ir.py::test_text_node_carries_no_measurement_intent`

@@ -11,10 +11,11 @@ IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/no
 
 from __future__ import annotations
 
+import ggcore.grobs as grobs
 import ggcore.gtable as gtable
 import ggcore.units as units
 import ggcore.viewport as viewport
 
-__all__ = ["__version__", "gtable", "units", "viewport"]
+__all__ = ["__version__", "grobs", "gtable", "units", "viewport"]
 
 __version__ = "0.1.0"

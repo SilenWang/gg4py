@@ -109,9 +109,15 @@ R 4.5.3 的字符串形式映射到逻辑值（`R/viewport.R` 的 `valid.viewpor
 | 没写（`UNSET`，`Gpar()` 的缺省） | 继承父值，**不覆盖** |
 | 具体值 | 覆盖父值（`cex` / `alpha` / `lex` 与父值**相乘**） |
 | 显式 `None` | 清空：回到 grid 缺省（`GPAR_DEFAULTS`），不参与乘法 |
+| 显式 `NA`（`col` / `fill` / `lty`） | 原样保留：R 的“透明 / 不画”。**不是**清空，也不参与乘法 |
 
 `cex` / `alpha` / `lex` 的累积是 R 的特例（`set.gpar()` 里 `temp$cex <- temp$cex
 * gp$cex`），所以 `cex = 1.5` 的父视口里写 `cex = 0.5` 得到 0.75，而不是 0.5。
+
+`NA` 是独立哨兵 `NA`（`is` 判定；`bool(NA)` 直接抛错）。它与 `None` 的分工是
+M0-6 定的口径，见 `docs/notes/grobs.md` §2：`None` 清空回缺省，`NA` 是“不画”。
+gpar 层的 `lty` 还收 R 的编号 `0..6`（`0` 是 `blank`）——段长折算发生在写 IR
+的那一层（`grobs.py` 的 `_dash_pattern`）。
 
 **与 R 的差异**：R 的 `gpar(col = NULL)` 走 `validGP()`，是把该字段从增量里
 **删掉**（等价于“不覆盖”），不是清空。本项目按任务要求把“显式 `None` 才清空”
@@ -252,16 +258,16 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
 
 这些是审核提出的扩展点，本模块先定口径、不扩实现：
 
-- **`NA` 的表示**：R 的 gpar 值是向量，元素可以是 `NA`（`col = NA` = 不画）。
-  gg4py 的显式 `None` 已经占给「清空回缺省」，**不能再用 `None` 兼职 `NA`**；
-  M0-6 加独立哨兵（如 `ggcore.viewport.NA`，与 `None` 并列比较），`NA` 原样进
-  IR 的 `gpar` 由设备跳过。本 PR 不改线格式，只在文档里定死这条。
+- **`NA` 的表示**：已落地——哨兵就是本模块的 `ggcore.viewport.NA`，`col` /
+  `fill` / `lty` 收它，解析后原样保留，写 IR 时折成“不描边 / 不填充”。
+  口径见 `docs/notes/grobs.md` §2。
 - **gpar 的向量值**：`Gpar` 保持标量。ggplot2 的 `pointsGrob` / `polylineGrob`
   会按顶点传 `gp`（`geom-point.R:26`），M0-6 在 grob → IR 展开时按「同一组 gp
   的顶点一个节点」切开，不把 `Gpar` 扩成数组——IR 节点的 `gpar` 本来就是标量。
 - **gpar 校验比 R 严**（`lwd = -1`、`lwd = Inf`、`font = 9`、`lineend = "pointy"`、
-  `col = 42`、`col = NA` 在 R 里都能存下来）：这是刻意的，宁可早报错也不让
-  设备端拿到画不出来的值。M0-6 若要放宽，按字段单独列进 §9 的差异表。
+  `col = 42` 在 R 里都能存下来）：这是刻意的，宁可早报错也不让设备端拿到画不
+  出来的值。M0-6 已经按需放宽了两处：`col` / `fill` / `lty` 收 `NA`，`lty` 收
+  R 的编号 `0..6`。
 - **`xscale` / `yscale` 的输入类型**：已放宽到「任意非字符串可迭代对象」，
   `np.ndarray`（panel 的数据范围）直接可用，不必先转 `tuple`。
 - **根级 native**：不支持。根视口的 `xscale`/`yscale` 是设备英寸（§9 已钉），

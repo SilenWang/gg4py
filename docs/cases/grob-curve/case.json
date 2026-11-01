@@ -1,0 +1,64 @@
+{
+  "id": "grob-curve",
+  "kind": "grob",
+  "title": "grob · curve（两端点 + 弯曲参数）",
+  "caption": "上：square=true 的直角拐点；下：square=false 的二次曲线；右侧两条不同角度",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [],
+  "grobs": [
+    {
+      "type": "curve",
+      "x1": 0.1,
+      "y1": 0.75,
+      "x2": 0.5,
+      "y2": 0.5,
+      "square": true,
+      "gp": {
+        "col": "#4C78A8",
+        "lwd": 2.5
+      }
+    },
+    {
+      "type": "curve",
+      "x1": 0.1,
+      "y1": 0.25,
+      "x2": 0.5,
+      "y2": 0.05,
+      "square": false,
+      "gp": {
+        "col": "#54A24B",
+        "lwd": 2.5
+      }
+    },
+    {
+      "type": "curve",
+      "x1": 0.6,
+      "y1": 0.1,
+      "x2": 0.9,
+      "y2": 0.85,
+      "angle": 90,
+      "gp": {
+        "col": "#E45756",
+        "lwd": 2
+      }
+    },
+    {
+      "type": "curve",
+      "x1": 0.62,
+      "y1": 0.12,
+      "x2": 0.92,
+      "y2": 0.82,
+      "angle": 45,
+      "curvature": 0.6,
+      "gp": {
+        "col": "#B279A2",
+        "lwd": 2,
+        "lty": 3
+      }
+    }
+  ]
+}

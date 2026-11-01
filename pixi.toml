@@ -64,6 +64,8 @@ diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
+# grob 可视化快照（M0-6）：每种原语一张，走 grob → 场景遍历 → 临时 skia 设备。
+"cases:grob" = "PYTHONPATH=src python tools/cases/grob_cases.py"
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 

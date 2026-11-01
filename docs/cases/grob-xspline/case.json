@@ -1,0 +1,120 @@
+{
+  "id": "grob-xspline",
+  "kind": "grob",
+  "title": "grob · xspline（shape / open / id 分组）",
+  "caption": "左：shape=0 的开放样条；右：shape=0 闭合样条；下方：两条折线作为 shape=±1 的极限对照",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [],
+  "grobs": [
+    {
+      "type": "xspline",
+      "x": [
+        [
+          0.1,
+          0.28,
+          0.46,
+          0.64,
+          0.82
+        ],
+        "npc"
+      ],
+      "y": [
+        [
+          0.3,
+          0.8,
+          0.25,
+          0.75,
+          0.3
+        ],
+        "npc"
+      ],
+      "shape": 0.0,
+      "open": true,
+      "gp": {
+        "col": "#4C78A8",
+        "lwd": 2.5
+      }
+    },
+    {
+      "type": "xspline",
+      "x": [
+        [
+          0.15,
+          0.45,
+          0.45,
+          0.15
+        ],
+        "npc"
+      ],
+      "y": [
+        [
+          0.2,
+          0.2,
+          0.55,
+          0.55
+        ],
+        "npc"
+      ],
+      "shape": 0.0,
+      "open": false,
+      "gp": {
+        "col": "#E45756",
+        "lwd": 2.5
+      }
+    },
+    {
+      "type": "xspline",
+      "x": [
+        [
+          0.55,
+          0.7,
+          0.92
+        ],
+        "npc"
+      ],
+      "y": [
+        [
+          0.12,
+          0.2,
+          0.12
+        ],
+        "npc"
+      ],
+      "shape": 1.0,
+      "open": true,
+      "gp": {
+        "col": "#54A24B",
+        "lwd": 2
+      }
+    },
+    {
+      "type": "xspline",
+      "x": [
+        [
+          0.55,
+          0.7,
+          0.92
+        ],
+        "npc"
+      ],
+      "y": [
+        [
+          0.06,
+          0.02,
+          0.06
+        ],
+        "npc"
+      ],
+      "shape": -1.0,
+      "open": true,
+      "gp": {
+        "col": "#B279A2",
+        "lwd": 2
+      }
+    }
+  ]
+}

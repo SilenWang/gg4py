@@ -1,0 +1,154 @@
+{
+  "id": "grob-points",
+  "kind": "grob",
+  "title": "grob · points（pch 子集 / size / 向量 col 展开）",
+  "caption": "上排 pch 1/16/17/18/19（实心用 col）；下排 0/3/4 与 pch 21/22（fill+col）；底部六点用向量 col",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [],
+  "grobs": [
+    {
+      "type": "points",
+      "x": 0.15,
+      "y": 0.7,
+      "pch": 1,
+      "size": 8,
+      "gp": {
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.3,
+      "y": 0.7,
+      "pch": 16,
+      "size": 8,
+      "gp": {
+        "col": "#4C78A8"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.45,
+      "y": 0.7,
+      "pch": 17,
+      "size": 8,
+      "gp": {
+        "col": "#F58518"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.6,
+      "y": 0.7,
+      "pch": 18,
+      "size": 8,
+      "gp": {
+        "col": "#E45756"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.75,
+      "y": 0.7,
+      "pch": 19,
+      "size": 8,
+      "gp": {
+        "col": "#54A24B"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.15,
+      "y": 0.35,
+      "pch": 0,
+      "size": 8,
+      "gp": {
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.3,
+      "y": 0.35,
+      "pch": 3,
+      "size": 8,
+      "gp": {
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.45,
+      "y": 0.35,
+      "pch": 4,
+      "size": 8,
+      "gp": {
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.6,
+      "y": 0.35,
+      "pch": 21,
+      "size": 8,
+      "gp": {
+        "fill": "#B279A2",
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": 0.75,
+      "y": 0.35,
+      "pch": 22,
+      "size": 8,
+      "gp": {
+        "fill": "#72B7B2",
+        "col": "#1b1b1b"
+      },
+      "size_units": "bigpts"
+    },
+    {
+      "type": "points",
+      "x": [
+        [
+          0.14,
+          0.28,
+          0.42,
+          0.56,
+          0.7,
+          0.84
+        ],
+        "npc"
+      ],
+      "y": 0.1,
+      "pch": 19,
+      "size": 10,
+      "gp": {
+        "col": [
+          "#4C78A8",
+          "#F58518",
+          "#E45756",
+          "#72B7B2",
+          "#54A24B",
+          "#B279A2"
+        ]
+      },
+      "size_units": "bigpts"
+    }
+  ]
+}

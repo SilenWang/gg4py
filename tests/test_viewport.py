@@ -20,6 +20,7 @@ import pytest
 from ggcore.units import UnitError, unit
 from ggcore.viewport import (
     IDENTITY,
+    NA,
     Affine,
     Clip,
     Device,
@@ -534,6 +535,24 @@ def test_gpar_is_restored_on_pop_and_replaced_on_down() -> None:
     assert tree.gpar.cex == 0.5  # down 用目标视口的解析值，不累积
     tree.pop(2)
     assert tree.gpar == ResolvedGpar.defaults()
+
+
+def test_na_is_kept_apart_from_none() -> None:
+    """`NA`（不画）与 `None`（清空回缺省）是两件事，解析后必须还分得清。"""
+    base = ResolvedGpar.defaults().merge(gpar(col="red"))
+    assert base.merge(Gpar(col=NA)).col is NA
+    assert base.merge(Gpar(col=None)).col == "black"
+    assert base.merge(Gpar(col=NA)).fill == "transparent"
+    with pytest.raises(TypeError):
+        bool(NA)
+
+
+def test_lty_accepts_r_codes_and_style_names() -> None:
+    for value in (0, 1, 2, 6, "dashed", "blank", "44", (1.0, 2.0), NA):
+        assert Gpar(lty=value).lty is value
+    for value in (-1, 7, True, 2.5):
+        with pytest.raises(ViewportError, match="lty"):
+            Gpar(lty=value)
 
 
 def test_gpar_validation() -> None:

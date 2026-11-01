@@ -1,0 +1,90 @@
+{
+  "id": "grob-clip",
+  "kind": "grob",
+  "title": "grob · clipPath（矩形裁剪 + 嵌套求交）",
+  "caption": "左：四条越界的横带被 clip 矩形截断；右：两层 clipPath 嵌套，只剩交集区域可见",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [],
+  "grobs": [
+    {
+      "type": "clip",
+      "x": 0.05,
+      "y": 0.15,
+      "width": 0.4,
+      "height": 0.7,
+      "children": [
+        {
+          "type": "gTree",
+          "gp": {
+            "col": "#4C78A8",
+            "lwd": 2.5
+          },
+          "children": [
+            {
+              "type": "segments",
+              "x0": -0.2,
+              "y0": 0.25,
+              "x1": 0.8,
+              "y1": 0.25
+            },
+            {
+              "type": "segments",
+              "x0": -0.2,
+              "y0": 0.4,
+              "x1": 0.8,
+              "y1": 0.4
+            },
+            {
+              "type": "segments",
+              "x0": -0.2,
+              "y0": 0.55,
+              "x1": 0.8,
+              "y1": 0.55
+            },
+            {
+              "type": "segments",
+              "x0": -0.2,
+              "y0": 0.7,
+              "x1": 0.8,
+              "y1": 0.7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "clip",
+      "x": 0.55,
+      "y": 0.12,
+      "width": 0.42,
+      "height": 0.76,
+      "children": [
+        {
+          "type": "clip",
+          "x": 0.3,
+          "y": 0.3,
+          "width": 0.4,
+          "height": 0.5,
+          "children": [
+            {
+              "type": "rect",
+              "x": 0.5,
+              "y": 0.5,
+              "width": 0.6,
+              "height": 0.6,
+              "gp": {
+                "fill": "#E45756",
+                "col": "#1b1b1b",
+                "lwd": 1.5
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

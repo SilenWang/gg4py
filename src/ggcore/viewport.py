@@ -65,6 +65,7 @@ from ggcore.units import (
 __all__ = [
     "GPAR_FIELDS",
     "IDENTITY",
+    "NA",
     "Affine",
     "Clip",
     "Device",
@@ -210,6 +211,31 @@ class _UnsetType:
 
 UNSET = _UnsetType()
 
+
+class _NAType:
+    """R 的 `NA`：颜色字段里表示“透明 / 不画”（`gpar(col = NA)`）。
+
+    与 `None` 是两件事，见 `docs/notes/grobs.md`：
+
+    - :data:`UNSET`：字段没写，继承父值；
+    - `None`：显式清空，解析时回落到 grid 缺省值；
+    - :data:`NA`：解析后仍然留在 gpar 里，写 IR 时折成“不描边 / 不填充”。
+
+    只用 `__slots__` 的空单例，`is NA` 是唯一的判定方式；不要拿它当布尔值用。
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - 只为调试可读
+        return "NA"
+
+    def __bool__(self) -> bool:
+        raise TypeError("NA has no truth value (R: NA is not TRUE/FALSE)")
+
+
+NA = _NAType()
+"""颜色字段的 `NA` 哨兵（R 的 `NA`），见 :class:`_NAType`。"""
+
 #: gpar 字段顺序与 grid 缺省值（`gpar.c` 的 `initGPar()` 在 pdf 设备上
 #: `get.gpar()` 的结果）。`cex` / `alpha` / `lex` 是累积的（R `set.gpar()`）。
 GPAR_FIELDS: tuple[tuple[str, Any], ...] = (
@@ -258,6 +284,9 @@ class Gpar:
     - `None`：显式清空，解析时回到 `GPAR_DEFAULTS` 里的缺省值；
     - 具体值：覆盖（`cex` / `alpha` / `lex` 与父值相乘，与 R 一致）。
 
+    颜色字段（`fill` / `col`）另收 :data:`NA` —— R 的“透明 / 不画”，它**不**
+    清空、也不继承，解析后原样留着，由写 IR 的一方折成“不描边 / 不填充”。
+
     R 的 `gpar(col = NULL)` 走的是“从增量里删掉”（等价于 :data:`UNSET`），
     这里刻意分开，见 `docs/notes/viewport.md`。
     """
@@ -280,8 +309,10 @@ class Gpar:
     def __post_init__(self) -> None:
         for name in ("fill", "col"):
             value = getattr(self, name)
-            if value is not UNSET and value is not None and not isinstance(value, str):
-                raise ViewportError(f"gpar.{name} 必须是颜色字符串或 None，收到 {value!r}")
+            if value is UNSET or value is None or value is NA:
+                continue
+            if not isinstance(value, str):
+                raise ViewportError(f"gpar.{name} 必须是颜色字符串、NA 或 None，收到 {value!r}")
         for name in ("lwd", "alpha", "cex", "fontsize", "lineheight", "linemitre", "lex"):
             value = getattr(self, name)
             if value is not UNSET and value is not None:
@@ -301,8 +332,15 @@ class Gpar:
             if value is not UNSET and value is not None and value not in allowed:
                 raise ViewportError(f"gpar.{name} 不认识：{value!r}")
         lty = self.lty
-        if lty is not UNSET and lty is not None and not isinstance(lty, (str, tuple, list)):
-            raise ViewportError(f"gpar.lty 必须是字符串或段长序列，收到 {lty!r}")
+        if lty is not UNSET and lty is not None and lty is not NA:
+            if isinstance(lty, bool):
+                raise ViewportError(f"gpar.lty 必须是样式名、编号或段长序列，收到 {lty!r}")
+            if isinstance(lty, int):
+                # R 的 `lty = 0..6`（0 是 blank）；段长在写 IR 时折成 pt。
+                if not 0 <= lty <= 6:
+                    raise ViewportError(f"gpar.lty 必须在 0..6，收到 {lty!r}")
+            elif not isinstance(lty, (str, tuple, list)):
+                raise ViewportError(f"gpar.lty 必须是样式名、编号或段长序列，收到 {lty!r}")
         font = self.font
         if font is not UNSET and font is not None:
             if isinstance(font, bool) or not isinstance(font, int):
@@ -331,10 +369,15 @@ def gpar(**kwargs: Any) -> Gpar:
 
 @dataclass(frozen=True, slots=True)
 class ResolvedGpar:
-    """某个视口的**解析后** gpar：每个字段都有值，没有继承这一步。"""
+    """某个视口的**解析后** gpar：每个字段都有值，没有继承这一步。
 
-    fill: str | None = "transparent"
-    col: str | None = "black"
+    颜色字段保留三态的结果：具体颜色字符串、`None`（清空后回落到缺省值——
+    正常路径不会留下它），或 :data:`NA`（透明 / 不画）。`NA` 与缺省值 `"black"`
+    是两件事，见 `docs/notes/grobs.md`。
+    """
+
+    fill: Any = "transparent"
+    col: Any = "black"
     lwd: float = 1.0
     lty: Any = "solid"
     lineend: str = "round"
@@ -352,7 +395,7 @@ class ResolvedGpar:
         """父值 + 增量 = 子值（R `set.gpar()`）：未设置不覆盖，`None` 回缺省。
 
         `cex` / `alpha` / `lex` 是 R 的特例——累积相乘；显式 `None` 不参与乘法，
-        直接清回缺省（1.0）。
+        直接清回缺省（1.0）。:data:`NA` 原样留着，不参与乘法也不回缺省。
         """
         if not isinstance(delta, Gpar):
             raise ViewportError(f"gp 必须是 Gpar，收到 {type(delta).__name__}")

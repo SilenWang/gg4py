@@ -1,0 +1,80 @@
+{
+  "id": "grob-circle",
+  "kind": "grob",
+  "title": "grob · circle（r 单位 / 向量坐标 / 视口变换出椭圆）",
+  "caption": "左：两个圆一个节点（x/y 向量）；中：fill 与 col；右：视口 x/y 轴不等比 → 椭圆",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [
+    {
+      "name": "round",
+      "x": 0.45,
+      "y": 0.3,
+      "width": 0.3,
+      "height": 0.3,
+      "clip": "inherit"
+    },
+    {
+      "name": "squash",
+      "x": 0.8,
+      "y": 0.42,
+      "width": 0.34,
+      "height": 0.18,
+      "clip": "inherit"
+    }
+  ],
+  "grobs": [
+    {
+      "type": "circle",
+      "x": [
+        [
+          0.18,
+          0.18
+        ],
+        "npc"
+      ],
+      "y": [
+        [
+          0.62,
+          0.3
+        ],
+        "npc"
+      ],
+      "r": 0.1,
+      "gp": {
+        "fill": "#72B7B2",
+        "col": "#1b1b1b"
+      }
+    },
+    {
+      "type": "circle",
+      "x": 0.45,
+      "y": 0.6,
+      "r": 0.12,
+      "gp": {
+        "fill": "#F58518",
+        "col": "#333333",
+        "lwd": 2
+      }
+    },
+    {
+      "type": "gTree",
+      "vp": 1,
+      "children": [
+        {
+          "type": "circle",
+          "x": 0.5,
+          "y": 0.5,
+          "r": 0.45,
+          "gp": {
+            "fill": "#B279A2",
+            "col": "#1b1b1b"
+          }
+        }
+      ]
+    }
+  ]
+}

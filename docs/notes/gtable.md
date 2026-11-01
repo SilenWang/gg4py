@@ -222,3 +222,13 @@ M0-6 需要在这里做决定：
   按 `<placement name>.<t>-<r>-<b>-<l>` 建单元格包装视口时把它带上。
 
 在那之前 `clip="inherit"` 只存值不解析（见「刻意不复制」表）。
+
+**M0-6 的结论（已落地）**：选第二条，但把视口栈放在 grob 侧而不是 `GTable` 上——
+`GTable` 保持纯几何，绘制期用 `ggcore.grobs.g_table_grob(table, vp=..., gp=...)`
+包一层。它按 `drawing_order()` 为每条 layout 记录 push 单元格视口
+`<placement name>.<t>-<r>-<b>-<l>`（尺寸用 `region_box()` 的 cm、`just = ("left",
+"bottom")`），并把 `Placement.clip` 原样变成该视口的 `clip`：因此 `"inherit"` 在
+绘制期取的是父视口的裁剪框，**不是** `"off"`。嵌套表没有单独的“布局视口”
+（`region_box` 已含居中偏移），路径名比 R 少一段。实现与用例见
+`docs/notes/grobs.md` §9 与
+`tests/test_grobs.py::test_gtable_cells_get_their_own_viewports_in_drawing_order`。
