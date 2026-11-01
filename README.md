@@ -30,6 +30,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
 | `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
 | `pixi run -e refs refs:units` | 用 R 4.5.3 重新生成 units 对拍夹具 |
+| `pixi run -e refs refs:gtable` | 用 R 4.5.3 + gtable 0.3.6 重新生成 gtable 对拍夹具 |
 
 ## 环境
 
@@ -47,11 +48,12 @@ pytest.ini           # src 布局：pythonpath = src
 src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条边界）
   ir/                # IR v0：节点类型表 + CBOR 编解码（docs/notes/ir.md）
   units.py           # grid::unit 对等单位系统（M0-3）
+  gtable.py          # 表格布局 + null 分配（M0-5）
   metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   cli/               # render / diff 命令行入口
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
 tools/gates/         # 横切门禁脚本（X1）
-tools/refs/          # R 侧参考值生成（units 等）
+tools/refs/          # R 侧参考值生成（units / gtable）
 tools/metrics/       # 兜底表生成 + CanvasKit 度量脚本（门禁复用）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
 benchmarks/          # pytest-benchmark 基线
@@ -73,3 +75,4 @@ docs/spike/          # M-1 可行性实验与结论
 - IR 口径（节点表 / blob / 版本 / 体积）：`docs/notes/ir.md`
 - 度量口径账本：`docs/notes/metrics-ledger.md`
 - 单位口径账本：`docs/notes/units.md`
+- 表格布局口径账本：`docs/notes/gtable.md`

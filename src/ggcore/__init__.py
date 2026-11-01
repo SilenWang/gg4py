@@ -9,8 +9,9 @@ IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/no
 
 from __future__ import annotations
 
+import ggcore.gtable as gtable
 import ggcore.units as units
 
-__all__ = ["__version__", "units"]
+__all__ = ["__version__", "gtable", "units"]
 
 __version__ = "0.1.0"
