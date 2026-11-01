@@ -32,7 +32,6 @@ import math
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import cbor2
 import numpy as np
 
 from ggcore.ir.errors import IRDecodeError, IRValidationError, IRVersionError
@@ -51,6 +50,19 @@ from ggcore.ir.nodes import (
     NodeKind,
     Scene,
 )
+
+#: 实际在跑的 CBOR 实现。CPython 用 `cbor2`（Rust 扩展）；Pyodide 的包索引里没有
+#: `cbor2`、PyPI 也只有编译不了 wasm 的扩展轮子，所以那边退回 `ggcore.ir._cbor`
+#: （纯 Python、同一份 canonical 线格式）。两边字节一致由 `pixi run gate:pyodide`
+#: 逐字节守住，见 `docs/notes/pyodide.md`。
+try:
+    import cbor2
+
+    CBOR_BACKEND = "cbor2"
+except ImportError:  # pragma: no cover - 只有 Pyodide 走这里
+    from ggcore.ir import _cbor as cbor2
+
+    CBOR_BACKEND = "ggcore.ir._cbor"
 
 #: 当前写出的 IR 版本：(major, minor)。major 涨 = 不兼容，minor 涨 = 只加字段。
 IR_VERSION: tuple[int, int] = (0, 2)

@@ -11,13 +11,18 @@
 from __future__ import annotations
 
 import json
+import math
+import struct
 
 import cbor2
 import numpy as np
 import pytest
 
 from ggcore.ir import (
+    CBOR_BACKEND,
     DEFAULT_MIME,
+    INT_MAX,
+    INT_MIN,
     IR_VERSION,
     IR_VERSION_STR,
     NODE_SPECS,
@@ -35,6 +40,7 @@ from ggcore.ir import (
     Node,
     NodeKind,
     Scene,
+    _cbor,
     blob_id,
     decode,
     demo_scene,
@@ -375,6 +381,220 @@ def test_encoding_is_byte_stable() -> None:
     scene = demo_scene()
     assert encode(scene) == encode(scene)
     assert encode(demo_scene()) == encode(demo_scene())
+
+
+# --- 纯 Python CBOR 回退（Pyodide 没有 cbor2，M0-10 / docs/notes/pyodide.md）---
+
+
+def _double_from_bits(bits: int) -> float:
+    return struct.unpack(">d", struct.pack(">Q", bits))[0]
+
+
+#: NaN 的每种位型都要归一成 f97e00（SIL-646 B1）：cbor2 canonical 的行为，
+#: 也是 RFC 8949 §3.3 的首选编码。
+NAN_BIT_PATTERNS = [
+    0x7FF8000000000000,  # 最常见的 quiet NaN
+    0xFFF8000000000000,  # 符号位为 1
+    0x7FF0000000000001,  # signaling NaN，payload 非零
+    0x7FFFFFFFFFFFFFFF,  # payload 全 1
+    0x7FF4000000000000,
+]
+
+#: 覆盖 IR 线格式用到的每个标量面 + canonical 排序、浮点宽度与长度头的边界。
+#: 每项是 `(用例名, 取值)`：名字进 pytest id，免得 65536 长的值把输出撑爆。
+CBOR_BATTERY: list[tuple[str, object]] = [
+    ("int 0", 0),
+    ("int 23", 23),
+    ("int 24", 24),
+    ("int 255", 255),
+    ("int 256", 256),
+    ("int 65535", 65535),
+    ("int 65536", 65536),
+    ("int 2**32", 2**32),
+    ("int 2**64-1", 2**64 - 1),
+    ("int -1", -1),
+    ("int -24", -24),
+    ("int -25", -25),
+    ("int -256", -256),
+    ("int -65536", -65536),
+    ("int -65537", -65537),
+    ("str empty", ""),
+    ("str ascii", "a"),
+    ("str utf8", "占位"),
+    ("bytes empty", b""),
+    ("bytes binary", b"\x00\xff"),
+    ("list empty", []),
+    ("list", [1, 2]),
+    ("map empty", {}),
+    ("map key order", {"b": 1, "a": 2, "": 3, "ab": 4}),
+    ("map nested", {"a": {"b": [1, {"c": b"x"}]}, "d": [[], {}]}),
+    ("list nested", [[1, [2, [3]]], [{"a": None}]]),
+    ("bool true", True),
+    ("bool false", False),
+    ("null", None),
+    ("float 0.0", 0.0),
+    ("float -0.0", -0.0),
+    ("float 1.5", 1.5),
+    ("float 600.0", 600.0),
+    ("float 0.1", 0.1),
+    ("float 1e-300", 1e-300),
+    ("float 1e300", 1e300),
+    ("float 65504.0", 65504.0),
+    ("float 65520.0", 65520.0),
+    ("float inf", float("inf")),
+    ("float -inf", float("-inf")),
+    ("float nan", float("nan")),
+    *[(f"float nan 0x{bits:016x}", _double_from_bits(bits)) for bits in NAN_BIT_PATTERNS],
+]
+
+#: 长度头 23 / 24 / 255 / 256 / 65535 / 65536 的四条分支都踩一遍（SIL-646 B3）：
+#: 字符串、byte string、数组、映射（int 键与 str 键各一份）逐个长度对拍。
+for _length in (23, 24, 255, 256, 65535, 65536):
+    _payload = bytes((index * 37 + 11) & 0xFF for index in range(_length))
+    CBOR_BATTERY += [
+        (f"str len {_length}", "a" * _length),
+        (f"bytes len {_length}", _payload),
+        (f"bytearray len {_length}", bytearray(_payload)),
+        (f"list len {_length}", [0] * _length),
+        (f"map int-key len {_length}", {index: 0 for index in range(_length)}),
+        (f"map str-key len {_length}", {f"k{index}": 0 for index in range(_length)}),
+    ]
+
+
+@pytest.mark.parametrize(("case", "value"), CBOR_BATTERY, ids=[case for case, _ in CBOR_BATTERY])
+def test_pure_cbor_matches_cbor2_canonical(case: str, value: object) -> None:
+    assert _cbor.dumps(value) == cbor2.dumps(value, canonical=True), case
+
+
+@pytest.mark.parametrize(
+    "bits", NAN_BIT_PATTERNS, ids=[f"0x{bits:016x}" for bits in NAN_BIT_PATTERNS]
+)
+def test_pure_cbor_canonicalises_every_nan(bits: int) -> None:
+    # 只跟 cbor2 相等不够：这条把「归一成首选编码」写死，NaN 的符号位与 payload 都不许漏进字节。
+    value = _double_from_bits(bits)
+    assert _cbor.dumps(value) == b"\xf9\x7e\x00"
+    assert math.isnan(_cbor.loads(b"\xf9\x7e\x00"))
+
+
+def test_pure_cbor_rejects_memoryview() -> None:
+    # cbor2 6.1.5 把 memoryview 当整数数组编（83186118621863），当成 byte string 编就是另一个值。
+    # IR 编码路径从不传 memoryview，所以这里选择报错，而不是写出两边不一致的字节。
+    with pytest.raises(_cbor.CBORError):
+        _cbor.dumps(memoryview(b"abc"))
+
+
+def test_pure_cbor_agrees_with_cbor2_on_all_scalar_backends() -> None:
+    # 解码方向也要一致：cbor2 写、_cbor 读，值必须相同（bytes / str / 容器都要对）。
+    for case, value in CBOR_BATTERY:
+        raw = cbor2.dumps(value, canonical=True)
+        assert _same_value(_cbor.loads(raw), cbor2.loads(raw)), case
+
+
+def _same_value(left: object, right: object) -> bool:
+    if (
+        isinstance(left, float)
+        and isinstance(right, float)
+        and math.isnan(left)
+        and math.isnan(right)
+    ):
+        return True
+    if isinstance(left, (bytes, bytearray)) and isinstance(right, (bytes, bytearray)):
+        return bytes(left) == bytes(right)
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(
+            _same_value(left[key], right[key]) for key in left
+        )
+    if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+        return len(left) == len(right) and all(
+            _same_value(a, b) for a, b in zip(left, right, strict=True)
+        )
+    return type(left) is type(right) and left == right
+
+
+def test_pure_cbor_matches_cbor2_on_the_demo_scene() -> None:
+    # 整条编码路径（含 canonical 键排序、f32 字节串、StrEnum）逐字节对拍。
+    data = encode(demo_scene())
+    assert _cbor.dumps(cbor2.loads(data)) == data
+
+
+def test_pure_cbor_round_trips_a_scene() -> None:
+    scene = demo_scene()
+    assert scene_equal(decode(_cbor.dumps(cbor2.loads(encode(scene)))), scene)
+
+
+def int_boundary_scene() -> Scene:
+    """int 参数取 64 位端点的 scene：CPython 写得出来，Pyodide 就必须也写得出来。"""
+    table, bid = BlobTable.empty().add(b"\x89PNG\r\n\x1a\n", "image/png")
+    return Scene(
+        root=viewport(
+            (
+                Node(
+                    NodeKind.POINTS,
+                    params={"pch": INT_MAX, "size": 1.0},
+                    bufs={"points": f32([[0.0, 0.0], [1.0, 2.0]])},
+                ),
+                Node(
+                    NodeKind.RASTER,
+                    params={"blob": bid, "width": INT_MAX, "height": 1},
+                    bufs={"rect": f32([[0.0, 0.0, 1.0, 1.0]])},
+                ),
+            )
+        ),
+        blobs=table,
+    )
+
+
+def test_every_int_param_is_capped_at_64_bits() -> None:
+    # SIL-646 B2：int 参数原先没有统一上界，pch=2**64 能构造出 Node，CPython 用 cbor2
+    # 写成 bignum tag（c2 49…），Pyodide 的 _cbor 直接抛错——同一 scene 在浏览器里编不出来。
+    # 上界施加在 `_check_param` 里（编码与解码共用），所以这里扫全表的 int 参数。
+    from ggcore.ir.nodes import _check_param
+
+    checked = 0
+    for kind, spec in NODE_SPECS.items():
+        for field_spec in spec.params:
+            if field_spec.tag != "int":
+                continue
+            assert _check_param(kind, field_spec, INT_MIN) == INT_MIN
+            assert _check_param(kind, field_spec, INT_MAX) == INT_MAX
+            for bad in (INT_MIN - 1, INT_MAX + 1, 2**64, -(2**64) - 1):
+                with pytest.raises(IRValidationError, match="64 位"):
+                    _check_param(kind, field_spec, bad)
+            checked += 1
+    assert checked >= 3  # points.pch / raster.width / raster.height
+
+
+def test_node_rejects_int_params_beyond_64_bits() -> None:
+    # 审核复现的那两条真实可达路径（nodes.py 的 pch、width/height）。
+    with pytest.raises(IRValidationError, match="64 位"):
+        Node(NodeKind.POINTS, params={"pch": 2**64}, bufs={"points": f32([[0.0, 0.0]])})
+    _table, bid = BlobTable.empty().add(b"x")
+    for bad in ({"width": 2**64, "height": 1}, {"width": 1, "height": 2**64}):
+        with pytest.raises(IRValidationError, match="64 位"):
+            Node(
+                NodeKind.RASTER,
+                params={"blob": bid, **bad},
+                bufs={"rect": f32([[0.0, 0.0, 1.0, 1.0]])},
+            )
+
+
+@pytest.mark.parametrize(
+    "scene_factory", [demo_scene, int_boundary_scene], ids=["demo", "int-boundary"]
+)
+def test_cpython_encodable_scene_is_pyodide_encodable_and_decodable(scene_factory) -> None:
+    # B2 的验收句本身：CPython（cbor2）能 encode 的 scene，Pyodide 侧的实现（_cbor）
+    # 必须能 encode 出同样的字节，并且能 decode 回同一个 scene。
+    scene = scene_factory()
+    data = encode(scene)
+    pyodide_bytes = _cbor.dumps(cbor2.loads(data))
+    assert pyodide_bytes == data
+    assert scene_equal(decode(pyodide_bytes), scene)
+
+
+def test_cpython_codec_backend_is_cbor2() -> None:
+    # gate:pyodide 的前提：CPython 侧必须用 cbor2，Pyodide 侧必须用纯 Python
+    # 实现——两边实现不同而字节相同，才证明线格式是可移植的。
+    assert CBOR_BACKEND == "cbor2"
 
 
 def test_encoding_ignores_dict_and_blob_insertion_order() -> None:

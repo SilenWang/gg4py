@@ -35,7 +35,9 @@ IR 里**没有**：单位对象、scale、主题继承链、font stack、字符�
 
 ## 2. 线格式
 
-CBOR（`cbor2`），canonical 编码。结构：
+CBOR（`cbor2`），canonical 编码。Pyodide 里没有 `cbor2`（没有 wasm 轮子），那边
+换用同字节的纯 Python 实现 `ggcore/ir/_cbor.py`，一致性由 `pixi run gate:pyodide`
+逐字节守住（`docs/notes/pyodide.md`）。结构：
 
 ```
 {
@@ -180,7 +182,10 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - **取值范围在 IR 里校验，不留给渲染端**：`bezier.control` 的行数必须是 4 的倍数
   （每 4 行一段；0 行合法，等于不画），`raster.width` / `raster.height` 是不小于 1
   的整数像素，`xspline.shape` 落在 [-1, 1]。写方给错值在构造节点时就报
-  `IRValidationError`——渲染端不需要替写方猜一个合法值。
+  `IRValidationError`——渲染端不需要替写方猜一个合法值。`int` 参数另外有一条
+  全局上界 `[INT_MIN, INT_MAX]`（`ggcore.ir` 导出）：canonical CBOR 的 major 0/1
+  只到 64 位，再大就要 bignum tag，而线格式不写 tag——所以这不是业务上界，是
+  编解码口径（`docs/notes/pyodide.md` §7）。
 - **null / zero**：区别只在布局阶段，布局信息不进 IR，所以两者在 IR 里都不产出绘制指令。
 
 ## 5. 缓冲

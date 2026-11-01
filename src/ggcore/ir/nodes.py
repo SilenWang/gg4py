@@ -36,6 +36,13 @@ DTYPE_WIRE: Mapping[np.dtype[Any], str] = {F32: "f4", I32: "i4"}
 DEFAULT_MIME = "application/octet-stream"
 IDENTITY = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 
+#: `int` 参数的线格式范围，端点包含。canonical CBOR 的 major 0/1 最多写 64 位；
+#: 再大就要 bignum tag（2/3），而 IR 线格式不写 tag，浏览器侧的纯 Python 编码器
+#: 也不实现它。所以这不是业务上界，而是**编解码口径**：超出范围在构造节点时就拒绝，
+#: 免得 CPython 能写、Pyodide 写不出来（docs/notes/pyodide.md §7）。
+INT_MIN = -(1 << 64)
+INT_MAX = (1 << 64) - 1
+
 
 # ---------------------------------------------------------------------------
 # 缓冲：bulk 数据的唯一形态
@@ -289,7 +296,8 @@ class ParamSpec:
     """一个参数字段：类型标签、缺省值、是否必填，以及数值型的取值域。
 
     `minimum` / `maximum` 只对 `float` / `int` 标签生效，端点都包含在内；取值域
-    和类型一样是**线格式口径**，编码与解码两边共用这份校验。
+    和类型一样是**线格式口径**，编码与解码两边共用这份校验。`int` 另有一条
+    全局上界 `[INT_MIN, INT_MAX]`（64 位），由 `_check_param` 统一施加。
     """
 
     name: str
@@ -509,6 +517,11 @@ def _check_param(kind: NodeKind, spec: ParamSpec, value: Any) -> Any:
     if tag == "int":
         if isinstance(value, bool) or not isinstance(value, int):
             raise IRValidationError(f"{where} 必须是整数，收到 {value!r}")
+        if not INT_MIN <= value <= INT_MAX:
+            raise IRValidationError(
+                f"{where} 超出 64 位整数范围 [{INT_MIN}, {INT_MAX}]，收到 {value}；"
+                "IR 线格式不写 bignum tag，超出范围的值在浏览器里编不出来"
+            )
         return value
     if tag == "bool":
         if not isinstance(value, bool):
