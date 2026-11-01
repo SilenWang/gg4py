@@ -48,7 +48,7 @@ def build(spec: dict[str, Any]) -> Unit:
     """把夹具里的 spec 还原成 ggcore 的 Unit。"""
     if "kind" in spec:
         kind = spec["kind"]
-        if kind in {"sum", "min", "max"}:
+        if isinstance(kind, str) and kind in {"sum", "min", "max"}:
             children = tuple(build(child).elements[0] for child in spec["children"])
             return Unit((UnitElement(spec["amount"], kind, children),))
         return unit(spec["amount"], kind, data=spec.get("text"))

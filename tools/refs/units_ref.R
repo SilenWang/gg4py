@@ -318,6 +318,28 @@ cases <- list(
   case("min-mixed", "convertUnit(min(unit(1, 'cm'), unit(2, 'mm')), 'cm', valueOnly=TRUE)",
        '{"op":"min","args":[{"kind":"cm","amount":1},{"kind":"mm","amount":2}]}',
        min(unit(1, "cm"), unit(2, "mm")), structure = TRUE),
+  # Summary.unit 在 nMatches != 0 时先放非匹配单位、再放摊平的子项，大数相消时
+  # 求和顺序决定结果（unit.psum 的 summaryUnits() 保持交错顺序，所以两者不同）。
+  case("sum-cancellation-order", "convertUnit(sum(unit(1e16, 'cm') + unit(1, 'mm'), unit(-1e16, 'cm')), 'cm', valueOnly=TRUE)",
+       '{"op":"sum","args":[{"op":"add","args":[{"kind":"cm","amount":1e16},{"kind":"mm","amount":1}]},{"kind":"cm","amount":-1e16}]}',
+       sum(unit(1e16, "cm") + unit(1, "mm"), unit(-1e16, "cm")), structure = TRUE),
+  case("psum-cancellation-order", "convertUnit(unit.psum(unit(1e16, 'cm') + unit(1, 'mm'), unit(-1e16, 'cm')), 'cm', valueOnly=TRUE)",
+       '{"op":"psum","args":[{"op":"add","args":[{"kind":"cm","amount":1e16},{"kind":"mm","amount":1}]},{"kind":"cm","amount":-1e16}]}',
+       unit.psum(unit(1e16, "cm") + unit(1, "mm"), unit(-1e16, "cm")), structure = TRUE),
+
+  # ---- unit() 的长度回收（constructUnits() 的 n = max 规则） --------------
+  case("unit-recycle-amount", "convertUnit(unit(1, c('cm', 'mm', 'inches')), 'cm', valueOnly=TRUE)",
+       '{"kind":["cm","mm","inches"],"amount":1}', unit(1, c("cm", "mm", "inches")),
+       structure = TRUE),
+  case("unit-recycle-kind", "convertUnit(unit(1:3, c('cm', 'mm')), 'cm', valueOnly=TRUE)",
+       '{"kind":["cm","mm"],"amount":[1,2,3]}', unit(1:3, c("cm", "mm")), structure = TRUE),
+  case("unit-recycle-both", "convertUnit(unit(1:3, c('cm', 'mm', 'npc', 'lines')), 'cm', valueOnly=TRUE)",
+       '{"kind":["cm","mm","npc","lines"],"amount":[1,2,3]}',
+       unit(1:3, c("cm", "mm", "npc", "lines")), structure = TRUE),
+  case("unit-recycle-data-longer", "convertUnit(unit(1:2, 'strwidth', data=list('abc', 'de', 'f')), 'inches', valueOnly=TRUE)",
+       '{"kind":"strwidth","amount":[1,2],"text":["abc","de","f"]}',
+       unit(1:2, "strwidth", data = list("abc", "de", "f")), to = "inches",
+       structure = TRUE, strings = c("abc", "de")),
 
   # ---- unit.c：拼接 / 摊平 ------------------------------------------------
   case("unit-c-same-kind", "convertUnit(unit.c(unit(1, 'cm'), unit(2, 'cm')), 'mm', valueOnly=TRUE)",

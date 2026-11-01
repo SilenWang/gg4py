@@ -3254,6 +3254,371 @@
       "note": null
     },
     {
+      "id": "sum-cancellation-order",
+      "r": "convertUnit(sum(unit(1e16, 'cm') + unit(1, 'mm'), unit(-1e16, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sum\",\"args\":[{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1e16},{\"kind\":\"mm\",\"amount\":1}]},{\"kind\":\"cm\",\"amount\":-1e16}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0.10000000000000001,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": -10000000000000000
+            },
+            {
+              "kind": "cm",
+              "amount": 10000000000000000
+            },
+            {
+              "kind": "mm",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "psum-cancellation-order",
+      "r": "convertUnit(unit.psum(unit(1e16, 'cm') + unit(1, 'mm'), unit(-1e16, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"psum\",\"args\":[{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1e16},{\"kind\":\"mm\",\"amount\":1}]},{\"kind\":\"cm\",\"amount\":-1e16}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 10000000000000000
+            },
+            {
+              "kind": "mm",
+              "amount": 1
+            },
+            {
+              "kind": "cm",
+              "amount": -10000000000000000
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-recycle-amount",
+      "r": "convertUnit(unit(1, c('cm', 'mm', 'inches')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":[\"cm\",\"mm\",\"inches\"],\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0.99999999999999989,
+        0.10000000000000001,
+        2.54
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 1
+        },
+        {
+          "kind": "mm",
+          "amount": 1
+        },
+        {
+          "kind": "inches",
+          "amount": 1
+        }
+      ],
+      "length": 3,
+      "simple": false,
+      "types": [
+        "cm",
+        "mm",
+        "inches"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-recycle-kind",
+      "r": "convertUnit(unit(1:3, c('cm', 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":[\"cm\",\"mm\"],\"amount\":[1,2,3]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0.99999999999999989,
+        0.20000000000000001,
+        3
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 1
+        },
+        {
+          "kind": "mm",
+          "amount": 2
+        },
+        {
+          "kind": "cm",
+          "amount": 3
+        }
+      ],
+      "length": 3,
+      "simple": false,
+      "types": [
+        "cm",
+        "mm",
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-recycle-both",
+      "r": "convertUnit(unit(1:3, c('cm', 'mm', 'npc', 'lines')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":[\"cm\",\"mm\",\"npc\",\"lines\"],\"amount\":[1,2,3]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0.99999999999999989,
+        0.20000000000000001,
+        30,
+        0.50800000000000001
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 1
+        },
+        {
+          "kind": "mm",
+          "amount": 2
+        },
+        {
+          "kind": "npc",
+          "amount": 3
+        },
+        {
+          "kind": "lines",
+          "amount": 1
+        }
+      ],
+      "length": 4,
+      "simple": false,
+      "types": [
+        "cm",
+        "mm",
+        "npc",
+        "lines"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-recycle-data-longer",
+      "r": "convertUnit(unit(1:2, 'strwidth', data=list('abc', 'de', 'f')), 'inches', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"strwidth\",\"amount\":[1,2],\"text\":[\"abc\",\"de\",\"f\"]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          },
+          "de": {
+            "width": 0.18533333333333335,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": [
+        0.26866666666666666,
+        0.3706666666666667
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "strwidth",
+          "amount": 1,
+          "text": "abc"
+        },
+        {
+          "kind": "strwidth",
+          "amount": 2,
+          "text": "de"
+        }
+      ],
+      "length": 2,
+      "simple": false,
+      "types": [
+        "strwidth",
+        "strwidth"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
       "id": "unit-c-same-kind",
       "r": "convertUnit(unit.c(unit(1, 'cm'), unit(2, 'cm')), 'mm', valueOnly=TRUE)",
       "spec": "{\"op\":\"unit_c\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",

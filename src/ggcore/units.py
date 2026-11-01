@@ -43,6 +43,7 @@ __all__ = [
     "convert_width",
     "convert_x",
     "convert_y",
+    "is_pure_null",
     "is_simple_unit",
     "is_unit",
     "null_value",
@@ -226,8 +227,14 @@ def unit(
 ) -> Unit:
     """`unit(x, units, data)`：把标量/向量摊成元素列表（R 的 `unit()`）。
 
-    `data` 是 `strwidth` / `strheight` 的文本；长度 1 时按 R 的规则复用。
-    `kind` 也支持向量（`unit(c(1, 3), c("cm", "npc"))`），与 R 一致。
+    长度按 R `constructUnits()` 的规则**按模回收**到
+    `max(len(amount), len(kind))`，两个方向都成立：
+    `unit(1, ["cm", "mm"])` 是 `1cm 1mm`，`unit([1, 2, 3], ["cm", "mm"])` 是
+    `1cm 2mm 3cm`。
+
+    `data` 是 `strwidth` / `strheight` 的文本：长度 1 时复用，更长时取前 N 个
+    （R `validData()` 只拒绝比单位向量短的）。一次调用里混合字符串单位与普通
+    单位不在支持范围内（见 `docs/notes/units.md`）。
     """
     amounts = np.asarray(amount, dtype=float)
     if amounts.ndim == 0:
@@ -235,11 +242,16 @@ def unit(
     if amounts.ndim != 1 or amounts.size == 0:
         raise UnitError("'x' and 'units' must have length > 0")
 
-    names = [_canonical_kind(kind)] if isinstance(kind, str) else [_canonical_kind(k) for k in kind]
-    if len(names) == 1:
-        names = names * amounts.size
-    if len(names) != amounts.size:
-        raise UnitError("'x' and 'units' must have the same length or one of them length 1")
+    declared = (
+        [_canonical_kind(kind)]
+        if isinstance(kind, str)
+        else [_canonical_kind(item) for item in kind]
+    )
+    if not declared:
+        raise UnitError("'x' and 'units' must have length > 0")
+    count = max(amounts.size, len(declared))
+    names = [declared[index % len(declared)] for index in range(count)]
+    values = [float(amounts[index % amounts.size]) for index in range(count)]
 
     string_kinds = [name in _STRING_KINDS for name in names]
     if any(string_kinds):
@@ -248,24 +260,20 @@ def unit(
         if data is None:
             raise UnitError("no string supplied for 'strwidth/height' unit")
         texts = [data] if isinstance(data, str) else list(data)  # type: ignore[arg-type]
-        if len(texts) == 1:
-            texts = texts * amounts.size
-        if len(texts) != amounts.size:
-            raise UnitError("data must be NULL, have length 1, or match the unit vector")
+        if not texts or (len(texts) != 1 and len(texts) < count):
+            raise UnitError("data must be NULL, have length 1, or match the final unit vector")
         if not all(isinstance(text, str) for text in texts):
             raise UnitError("no string supplied for 'strwidth/height' unit")
         return Unit(
             tuple(
-                UnitElement(float(value), name, text)
-                for value, name, text in zip(amounts, names, texts, strict=True)
+                UnitElement(value, name, texts[index % len(texts)])
+                for index, (value, name) in enumerate(zip(values, names, strict=True))
             )
         )
 
     if data is not None:
         raise UnitError(f"unit {names[0]!r} does not take data")
-    return Unit(
-        tuple(UnitElement(float(value), name) for value, name in zip(amounts, names, strict=True))
-    )
+    return Unit(tuple(UnitElement(value, name) for value, name in zip(values, names, strict=True)))
 
 
 def unit_c(*units: Unit) -> Unit:
@@ -433,13 +441,15 @@ def _summary(units: Sequence[Unit], op: str) -> Unit:
         amounts = [element.amount for item in kept for element in item.elements]
         reduced = {"sum": sum, "min": min, "max": max}[op](amounts)
         return Unit((UnitElement(float(reduced), kind),))
-    children: list[UnitElement] = []
-    for item in kept:
-        for element in item.elements:
-            if element.kind == op:
-                children.extend(_scaled_children(element))
-            else:
-                children.append(element)
+
+    # R `Summary.unit` 在 nMatches != 0 时写成 c(x[-matchUnits], matchData)：
+    # 非匹配单位按原序在前，被摊平的子项在后。普通量级下两种顺序等价，但大数
+    # 相消时求和顺序决定结果（见 docs/notes/units.md 的浮点一节），所以照抄。
+    flat = [element for item in kept for element in item.elements]
+    children = [element for element in flat if element.kind != op]
+    children.extend(
+        child for element in flat if element.kind == op for child in _scaled_children(element)
+    )
     return Unit((UnitElement(1.0, op, tuple(children)),))
 
 
@@ -483,7 +493,6 @@ def simple_unit_kind(target: Unit) -> str | None:
         if element.data is not None or element.kind != first.kind:
             return None
     return first.kind
-    return None
 
 
 def is_simple_unit(target: Unit) -> bool:
@@ -498,24 +507,56 @@ def unit_type(target: Unit) -> list[str]:
     return [element.kind for element in target.elements]
 
 
-def null_value(target: Unit) -> float:
-    """R `pureNullUnitValue()`：布局阶段可分配的 null 计数。
+def is_pure_null(target: Unit, index: int) -> bool:
+    """R `pureNullUnit(unit, index)`：第 `index` 个元素是不是纯 `null`。
 
-    `null` 在换算里一律是 0（求和/取最大）或视口整宽（取最小），只有布局才
-    关心它的原始计数；gtable 用它分配剩余空间。嵌套的 `sum` 会展开，其它
-    单位计 0。
+    `null` 与其他单位混在一个元素里（`unit(1, "null") + unit(2, "cm")` 的
+    `sum(1null, 2cm)`）**不是**纯 null：R 的 layout 对该列/行判 0 权重。
     """
+    return _is_pure_null_element(_element_at(target, index))
+
+
+def _is_pure_null_element(element: UnitElement) -> bool:
+    if element.kind in _COMPOUND_KINDS:
+        return all(_is_pure_null_element(child) for child in element.children)
+    return element.kind == "null"
+
+
+def null_value(target: Unit, index: int) -> float:
+    """R `pureNullUnitValue(unit, index)`：布局阶段第 `index` 个元素的 null 权重。
+
+    gtable 逐列/逐行取权重分配剩余空间：`[null_value(widths, i) for i in
+    range(len(widths))]`。只有纯 null 元素（:func:`is_pure_null`）才有权重，
+    与 `null` 混合的复合元素返回 0——这正是 R layout 先做 `pureNullUnit` 门、
+    再过 `pureNullUnitValue` 的效果。`null` 还是 0 的元素（`unit(0, "null")`）
+    权重也是 0，但 `is_pure_null` 仍为真，两者不是同一个判断。
+    """
+    element = _element_at(target, index)
+    if not _is_pure_null_element(element):
+        return 0.0
+    return _null_weight(element)
+
+
+def _null_weight(element: UnitElement) -> float:
+    """R `pureNullUnitValue()` 的递归体；只在纯 null 元素上调用。"""
+    if element.kind == "sum":
+        return element.amount * sum(_null_weight(child) for child in element.children)
+    if element.kind == "min":
+        # R 用 DBL_MAX 起步；这里与 _to_inches() 一致用 +inf（空的 min 元素）。
+        return element.amount * min(
+            (_null_weight(child) for child in element.children), default=math.inf
+        )
+    if element.kind == "max":
+        return element.amount * max(
+            (_null_weight(child) for child in element.children), default=-math.inf
+        )
+    return element.amount
+
+
+def _element_at(target: Unit, index: int) -> UnitElement:
     if not isinstance(target, Unit):
         raise UnitError("object is not coercible to a unit")
-    return sum(_null_element_value(element) for element in target.elements)
-
-
-def _null_element_value(element: UnitElement) -> float:
-    if element.kind == "null":
-        return element.amount
-    if element.kind == "sum":
-        return element.amount * sum(_null_element_value(child) for child in element.children)
-    return 0.0
+    return target.elements[index]
 
 
 # ---------------------------------------------------------------------------
@@ -552,7 +593,7 @@ class UnitContext:
 
     `width_cm` / `height_cm` 是当前视口的尺寸；`xscale` / `yscale` 是 native
     坐标范围；`fontsize` / `cex` / `lineheight` 对应 `gc->ps` / `cex` /
-    `lineheight`。布局阶段的 null 计数用 :func:`null_value`，不走换算。
+    `lineheight`。布局阶段的 null 权重用 :func:`null_value`（逐元素），不走换算。
     """
 
     width_cm: float = 1.0
