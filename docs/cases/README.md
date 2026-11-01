@@ -22,8 +22,10 @@ docs/cases/
 ## 现在有什么
 
 `render` / `diff` 仍是占位入口（`pixi run render` 显式报未实现、退出码 3），案例
-随渲染能力落地逐个加。目前只有两套 **viewport 快照**（M0-4），规格字段
-`"kind": "viewport"`，由 `tools/cases/viewport_cases.py` 直接读 `case.json` 画图：
+随渲染能力落地逐个加。目前有两类快照：
+
+**viewport 快照**（M0-4）：规格字段 `"kind": "viewport"`，由
+`tools/cases/viewport_cases.py` 直接读 `case.json` 画图：
 
 | 目录 | 演示什么 |
 | --- | --- |
@@ -35,9 +37,20 @@ pixi run cases:viewport          # 重画 baseline/viewport.png
 pixi run cases:viewport --check  # 只和仓库里的 baseline 比对
 ```
 
-这两套的 `case.json` 是给这个渲染器用的最小规格（步骤脚本 + 绘制原语，
-见 `tools/cases/viewport_cases.py` 顶部表格），不是 M0-1 说的 plot 规格；
-plot 规格随 `render` 实现落地后再定。
+**grob 快照**（M0-6）：规格字段 `"kind": "grob"`，一种原语一张，由
+`tools/cases/grob_cases.py` 走 `grob → 场景遍历 → 临时 skia 设备` 画图
+（15 张：`grob-rect` / `-circle` / `-lines` / `-segments` / `-polyline` /
+`-polygon` / `-path` / `-points` / `-text` / `-raster` / `-xspline` / `-bezier` /
+`-curve` / `-clip` / `-null`）。口径见 `docs/notes/grobs.md` §10。
+
+```bash
+pixi run cases:grob               # 重画 docs/cases/grob-*/baseline/*.png
+pixi run cases:grob --check       # 只和仓库里的 baseline 比对
+pixi run cases:grob --case grob-text
+```
+
+这两类 `case.json` 是给各自的渲染器用的最小规格（视口脚本 / grob 规格树），
+不是 M0-1 说的 plot 规格；plot 规格随 `render` 实现落地后再定。
 
 ## 口径
 

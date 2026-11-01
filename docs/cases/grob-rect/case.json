@@ -1,0 +1,82 @@
+{
+  "id": "grob-rect",
+  "kind": "grob",
+  "title": "grob · rect（fill / col / lwd / NA，含旋转视口）",
+  "caption": "左：填充+描边；中：fill=NA 只描边；右：旋转 20° 的视口里铺满的矩形（变换已累积）",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [
+    {
+      "name": "rot",
+      "x": 0.78,
+      "y": 0.5,
+      "width": 0.34,
+      "height": 0.5,
+      "angle": 20,
+      "clip": "inherit"
+    }
+  ],
+  "grobs": [
+    {
+      "type": "rect",
+      "x": 0.2,
+      "y": 0.62,
+      "width": 0.3,
+      "height": 0.34,
+      "gp": {
+        "fill": "#4C78A8",
+        "col": "#1b1b1b",
+        "lwd": 1.5
+      }
+    },
+    {
+      "type": "rect",
+      "x": 0.2,
+      "y": 0.22,
+      "width": 0.3,
+      "height": 0.24,
+      "gp": {
+        "fill": "NA",
+        "col": "#F58518",
+        "lwd": 3
+      }
+    },
+    {
+      "type": "gTree",
+      "name": "rot-tree",
+      "vp": 0,
+      "children": [
+        {
+          "type": "rect",
+          "width": 1,
+          "height": 1,
+          "gp": {
+            "fill": "#E45756",
+            "col": "#222222",
+            "lwd": 1
+          }
+        }
+      ]
+    },
+    {
+      "type": "rect",
+      "x": 0.62,
+      "y": 0.22,
+      "width": 0.3,
+      "height": 0.24,
+      "just": [
+        "left",
+        "bottom"
+      ],
+      "gp": {
+        "fill": "#BAB0AC",
+        "col": "#333333",
+        "lwd": 2,
+        "lty": 2
+      }
+    }
+  ]
+}

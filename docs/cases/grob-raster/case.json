@@ -1,0 +1,55 @@
+{
+  "id": "grob-raster",
+  "kind": "grob",
+  "title": "grob · raster（blob 表 / 插值开关 / 旋转视口）",
+  "caption": "同一份 24×24 位图：左 interpolate=true，中 interpolate=false（放大后是方块），右在旋转视口里",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [
+    {
+      "name": "rot15",
+      "x": 0.78,
+      "y": 0.45,
+      "width": 0.3,
+      "height": 0.5,
+      "angle": 15,
+      "clip": "inherit"
+    }
+  ],
+  "grobs": [
+    {
+      "type": "raster",
+      "x": 0.18,
+      "y": 0.45,
+      "width": 0.24,
+      "height": 0.5,
+      "interpolate": true,
+      "gp": {}
+    },
+    {
+      "type": "raster",
+      "x": 0.45,
+      "y": 0.45,
+      "width": 0.24,
+      "height": 0.5,
+      "interpolate": false,
+      "gp": {}
+    },
+    {
+      "type": "gTree",
+      "vp": 0,
+      "children": [
+        {
+          "type": "raster",
+          "width": 1,
+          "height": 1,
+          "interpolate": true,
+          "gp": {}
+        }
+      ]
+    }
+  ]
+}

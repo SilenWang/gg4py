@@ -1,0 +1,137 @@
+{
+  "id": "grob-text",
+  "kind": "grob",
+  "title": "grob · text（just / rot / 锚点折进 pos / 视口旋转）",
+  "caption": "上排三个 just（left/centre/right）落在 x=0.5；中排 rot=0/30/90；右侧视口旋转 20° 后文字随之旋转",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [
+    {
+      "name": "rot20",
+      "x": 0.78,
+      "y": 0.2,
+      "width": 0.36,
+      "height": 0.26,
+      "angle": 20,
+      "clip": "inherit"
+    }
+  ],
+  "grobs": [
+    {
+      "type": "text",
+      "label": "left",
+      "x": 0.5,
+      "y": 0.78,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#4C78A8",
+        "fontsize": 10
+      }
+    },
+    {
+      "type": "text",
+      "label": "centre",
+      "x": 0.5,
+      "y": 0.66,
+      "just": "centre",
+      "gp": {
+        "col": "#4C78A8",
+        "fontsize": 10
+      }
+    },
+    {
+      "type": "text",
+      "label": "right",
+      "x": 0.5,
+      "y": 0.54,
+      "just": [
+        "right",
+        "centre"
+      ],
+      "gp": {
+        "col": "#4C78A8",
+        "fontsize": 10
+      }
+    },
+    {
+      "type": "text",
+      "label": "rot 0",
+      "x": 0.15,
+      "y": 0.34,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#1b1b1b",
+        "fontsize": 9
+      }
+    },
+    {
+      "type": "text",
+      "label": "rot 30",
+      "x": 0.15,
+      "y": 0.22,
+      "rot": 30,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#1b1b1b",
+        "fontsize": 9
+      }
+    },
+    {
+      "type": "text",
+      "label": "rot 90",
+      "x": 0.6,
+      "y": 0.3,
+      "rot": 90,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#1b1b1b",
+        "fontsize": 9
+      }
+    },
+    {
+      "type": "gTree",
+      "vp": 0,
+      "children": [
+        {
+          "type": "text",
+          "label": "视口 20°",
+          "x": 0.5,
+          "y": 0.5,
+          "gp": {
+            "col": "#E45756",
+            "fontsize": 9
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "label": "NA 不画",
+      "x": 0.14,
+      "y": 0.07,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "NA",
+        "fontsize": 9
+      }
+    }
+  ]
+}
