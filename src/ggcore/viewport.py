@@ -33,6 +33,8 @@ viewport.c` 的 `calcViewportTransform()`）。写 IR 前的 y 翻转由
   `gpar(col = NULL)` 是把该字段从增量里删掉（等价于“不覆盖”），见
   :meth:`ResolvedGpar.merge`。
 - 根视口的 `xscale`/`yscale` 是设备英寸，不是设备原生单位（R 的 pdf 是点）。
+- 路径匹配按**段**精确比较；R 的 `pathMatch()` 把路径当正则、只锚定末尾
+  （所以 `down("a::b")` 在 `xxa/b` 树里 R 命中、这里不命中）。
 - 裁剪路径（`clip = grob`）、mask、viewport layout（`layout.pos.row/col`，
   M0-5）不在本模块范围内。
 """
@@ -43,7 +45,8 @@ import itertools
 import math
 import warnings
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from contextlib import contextmanager
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -460,9 +463,15 @@ def normalize_just(just: Any) -> tuple[float, float]:
 
 
 def _scale(name: str, value: Any) -> tuple[float, float]:
-    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+    # 任意非字符串可迭代对象都收：panel 的 `xscale`/`yscale` 大概率直接来自
+    # numpy 数组（`np.ndarray` 不是 `Sequence`，只认 `Sequence` 会把最常见的
+    # 写法挡在门外）。
+    if isinstance(value, (str, bytes)) or not isinstance(value, Iterable):
         raise ViewportError(f"invalid '{name}' in viewport")
-    items = [float(item) for item in value]
+    try:
+        items = [float(item) for item in value]
+    except (TypeError, ValueError):
+        raise ViewportError(f"invalid '{name}' in viewport") from None
     if len(items) != 2:
         raise ViewportError(f"invalid '{name}' in viewport")
     if not all(math.isfinite(item) for item in items):
@@ -879,7 +888,13 @@ class VpNode:
         return to_parent.then(_inches_to_points(self.parent.height_in))
 
     def ir_clip_rect(self) -> tuple[float, float, float, float]:
-        """裁剪框 → IR 坐标（pt、y 向下、原点左上），已规范化。"""
+        """裁剪框 → IR 坐标（pt、y 向下、原点左上、**页面绝对坐标**），已规范化。
+
+        不是子坐标：IR v0.2 起 `viewport.clip_rect` 的口径就是页面坐标（见
+        `docs/notes/ir.md` §4）。旋转 `inherit` 的生效裁剪框在子坐标里不是
+        轴对齐矩形，4 元组表达不了；页面坐标无损，M0-8 在合成页面变换之后
+        直接在页面空间里裁剪。
+        """
         x0, y0, x1, y1 = self.clip_box
         height = self.device.height_in * 72.0
         return (x0 * 72.0, height - y1 * 72.0, x1 * 72.0, height - y0 * 72.0)
@@ -1004,6 +1019,26 @@ class ViewportTree:
     def gpar(self) -> ResolvedGpar:
         """当前生效的 gpar（R 的 `GSS_GPAR`）。"""
         return self._gpar
+
+    @contextmanager
+    def temporary_gpar(self, gp: Gpar) -> Iterator[ResolvedGpar]:
+        """临时叠加 gpar（R `set.gpar()`）：退出时恢复（M0-6 的 gTree 路径）。
+
+        `drawGTree()` / `preDraw.gTree()` 先把 gTree 的 `gp` 设进来、再
+        `pushViewport(childrenvp)`，所以子视口 push 时捕获的 `parent_gpar`
+        是**叠加后**的值——`lines` / `char` 这类单位的几何按它换算（见
+        `_parent_context()`）。`cex` / `alpha` / `lex` 与当前值相乘，同 `set.gpar()`。
+
+        区别于 :meth:`push`：这里不改视口树，只改当前 gpar。
+        """
+        if not isinstance(gp, Gpar):
+            raise ViewportError(f"invalid 'gp' value: {type(gp).__name__}")
+        saved = self._gpar
+        self._gpar = saved.merge(gp)
+        try:
+            yield self._gpar
+        finally:
+            self._gpar = saved
 
     @property
     def clip_rect(self) -> tuple[float, float, float, float]:
@@ -1153,10 +1188,31 @@ class ViewportTree:
     # -- 变换 / 裁剪计算（grid/src/viewport.c） ----------------------------
 
     def _parent_context(self, node: VpNode) -> UnitContext:
-        """父视口（或设备）的换算上下文：视口几何是在父坐标系里给的。"""
+        """父视口（或设备）的换算上下文：视口几何是在父坐标系里给的。
+
+        尺寸与 `xscale` / `yscale` 取父视口，**gpar 的字号 / `cex` / 行高取
+        `node.parent_gpar`**。R 的 `calcViewportTransform()` 就是这两段拼起来
+        的（`grid/src/viewport.c:270-285`）：
+
+        - `fillViewportContextFromViewport(parent, &parentContext)`：尺寸 + scale；
+        - `gcontextFromgpar(viewportParentGPar(vp), 0, &parentgc, dd)`：gpar 取
+          **本视口 push 时捕获的 `parentgpar`**，不是父视口自己的 gpar。源码
+          注释写得很直白：“最近一次 gpar 设置可能来自 gTree”。
+
+        所以 gTree 在临时 `gp` 下 push 子视口时（`preDraw.gTree()` 先
+        `pushvpgp()` 再 `pushViewport(childrenvp)`），子视口里 `lines` / `char`
+        这类依赖字号/cex/行高的单位必须用**那次 push 时生效的** gpar；拿父视口
+        的 gpar 会静默算错尺寸。
+        """
         parent = node.parent
         if parent is not None:
-            return parent.unit_context()
+            gp = node.parent_gpar
+            return replace(
+                parent.unit_context(),
+                fontsize=gp.fontsize,
+                cex=gp.cex,
+                lineheight=gp.lineheight,
+            )
         # R: calcViewportTransform() 里父为 NULL 时 parentgc.ps = 10、lh = 1.2、cex = 1。
         return UnitContext(
             width_cm=self.device.width_cm,

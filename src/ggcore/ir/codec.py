@@ -53,7 +53,7 @@ from ggcore.ir.nodes import (
 )
 
 #: 当前写出的 IR 版本：(major, minor)。major 涨 = 不兼容，minor 涨 = 只加字段。
-IR_VERSION: tuple[int, int] = (0, 1)
+IR_VERSION: tuple[int, int] = (0, 2)
 IR_VERSION_STR = ".".join(str(part) for part in IR_VERSION)
 MAGIC = "ggir"
 

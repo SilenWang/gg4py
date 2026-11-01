@@ -198,6 +198,48 @@ def test_units_are_converted_with_the_parent_gpar() -> None:
     assert bigger.width_in == pytest.approx(2 * lines_node.width_in, abs=1e-15)
 
 
+def test_units_see_the_temporary_gpar_of_a_g_tree() -> None:
+    """gTree 临时 gp 下 push 子视口：`lines` 几何用**那时**的 gpar。
+
+    对等 R 的 `gTree(gp = gpar(fontsize = 20), childrenvp = viewport(width =
+    unit(2, "lines")))`：`preDraw.gTree()` 先 `pushvpgp()`（把 gTree 的 `gp`
+    设进当前 gpar），再 `pushViewport(childrenvp)`；`calcViewportTransform()`
+    对子视口取 `viewportParentGPar(child)`，即 push 那一刻的 gpar。R 4.5.3
+    真 gTree 实测 `width = 0.6667 in`；若改用父视口自己的 gpar（ps12）会得
+    `0.4`，而且**不报错**——所以这条路径必须单独钉住。
+    """
+    tree = ViewportTree(DEVICE)
+    parent = tree.push(viewport("parent", gp=gpar(fontsize=12)))
+    with tree.temporary_gpar(gpar(fontsize=20)):
+        assert tree.gpar.fontsize == 20
+        child = tree.push(
+            viewport("childrenvp", width=unit(2.0, "lines"), height=unit(2.0, "lines"))
+        )
+    # push 时捕获的临时 gpar；父视口自己的 gpar 没变
+    assert child.parent_gpar.fontsize == 20
+    assert parent.gpar.fontsize == 12
+    # 1 line = ps * cex * lineheight / 72 英寸
+    assert child.width_in == pytest.approx(2 * 20 * 1.2 / 72, abs=1e-15)  # 0.6667
+    assert child.height_in == pytest.approx(2 * 20 * 1.2 / 72, abs=1e-15)
+    assert child.width_in != pytest.approx(2 * 12 * 1.2 / 72, abs=1e-9)
+    # 尺寸/scale 仍取父视口：子视口居中在父视口中心（0.5 npc, 0.5 npc）
+    assert child.device_loc(unit(0.5, NPC), unit(0.5, NPC)) == pytest.approx((3.0, 2.0), abs=1e-12)
+
+
+def test_temporary_gpar_restores_the_previous_gpar() -> None:
+    tree = ViewportTree(DEVICE)
+    tree.push(viewport("outer", gp=gpar(cex=0.5, col="red")))
+    with tree.temporary_gpar(gpar(cex=0.5)):
+        # R 的 set.gpar() 累积 cex：0.5 * 0.5
+        assert tree.gpar.cex == pytest.approx(0.25)
+        assert tree.gpar.col == "red"
+    assert tree.gpar.cex == pytest.approx(0.5)
+    assert tree.gpar.col == "red"
+    with pytest.raises(ViewportError, match="gp"):
+        with tree.temporary_gpar("bold"):  # type: ignore[arg-type]
+            pass  # pragma: no cover - 进入上下文时就该报错
+
+
 # ---------------------------------------------------------------------------
 # 旋转：数值断言（接受判据：与手算差 < 1e-9）
 # ---------------------------------------------------------------------------
@@ -542,6 +584,24 @@ def test_down_strict_only_looks_at_direct_children() -> None:
     assert tree.down("a", strict=True) == 1
 
 
+def test_non_strict_path_matching_is_segment_exact_where_r_uses_a_regex() -> None:
+    """非 strict 匹配按段精确（比 R 更严），口径见 `docs/notes/viewport.md` §6。
+
+    R 是 `grepl(paste0(path, "$"), pathsofar)`（`R/grid.R:119` 的 `pathMatch()`）：
+    最后一段按名字精确查，前面的部分当**正则**、只锚定末尾；所以 `xxa/b` 树里
+    R 的 `down("a::b")` 能命中（`"a::b$"` 匹配 `"xxa::b"`）。gg4py 在段边界上
+    比较，不跨段命中。两条都钉住：别让行为悄悄变成 R 的，也别把文档再写反。
+    """
+    tree = ViewportTree(DEVICE)
+    tree.push(viewport("xxa"))
+    tree.push(viewport("b"))
+    tree.up(0)
+    assert tree.find("a::b") is None
+    with pytest.raises(ViewportError, match="was not found"):
+        tree.down("a::b")
+    assert tree.down("xxa::b") == 2
+
+
 def test_down_returns_depth_and_seek_starts_from_the_root() -> None:
     tree = ViewportTree(DEVICE)
     tree.push(viewport("a"))
@@ -663,14 +723,39 @@ def test_ir_transform_composes_across_nesting() -> None:
     assert chained == pytest.approx(_expected_ir_loc(inner, px, py), abs=1e-9)
 
 
-def test_ir_clip_rect_flips_y() -> None:
+def test_ir_clip_rect_is_page_space_pt() -> None:
+    """`clip_rect` 是**页面绝对坐标**（pt、y 向下），不是子坐标。
+
+    IR v0.2 的口径（`docs/notes/ir.md` §4）：M0-8 合成页面变换后在页面空间裁剪。
+    反例：6×4 in 设备、视口 `x=y=0.25`、`w=h=0.5`、`clip="on"`，本地帧 216×144 pt。
+    页面坐标是 `(108, 72, 324, 216)`；若按子坐标解释，交集只有
+    `(108..216, 72..144)`，**左边和下边会被误裁**。
+    """
     tree = ViewportTree(DEVICE)
     node = tree.push(
         viewport("clip", x=0.25, y=0.25, width=0.5, height=0.5, just=("left", "bottom"), clip="on")
     )
-    assert node.ir_clip_rect() == pytest.approx(
-        (1.5 * 72, (4 - 3) * 72, 4.5 * 72, (4 - 1) * 72), abs=1e-9
+    rect = node.ir_clip_rect()
+    # 页面 6×4 in = 432×288 pt：视口左上角 (0.25*432, 0.25*288)，本地帧 216×144 pt
+    assert rect == pytest.approx((0.25 * 432.0, 0.25 * 288.0, 0.75 * 432.0, 0.75 * 288.0), abs=1e-9)
+    assert rect == pytest.approx((108.0, 72.0, 324.0, 216.0), abs=1e-9)
+    assert rect[2] - rect[0] == pytest.approx(node.width_in * 72.0)  # 216
+    assert rect[3] - rect[1] == pytest.approx(node.height_in * 72.0)  # 144
+    # 和设备英寸里的生效裁剪框一致（只是翻了 y、换了单位）
+    x0, y0 = node.device_loc(unit(0.0, NPC), unit(0.0, NPC))
+    x1, y1 = node.device_loc(unit(1.0, NPC), unit(1.0, NPC))
+    assert rect == pytest.approx(
+        (x0 * 72.0, (DEVICE.height_in - y1) * 72.0, x1 * 72.0, (DEVICE.height_in - y0) * 72.0),
+        abs=1e-9,
     )
+
+    # 子坐标解释会得到 (108, 72, 216, 144)：这个点在视口里，但会被它裁掉
+    def inside(box: tuple[float, float, float, float], x: float, y: float) -> bool:
+        return box[0] <= x <= box[2] and box[1] <= y <= box[3]
+
+    child_space = (108.0, 72.0, 216.0, 144.0)
+    assert inside(rect, 300.0, 200.0)
+    assert not inside(child_space, 300.0, 200.0)
 
 
 # ---------------------------------------------------------------------------
@@ -707,6 +792,30 @@ def test_convert_uses_the_viewport_context() -> None:
     )
     with pytest.raises(UnitError):
         node.convert(unit(1.0, "npc"), "snpc")
+
+
+def test_scale_accepts_numpy_and_other_non_sequence_iterables() -> None:
+    """`xscale` / `yscale` 收任意非字符串可迭代对象：panel 数据范围常是 numpy。"""
+    node = viewport("panel", xscale=np.array([0.0, 10.0]), yscale=np.linspace(1.0, 5.0, 2))
+    assert node.xscale == (0.0, 10.0)
+    assert node.yscale == pytest.approx((1.0, 5.0))
+    pushed = ViewportTree(DEVICE).push(node)
+    assert pushed.device_loc(unit(10.0, "native"), unit(5.0, "native")) == pytest.approx(
+        (6.0, 4.0), abs=1e-12
+    )
+    for bad in (np.array([[0.0, 1.0]]), np.array(1.0), 3.0, "ab"):
+        with pytest.raises(ViewportError, match="xscale"):
+            viewport("bad", xscale=bad)
+
+
+def test_root_scale_is_device_inches() -> None:
+    """根视口的 `xscale` / `yscale` 定死为设备英寸，不是设备原生单位（§9 差异表）。"""
+    tree = ViewportTree(DEVICE)
+    assert tree.root.xscale == pytest.approx((0.0, 6.0))
+    assert tree.root.yscale == pytest.approx((0.0, 4.0))
+    assert tree.current.device_loc(unit(6.0, "native"), unit(4.0, "native")) == pytest.approx(
+        (6.0, 4.0), abs=1e-12
+    )
 
 
 def test_viewport_validation() -> None:

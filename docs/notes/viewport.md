@@ -55,6 +55,21 @@ transform = J · R · L · parent.transform
 `UnitContext`；视口内部坐标用自己的。R 在 `calcViewportTransform()` 里也是这么
 分的：几何用 `parentContext` + `parentgc`，`transformLocn()` 用 `vpc` + `gc`。
 
+但**尺寸和 scale 取父视口，gpar 不取父视口自己的**：R 的 `parentgc` 来自
+`gcontextFromgpar(viewportParentGPar(vp))`，也就是本视口 push 那一刻捕获的
+`parentgpar`。源码注释写得很直白：“最近一次 gpar 设置可能来自 gTree”——gTree 的
+临时 `gp` 下 push 的 `childrenvp`，它的父视口 gpar 可能还是老值。所以：
+
+| 输入 | 来源 | R |
+| --- | --- | --- |
+| 宽 / 高 / `xscale` / `yscale` | 父视口（根为设备） | `fillViewportContextFromViewport(parent, …)` |
+| `fontsize` / `cex` / `lineheight` | `node.parent_gpar`（push 时捕获） | `gcontextFromgpar(viewportParentGPar(vp), …)` |
+
+`lines` / `char` 这类单位两者都要，混用时口径差异**不会报错，只会静默算错尺寸**。
+`tests/test_viewport.py::test_units_see_the_temporary_gpar_of_a_g_tree` 用真 gTree
+的实测值钉住：`gTree(gp = gpar(fontsize = 20))` 下 `width = unit(2, "lines")` 得
+`0.6667 in`，拿父视口的 ps12 会得 `0.4`。
+
 父为设备时（根视口），R 硬编码 `ps = 10`、`lineheight = 1.2`、`cex = 1`。我们
 照抄（`ViewportTree._parent_context()`），但根视口的几何是写死的铺满设备，所以
 这条只在“根视口自己用 `lines`/`char` 单位”时才有意义——实际用不到。
@@ -115,7 +130,10 @@ R 4.5.3 的字符串形式映射到逻辑值（`R/viewport.R` 的 `valid.viewpor
   整数了，这里只保留 `font`。字符串形式等 M0-6 的 grob 层再补。
 - gpar 在 `pop` / `up` 时回到**被弹出视口的 `parentgpar`**（推入那一刻的生效
   值），`down` 则**直接换成**目标视口的解析值（R 特意没用 `set.gpar()`，因为
-  `cex` 会累积）。`parentgpar` 单独存，是为了以后 gTree 在视口之间临时改 gpar。
+  `cex` 会累积）。`parentgpar` 单独存，是为了 gTree 在视口之间临时改 gpar：
+  `ViewportTree.temporary_gpar(gp)` 就是那条路径（R 的 `set.gpar()` + 退出时恢复，
+  `drawGTree()` / `preDraw.gTree()` 的 `tempgpar`），临时 gpar 下 push 的子视口按
+  它算 `lines` / `char` 几何，见 §3。
 
 ## 6. 导航语义
 
@@ -132,14 +150,22 @@ R 4.5.3 的字符串形式映射到逻辑值（`R/viewport.R` 的 `valid.viewpor
 - 从**当前视口的孩子**开始，不含自己和祖先（所以不能在 `a` 里 `down("a")`）。
 - 同级候选按**名字排序**遍历（R 的 children 是 environment，`ls()` 排过序），
   与 push 顺序无关。
-- `strict=False`（R 缺省）对相对路径做**后缀**匹配：`down("b")` 能找到任意
-  深度的 `b`，`down("b::c")` 能找到任何以 `b::c` 结尾的相对路径。
+- `strict=False`（R 缺省）对相对路径做**段级后缀**匹配：`down("b")` 能找到任意
+  深度的 `b`，`down("b::c")` 能找到段序列以 `b`、`c` 结尾的相对路径。
 - `strict=True` 要求从直接子节点起逐段完全一致。
 - 名字里的 `::` 会被拆成路径段（`vpPath()` 的行为）。
 
-**与 R 的差异**：R 的路径匹配是把路径当**正则**去 `grepl()`（`R/grid.R` 的
-`pathMatch()`），所以名字里的 `.` 会被当元字符、非 strict 模式连前缀也不锚定。
-这里按**段**做精确比较，不做正则解释。
+**与 R 的差异（比 R 更严）**：R 的 `pathMatch()`（`R/grid.R:119`）返回
+`paste0(if (strict) "^", path, "$")`，再对累积路径字符串做 `grepl()`——也就是
+**最后一段按名字精确查，前面的部分当正则、只锚定末尾**。所以 `xxa/b` 这棵树里
+R 的 `down("a::b")` 能命中（`"a::b$"` 匹配 `"xxa::b"`），名字里的 `.` 也会被当
+元字符。gg4py 在**段边界**上逐段比较、不做正则解释，不会跨段命中：
+`down("a::b")` 在 `xxa/b` 里找不到。ggplot2 4.0.3 只在 `R/plot.R:217` 用单段
+`seekViewport()`，这条差异碰不到它。
+
+两条行为都钉住了：`tests/test_viewport.py::test_down_finds_descendants_by_suffix_path`
+（gg4py 的后缀语义）与 `::test_non_strict_path_matching_is_segment_exact_where_r_uses_a_regex`
+（`a::b` 在 `xxa/b` 里不命中，而 R 会命中）。
 
 ## 7. 与 IR 的接口
 
@@ -152,7 +178,11 @@ R 4.5.3 的字符串形式映射到逻辑值（`R/viewport.R` 的 `valid.viewpor
   高度在两次翻转里互相抵消，所以这个函数不需要页面高度。M0-8 直接把它写进
   IR 的 `viewport.transform`。
 - `VpNode.ir_clip_rect()`：裁剪框翻成 pt、y 向下并排序成 `(x0, y0, x1, y1)`，
-  供 IR 的 `clip_rect` 用。
+  **页面绝对坐标**（不是子坐标），供 IR 的 `clip_rect` 用。IR v0.2 起
+  `viewport.clip_rect` 的口径就是页面坐标：旋转 `inherit` 的生效裁剪框在子坐标
+  里不是轴对齐矩形，4 元组表达不了。M0-8 的消费约束是「节点自下而上合成页面
+  变换后，在页面空间裁剪」——别拿它去和子坐标求交，那会裁掉左边和下边
+  （反例见 `tests/test_viewport.py::test_ir_clip_rect_is_page_space_pt`）。
 - `VpNode.convert(unit, to, axis=…, measure=…)`：在视口里换算单位（`convertX`
   / `convertWidth` 的等价物），给 grob 尺寸计算用。
 
@@ -169,7 +199,7 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
   视口宽高（英寸）、裁剪框（英寸）、解析后的 14 个 gpar 字段、以及若干探针的
   「本视口英寸」与「设备英寸」（`convertX`/`convertY` 与 `deviceLoc`）。
 - `clip_warning` 记录 R 在哪个 check 之前报过 `cannot clip to rotated viewport`，
-  Python 侧要报同一个。现在 5 个用例 / 11 个 check 点：单层 + 反向 scale、三层
+  Python 侧要报同一个。现在 5 个用例 / 22 个 check 步：单层 + 反向 scale、三层
   旋转叠加、裁剪三态与退化、gpar 逐字段继承、导航（up/down/pop/seek）。
 
 ## 9. 刻意不复制 / 不支持
@@ -180,10 +210,10 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
 | 裁剪路径（`clip = grob`）、mask | 支持 | 未实现，`clip` 只收三态字符串 |
 | `clip` 的逻辑形式 | `TRUE`/`NA`/`FALSE` 依次是 on/off/inherit | 只收字符串，传 `bool` 直接报错（避免 `clip=False` 被误读成 off） |
 | gpar 的 `gamma` / `gradientFill` / 图案填充 | 支持 | 未实现（`gamma` 在 R 4.x 已 defunct） |
-| gpar 的向量值（一个 gpar 对应多个 grob） | 支持 | 未实现：一视口一标量，grob 层（M0-6）再铺 |
+| gpar 的向量值（一个 gpar 对应多个 grob） | 支持 | 未实现：一视口一标量，M0-6 按“一组 gp 一个 IR 节点”展开（见 §12） |
 | `fontface` 字符串 → `font` 整数 | `validGP()` 里折好 | 只收 `font` 整数 |
-| 路径名的正则匹配 | `pathMatch()` 用 `grepl()` | 按段精确比较 |
-| 根视口的 `xscale`/`yscale` | 设备原生单位（pdf 下是点，0..432） | 设备英寸（0..6）；显式给 `xscale`/`yscale` 的视口两边一致 |
+| 路径名的正则匹配 | `pathMatch()` 用 `grepl(paste0(path, "$"))` | 按段精确比较（更严，不跨段） |
+| 根视口的 `xscale`/`yscale` | 设备原生单位（pdf 下是点，0..432） | 设备英寸（0..6）；显式给 `xscale`/`yscale` 的视口两边一致。`tests/test_viewport.py::test_root_scale_is_device_inches` 钉住 |
 | 视口树的序列化 / `grid.grab` | 有 | 未实现（IR 只带解析后的结果，M0-2） |
 
 ## 10. 可视化快照
@@ -206,6 +236,27 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
   行高/列宽再回填成 `width`/`height`（R 的 `layout.pos` 就落在这条线上）。
 - **grob（M0-6）**：`VpNode.convert()` 换算尺寸，`VpNode.device_points()` 定位；
   `just` 的数值形式（`justifyX()` / `justifyY()`）在 grob 层再实现——视口只
-  处理自己的 `just`。
-- **设备（M0-8）**：`clip_box`（设备英寸）和 `ir_clip_rect()`（pt，y 向下）两种
-  形态，skia 用后者；栅格化时按 `device.dpi` 把 pt 换算成像素。
+  处理自己的 `just`。gTree 的临时 `gp` 用 `ViewportTree.temporary_gpar()`，
+  在它里面 push 的 `childrenvp` 会自动按那份 gpar 算 `lines`/`char` 几何（§3）。
+- **设备（M0-8）**：`clip_box`（设备英寸）和 `ir_clip_rect()`（pt、y 向下、
+  **页面绝对坐标**）两种形态，skia 用后者：先自下而上合成页面变换，再在页面
+  空间裁剪；栅格化时按 `device.dpi` 把 pt 换算成像素。
+
+## 12. 留给 M0-6 / M0-8 的决定
+
+这些是审核提出的扩展点，本模块先定口径、不扩实现：
+
+- **`NA` 的表示**：R 的 gpar 值是向量，元素可以是 `NA`（`col = NA` = 不画）。
+  gg4py 的显式 `None` 已经占给「清空回缺省」，**不能再用 `None` 兼职 `NA`**；
+  M0-6 加独立哨兵（如 `ggcore.viewport.NA`，与 `None` 并列比较），`NA` 原样进
+  IR 的 `gpar` 由设备跳过。本 PR 不改线格式，只在文档里定死这条。
+- **gpar 的向量值**：`Gpar` 保持标量。ggplot2 的 `pointsGrob` / `polylineGrob`
+  会按顶点传 `gp`（`geom-point.R:26`），M0-6 在 grob → IR 展开时按「同一组 gp
+  的顶点一个节点」切开，不把 `Gpar` 扩成数组——IR 节点的 `gpar` 本来就是标量。
+- **gpar 校验比 R 严**（`lwd = -1`、`lwd = Inf`、`font = 9`、`lineend = "pointy"`、
+  `col = 42`、`col = NA` 在 R 里都能存下来）：这是刻意的，宁可早报错也不让
+  设备端拿到画不出来的值。M0-6 若要放宽，按字段单独列进 §9 的差异表。
+- **`xscale` / `yscale` 的输入类型**：已放宽到「任意非字符串可迭代对象」，
+  `np.ndarray`（panel 的数据范围）直接可用，不必先转 `tuple`。
+- **根级 native**：不支持。根视口的 `xscale`/`yscale` 是设备英寸（§9 已钉），
+  根视口自己用 `native` 单位没有意义；需要 native 的视口显式给 `xscale`/`yscale`。
