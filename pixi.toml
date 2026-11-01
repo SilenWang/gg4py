@@ -57,7 +57,7 @@ cbor2 = ">=6.1.5, <7"
 # `src/` layout without a build backend: the package is imported through
 # PYTHONPATH (pytest.ini carries the same path for the test runner).
 [tasks]
-render = "PYTHONPATH=src python -m ggcore.cli.render"
+render = "PYTHONPATH=src python -m ggskia.cli.render"
 diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
@@ -72,6 +72,8 @@ diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 # 静态校验（不渲染）：契约错 → 非 0；矩阵过期 → 非 0。挂进 `check`，所以普通
 # CI job 就能守住「新增 case 必须重生成矩阵」。真渲染/比对仍走 `cases:matrix`。
 "cases:matrix:check" = "PYTHONPATH=src python tools/cases/matrix.py --check --no-run"
+# 设备三路冒烟（M0-8）：一张手搓图 → PNG / SVG / PDF，产物进 docs/cases/device-smoke/current。
+"cases:device" = "PYTHONPATH=src python tools/cases/device_cases.py"
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 
@@ -110,6 +112,10 @@ r-gtable = "0.3.*"
 "refs:gtable" = "Rscript tools/refs/gtable_ref.R"
 # viewport（M0-4）的对拍夹具：push/pop/down 栈 + 变换 + 裁剪 + gpar 继承
 "refs:viewport" = "Rscript tools/refs/viewport_ref.R"
+# 设备侧曲线求值（M0-8）：xspline / grid::curve 的采样点对拍
+"refs:device" = "Rscript tools/refs/device_ref.R"
+# 设备级渲染对拍（SIL-636）：同一页面上 R 真画一遍，PNG 比墨迹、折线比设备坐标
+"refs:device-render" = "Rscript tools/refs/device_render_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"

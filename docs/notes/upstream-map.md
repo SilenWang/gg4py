@@ -54,7 +54,7 @@ Python 模块，反之亦然。
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
 | `ggcore.io.save` | `R/save.R:92` | `ggsave()` | 未实现 |
-| `ggcore.render.skia` | — | 桌面/服务端渲染（skia-python，上游用 grid） | 未实现 |
+| `ggskia`（协议 `ggcore.device`） | `src/library/grid/src/grid.c`（`L_points` / `L_xspline`）、`src/main/engine.c`（`GESymbol` / `GEXspline`） | 桌面/服务端渲染（skia-python，PNG / SVG / PDF） | 已实现（M0-8）：三路出图 + pch 全表 + xspline/curve 对拍 |
 | `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 未实现 |
 
 ## 基础设施（grid 对等）
