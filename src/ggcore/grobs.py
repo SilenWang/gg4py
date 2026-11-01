@@ -127,6 +127,11 @@ __all__ = [
 #: 文本节点在 `gpar.fontfamily` 为空时用的字族 key（M0-7 的字体目录再细化）。
 DEFAULT_FONT_KEY = "sans"
 
+#: R 的 `lwd` 单位（1/96 inch）→ pt（1/72 inch）。`docs/notes/ir.md` §6 的口径是
+#: pt，所以 `grobs → IR` 这一步必须换算；不换的话所有描边粗 4/3 倍
+#: （`lwd = 6` @150 ppi：R 9.4 px / 10 px 墨，未换算 12.5 px）。
+_LWD_UNITS_TO_PT = 72.0 / 96.0
+
 
 class GrobError(ValueError):
     """grob 构造或遍历失败（单位、坐标长度、IR 表达不了的东西都在这里报）。"""
@@ -424,14 +429,16 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
     """解析后的 gpar → IR gpar（颜色 8 位 RGBA、虚线折成 pt 段长）。"""
     dashes = _dash_pattern(gp.lty)
     col = None if dashes is None else _paint(gp.col)
+    # R 的 `gpar$lwd` 单位是 1/96 inch，IR 是 pt(1/72 inch)：乘 72/96 = 0.75
+    # （不换就是 4/3 倍粗）。`lty` 的段长是 lwd 的倍数，跟着一起换算。
+    lwd = float(gp.lwd) * _LWD_UNITS_TO_PT
     pattern: tuple[float, ...] = ()
     if dashes is not None:
-        factor = float(gp.lwd)
-        pattern = tuple(round(segment * factor, 6) for segment in dashes)
+        pattern = tuple(round(segment * lwd, 6) for segment in dashes)
     return ir.Gpar(
         fill=_paint(gp.fill),
         col=col,
-        lwd=float(gp.lwd),
+        lwd=lwd,
         lty=pattern,
         lineend=_LINEENDS[gp.lineend],
         linejoin=_LINEJOINS[gp.linejoin],
@@ -2086,7 +2093,9 @@ def _extent_unit(grob: GrobLike, node: VpNode, axis: str, gp: ResolvedGpar) -> U
             ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex) for label in labels
         ]
         if axis == "x":
-            return unit(max(widths) if widths else 0.0, "inches")
+            # 度量提供者返回英寸；这一层统一折成 bigpts（与下面的高度、以及
+            # `_to_absolute_pt` 同一口径），下游再用任何上下文换算都是同一个数。
+            return unit(max(widths) * 72.0 if widths else 0.0, "bigpts")
         return unit(ctx.fontsize * ctx.cex * ctx.lineheight, "bigpts")
 
     xs, ys = _bbox_points(item, frame)

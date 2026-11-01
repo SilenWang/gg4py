@@ -53,11 +53,18 @@ pixi run cases:grob --check       # 只和仓库里的 baseline 比对
 pixi run cases:grob --case grob-text
 ```
 
+**设备三路冒烟图**（M0-8）：没有 `case.json`，图在
+`tools/cases/device_cases.py` 里用 grob 直接搭（矩形 + 折线 + 中文标签 + 旋转
+视口里的文字），三路产物写到 `device-smoke/current/`。`pixi run cases:device`
+写文件，`--check` 只验验收条目（PDF 无 `/Font`、SVG 含 `<path>`、CJK 转轮廓）。
+
 这两类 `case.json` 是给各自的渲染器用的最小规格（视口脚本 / grob 规格树），
-不是 M0-1 说的 plot 规格；plot 规格随 `render` 实现落地后再定。
+不是 M0-1 说的 plot 规格；plot 规格随语法层落地后再定。单一 IR 场景的渲染走
+`pixi run render --scene <file.ggir.cbor> --out x.png|svg|pdf`（`docs/notes/device.md`）。
 
 ## 口径
 
 - 容差与纳管策略：`docs/notes/snapshot-policy.md`。
 - 上游 pin：`docs/notes/upstream.md`。
 - 加/改案例要同步 `docs/notes/upstream-map.md` 里对应的模块行。
+- 设备口径（页面尺寸、DPI、文字轮廓）：`docs/notes/device.md`。

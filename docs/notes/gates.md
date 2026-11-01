@@ -11,6 +11,16 @@
 
 `pixi run check` = `lint` + `test` + 四道门。
 
+### X5 只有一个含义：双端度量一致性
+
+X5 指的就是上表第 4 行（`gate:metrics`）：HarfBuzz 与 CanvasKit 对同一串标签
+量出来的 advance 必须一致（细节见本文末「双端度量一致性」）。
+
+**「新原语必须带 case」不是 X5。** 那条要求住在案例库：`docs/cases/` 的覆盖
+矩阵（M0-11 生成器）加 `pixi run cases:*` 的快照。两层都写清是因为父任务曾按
+「X5」指后者——名字一样、守的东西不一样，于是有人去 `check_metrics.py` 里找
+「新原语」的检查，找不到还以为门禁漏了。
+
 ## import 白名单
 
 允许的顶层模块：
@@ -23,6 +33,11 @@
 其余一律失败，包括 pandas / pyarrow / polars / skia / matplotlib。理由：ggcore 是
 Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转成 IR，渲染后端在
 包外。门禁只做 AST 扫描，不执行被检查的代码。
+
+包外后端的两个例证：`ggshape`（HarfBuzz 形状后端，M0-7）与 `ggskia`
+（PNG / SVG / PDF 设备，M0-8）。它们依赖 `uharfbuzz` / `skia-python`，协议留在
+`ggcore`（`ggcore.metrics` / `ggcore.device`），实现与 CLI 在包外——所以内核
+永远不需要加载 skia。
 
 包内相对导入（`from .scene import Scene`）不越界，直接跳过。
 

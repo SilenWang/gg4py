@@ -183,8 +183,12 @@ def test_each_primitive_lands_on_its_ir_kind(factory, kind) -> None:
     assert instruction.to_node().kind is kind
 
 
-def test_the_fifteen_primitives_are_all_reachable() -> None:
-    """名单固定：14 个叶子原语 + clipPath + nullGrob + zeroGrob + gTree。"""
+def test_the_thirteen_primitives_are_all_reachable() -> None:
+    """名单固定：13 种可绘制原语 + clipPath / nullGrob / zeroGrob / gTree 四个容器。
+
+    计数口径只有一份（`docs/notes/grobs.md` §1）：18 个 grob 构造器 = 13 种
+    可绘制原语 + 这 4 个容器 + gtable 的 grob 视图。
+    """
     tree = make_tree(metrics=texts(hi=0.1))
     leaves = [
         rect_grob(),
@@ -651,16 +655,23 @@ def test_transparent_and_na_paint_nothing() -> None:
     "lty,expected",
     [
         (1, ()),
-        (2, (8.0, 8.0)),  # dashed (4,4) × lwd 2
-        ("dashed", (8.0, 8.0)),
-        ("44", (8.0, 8.0)),
-        ((1, 2, 3), (2.0, 4.0, 6.0)),
+        (2, (6.0, 6.0)),  # dashed (4,4) × lwd 1.5pt（R 的 lwd 2 = 2/96 in）
+        ("dashed", (6.0, 6.0)),
+        ("44", (6.0, 6.0)),
+        ((1, 2, 3), (1.5, 3.0, 4.5)),
     ],
 )
 def test_lty_is_folded_into_pt_dashes(lty, expected) -> None:
     tree = make_tree()
     instruction = only(scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lty=lty, lwd=2)), tree))
     assert instruction.gpar.lty == expected
+
+
+def test_lwd_is_converted_from_r_units_to_pt() -> None:
+    """R 的 `gpar$lwd` 是 1/96 inch，IR 的 `lwd` 是 pt：折算因子 72/96 = 0.75。"""
+    tree = make_tree()
+    instruction = only(scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lwd=6)), tree))
+    assert instruction.gpar.lwd == pytest.approx(4.5)
 
 
 def test_blank_line_types_paint_nothing() -> None:
