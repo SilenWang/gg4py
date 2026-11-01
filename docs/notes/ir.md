@@ -29,6 +29,7 @@ IR 里**没有**：单位对象、scale、主题继承链、font stack、字符�
 
 - **y 轴向下**，原点在页面左上角（与 SVG / Canvas / skia 一致；grid 的 y-up 在写 IR 前翻转）。
 - 几何坐标是所在节点坐标系下的最终值；`viewport` 的 `transform` 把子坐标映射到父坐标。
+- 例外是 `viewport.clip_rect`：**页面绝对坐标**，不跟 `transform` 走（§4）。
 - 页面尺寸 `Scene.size` 单位 pt；`Scene.dpi` 只影响栅格化的像素换算，不改变几何。
 - 子节点顺序即绘制顺序：先出现先画（自后向前）。
 
@@ -39,7 +40,7 @@ CBOR（`cbor2`），canonical 编码。结构：
 ```
 {
   "magic": "ggir",
-  "ir_version": [0, 1],
+  "ir_version": [0, 2],
   "scene": {
     "size": [w, h],                       # pt
     "dpi": 72.0,
@@ -66,9 +67,9 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
 ## 3. 版本
 
-- 常量：`IR_VERSION = (0, 1)`、`IR_VERSION_STR = "0.1"`，编码时写进 `ir_version`。
-- 解码只认 **major**：`major != 0` 抛 `IRVersionError`（`IRDecodeError` 的子类），
-  不尝试“猜一个相近版本”。
+- 常量：`IR_VERSION = (0, 2)`、`IR_VERSION_STR = "0.2"`，编码时写进 `ir_version`。
+- 解码只认 **major**：`major != IR_VERSION[0]`（现在是 0）抛 `IRVersionError`
+  （`IRDecodeError` 的子类），不尝试“猜一个相近版本”。
 - 同一 major 内的规则只分两档，**每一层映射都走同一份判断**：
 
   | 线格式 | 未知键（envelope / `scene` / `blobs` 条目 / 节点 / `params` / `bufs` / 缓冲对象 / `gpar`） | 未知节点种类 & 未知缓冲 `dtype` |
@@ -81,6 +82,11 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - 因此新增字段是 minor，删除/改语义/改必需性是 major。
 - 已知一个 minor 升上去也会被严格拒绝的例外：`bufs[k].dtype` 必须是本实现认识的
   `f4` / `i4`。新增 dtype 属于 major 变更。
+- **0.1 → 0.2 记账**：`viewport.clip_rect` 的坐标系从“子坐标”改成“页面坐标”，
+  按上一条属于“改语义”，本该升 major。实际按 minor 处理，理由是这个语义从来
+  没有落地过：v0.1 没有写 IR 的视口代码（M0-8 还没做），唯一实现
+  `VpNode.ir_clip_rect()` 一直产出页面坐标，也没有外部消费端；0.x 的写入方和
+  读方都在本仓库内一起改。真要出现 v0.1 的落地消费端时，再按 major 处理。
 
 ## 4. 节点类型表
 
@@ -88,7 +94,7 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
 | kind | 用途 | 缓冲（dtype / shape） | 参数（缺省） |
 | --- | --- | --- | --- |
-| `viewport` | 变换 + 裁剪 + 子节点 | `clip_rect` f4 (1,4) 可选 | `name`=""、`clip`=true、`transform`=(1,0,0,1,0,0) |
+| `viewport` | 变换 + 裁剪 + 子节点 | `clip_rect` f4 (1,4) 可选（页面坐标 pt） | `name`=""、`clip`=true、`transform`=(1,0,0,1,0,0) |
 | `gtree` | 纯分组容器（v0 只表达顺序） | — | `name`="" |
 | `clip` | 任意形状裁剪 | `rect` f4 (1,4) 或 `points` f4 (n,2)；`id` i4 (n,) 可选 | `name`=""、`rule`="winding" |
 | `rect` | 矩形 | `rect` f4 (n,4) | — |
@@ -115,8 +121,13 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   椭圆用视口变换表达（不做 rx/ry）。
 - **clip**：`rect` 与 `points` 二选一，且 `rect` 只能一行；`points` 可配 `id` 画多子路径。
   子节点在裁剪形状内绘制。
-- **viewport.clip**：`clip=true` 时 `clip_rect` 必填（子坐标），不存在“猜一个单位框”的默认；
-  宁可报错也不要两端各猜一个。
+- **viewport.clip**：`clip=true` 时 `clip_rect` 必填（**页面绝对坐标**，见下条），
+  不存在“猜一个单位框”的默认；宁可报错也不要两端各猜一个。`clip=false` 时可以不带。
+- **`viewport.clip_rect` 的坐标系**：页面绝对坐标（pt、y 向下、原点页面左上），
+  **不是子坐标**；与 `Scene.size` 同一套坐标，和节点自身的 `transform` 无关。
+  旋转 `inherit` 的生效裁剪框在子坐标里不是轴对齐矩形，4 元组表达不了，页面坐标无损。
+  消费约束（M0-8）：节点自下而上合成 `transform` 得到页面变换后，**在页面空间**
+  裁剪，不要拿它去和子坐标求交。自 v0.2 起，此前“子坐标”的写法作废。
 - **curve / xspline / bezier**：控制参数是**解析后的语义参数**，曲线由设备按同一公式求值；
   它们还没被展平成折线，因为上游快照的对齐点在曲线形状本身。
 - **取值范围在 IR 里校验，不留给渲染端**：`bezier.control` 的行数必须是 4 的倍数

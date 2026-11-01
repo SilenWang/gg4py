@@ -21,8 +21,23 @@ docs/cases/
 
 ## 现在有什么
 
-目录先立起来，案例随渲染能力落地逐个加：`render` / `diff` 在 M0-1 是占位入口
-（`pixi run render` 会显式报未实现并以退出码 3 退出），所以这里暂时没有案例。
+`render` / `diff` 仍是占位入口（`pixi run render` 显式报未实现、退出码 3），案例
+随渲染能力落地逐个加。目前只有两套 **viewport 快照**（M0-4），规格字段
+`"kind": "viewport"`，由 `tools/cases/viewport_cases.py` 直接读 `case.json` 画图：
+
+| 目录 | 演示什么 |
+| --- | --- |
+| `viewport-nested-rotate/` | 三层嵌套视口，角度 15 / 25 / 50 累加成 90；native 曲线的映射；最内层 `clip="on"` 的裁剪框 |
+| `viewport-clip/` | `clip` 三态对照：`inherit` 被父框截断、`off` 越界、`on` + 45° 退化成继承 |
+
+```bash
+pixi run cases:viewport          # 重画 baseline/viewport.png
+pixi run cases:viewport --check  # 只和仓库里的 baseline 比对
+```
+
+这两套的 `case.json` 是给这个渲染器用的最小规格（步骤脚本 + 绘制原语，
+见 `tools/cases/viewport_cases.py` 顶部表格），不是 M0-1 说的 plot 规格；
+plot 规格随 `render` 实现落地后再定。
 
 ## 口径
 

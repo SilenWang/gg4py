@@ -321,12 +321,12 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
                     "f4",
                     4,
                     required=False,
-                    note="(x0, y0, x1, y1)，子坐标；clip=True 时必填",
+                    note="(x0, y0, x1, y1)，页面绝对坐标 pt；clip=True 时必填",
                 ),
             ),
             params=(
                 ParamSpec("name", "str", ""),
-                ParamSpec("clip", "bool", True, note="裁剪到 clip_rect（子坐标）"),
+                ParamSpec("clip", "bool", True, note="裁剪到 clip_rect（页面坐标）"),
                 _TRANSFORM,
             ),
             children=True,
@@ -670,7 +670,7 @@ def _check_cross_fields(node: Node, spec: NodeSpec) -> None:
                 f"收到 {len(node.texts)} / {rows} / {widths}"
             )
     if kind is NodeKind.VIEWPORT and node.params["clip"] and "clip_rect" not in node.bufs:
-        raise IRValidationError("viewport.clip=True 时必须给 clip_rect（子坐标裁剪框）")
+        raise IRValidationError("viewport.clip=True 时必须给 clip_rect（页面坐标裁剪框）")
     if "clip_rect" in node.bufs and node.bufs["clip_rect"].shape[0] != 1:
         raise IRValidationError(
             f"viewport.clip_rect 只能有一行（一个视口一个裁剪框），"

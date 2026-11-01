@@ -1,0 +1,5168 @@
+{
+  "r_version": "R version 4.5.3 (2026-03-11)",
+  "generated_by": "tools/refs/viewport_ref.R",
+  "device": {
+    "type": "pdf(NULL)",
+    "width_in": 6,
+    "height_in": 4,
+    "pointsize": 12,
+    "units_per_inch": 72
+  },
+  "cases": [
+    {
+      "id": "flat-cm-reversed-scale",
+      "notes": "单层视口：cm 几何 + 反向 xscale + 各类探针",
+      "steps": [
+        {
+          "op": "push",
+          "vp": {
+            "name": "flat",
+            "x": {
+              "value": 1,
+              "unit": "cm"
+            },
+            "y": {
+              "value": 2,
+              "unit": "cm"
+            },
+            "width": {
+              "value": 3,
+              "unit": "cm"
+            },
+            "height": {
+              "value": 1,
+              "unit": "cm"
+            },
+            "just": [
+              "left",
+              "bottom"
+            ],
+            "xscale": [
+              10,
+              0
+            ],
+            "yscale": [
+              5,
+              1
+            ],
+            "angle": 0,
+            "clip": "on",
+            "gp": {
+              "col": "red",
+              "fontsize": 24
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "flat",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            },
+            {
+              "x": {
+                "value": 0.25,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.75,
+                "unit": "native"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "native"
+              }
+            }
+          ],
+          "expected": {
+            "id": "flat",
+            "path": [
+              "flat"
+            ],
+            "depth": 1,
+            "rotation": 0,
+            "width_in": 1.1811023622047243,
+            "height_in": 0.39370078740157477,
+            "clip_in": [
+              0.39370078740157477,
+              0.78740157480314954,
+              1.5748031496062991,
+              1.1811023622047243
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "red",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 24,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0.39370078740157477,
+                  0.78740157480314954
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.59055118110236215,
+                  0.19685039370078738
+                ],
+                "device_in": [
+                  0.98425196850393692,
+                  0.98425196850393692
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.1811023622047243,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.5748031496062991,
+                  1.1811023622047243
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.3779527559055118,
+                  1.1811023622047243
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.39999999999999997,
+                  0.33333333333333331
+                ],
+                "device_in": [
+                  0.79370078740157468,
+                  1.1207349081364828
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.25,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.75,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  1.1515748031496063,
+                  0.41830708661417315
+                ],
+                "device_in": [
+                  1.545275590551181,
+                  1.2057086614173227
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  1.122047244094488,
+                  0.44291338582677153
+                ],
+                "device_in": [
+                  1.5157480314960627,
+                  1.2303149606299211
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 1
+        },
+        {
+          "op": "check",
+          "id": "root",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "root",
+            "path": null,
+            "depth": 0,
+            "rotation": 0,
+            "width_in": 6,
+            "height_in": 4,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0,
+                  0
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  6,
+                  4
+                ],
+                "device_in": [
+                  6,
+                  4
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "nested-three-rotated",
+      "notes": "三层嵌套，角度 15/25/50 累加成 90；各级 just 不同",
+      "steps": [
+        {
+          "op": "push",
+          "vp": {
+            "name": "a",
+            "x": {
+              "value": 0.20000000000000001,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.20000000000000001,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.59999999999999998,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.59999999999999998,
+              "unit": "npc"
+            },
+            "just": [
+              "left",
+              "bottom"
+            ],
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 15,
+            "clip": "inherit",
+            "gp": {
+              "fontsize": 18
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "a",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "a",
+            "path": [
+              "a"
+            ],
+            "depth": 1,
+            "rotation": 15,
+            "width_in": 3.6000000000000001,
+            "height_in": 2.3999999999999999,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 18,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.2,
+                  0.80000000000000004
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.8,
+                  1.2
+                ],
+                "device_in": [
+                  2.6280836331972983,
+                  2.4249852727314192
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3.6000000000000001,
+                  2.3999999999999999
+                ],
+                "device_in": [
+                  4.0561672663945965,
+                  4.0499705454628385
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  2.0488171341024213,
+                  1.4350289130099882
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.29999999999999999,
+                  0.25
+                ],
+                "device_in": [
+                  1.4250729866110903,
+                  1.1191271701030234
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "b",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.80000000000000004,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              10
+            ],
+            "yscale": [
+              -1,
+              1
+            ],
+            "angle": 25,
+            "clip": "inherit",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "a-b",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            },
+            {
+              "x": {
+                "value": 0.25,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.75,
+                "unit": "native"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "native"
+              }
+            }
+          ],
+          "expected": {
+            "id": "a-b",
+            "path": [
+              "a",
+              "b"
+            ],
+            "depth": 2,
+            "rotation": 40,
+            "width_in": 2.8800000000000003,
+            "height_in": 1.2,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 18,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.9106522009178932,
+                  1.0397444489114158
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.4400000000000002,
+                  0.59999999999999998
+                ],
+                "device_in": [
+                  2.6280836331972983,
+                  2.4249852727314192
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.8800000000000003,
+                  1.2
+                ],
+                "device_in": [
+                  3.345515065476703,
+                  3.8102260965514225
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  2.4115669639536828,
+                  1.974001719515875
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.29999999999999999,
+                  0.25
+                ],
+                "device_in": [
+                  1.9797686314319518,
+                  1.4240918425971221
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.25,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.75,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.072000000000000022,
+                  1.0499999999999998
+                ],
+                "device_in": [
+                  1.2908804106515936,
+                  1.8903718220837735
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.14400000000000004,
+                  0.90000000000000002
+                ],
+                "device_in": [
+                  1.4424537520091407,
+                  1.8217458635133577
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "c",
+            "x": {
+              "value": 0.5,
+              "unit": "native"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "native"
+            },
+            "width": {
+              "value": 3,
+              "unit": "cm"
+            },
+            "height": {
+              "value": 2,
+              "unit": "cm"
+            },
+            "just": [
+              0.20000000000000001,
+              0.80000000000000004
+            ],
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 50,
+            "clip": "on",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "a-b-c",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "a-b-c",
+            "path": [
+              "a",
+              "b",
+              "c"
+            ],
+            "depth": 3,
+            "rotation": 90,
+            "width_in": 1.1811023622047243,
+            "height_in": 0.78740157480314954,
+            "clip_in": [
+              2.0723750118516602,
+              1.585525391072413,
+              1.2849734370485109,
+              2.7666277532771373
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 18,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  2.0723750118516602,
+                  1.5855253910724127
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.59055118110236215,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.6786742244500854,
+                  2.1760765721747748
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.1811023622047243,
+                  0.78740157480314954
+                ],
+                "device_in": [
+                  1.2849734370485106,
+                  2.7666277532771373
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.6786742244500856,
+                  2.5697773595763498
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.29999999999999999,
+                  0.25
+                ],
+                "device_in": [
+                  1.8223750118516602,
+                  1.8855253910724128
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 3
+        },
+        {
+          "op": "check",
+          "id": "root",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "root",
+            "path": null,
+            "depth": 0,
+            "rotation": 0,
+            "width_in": 6,
+            "height_in": 4,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0,
+                  0
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  6,
+                  4
+                ],
+                "device_in": [
+                  6,
+                  4
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "clip-on-off-inherit",
+      "notes": "裁剪三态 + 旋转不可裁剪时的退化（45 与累计 180）",
+      "steps": [
+        {
+          "op": "push",
+          "vp": {
+            "name": "p1",
+            "x": {
+              "value": 0.10000000000000001,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.10000000000000001,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.80000000000000004,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.80000000000000004,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "on",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "p1-on",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "p1-on",
+            "path": [
+              "p1"
+            ],
+            "depth": 1,
+            "rotation": 0,
+            "width_in": 4.7999999999999998,
+            "height_in": 3.2000000000000002,
+            "clip_in": [
+              -1.7999999999999998,
+              -1.2000000000000002,
+              3,
+              2
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  -1.7999999999999998,
+                  -1.2000000000000002
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  0.60000000000000009,
+                  0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  4.7999999999999998,
+                  3.2000000000000002
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  -0.81574803149606279,
+                  -0.80629921259842541
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  -1.5999999999999999,
+                  -1.0333333333333334
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "p2",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "p1-p2-inherit",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "p1-p2-inherit",
+            "path": [
+              "p1",
+              "p2"
+            ],
+            "depth": 2,
+            "rotation": 0,
+            "width_in": 2.3999999999999999,
+            "height_in": 1.6000000000000001,
+            "clip_in": [
+              -1.7999999999999998,
+              -1.2000000000000002,
+              3,
+              2
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  -0.59999999999999987,
+                  -0.40000000000000013
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.2,
+                  0.80000000000000004
+                ],
+                "device_in": [
+                  0.60000000000000009,
+                  0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  1.8,
+                  1.2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.38425196850393717,
+                  -0.0062992125984253633
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  -0.39999999999999991,
+                  -0.23333333333333348
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "p3",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 2,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 2,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "off",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "p1-p2-p3-off",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "p1-p2-p3-off",
+            "path": [
+              "p1",
+              "p2",
+              "p3"
+            ],
+            "depth": 3,
+            "rotation": 0,
+            "width_in": 4.7999999999999998,
+            "height_in": 3.2000000000000002,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  -1.7999999999999998,
+                  -1.2000000000000002
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  0.60000000000000009,
+                  0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  4.7999999999999998,
+                  3.2000000000000002
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  -0.81574803149606279,
+                  -0.80629921259842541
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  -1.5999999999999999,
+                  -1.0333333333333334
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "up",
+          "n": 1
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "rot45",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 45,
+            "clip": "on",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "p1-p2-rot45",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "p1-p2-rot45",
+            "path": [
+              "p1",
+              "p2",
+              "rot45"
+            ],
+            "depth": 3,
+            "rotation": 45,
+            "width_in": 2.3999999999999999,
+            "height_in": 1.6000000000000001,
+            "clip_in": [
+              -1.7999999999999998,
+              -1.2000000000000002,
+              3,
+              2
+            ],
+            "clip_warning": true,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0.31715728752538108,
+                  -1.014213562373095
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.2,
+                  0.80000000000000004
+                ],
+                "device_in": [
+                  0.60000000000000009,
+                  0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  0.8828427124746191,
+                  1.8142135623730948
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.73474003232058649,
+                  -0.039853824517616099
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.34072751356493269,
+                  -0.75494107593802762
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "up",
+          "n": 2
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "q90",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 90,
+            "clip": "on",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "q90",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "q90",
+            "path": [
+              "p1",
+              "q90"
+            ],
+            "depth": 2,
+            "rotation": 90,
+            "width_in": 2.3999999999999999,
+            "height_in": 1.6000000000000001,
+            "clip_in": [
+              1.3999999999999999,
+              -0.80000000000000016,
+              -0.19999999999999996,
+              1.6000000000000001
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.3999999999999999,
+                  -0.80000000000000004
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.2,
+                  0.80000000000000004
+                ],
+                "device_in": [
+                  0.59999999999999998,
+                  0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  -0.19999999999999996,
+                  1.5999999999999999
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.0062992125984251,
+                  0.18425196850393699
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  1.2333333333333332,
+                  -0.60000000000000009
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "r180",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 90,
+            "clip": "on",
+            "gp": []
+          }
+        },
+        {
+          "op": "check",
+          "id": "q90-r180",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "q90-r180",
+            "path": [
+              "p1",
+              "q90",
+              "r180"
+            ],
+            "depth": 3,
+            "rotation": 180,
+            "width_in": 2.3999999999999999,
+            "height_in": 1.6000000000000001,
+            "clip_in": [
+              1.3999999999999999,
+              -0.80000000000000016,
+              -0.19999999999999996,
+              1.6000000000000001
+            ],
+            "clip_warning": true,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.7999999999999998,
+                  1.2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.2,
+                  0.80000000000000004
+                ],
+                "device_in": [
+                  0.59999999999999987,
+                  0.40000000000000002
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  2.3999999999999999,
+                  1.6000000000000001
+                ],
+                "device_in": [
+                  -0.60000000000000009,
+                  -0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.81574803149606279,
+                  0.8062992125984253
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  1.5999999999999999,
+                  1.0333333333333332
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 3
+        }
+      ]
+    },
+    {
+      "id": "gpar-inherit",
+      "notes": "14 个 gpar 字段逐字段继承；cex/alpha/lex 累积；pop 后回到 parentgpar",
+      "steps": [
+        {
+          "op": "push",
+          "vp": {
+            "name": "g1",
+            "x": {
+              "value": 0,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 1,
+              "unit": "npc"
+            },
+            "just": [
+              "left",
+              "bottom"
+            ],
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": {
+              "col": "red",
+              "fill": "blue",
+              "lwd": 2,
+              "lty": "dashed",
+              "lineend": "butt",
+              "linejoin": "mitre",
+              "linemitre": 4,
+              "alpha": 0.90000000000000002,
+              "cex": 1.5,
+              "fontsize": 20,
+              "lineheight": 1.5,
+              "font": 2,
+              "fontfamily": "serif",
+              "lex": 2
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "g1",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "g1",
+            "path": [
+              "g1"
+            ],
+            "depth": 1,
+            "rotation": 0,
+            "width_in": 6,
+            "height_in": 4,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "blue",
+              "col": "red",
+              "lty": "dashed",
+              "lwd": 2,
+              "cex": 1.5,
+              "fontsize": 20,
+              "lineheight": 1.5,
+              "font": 2,
+              "fontfamily": "serif",
+              "alpha": 0.90000000000000002,
+              "lineend": "butt",
+              "linejoin": "mitre",
+              "linemitre": 4,
+              "lex": 2
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0,
+                  0
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  6,
+                  4
+                ],
+                "device_in": [
+                  6,
+                  4
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.625,
+                  0.41666666666666669
+                ],
+                "device_in": [
+                  0.625,
+                  0.41666666666666669
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "g2",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": {
+              "lwd": 5,
+              "cex": 0.5
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "g1-g2",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "g1-g2",
+            "path": [
+              "g1",
+              "g2"
+            ],
+            "depth": 2,
+            "rotation": 0,
+            "width_in": 3,
+            "height_in": 2,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "blue",
+              "col": "red",
+              "lty": "dashed",
+              "lwd": 5,
+              "cex": 0.75,
+              "fontsize": 20,
+              "lineheight": 1.5,
+              "font": 2,
+              "fontfamily": "serif",
+              "alpha": 0.90000000000000002,
+              "lineend": "butt",
+              "linejoin": "mitre",
+              "linemitre": 4,
+              "lex": 2
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.5,
+                  1
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.5,
+                  1
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  4.5,
+                  3
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  2.484251968503937,
+                  1.3937007874015748
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.3125,
+                  0.20833333333333334
+                ],
+                "device_in": [
+                  1.8125,
+                  1.2083333333333333
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "g3",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": {
+              "alpha": 0.5,
+              "fontsize": 10
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "g1-g2-g3",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "g1-g2-g3",
+            "path": [
+              "g1",
+              "g2",
+              "g3"
+            ],
+            "depth": 3,
+            "rotation": 0,
+            "width_in": 1.5,
+            "height_in": 1,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "blue",
+              "col": "red",
+              "lty": "dashed",
+              "lwd": 5,
+              "cex": 0.75,
+              "fontsize": 10,
+              "lineheight": 1.5,
+              "font": 2,
+              "fontfamily": "serif",
+              "alpha": 0.45000000000000001,
+              "lineend": "butt",
+              "linejoin": "mitre",
+              "linemitre": 4,
+              "lex": 2
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  2.25,
+                  1.5
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.75,
+                  0.5
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.5,
+                  1
+                ],
+                "device_in": [
+                  3.75,
+                  2.5
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  3.234251968503937,
+                  1.8937007874015748
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.15625,
+                  0.10416666666666667
+                ],
+                "device_in": [
+                  2.40625,
+                  1.6041666666666667
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 1
+        },
+        {
+          "op": "check",
+          "id": "g1-g2-restored",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "g1-g2-restored",
+            "path": [
+              "g1",
+              "g2"
+            ],
+            "depth": 2,
+            "rotation": 0,
+            "width_in": 3,
+            "height_in": 2,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "blue",
+              "col": "red",
+              "lty": "dashed",
+              "lwd": 5,
+              "cex": 0.75,
+              "fontsize": 20,
+              "lineheight": 1.5,
+              "font": 2,
+              "fontfamily": "serif",
+              "alpha": 0.90000000000000002,
+              "lineend": "butt",
+              "linejoin": "mitre",
+              "linemitre": 4,
+              "lex": 2
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  1.5,
+                  1
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.5,
+                  1
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  4.5,
+                  3
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  2.484251968503937,
+                  1.3937007874015748
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.3125,
+                  0.20833333333333334
+                ],
+                "device_in": [
+                  1.8125,
+                  1.2083333333333333
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 2
+        },
+        {
+          "op": "check",
+          "id": "root",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "root",
+            "path": null,
+            "depth": 0,
+            "rotation": 0,
+            "width_in": 6,
+            "height_in": 4,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0,
+                  0
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  6,
+                  4
+                ],
+                "device_in": [
+                  6,
+                  4
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "navigate",
+      "notes": "up/down/pop 的路径、深度、gpar 与裁剪恢复",
+      "steps": [
+        {
+          "op": "push",
+          "vp": {
+            "name": "nav-a",
+            "x": {
+              "value": 0.20000000000000001,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.20000000000000001,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.59999999999999998,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.59999999999999998,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "on",
+            "gp": {
+              "col": "red"
+            }
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "nav-b",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              4
+            ],
+            "yscale": [
+              0,
+              3
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": {
+              "lwd": 3
+            }
+          }
+        },
+        {
+          "op": "check",
+          "id": "nav-a::nav-b",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            },
+            {
+              "x": {
+                "value": 0.25,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.75,
+                "unit": "native"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "native"
+              }
+            }
+          ],
+          "expected": {
+            "id": "nav-a::nav-b",
+            "path": [
+              "nav-a",
+              "nav-b"
+            ],
+            "depth": 2,
+            "rotation": 0,
+            "width_in": 1.8,
+            "height_in": 1.2,
+            "clip_in": [
+              -0.60000000000000009,
+              -0.39999999999999991,
+              3,
+              2
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "red",
+              "lty": "solid",
+              "lwd": 3,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0.29999999999999993,
+                  0.20000000000000007
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.90000000000000002,
+                  0.59999999999999998
+                ],
+                "device_in": [
+                  1.2,
+                  0.80000000000000004
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.8,
+                  1.2
+                ],
+                "device_in": [
+                  2.1000000000000001,
+                  1.3999999999999999
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.2842519685039369,
+                  0.59370078740157484
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.49999999999999989,
+                  0.3666666666666667
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.25,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.75,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.1125,
+                  0.29999999999999999
+                ],
+                "device_in": [
+                  0.41249999999999992,
+                  0.5
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.22500000000000001,
+                  0.20000000000000001
+                ],
+                "device_in": [
+                  0.52499999999999991,
+                  0.40000000000000008
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "up",
+          "n": 1
+        },
+        {
+          "op": "check",
+          "id": "nav-a-up",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "nav-a-up",
+            "path": [
+              "nav-a"
+            ],
+            "depth": 1,
+            "rotation": 0,
+            "width_in": 3.6000000000000001,
+            "height_in": 2.3999999999999999,
+            "clip_in": [
+              -0.60000000000000009,
+              -0.39999999999999991,
+              3,
+              2
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "red",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  -0.60000000000000009,
+                  -0.39999999999999991
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.8,
+                  1.2
+                ],
+                "device_in": [
+                  1.2,
+                  0.80000000000000004
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3.6000000000000001,
+                  2.3999999999999999
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.38425196850393695,
+                  -0.0062992125984251413
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  -0.40000000000000013,
+                  -0.23333333333333325
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "down",
+          "path": "nav-b",
+          "strict": false
+        },
+        {
+          "op": "check",
+          "id": "nav-a-down-nav-b",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            },
+            {
+              "x": {
+                "value": 0.25,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.75,
+                "unit": "native"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "native"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "native"
+              }
+            }
+          ],
+          "expected": {
+            "id": "nav-a-down-nav-b",
+            "path": [
+              "nav-a",
+              "nav-b"
+            ],
+            "depth": 2,
+            "rotation": 0,
+            "width_in": 1.8,
+            "height_in": 1.2,
+            "clip_in": [
+              -0.60000000000000009,
+              -0.39999999999999991,
+              3,
+              2
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "red",
+              "lty": "solid",
+              "lwd": 3,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0.29999999999999993,
+                  0.20000000000000007
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.90000000000000002,
+                  0.59999999999999998
+                ],
+                "device_in": [
+                  1.2,
+                  0.80000000000000004
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.8,
+                  1.2
+                ],
+                "device_in": [
+                  2.1000000000000001,
+                  1.3999999999999999
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  1.2842519685039369,
+                  0.59370078740157484
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.49999999999999989,
+                  0.3666666666666667
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.25,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.75,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.1125,
+                  0.29999999999999999
+                ],
+                "device_in": [
+                  0.41249999999999992,
+                  0.5
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "native"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "native"
+                  }
+                },
+                "loc_in": [
+                  0.22500000000000001,
+                  0.20000000000000001
+                ],
+                "device_in": [
+                  0.52499999999999991,
+                  0.40000000000000008
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 2
+        },
+        {
+          "op": "check",
+          "id": "root",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "root",
+            "path": null,
+            "depth": 0,
+            "rotation": 0,
+            "width_in": 6,
+            "height_in": 4,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  0,
+                  0
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  3,
+                  2
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  6,
+                  4
+                ],
+                "device_in": [
+                  6,
+                  4
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "nav-x",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 0,
+            "clip": "inherit",
+            "gp": []
+          }
+        },
+        {
+          "op": "push",
+          "vp": {
+            "name": "nav-y",
+            "x": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "y": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "width": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "height": {
+              "value": 0.5,
+              "unit": "npc"
+            },
+            "just": "centre",
+            "xscale": [
+              0,
+              1
+            ],
+            "yscale": [
+              0,
+              1
+            ],
+            "angle": 30,
+            "clip": "inherit",
+            "gp": []
+          }
+        },
+        {
+          "op": "up",
+          "n": 0
+        },
+        {
+          "op": "seek",
+          "path": "nav-x::nav-y"
+        },
+        {
+          "op": "check",
+          "id": "nav-x::nav-y-seek",
+          "probes": [
+            {
+              "x": {
+                "value": 0,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 0.5,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 0.5,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "npc"
+              },
+              "y": {
+                "value": 1,
+                "unit": "npc"
+              }
+            },
+            {
+              "x": {
+                "value": 2.5,
+                "unit": "cm"
+              },
+              "y": {
+                "value": 1,
+                "unit": "cm"
+              }
+            },
+            {
+              "x": {
+                "value": 1,
+                "unit": "lines"
+              },
+              "y": {
+                "value": 1,
+                "unit": "char"
+              }
+            }
+          ],
+          "expected": {
+            "id": "nav-x::nav-y-seek",
+            "path": [
+              "nav-x",
+              "nav-y"
+            ],
+            "depth": 2,
+            "rotation": 30,
+            "width_in": 1.5,
+            "height_in": 1,
+            "clip_in": [
+              -3,
+              -2,
+              9,
+              6
+            ],
+            "clip_warning": false,
+            "gpar": {
+              "fill": "transparent",
+              "col": "black",
+              "lty": "solid",
+              "lwd": 1,
+              "cex": 1,
+              "fontsize": 12,
+              "lineheight": 1.2,
+              "font": 1,
+              "fontfamily": "",
+              "alpha": 1,
+              "lineend": "round",
+              "linejoin": "round",
+              "linemitre": 10,
+              "lex": 1
+            },
+            "probes": [
+              {
+                "spec": {
+                  "x": {
+                    "value": 0,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0,
+                  0
+                ],
+                "device_in": [
+                  2.600480947161671,
+                  1.1919872981077808
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 0.5,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  0.75,
+                  0.5
+                ],
+                "device_in": [
+                  3,
+                  2
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "npc"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "npc"
+                  }
+                },
+                "loc_in": [
+                  1.5,
+                  1
+                ],
+                "device_in": [
+                  3.399519052838329,
+                  2.8080127018922196
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 2.5,
+                    "unit": "cm"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "cm"
+                  }
+                },
+                "loc_in": [
+                  0.98425196850393704,
+                  0.39370078740157477
+                ],
+                "device_in": [
+                  3.2560177619101345,
+                  2.0250681657394498
+                ]
+              },
+              {
+                "spec": {
+                  "x": {
+                    "value": 1,
+                    "unit": "lines"
+                  },
+                  "y": {
+                    "value": 1,
+                    "unit": "char"
+                  }
+                },
+                "loc_in": [
+                  0.19999999999999998,
+                  0.16666666666666666
+                ],
+                "device_in": [
+                  2.6903526945852256,
+                  1.4363248654051872
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "op": "pop",
+          "n": 2
+        }
+      ]
+    }
+  ]
+}
