@@ -9,6 +9,8 @@
 3. **render / diff 未落地不是红**：退出码 3 记 `pending`，`--strict` 才判失败——
    否则 M0-8 / M0-9 落地之前 CI 永远是红的。
 4. **矩阵是静态产物**：同一份仓库内容 → 同一份字节，`--check` 能守住新鲜度。
+5. **报告不被行数截断**：60+ case（含大量 fail）时 `report.md` 仍是完整报告，
+   逐 case 表与「需要修的 case」整节都在；只有 GHA step summary 的短版本可截断。
 """
 
 from __future__ import annotations
@@ -400,3 +402,136 @@ def test_repo_cases_are_consistent() -> None:
     """仓库里每个三文件 case 的契约都成立（防止有人提交半成品）。"""
     broken = {case.name: case.errors for case in TOOL.discover(CASES_DIR) if not case.valid}
     assert broken == {}
+
+
+# ---------------------------------------------------------------------------
+# 5. 报告完整性：314 份快照量级也不能被行数截断
+# ---------------------------------------------------------------------------
+
+
+def test_report_keeps_full_list_and_red_section_beyond_line_limit(tmp_path: Path) -> None:
+    """60+ case（含多 fail）：`report.md` 仍是完整报告，红名单一个不少。"""
+    root = make_root(tmp_path)
+    names = [f"geom-point-case-{index:02d}" for index in range(70)]
+    for name in names:
+        write_case(root, name)
+    backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%（阈值 0.1%）")
+    code, _, report_dir = run(root, tmp_path, backend=backend)
+    assert code == 1
+
+    report = (report_dir / "report.md").read_text(encoding="utf-8")
+    assert len(report.splitlines()) > 60
+    assert "已截断" not in report
+    assert "## 需要修的 case" in report
+    # 逐 case 表：第一个和最后一个 case 都还在（截断时最后一个会消失）。
+    assert f"| `{names[0]}` |" in report
+    assert f"| `{names[-1]}` |" in report
+    # 红名单：70 个全部点名，而不是停在某个行号上。
+    for name in names:
+        assert f"- `{name}`：diff" in report
+
+
+def test_step_summary_is_truncated_but_points_at_full_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GHA step summary 是唯一可截断的地方：保住结论 + 指向完整报告。"""
+    root = make_root(tmp_path)
+    names = [f"geom-point-case-{index:02d}" for index in range(70)]
+    for name in names:
+        write_case(root, name)
+    summary_file = tmp_path / "step_summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
+    backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%")
+    code, _, report_dir = run(root, tmp_path, backend=backend)
+    assert code == 1
+
+    summary = summary_file.read_text(encoding="utf-8")
+    assert len(summary.splitlines()) <= TOOL.SUMMARY_MAX_LINES
+    assert "案例矩阵：**红**" in summary
+    assert "## 需要修的 case" in summary
+    assert "…还有" in summary
+    assert ".cases-matrix/report.md" in summary
+    # 报告文件本身没有被 summary 的截断影响。
+    full = (report_dir / "report.md").read_text(encoding="utf-8")
+    for name in names:
+        assert f"- `{name}`：diff" in full
+
+
+def test_report_has_family_rollup_and_points_to_matrix(tmp_path: Path) -> None:
+    """运行时报告补上「按族汇总」，并直接指向 matrix.md（族 × 特性在那里）。"""
+    root = make_root(tmp_path)
+    write_case(root, "geom-point-basic")
+    write_case(root, "geom-bar-basic", family="geom-bar")
+    backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%")
+    code, _, report_dir = run(root, tmp_path, backend=backend)
+    assert code == 1
+    report = (report_dir / "report.md").read_text(encoding="utf-8")
+    assert "## 按族汇总" in report
+    assert "| `geom-point` | 1 | 1 |" in report
+    assert "| `geom-bar` | 1 | 1 |" in report
+    assert "matrix.md" in report
+
+
+# ---------------------------------------------------------------------------
+# 6. `--check` 是纯校验；缺 meta.toml 的半成品不再被静默丢弃
+# ---------------------------------------------------------------------------
+
+
+def test_check_writes_nothing_and_never_renders(tmp_path: Path) -> None:
+    root = make_root(tmp_path)
+    write_case(root, "geom-point-basic")
+    assert run(root, tmp_path, "--no-run")[0] == 0
+    matrix_file = root / "matrix.md"
+    before = matrix_file.read_text(encoding="utf-8")
+    report_dir = tmp_path / "check-report"
+    assert not report_dir.exists()
+
+    backend = FakeBackend(render=TOOL.PASS, diff=TOOL.PASS)
+    code = TOOL.main(
+        ["--root", str(root), "--report-dir", str(report_dir), "--check"], backend=backend
+    )
+    assert code == 0
+    assert backend.calls == []  # --check 隐含 --no-run
+    assert not report_dir.exists()  # 不写 report.md / report.json
+    assert matrix_file.read_text(encoding="utf-8") == before
+
+
+def test_half_case_without_meta_toml_is_invalid_not_ignored(tmp_path: Path) -> None:
+    """有 plot.py + expected.* 却忘写 meta.toml：按 invalid 报，不静默跳过。"""
+    root = make_root(tmp_path)
+    write_case(root, "geom-point-basic")
+    half = root / "geom-bar-half"
+    half.mkdir()
+    (half / "plot.py").write_text(GOOD_PLOT, encoding="utf-8")
+    (half / "expected.svg").write_text(SVG, encoding="utf-8")
+
+    cases = {case.name: case for case in TOOL.discover(root)}
+    assert "geom-bar-half" in cases
+    assert not cases["geom-bar-half"].valid
+    assert any("缺 meta.toml" in error for error in cases["geom-bar-half"].errors)
+
+    code, matrix, report_dir = run(root, tmp_path, "--no-run")
+    assert code == 1
+    assert "三文件 case：**2** 个" in matrix
+    assert "缺 meta.toml" in matrix
+    assert "`geom-bar-half`：" in (report_dir / "report.md").read_text(encoding="utf-8")
+    payload = json.loads((report_dir / "report.json").read_text(encoding="utf-8"))
+    assert payload["red"] == ["geom-bar-half"]
+
+
+def test_ci_is_optional_and_defaults_to_true(tmp_path: Path) -> None:
+    """文档说 `ci` 可选、缺省 true；缺省时要真的进 render/diff，而不是被跳过。"""
+    root = make_root(tmp_path)
+    write_case(
+        root,
+        "geom-point-basic",
+        meta='family = "geom-point"\nfeatures = ["aes-mapping"]\n',
+    )
+    directory = root / "geom-point-basic"
+    case = TOOL.load_case(directory)
+    assert case.valid and case.ci is True
+
+    backend = FakeBackend(render=TOOL.PENDING, detail="render 未落地（M0-8）")
+    code, _, _ = run(root, tmp_path, backend=backend)
+    assert code == 0
+    assert backend.calls == [("render", "geom-point-basic")]

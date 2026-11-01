@@ -2,7 +2,8 @@
 """案例库覆盖矩阵生成器（M0-11）。
 
     pixi run cases:matrix            # 扫描 → 渲染/比对 → 写矩阵与报告
-    pixi run cases:matrix --check    # 只校验 docs/cases/matrix.md 是否最新，不写文件
+    pixi run cases:matrix --check    # 只校验 docs/cases/matrix.md 是否最新：不写任何文件、
+                                     # 也不跑 render / diff（隐含 --no-run）
     pixi run cases:matrix --no-run   # 只做静态契约校验，不调用 render / diff
 
 一个 case = `docs/cases/<case-name>/` 下三个文件：
@@ -22,6 +23,13 @@
 | --- | --- | --- |
 | `docs/cases/matrix.md` | 是 | 静态覆盖视图：族 × 特性、缺口、清单、来源（纯由仓库内容决定） |
 | `.cases-matrix/report.md` / `.json` | 否 | 运行时结论：哪个 case 红、差多少、为什么待落地 |
+
+报告文件永远写完整版：上游验收资产是 314 份 SVG，案例库必然超过几十个，截断会把
+「需要修的 case」整节切掉，让人看不到红名单。只有贴到 GHA step summary 的短版本
+（`render_summary()`）才受行数上限约束，并且被截断的只会是长名单的尾部。
+
+`meta.toml` 缺失不算「不是 case」：目录里出现了 `plot.py` 或 `expected.*` 就按
+半成品 case 收进来标 `invalid`（只有 `case.json` 的历史快照目录除外）。
 
 渲染与比对不另造命令：就走 M0-8 的 `pixi run render` 与 M0-9 的 `pixi run diff`
 （`pixi.toml` 里的任务名）。两个入口还没落地时以退出码 3 报“未实现”，本工具把
@@ -245,16 +253,23 @@ def load_case(directory: Path) -> Case:
     """读一个三文件 case；所有契约问题进 `errors`，不抛异常。"""
     case = Case(name=directory.name, directory=directory)
     meta_path = directory / META_FILE
-    try:
-        with meta_path.open("rb") as handle:
-            meta = tomllib.load(handle)
-    except (OSError, tomllib.TOMLDecodeError) as exc:
-        case.errors.append(f"{META_FILE} 读取失败：{exc}")
-        meta = {}
+    if not meta_path.is_file():
+        # 半成品：放下了 plot.py / expected.* 却忘了 meta.toml。不能静默跳过——
+        # 那会让一个「看起来已经在案例库里」的目录既不进矩阵也不标红。
+        case.errors.append(f"缺 {META_FILE}（三文件 case 需要 meta.toml 才能进矩阵）")
+        meta: Any = {}
         values: dict[str, Any] = {}
     else:
-        values, meta_errors = _meta_errors(meta)
-        case.errors.extend(meta_errors)
+        try:
+            with meta_path.open("rb") as handle:
+                meta = tomllib.load(handle)
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            case.errors.append(f"{META_FILE} 读取失败：{exc}")
+            meta = {}
+            values = {}
+        else:
+            values, meta_errors = _meta_errors(meta)
+            case.errors.extend(meta_errors)
 
     case.family = values.get("family", "")
     case.features = values.get("features", ())
@@ -281,15 +296,30 @@ def load_case(directory: Path) -> Case:
     return case
 
 
+def _case_payload(directory: Path) -> bool:
+    """目录里是否有三文件 case 的「文件本体」（`plot.py` 或 `expected.*`）。"""
+    return (directory / PLOT_FILE).is_file() or any(
+        (directory / name).is_file() for name in EXPECTED_FILES
+    )
+
+
 def discover(root: Path) -> list[Case]:
-    """扫 `docs/cases/*/meta.toml`；历史快照目录（只有 case.json）不算三文件 case。"""
+    """扫 `docs/cases/*/`：有 `meta.toml` 的是正式 case，有 `plot.py` / `expected.*`
+    但缺 `meta.toml` 的是半成品（按 `invalid` 收进来，不静默丢弃）。
+
+    只有 `case.json` 的历史快照目录（M0-4 / M0-6）不算三文件 case，也不按半成品
+    报错——它们由 `legacy_snapshots()` 单独登记。
+    """
     if not root.is_dir():
         return []
-    cases = [
-        load_case(directory)
-        for directory in sorted(root.iterdir(), key=lambda path: path.name)
-        if directory.is_dir() and (directory / META_FILE).is_file()
-    ]
+    cases: list[Case] = []
+    for directory in sorted(root.iterdir(), key=lambda path: path.name):
+        if not directory.is_dir():
+            continue
+        has_meta = (directory / META_FILE).is_file()
+        if not has_meta and ((directory / LEGACY_SPEC).is_file() or not _case_payload(directory)):
+            continue
+        cases.append(load_case(directory))
     return cases
 
 
@@ -677,15 +707,63 @@ def render_matrix(
     return "\n".join(lines)
 
 
+NO_FAMILY = "（未登记 family）"
+# GHA step summary 的行数上限；只作用于 `render_summary()`，报告文件不受限。
+SUMMARY_MAX_LINES = 60
+
+
+def _counts(verdicts: Sequence[Verdict]) -> dict[str, int]:
+    counts = {status: 0 for status in GLYPHS}
+    for verdict in verdicts:
+        counts[verdict.status] = counts.get(verdict.status, 0) + 1
+    return counts
+
+
+def _verdict_text(red: Sequence[Verdict]) -> str:
+    return "**红**" if red else "**绿**"
+
+
+def _counts_text(counts: Mapping[str, int]) -> str:
+    return (
+        f"通过 {counts[PASS]} / 失败 {counts[FAIL]} / "
+        f"契约错 {counts[INVALID]} / 待落地 {counts[PENDING]} / 跳过 {counts[SKIPPED]}"
+    )
+
+
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _family_rows(
+    verdicts: Sequence[Verdict], families: Sequence[str]
+) -> list[tuple[str, int, int]]:
+    """按族汇总：族 →（case 数, 红数）；未登记 `family` 的 case 单列一行。"""
+    buckets: dict[str, list[int]] = {}
+    for verdict in verdicts:
+        bucket = buckets.setdefault(verdict.case.family or NO_FAMILY, [0, 0])
+        bucket[0] += 1
+        if verdict.status in RED_STATES:
+            bucket[1] += 1
+    ordered = [*families, NO_FAMILY]
+    rows = [(label, *buckets[label]) for label in ordered if label in buckets]
+    rows.extend((label, *bucket) for label, bucket in buckets.items() if label not in ordered)
+    return rows
+
+
 def render_report(
     verdicts: Sequence[Verdict],
     cases: Sequence[Case],
     taxonomy: Taxonomy,
     *,
     now: str,
-    max_lines: int = 60,
+    matrix_file: Path = MATRIX_FILE,
 ) -> str:
-    """运行时报告：哪个 case 红、差多少、为什么待落地。"""
+    """运行时报告（**完整版**，写进 `.cases-matrix/report.md`）。
+
+    这里**不截断**：上游验收资产是 314 份 SVG，案例库必然超过几十个；一旦按行数
+    截断，逐 case 表和「需要修的 case」整节都会被切掉，红名单就没人看得到。
+    贴到 GHA step summary 的短版本是另一个函数（`render_summary()`）。
+    """
     families, features, cells = aggregate(cases, taxonomy)
     gaps = [
         (family, feature)
@@ -695,21 +773,33 @@ def render_report(
     ]
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
     pending = [verdict for verdict in verdicts if verdict.status == PENDING]
-    counts = {status: 0 for status in GLYPHS}
-    for verdict in verdicts:
-        counts[verdict.status] = counts.get(verdict.status, 0) + 1
-    verdict_text = "**红**" if red else "**绿**"
+    counts = _counts(verdicts)
     lines = [
         "# 案例矩阵运行报告",
         "",
         f"- 时间：{now}",
-        f"- 结论：{verdict_text}（通过 {counts[PASS]} / 失败 {counts[FAIL]} / "
-        f"契约错 {counts[INVALID]} / 待落地 {counts[PENDING]} / 跳过 {counts[SKIPPED]}）",
+        f"- 结论：{_verdict_text(red)}（{_counts_text(counts)}）",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
         f"空位 {len(gaps)} 个）",
+        f"- 覆盖视图：`{_rel(matrix_file)}`（族 × 特性的覆盖矩阵、缺口与清单）；"
+        "本报告只回答运行时红绿与「差多少」",
         "- 任务：`pixi run cases:matrix`",
         "",
     ]
+    if red:
+        lines.extend(["## 需要修的 case", ""])
+        for verdict in red:
+            lines.append(f"- `{verdict.case.name}`：{verdict.detail or '—'}")
+        lines.append("")
+
+    family_rows = _family_rows(verdicts, families)
+    if family_rows:
+        lines.extend(["## 按族汇总", "", "| 族 | case | 红 |", "| --- | --- | --- |"])
+        for family, total, red_count in family_rows:
+            label = _code(family) if family != NO_FAMILY else family
+            lines.append(f"| {label} | {total} | {red_count if red_count else '—'} |")
+        lines.append("")
+
     if not verdicts:
         lines.extend(["没有三文件 case，本轮没有可跑的东西。", ""])
     else:
@@ -730,11 +820,6 @@ def render_report(
             )
         lines.append("")
 
-    if red:
-        lines.extend(["## 需要修的 case", ""])
-        for verdict in red:
-            lines.append(f"- `{verdict.case.name}`：{verdict.detail}")
-        lines.append("")
     if pending:
         lines.extend(
             [
@@ -748,12 +833,58 @@ def render_report(
         )
     lines.extend(["## 怎么新增 case", "", "见 `docs/cases/README.md`：放三个文件，不改代码。"])
     lines.append("")
-    text = "\n".join(lines)
-    if max_lines and len(text.splitlines()) > max_lines:
-        text = "\n".join(text.splitlines()[:max_lines]) + (
-            "\n\n（报告已截断，全文见 `.cases-matrix/report.md`）\n"
-        )
-    return text
+    return "\n".join(lines)
+
+
+def render_summary(
+    verdicts: Sequence[Verdict],
+    cases: Sequence[Case],
+    taxonomy: Taxonomy,
+    *,
+    now: str,
+    max_lines: int = SUMMARY_MAX_LINES,
+) -> str:
+    """GHA step summary 用的短版本：结论 + 红名单。
+
+    这是唯一会截断的地方，而且只截名单尾部（保留「还有 N 个」与完整报告的指向）：
+    把「需要修的 case」整节切掉才是真正的问题。
+    """
+    families, features, cells = aggregate(cases, taxonomy)
+    gaps = [
+        (family, feature)
+        for family in families
+        for feature in features
+        if not cells.get((family, feature))
+    ]
+    red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
+    counts = _counts(verdicts)
+    lines = [
+        f"# 案例矩阵：{_verdict_text(red)}",
+        "",
+        f"- 时间：{now}",
+        f"- 结论：{_counts_text(counts)}",
+        f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
+        f"空位 {len(gaps)} 个）",
+        "- 逐 case 表、「差多少」与完整红名单：`.cases-matrix/report.md`",
+        "",
+    ]
+    tail = ["", "见 `docs/cases/README.md`：放三个文件就能新增 case。", ""]
+    if not red:
+        lines.extend(["全部绿。", *tail])
+        return "\n".join(lines)
+
+    lines.extend(["## 需要修的 case", ""])
+    entries = [f"- `{verdict.case.name}`：{_one_line(verdict.detail) or '—'}" for verdict in red]
+    # 末行留给「…还有 N 个」，所以先扣掉它和结尾三行。
+    budget = max_lines - len(lines) - len(tail) - 1
+    for index, entry in enumerate(entries):
+        if index >= max(budget, 0):
+            hidden = len(entries) - index
+            lines.append(f"- …还有 {hidden} 个红 case 没列出，全文见 `.cases-matrix/report.md`")
+            break
+        lines.append(entry)
+    lines.extend(tail)
+    return "\n".join(lines)
 
 
 def report_payload(
@@ -808,6 +939,18 @@ def _gha_error(message: str) -> None:
         print(f"::error title=案例矩阵::{message}")
 
 
+def _write_step_summary(summary: str) -> None:
+    """把短版本附到 GHA step summary；本地运行（没有该环境变量）就跳过。"""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(summary + "\n")
+    except OSError as exc:  # 贴 summary 失败不该让整轮矩阵判红
+        print(f"cases:matrix: 写 GHA step summary 失败：{exc}", file=sys.stderr)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cases:matrix",
@@ -817,7 +960,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="不写文件，只校验 docs/cases/matrix.md 是否与当前仓库内容一致",
+        help="只校验 docs/cases/matrix.md 是否最新：不写矩阵 / 报告，"
+        "也不跑 render / diff（隐含 --no-run）",
     )
     parser.add_argument("--no-run", action="store_true", help="只做静态校验，不调用 render / diff")
     parser.add_argument(
@@ -835,7 +979,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> int:
     args = build_parser().parse_args(argv)
-    backend = None if args.no_run else (backend or TaskBackend())
+    # `--check` 是纯校验：不写矩阵 / 报告，也不跑 render / diff（隐含 --no-run）。
+    check_only = args.check
+    backend = None if (args.no_run or check_only) else (backend or TaskBackend())
 
     cases = discover(args.root)
     if args.cases:
@@ -857,7 +1003,7 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
         print(generated)
 
     exit_code = 0
-    if args.check:
+    if check_only:
         committed = matrix_file.read_text(encoding="utf-8") if matrix_file.is_file() else ""
         if committed != generated:
             print(
@@ -874,14 +1020,19 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
 
     verdicts = evaluate(cases, backend)
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-    report_dir: Path = args.report_dir
-    report_dir.mkdir(parents=True, exist_ok=True)
-    report_md = render_report(verdicts, cases, taxonomy, now=now)
-    (report_dir / "report.md").write_text(report_md, encoding="utf-8")
-    payload = report_payload(verdicts, cases, taxonomy, now)
-    (report_dir / "report.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    if not check_only:
+        report_dir: Path = args.report_dir
+        report_dir.mkdir(parents=True, exist_ok=True)
+        # 报告文件永远完整（314 份上游快照量级也不能截断）；截断只发生在 step summary。
+        (report_dir / "report.md").write_text(
+            render_report(verdicts, cases, taxonomy, now=now, matrix_file=matrix_file),
+            encoding="utf-8",
+        )
+        payload = report_payload(verdicts, cases, taxonomy, now)
+        (report_dir / "report.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        _write_step_summary(render_summary(verdicts, cases, taxonomy, now=now))
 
     for verdict in verdicts:
         if verdict.status in RED_STATES:
@@ -891,9 +1042,7 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
             if verdict.status == PENDING:
                 _gha_error(f"{verdict.case.name}: render / diff 未落地（--strict）")
 
-    counts = {status: 0 for status in GLYPHS}
-    for verdict in verdicts:
-        counts[verdict.status] = counts.get(verdict.status, 0) + 1
+    counts = _counts(verdicts)
     print(
         "cases:matrix: "
         f"{len(cases)} case(s) — pass {counts[PASS]}, fail {counts[FAIL]}, "

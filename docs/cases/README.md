@@ -75,7 +75,7 @@ SVG 要有 XML 声明或 `<svg` 根——格式不对同样标 `⛔`。
 ```toml
 family = "geom-point"                 # 必填：矩阵的行
 features = ["aes-mapping", "aes-grouping"]  # 必填：矩阵的列（可为空数组）
-ci = true                             # 必填：false = 只登记，不跑 render/diff
+ci = true                             # 可选，缺省 true；false = 只登记，不跑 render/diff
 
 title = "geom_point：基础散点 + 分组着色"   # 可选
 source = "upstream:ggplot2 v4.0.3 tests/testthat/_snaps/geom-point"  # 可选，缺省 local
@@ -83,30 +83,43 @@ tolerance = { png = 0.001 }           # 可选：覆盖 X4 默认容差（比例
 notes = "…"                           # 可选：自由文本
 ```
 
+- 必填只有 `family` / `features`；`ci` 可省略，**缺省 `true`**（照常进 render/diff）。
 - `family` / `features` 的取值优先用 `taxonomy.toml` 里登记过的；没登记不会失败，
   矩阵会自动加行/列，并在「未登记的族 / 特性」一节点名。
 - `ci = false` 用于「先登记、参考图后补」的草稿 case：矩阵里有它，CI 不跑它。
 - 未登记的键只报警告（不红），所以可以随手记 `notes`。
 
+**忘写 `meta.toml` 不是「这个目录不存在」**：只要目录里有 `plot.py` 或 `expected.*`，
+生成器就按半成品 case 收进来标 `⛔ invalid` 并让 CI 红（只有 `case.json` 的历史快照
+目录除外）。
+
 ## 生成器：`pixi run cases:matrix`
 
 ```bash
 pixi run cases:matrix            # 扫描 → 渲染/比对 → 写 matrix.md + 报告
-pixi run cases:matrix --check    # 只校验 matrix.md 是否最新（CI 用），不写文件
+pixi run cases:matrix --check    # 只校验 matrix.md 是否最新（CI 用）：
+                                 # 不写矩阵 / 报告，也不跑 render/diff（隐含 --no-run）
 pixi run cases:matrix --no-run   # 只做静态契约校验，不调 render / diff
 pixi run cases:matrix --strict   # 把 pending（render/diff 未落地）也当失败
 pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 ```
 
-产物分两类，生命周期不同：
+产物分三类，生命周期不同：
 
 | 产物 | 入库 | 内容 |
 | --- | --- | --- |
 | `docs/cases/matrix.md` | 是（生成物，`--check` 守新鲜度） | **静态**覆盖视图：族 × 特性、缺口、清单、来源 |
-| `.cases-matrix/report.md` / `.json` | 否（`.gitignore`） | **运行时**结论：哪个 case 红、差多少、为什么待落地 |
+| `.cases-matrix/report.md` / `.json` | 否（`.gitignore`） | **运行时**结论：哪个 case 红、差多少、按族汇总、为什么待落地。**永远完整，不截断** |
+| GHA step summary | —（CI 贴到 PR 页） | 上面报告的**短版本**：结论 + 红名单；超长时只截名单尾部并指向完整报告 |
 
 矩阵是静态的，只由仓库内容决定，所以能 `--check` 逐字节比对；红绿随渲染能力变化，
 写进报告，由 CI 贴到 PR 的 step summary（失败 case 名同时以 `::error` 注解出现）。
+族 × 特性的聚合视图只在 `matrix.md`（覆盖缺口、清单都在那里）；运行时报告给的是
+红绿与「按族汇总」的 case 数 / 红数，并在开头直接指向 `matrix.md`。
+
+`report.md` 不受行数限制：上游验收资产是 314 份 SVG，案例库必然超过几十个，按行数
+截断会把逐 case 表和「需要修的 case」整节切掉，红名单就没人看得到。只有 step summary
+的短版本（`render_summary()`）有 60 行上限，被截掉的只是名单尾部。
 
 ### 状态
 
@@ -114,7 +127,7 @@ pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 | --- | --- | --- |
 | `✅ pass` | render + diff 都通过 | 否 |
 | `❌ fail` | render 出错或 diff 超容差 | **是** |
-| `⛔ invalid` | 三文件缺失 / `meta.toml` 不合规 / `plot.py` 契约不满足 / 参考图格式不对 | **是** |
+| `⛔ invalid` | 三文件缺失（含**忘写 `meta.toml`** 的半成品）/ `meta.toml` 不合规 / `plot.py` 契约不满足 / 参考图格式不对 | **是** |
 | `⏳ pending` | render / diff 报未实现（退出码 3） | 否（`--strict` 下是） |
 | `⏭ skipped` | `meta.ci = false` 或 `--no-run` | 否 |
 
@@ -135,6 +148,16 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --tolerance 
 
 这条契约只有一处实现（`tools/cases/matrix.py` 的 `TaskBackend`）。M0-8 / M0-9 改
 入口参数时改它一处即可。
+
+> **已知缺口（交给 SIL-599 差分管线定案，本阶段不生效）**：`TaskBackend` 目前固定
+> `--format png`、只传 `tolerance.png`，而 `meta.toml` 接受 `tolerance.svg`、本文件
+> 也允许 `expected.svg`——所以 **SVG 的文本级容差现在永远不会生效**。定案前不要把
+> `tolerance.svg` 当判据：要么按 `expected.*` 后缀选格式，要么删掉 `tolerance.svg`
+> 并明确全部按像素比。
+>
+> 同一条线上还有来源问题：`ci = true` 的 case 目前仍允许 `source = local`（本仓库
+> 自录基线），等于让「基线自己录、自洽快照永远绿」的洞留在 CI 里。SIL-599 的硬要求
+> 是 `ci = true` 的 case 必须 `source` 非 `local`；闸门随 M0-9 一起打开。
 
 ## 现在有什么
 
