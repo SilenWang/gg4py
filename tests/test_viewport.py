@@ -240,6 +240,26 @@ def test_temporary_gpar_restores_the_previous_gpar() -> None:
             pass  # pragma: no cover - 进入上下文时就该报错
 
 
+def test_temporary_gpar_restores_after_an_exception() -> None:
+    """块内抛异常也要复原（退出路径只有 `finally`，没有别的收尾）。
+
+    R 那边 `set.gpar()` 的恢复挂在 `on.exit()` 上，异常同样会走到；这条钉住
+    gg4py 的等价保证，免得以后把 `finally` 改成正常退出的分支。
+    """
+    tree = ViewportTree(DEVICE)
+    tree.push(viewport("outer", gp=gpar(cex=0.5, col="red")))
+    before = tree.gpar
+    with pytest.raises(RuntimeError, match="boom"):
+        with tree.temporary_gpar(gpar(cex=0.5, fontsize=20)):
+            assert tree.gpar.cex == pytest.approx(0.25)
+            assert tree.gpar.fontsize == pytest.approx(20.0)
+            raise RuntimeError("boom")
+    assert tree.gpar == before
+    assert tree.gpar.cex == pytest.approx(0.5)
+    assert tree.gpar.col == "red"
+    assert tree.gpar.fontsize == pytest.approx(12.0)
+
+
 # ---------------------------------------------------------------------------
 # 旋转：数值断言（接受判据：与手算差 < 1e-9）
 # ---------------------------------------------------------------------------
@@ -729,7 +749,7 @@ def test_ir_clip_rect_is_page_space_pt() -> None:
     IR v0.2 的口径（`docs/notes/ir.md` §4）：M0-8 合成页面变换后在页面空间裁剪。
     反例：6×4 in 设备、视口 `x=y=0.25`、`w=h=0.5`、`clip="on"`，本地帧 216×144 pt。
     页面坐标是 `(108, 72, 324, 216)`；若按子坐标解释，交集只有
-    `(108..216, 72..144)`，**左边和下边会被误裁**。
+    `(108..216, 72..144)`，**右边和下边会被误裁**。
     """
     tree = ViewportTree(DEVICE)
     node = tree.push(
@@ -749,13 +769,60 @@ def test_ir_clip_rect_is_page_space_pt() -> None:
         abs=1e-9,
     )
 
-    # 子坐标解释会得到 (108, 72, 216, 144)：这个点在视口里，但会被它裁掉
+    # 页面框 ∩ 本地帧 = (108, 72, 216, 144)（上边、左边重合，右边、下边被切掉）：
+    # 这个点在视口里，但会被它裁掉
     def inside(box: tuple[float, float, float, float], x: float, y: float) -> bool:
         return box[0] <= x <= box[2] and box[1] <= y <= box[3]
 
     child_space = (108.0, 72.0, 216.0, 144.0)
     assert inside(rect, 300.0, 200.0)
     assert not inside(child_space, 300.0, 200.0)
+
+
+def test_ir_clip_rect_is_page_space_under_a_non_root_parent() -> None:
+    """父视口不是 `ROOT` 时，`clip_rect` 仍是**页面**坐标，不是父坐标。
+
+    上一个用例的父视口就是铺满整页的 `ROOT`，页面坐标与父坐标数值相同，
+    `ir_clip_rect()` 误返回父坐标也能绿。这里让父视口只占页面 2×1.5 in（6×4 in
+    设备：平移 1 in、npc 帧缩到 1/3 × 3/8），子视口再往里落一段，两个口径就分开了。
+
+    M0-8 的做法是“自下而上合成页面变换后在页面空间裁剪”（`docs/notes/ir.md` §4），
+    所以页面坐标还必须等于子 → 父 → 页面合成后框住的两个角。
+    """
+    tree = ViewportTree(DEVICE)  # 6×4 in = 432×288 pt
+    parent = tree.push(
+        viewport(
+            "panel",
+            x=unit(1.0, "inches"),
+            y=unit(1.0, "inches"),
+            width=unit(2.0, "inches"),
+            height=unit(1.5, "inches"),
+            just=("left", "bottom"),
+            clip="on",
+        )
+    )
+    node = tree.push(
+        viewport("clip", x=0.25, y=0.25, width=0.5, height=0.5, just=("left", "bottom"), clip="on")
+    )
+    # 父视口：设备英寸 x 1..3、y 1..2.5 → 页面 pt (72, 108, 216, 216)
+    assert parent.ir_clip_rect() == pytest.approx((72.0, 108.0, 216.0, 216.0), abs=1e-9)
+    # 子视口：父帧 1/3 × 3/8 缩放后落在 x 1.5..2.5、y 1.375..2.125 in
+    assert (node.width_in, node.height_in) == pytest.approx((1.0, 0.75), abs=1e-12)
+    rect = node.ir_clip_rect()
+    assert rect == pytest.approx((108.0, 135.0, 180.0, 189.0), abs=1e-9)
+    # 返回父坐标会得到 (108-72, 135-108, 180-72, 189-108)，框被挪到父视口左上角
+    assert rect != pytest.approx((36.0, 27.0, 108.0, 81.0), abs=1e-9)
+
+    # 与 M0-8 的消费方式一致：子 → 父 → 页面，两个对角点合成后就是页面框
+    to_parent = node.ir_transform()
+    to_page = node.parent.ir_transform()
+    corners = [
+        to_page.map(*to_parent.map(px, py))
+        for px, py in ((0.0, 0.0), (node.width_in * 72.0, node.height_in * 72.0))
+    ]
+    xs = sorted(corner[0] for corner in corners)
+    ys = sorted(corner[1] for corner in corners)
+    assert rect == pytest.approx((xs[0], ys[0], xs[1], ys[1]), abs=1e-9)
 
 
 # ---------------------------------------------------------------------------
