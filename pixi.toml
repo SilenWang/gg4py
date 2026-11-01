@@ -90,9 +90,13 @@ playwright = ">=1.64.1, <2"
 # r-base, so no extra package is needed for `grid::unit`.
 [feature.refs.dependencies]
 "r-base" = "4.5.*"
+r-gtable = "0.3.*"
 
 [feature.refs.tasks]
 "refs:units" = "Rscript tools/refs/units_ref.R"
+# gtable 的行列尺寸由 grid 的 calcViewportLayout() 分配，参考值靠设备测量
+# （draw + 视口读回），口径见 docs/notes/gtable.md。
+"refs:gtable" = "Rscript tools/refs/gtable_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"

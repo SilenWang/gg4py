@@ -12,3 +12,6 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # spike scripts deliberately mutate sys.path before importing local helpers
 "docs/spike/**/*.py" = ["E402"]
 "tests/*.py" = ["E402"]
+# gtable 的参数名照抄 R 的 `t` / `l` / `b` / `r`（top/left/bottom/right），
+# `l` 在这里就是「左」，不是易混的单字母变量。
+"src/ggcore/gtable.py" = ["E741"]

@@ -216,7 +216,8 @@ pixi run -e refs refs:units     # Rscript tools/refs/units_ref.R
 - **viewport（M0-4）**：`UnitContext(width_cm, height_cm, xscale, yscale)` 就是
   viewport 需要提供的那部分；换算用 `convert_x` / `convert_y` /
   `convert_width` / `convert_height`，或带轴参数的 `convert_unit`。
-- **gtable（M0-5）**：列/行宽用 `unit_pmax` / `unit_psum` 组合；剩余空间用
+- **gtable（M0-5）**：已落地为 `ggcore.gtable`（口径见 `docs/notes/gtable.md`）。
+  列/行宽用 `unit_pmax` / `unit_psum` 组合；剩余空间用
   `null_value(widths, i)` 逐列/逐行取权重，`is_pure_null(widths, i)` 判该列
   是否参与分配（见「`null`」一节）。
 - **grob / 设备（M0-6 / M0-8）**：`lines` / `char` 依赖 `fontsize * cex`；
