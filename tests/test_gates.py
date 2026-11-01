@@ -145,6 +145,35 @@ def test_import_gate_allows_alias_of_a_whitelisted_module(tmp_path: Path) -> Non
 @pytest.mark.parametrize(
     "source",
     [
+        # 自定义类实例的 `obj.__call__(...)`：和 `obj(...)` 是同一个目标，不是导入。
+        "class Renderer:\n"
+        "    def __call__(self, name):\n"
+        "        return name\n"
+        "\n"
+        "\n"
+        "obj = Renderer()\n"
+        "\n"
+        "\n"
+        "def load():\n"
+        "    return obj.__call__('pandas')\n",
+        # 白名单模块：剥掉 `.__call__` 之后仍是同一次导入，必须放行。
+        "import importlib\n\n\ndef load():\n    return importlib.import_module.__call__('numpy')\n",
+    ],
+)
+def test_import_gate_allows_call_wrappers_outside_the_blocked_set(
+    tmp_path: Path, source: str
+) -> None:
+    """放行侧：归约 `.__call__` 只能把目标还原成“同一个东西”，不能把非导入目标
+    也算成导入，也不能把白名单导入算成越界。拦截侧的 6 条反例保证不了这一侧。
+    """
+    root = plant(tmp_path, source)
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
         # operator.attrgetter 把属性名交给一个库里函数，AST 上看不到调用与名字的连线。
         "import importlib\nimport operator\n\n\ndef load():\n"
         "    return operator.attrgetter('import_module')(importlib)('pandas')\n",
