@@ -434,13 +434,18 @@ class _SkiaDevice(Device):
     def _draw_curve(self, node: Any) -> None:
         ends = node.bufs["ends"]
         is_open = bool(node.params["open"])
+        height = self.height_pt
         path = skia.Path()
         for x1, y1, x2, y2 in ends:
+            # `curve_points` 是 R 坐标（y 向上）的移植，`angle` 也按那个坐标系定义
+            # （`grid::curveGrob` 的拐角选哪一侧靠它）。IR 的 y 向下，所以先翻成
+            # R 坐标求值，再把折线翻回页面坐标；直接喂页面坐标会把整条曲线沿
+            # 弦线镜像（`docs/notes/device.md` §6）。
             sampled = curve_points(
                 float(x1),
-                float(y1),
+                height - float(y1),
                 float(x2),
-                float(y2),
+                height - float(y2),
                 curvature=float(node.params["curvature"]),
                 angle=float(node.params["angle"]),
                 ncp=int(node.params["ncp"]),
@@ -450,6 +455,7 @@ class _SkiaDevice(Device):
                 open=is_open,
                 page=self.size_pt,
             )
+            sampled = np.column_stack((sampled[:, 0], height - sampled[:, 1]))
             path.addPath(self._polyline_path_from(sampled, closed=not is_open))
         self._stroke_and_fill(node, path, fill=not is_open)
 
@@ -536,6 +542,11 @@ class SkiaSvgDevice(_SkiaDevice):
         self._stream = None
         return bytes(data.bytes())
 
+    def _abort(self) -> None:
+        # 画布析构时会把半成品写进 stream；这里先放开画布再放手 stream。
+        self.canvas = None
+        self._stream = None
+
 
 class SkiaPdfDevice(_SkiaDevice):
     """PDF 后端：文字走轮廓，产物没有 `/Font`（CJK 不依赖阅读端字体）。"""
@@ -553,9 +564,24 @@ class SkiaPdfDevice(_SkiaDevice):
     _emit_glyphs = SkiaSvgDevice._emit_glyphs
 
     def _finish(self) -> bytes:
-        self._document.close()
-        self.canvas = None
-        self._document = None
-        data = self._stream.detachAsData()
-        self._stream = None
-        return bytes(data.bytes())
+        document = self._document
+        try:
+            document.close()
+            return bytes(self._stream.detachAsData().bytes())
+        finally:
+            # 顺序要紧：文档必须在 stream 之前释放（skia 的 PDF 文档析构会碰 stream，
+            # 反了就段错误）。
+            self.canvas = None
+            self._document = None
+            self._stream = None
+
+    def _abort(self) -> None:
+        """异常路径：先把文档关掉，再按「文档 → stream」的顺序释放。"""
+        document = getattr(self, "_document", None)
+        try:
+            if document is not None:
+                document.close()
+        finally:
+            self.canvas = None
+            self._document = None
+            self._stream = None

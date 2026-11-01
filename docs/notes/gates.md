@@ -11,6 +11,16 @@
 
 `pixi run check` = `lint` + `test` + 四道门。
 
+### X5 只有一个含义：双端度量一致性
+
+X5 指的就是上表第 4 行（`gate:metrics`）：HarfBuzz 与 CanvasKit 对同一串标签
+量出来的 advance 必须一致（细节见本文末「双端度量一致性」）。
+
+**「新原语必须带 case」不是 X5。** 那条要求住在案例库：`docs/cases/` 的覆盖
+矩阵（M0-11 生成器）加 `pixi run cases:*` 的快照。两层都写清是因为父任务曾按
+「X5」指后者——名字一样、守的东西不一样，于是有人去 `check_metrics.py` 里找
+「新原语」的检查，找不到还以为门禁漏了。
+
 ## import 白名单
 
 允许的顶层模块：

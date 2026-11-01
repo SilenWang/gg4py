@@ -230,6 +230,11 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 临时 skia 设备（`tools/cases/grob_cases.py`）就是照这条实现的，所以 grob 快照
 现在连「写 IR」这一步一起兜住；M0-8 的 raster 设备直接接手同一份 `ir.Scene`。
 
+`to_ir_scene()` 同时是**单位口径的收口**：R 的 `gpar$lwd` 是 1/96 inch，IR 的
+`gpar.lwd` 是 pt，所以写 IR 时按 `72/96 = 0.75` 折算，`lty` 的段长（`lwd` 的
+倍数）跟着一起折（`ggcore.grobs._LWD_UNITS_TO_PT`，SIL-636）；其余几何字段在
+遍历期就已经是 pt 了。
+
 ### 7.3 `clip` 没有“空值”：零面积就是裁掉一切
 
 `Instruction.clip` 是**必填**字段（没有 `(0, 0, 0, 0)` 这种占位默认值）。设备只按

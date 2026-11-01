@@ -9,12 +9,17 @@
 - CLI `render --scene … --out x.{png,svg,pdf}` 三路都出图。
 
 像素级回归在 `tests/test_grob_cases.py`（16 张 grob 快照），曲线求值的 R 对拍在
-`tests/test_device_r_parity.py`。口径见 `docs/notes/device.md`。
+`tests/test_device_r_parity.py`（纯函数）与
+`tests/test_device_render_r_parity.py`（设备级真渲染）。口径见
+`docs/notes/device.md`。
 """
 
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -39,6 +44,7 @@ from ggskia.pch import SYMBOLS, character_pch
 
 WIDTH_PT = 6 * 72.0
 HEIGHT_PT = 4 * 72.0
+REPO = Path(__file__).resolve().parents[1]
 
 
 def smoke_scene(cjk_label: str = "中文标签 · M0-8") -> ir.Scene:
@@ -50,7 +56,7 @@ def smoke_scene(cjk_label: str = "中文标签 · M0-8") -> ir.Scene:
 
 
 def _load_tool() -> object:
-    path = Path(__file__).resolve().parents[1] / "tools" / "cases" / "device_cases.py"
+    path = REPO / "tools" / "cases" / "device_cases.py"
     spec = importlib.util.spec_from_file_location("device_cases_tool", path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -179,7 +185,11 @@ def test_device_for_picks_the_backend_from_the_suffix() -> None:
 @pytest.mark.parametrize("pch", sorted(SYMBOLS))
 def test_every_symbol_pch_draws_ink(pch: int) -> None:
     pixels = png_pixels(SkiaRasterDevice(100, 100).render(point_scene(pch)))
-    assert ink(pixels) > 20
+    if pch == 46:
+        # `'.'` 是 R 的 0.01 inch 实心方块，不吃 `size`：72 dpi 下墨迹只有几个像素。
+        assert ink(pixels) >= 1
+    else:
+        assert ink(pixels) > 20
 
 
 def test_character_pch_renders_the_character() -> None:
@@ -277,3 +287,36 @@ def test_cli_dpi_flag_wins(tmp_path: Path) -> None:
     assert render_cli.main(["--scene", str(source), "--out", str(target), "--dpi", "300"]) == 0
     pixels = png_pixels(target.read_bytes())
     assert pixels.shape[:2] == (round(HEIGHT_PT / 72 * 300), round(WIDTH_PT / 72 * 300))
+
+
+def test_bad_raster_blob_fails_cleanly_in_every_backend(tmp_path: Path) -> None:
+    """坏 blob 必须干净失败：三路都 exit 2，PDF 路线不能段错误（SIL-636）。
+
+    `demo_scene()` 的 raster blob 是 1024 B 占位、不是真 PNG。skia 的 PDF 文档
+    如果晚于它的 stream 析构会直接段错误，而那只在进程退出时炸——所以这里跑
+    子进程，断言返回码是 2 而不是 -11 / 139。
+    """
+    source = tmp_path / "demo.ggir.cbor"
+    source.write_bytes(ir.encode(ir.demo_scene()))
+    environment = dict(os.environ, PYTHONPATH=str(REPO / "src"))
+    for suffix in ("png", "svg", "pdf"):
+        target = tmp_path / f"bad.{suffix}"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ggskia.cli.render",
+                "--scene",
+                str(source),
+                "--out",
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+            env=environment,
+            timeout=300,
+            check=False,
+        )
+        assert result.returncode == 2, (suffix, result.returncode, result.stderr)
+        assert "位图解码失败" in result.stderr
+        assert not target.exists()

@@ -10,7 +10,9 @@ ggplot2 自己不做设备。
   `curves.py` 曲线求值）
 - CLI：`src/ggskia/cli/render.py`，任务名 `pixi run render`
 - 用例：`tests/test_device.py`（三路冒烟 + 能力清单）、
-  `tests/test_device_r_parity.py`（曲线对拍）、`tests/test_grob_cases.py`（16 张快照）
+  `tests/test_device_r_parity.py`（曲线纯函数对拍）、
+  `tests/test_device_render_r_parity.py`（设备级真渲染对拍）、
+  `tests/test_grob_cases.py`（16 张快照）
 - 冒烟图：`pixi run cases:device` → `docs/cases/device-smoke/current/`
 
 ## 1. 分层：协议在 `ggcore`，后端在包外
@@ -42,6 +44,11 @@ device.render(scene)  # 上面三步的简写
 1. **单位统一 pt**：页面尺寸、几何、线宽、字号、`lty` 段长都是 pt。`dpi` 只决定
    栅格化的像素换算（`size_px = round(pt / 72 * dpi)`），不改变几何
    （`docs/notes/ir.md` §1）。
+
+   R 的 `gpar$lwd` **不是 pt**，是 1/96 inch：`grobs → IR` 那一步按
+   `72/96 = 0.75` 折算（`ggcore.grobs._LWD_UNITS_TO_PT`），`lty` 的段长是
+   `lwd` 的倍数，跟着一起折。不折的话所有描边粗 4/3 倍——`lwd = 6` @150 ppi
+   实测 R 是 10 px 墨、设备会是 12 px（SIL-636）。
 2. **页面尺寸是显式参数**：`draw_scene` 发现 `scene.size != device.size_pt` 直接
    报 `DeviceError`，不替场景改纸、不裁掉多出来的部分。
 3. **顺序与状态**：未 `open` 就 `draw_scene` / 重复 `open` / `close` 两次都报
@@ -89,6 +96,7 @@ IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle`
      shaping，连写、重排、合字都在那一步发生；
    - 笔位统一用 skia 的 `Font.getXPos()`，也就是 `drawString()` 自己用的那套
      hinted 推进。三个后端于是落在同一组位置上，栅格也能逐像素复现旧基线。
+   - **标签原样落字**：不认 `\n`（也没有 `check.overlap`），换行见 §9。
 
 **为什么简单文字不绕 HarfBuzz**：Noto Sans CJK 是可变字体，HarfBuzz 在
 `"r0"` 这种串里会把 '0' 换成另一个字形实例（63153），而 skia 的 `drawString()`
@@ -115,6 +123,12 @@ IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle`
 `points.size` 当字号落字（R 用的是 gp 的 fontsize，IR 的 `points` 没有这个字段），
 26..31 与 >127 按 R 的口径只警告、不画（`DeviceWarning`）。
 
+`pch = 46`（`'.'`）是 R 的特判（`engine.c::GESymbol()` 的 `case 46`）：画 **0.01 inch
+的实心方块**，不是 `.` 的字形。设备照做（`pch.DOT_HALF_PT`，不吃 `points.size`）。
+已知偏差：R 那个方块按 `gpar$cex` 缩放，IR 的 `points` 节点没有 `cex` 字段，所以
+只对 `cex = 1`（ggplot2 的缺省）逐像素一致；`cex ≠ 1` 时设备仍画 0.01 inch，
+要精确对齐得等 IR 带上 `cex`（M1）。
+
 **旧基线为什么改了一处**：临时设备用 `size / 2` 当半径（直径 = size），比 R 大
 1/3。M0-8 按 R 的 `RADIUS = 0.375`，`docs/cases/grob-points/baseline` 因此重录。
 
@@ -133,12 +147,42 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
   中间点用 `shape` / `squareShape`（IR 没有 `squareShape`，按 R 缺省 1）。
 
 对拍：`pixi run -e refs refs:device` 生成
-`tests/fixtures/device_r_reference.json`（7 + 8 + 1 条用例），
+`tests/fixtures/device_r_reference.json`（8 条 xspline + 9 条 curve），
 `tests/test_device_r_parity.py` **逐点**比对（采样密度也比，因为步长公式用的是
 同一份页面尺寸），最大差 < 1e-12 pt。
 
+### 坐标系：`curve` 必须先翻到 R 坐标，`xspline` 不用
+
+`curve_points()` 的 `angle` 是 R 坐标系（y 向上）里的角度，`grid::curveGrob`
+的拐角选哪一侧就靠它；IR 的页面坐标是 y 向下。所以 `_draw_curve` 先按页面高度
+翻成 `y' = H - y` 求值，再把折线翻回 `H - y'`。直喂页面坐标会把整条曲线**沿弦线
+镜像**：`square = TRUE, angle = 90` 的拐角从 `y2` 那一侧跑到 `y1`（SIL-636 的
+阻塞 1，渲染 IoU 0.008–0.015）。
+
+`xspline` 没有角度参数，纯控制点混合在 y 翻转下不变，所以 `_draw_xspline` 直接
+喂页面坐标——`curves.py` 的「纯几何」说法对 xspline 成立，对 curve 不成立。
+
+### 设备级对拍（`refs:device-render`）
+
+纯函数对拍挡不住「函数对、集成错」：那两条 bug（镜像、`lwd` 单位）它都是绿的。
+所以另有一套**真渲染**的夹具：
+
+- `tools/refs/device_render_ref.R` 在 4×3 in / 150 ppi 的页面上用 R 真画一遍，
+  产物是 `tests/fixtures/device_render_r/<id>.png` 与 `index.json`（每条折线的
+  **设备坐标**采样点，pt、y 向下）；
+- `tests/test_device_render_r_parity.py` 用设备渲染同一张图：PNG 比墨迹 IoU
+  （阈值 0.9，实测 0.98–1.00），SVG 从 `d` 里解析出折线与 R 的设备坐标折线逐点
+  比（< 0.01 pt），拐角在哪一侧单列一条断言；
+- 同一个门里还钉住 `lwd = 6` @150 ppi 的墨高（R 与设备都 10 px）与 `pch = 46`
+  的 0.01 inch 方块。
+
+把 `_draw_curve` 的翻转回退，这套门会红 5 条（PNG IoU 掉到 0.011/0.018、
+折线、拐角侧各一条）。
+
 两条旧基线因此重录（临时设备是 Catmull-Rom 近似 + 二次曲线近似）：
 `docs/cases/grob-xspline/baseline`、`docs/cases/grob-curve/baseline`。
+`lwd` 折算又把 16 张 `docs/cases/grob-*/baseline` 全部重录了一遍：有描边的 13 张
+像素变化，`grob-text` / `grob-text-rot` / `grob-raster` 不含描边、逐字节不变。
 
 ## 7. 裁剪与变换：照 IR 的消费约束
 
@@ -161,6 +205,9 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
 | CJK 在 PDF 与 SVG 里都是 path | `::test_cjk_text_becomes_outlines_in_svg_and_pdf`（换一句标签，产物必须不同） |
 | 三路同一张手搓图（rect+line+text+CJK+旋转视口文字） | `pixi run cases:device`；PNG 进 PR |
 | 3 张已有 grob case 与快照像素一致 | `pixi run cases:grob --check`（16 张全绿；`grob-text` / `grob-text-rot` / `grob-rect` 逐字节一致） |
+| 曲线与 R 4.5.3 的渲染一致（SIL-636） | `tests/test_device_render_r_parity.py`：PNG IoU ≥ 0.9、SVG 折线逐点 < 0.01 pt、拐角在 `y2` 侧 |
+| `lwd` 与 R 同宽（SIL-636） | `::test_stroke_width_matches_r_at_150_ppi`（`lwd = 6` → 10 px） |
+| 坏 blob 干净失败、PDF 不段错误（SIL-636） | `tests/test_device.py::test_bad_raster_blob_fails_cleanly_in_every_backend`（子进程，返回码 2） |
 
 ## 9. 刻意不做 / 已知限制
 
@@ -169,6 +216,7 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
 | 粗体 / 斜体 | 字体文件 + 合成 | key 后缀保留，落到同一份常规字面（M1） |
 | 彩色 emoji | CBDT 位图字形 | 矢量后端没有轮廓 → 该字形为空（栅格正常，M1 走位图回退） |
 | 字符间 kerning | HarfBuzz / Cairo | 简单文字用 hinted 推进，不做 kerning（< 0.5%，见 M0-7 账本） |
+| 标签里的 `\n` | `grid.text` 断行 | **不换行**：`\n` 当作普通码点落字，字体没有它的字形就画 `.notdef` 豆腐块（实测 `"a\nb"` 墨迹 194 px，`"ab"` 61 px）。ggplot2 标签里 `\n` 很常见，M1 要在 `text` 进设备前切行（IR 需要带行距/对齐意图） |
 | 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
 | 渐变 / 图案填充 | grid 的 gpar 支持 | IR 的 gpar 只有 RGBA |
 | 透明背景 | 设备相关 | 页面固定白底 |
@@ -182,6 +230,7 @@ pixi run cases:device                           # 三路冒烟图 → docs/cases
 pixi run cases:device --check                   # 只验验收条目
 pixi run cases:grob --check                     # 16 张 grob 快照
 pixi run -e refs refs:device                    # 曲线对拍夹具（需要 R 环境）
+pixi run -e refs refs:device-render             # 设备级渲染夹具（R 真画 PNG + 设备坐标折线）
 pixi run render --scene <file.ggir.cbor> --out x.png
 pixi run render --scene <file.ggir.cbor> --out x.svg
 pixi run render --scene <file.ggir.cbor> --out x.pdf

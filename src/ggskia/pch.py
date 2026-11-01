@@ -16,6 +16,7 @@ IR 的 `points` 节点只带 `pch` 与 `size`（pt），符号画多大、怎么
 | 15..18 | 实心方 / 圆 / 上三角 / 菱形 | `col` 填充 |
 | 19 / 20 | 实心圆 / 小实心圆 | `col` 填充 + `col` 描边 |
 | 21..25 | 圆 / 方 / 菱形 / 上三角 / 下三角 | `fill` 填充 + `col` 描边 |
+| 46 | `'.'` 的 R 特判：0.01 inch 实心方 | `col` 填充（不吃 `size`） |
 | 32..127、负数 | 字符（负数取码点 `-pch`） | 文字，见 `ggskia.text` |
 
 尺寸口径：R 的 `GESymbol(x, y, pch, size, …)` 里符号半径是 `RADIUS * size`
@@ -47,7 +48,11 @@ TRC1 = 1.34677368708859836060
 TRC2 = 0.77756015077810708036
 
 #: 有几何定义的编号（其余按字符处理或什么也不画）。
-SYMBOLS = frozenset(range(26))
+SYMBOLS = frozenset((*range(26), 46))
+
+#: `pch = 46`（`'.'`）的半边长（pt）：R 画的是 0.01 inch 的实心方块，与 `size`
+#: 无关（`size` 当 cex 用的那一层见 `docs/notes/device.md` §5 的已知偏差）。
+DOT_HALF_PT = 0.01 * 72.0 / 2.0
 
 
 @dataclass(frozen=True)
@@ -67,6 +72,10 @@ def character_pch(pch: int) -> str | None:
             return chr(-pch)
         except ValueError:
             return None
+    if pch == 46:
+        # `'.'` 在 R 里不是字形：`GESymbol()` 把它画成 0.01 inch 的实心方块，
+        # 由 `symbol()` 处理（`docs/notes/device.md` §5）。
+        return None
     if 32 <= pch <= 127:
         return chr(pch)
     return None
@@ -199,6 +208,9 @@ def symbol(pch: int, size: float) -> Symbol | None:
         return Symbol(up_triangle, fill_gpar=True)
     if pch == 25:  # 下三角
         return Symbol(down_triangle, fill_gpar=True)
+    if pch == 46:  # '.'：R 的 0.01 inch 实心方块（不吃 `size`）
+        d = DOT_HALF_PT
+        return Symbol(_polygon([(-d, -d), (d, -d), (d, d), (-d, d)]), stroke=False, fill_col=True)
     return None
 
 

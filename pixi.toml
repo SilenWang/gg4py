@@ -108,6 +108,8 @@ r-gtable = "0.3.*"
 "refs:viewport" = "Rscript tools/refs/viewport_ref.R"
 # 设备侧曲线求值（M0-8）：xspline / grid::curve 的采样点对拍
 "refs:device" = "Rscript tools/refs/device_ref.R"
+# 设备级渲染对拍（SIL-636）：同一页面上 R 真画一遍，PNG 比墨迹、折线比设备坐标
+"refs:device-render" = "Rscript tools/refs/device_render_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"

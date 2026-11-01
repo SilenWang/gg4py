@@ -66,7 +66,12 @@ class Device(ABC):
     def open(self) -> None:
         if self._state != "new":
             raise DeviceError(f"{type(self).__name__} 已经 open 过（state={self._state}）")
-        self._begin()
+        try:
+            self._begin()
+        except BaseException:
+            self._abort()
+            self._state = "aborted"
+            raise
         self._state = "open"
 
     def draw_scene(self, scene: Scene) -> None:
@@ -79,7 +84,14 @@ class Device(ABC):
                 f"页面尺寸不符：设备 {self.size_pt} pt，场景 {tuple(scene.size)} pt"
                 "（页面尺寸是显式参数，设备不替场景改纸）"
             )
-        self._draw_scene(scene)
+        try:
+            self._draw_scene(scene)
+        except BaseException:
+            # 画到一半失败（坏 blob、后端报错）也要把后端对象按安全顺序释放：
+            # skia 的 PDF 文档晚于它的 stream 析构会段错误，所以不能只靠 GC。
+            self._abort()
+            self._state = "aborted"
+            raise
 
     def close(self) -> bytes:
         if self._state != "open":
@@ -102,3 +114,7 @@ class Device(ABC):
 
     @abstractmethod
     def _finish(self) -> bytes: ...
+
+    def _abort(self) -> None:
+        """`open` / `draw_scene` 失败后的收尾钩子（缺省什么都不用做）。"""
+        return None

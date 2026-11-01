@@ -36,6 +36,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run -e refs refs:gtable` | 用 R 4.5.3 + gtable 0.3.6 重新生成 gtable 对拍夹具 |
 | `pixi run -e refs refs:viewport` | 用 R 4.5.3 重新生成 viewport 对拍夹具 |
 | `pixi run -e refs refs:device` | 用 R 4.5.3 重新生成 xspline / curve 对拍夹具 |
+| `pixi run -e refs refs:device-render` | 用 R 4.5.3 重新生成设备级渲染对拍夹具（PNG + 设备坐标折线） |
 
 ## 环境
 

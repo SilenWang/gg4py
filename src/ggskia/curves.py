@@ -17,8 +17,10 @@ IR 把曲线留成**语义参数**（`shape` / `curvature` / `angle` / `ncp` / `
 `tests/test_device_r_parity.py` 逐点比对（采样密度也一致，因为步长公式用的是
 同一份页面尺寸）。
 
-坐标系：纯几何，y 朝上朝下都一样——整页翻到 y 向下时曲线跟着镜像，正是设备
-要的形状。
+坐标系：`xspline_points()` 是纯几何（控制点的线性混合），y 朝上朝下都成立；
+**`curve_points()` 不是**——`angle` 是 R 坐标系（y 向上）里的角度，
+`grid::curveGrob` 靠它选拐角在哪一侧。设备画 `curve` 时必须先按页面高度翻成
+R 坐标求值、再把折线翻回页面坐标（`ggskia.skia._draw_curve`，SIL-636）。
 """
 
 from __future__ import annotations

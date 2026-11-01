@@ -13,10 +13,12 @@ IR 的 `text` 只带一个已解析的字体 key、字号、锚点和一个**最
    同一份规则（`docs/spike/e2_metrics/report.md` 的 132/200 条就是没切 run
    造成的），每一个码点选字体栈里第一个 cmap 覆盖它的字面。一格里混排
    「中文 A」时，中文与拉丁各走各的字面。
-3. **排版**：字形 id 来自 HarfBuzz（与度量端同一个引擎，连字/上下文替换都在
-   这一步发生）；笔位来自 skia 的 `Font.getXPos()`，也就是 `drawString()`
-   自己用的那套 hinted 推进——**栅格设备于是能逐像素复现旧基线**，三个后端
-   也落在同一组位置上。
+3. **排版**：字形 id 按书写系统分两路——简单文字走 skia 的
+   `Font.textToGlyphs()`（cmap 直映，与 `drawString()` 同一个映射），需要
+   上下文 shaping 的文字才交给 HarfBuzz（连字、上下文替换、重排都在那一步
+   发生，见 `docs/notes/device.md` §4 与 `is_supported()`）。两条路的笔位统一
+   来自 skia 的 `Font.getXPos()`，也就是 `drawString()` 自己用的那套 hinted
+   推进——**栅格设备于是能逐像素复现旧基线**，三个后端也落在同一组位置上。
 
 `shortcut:` 推进用 skia 的 hinted `getXPos()`（整 pt 量化，长标签累计误差
 < 1pt）；要线性度量（PDF 大字号更准）时换 `setLinearMetrics(True)` 并同步重录
