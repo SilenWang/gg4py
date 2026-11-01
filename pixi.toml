@@ -1,0 +1,36 @@
+[workspace]
+channels = ["conda-forge"]
+name = "gg4py"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+test = "pytest -q"
+lint = "ruff check . && ruff format --check ."
+
+# M-1 feasibility gate (docs/spike). Every spike step is reproducible via pixi.
+"spike:corpus" = "python docs/spike/corpus/generate_corpus.py"
+"spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
+"spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
+"spike:e3" = "python docs/spike/e3_export/run_e3.py"
+
+[dependencies]
+python = "3.12.*"
+nodejs = "22.*"
+font-ttf-dejavu = ">=2.37,<3"
+font-ttf-noto = ">=20201206,<20201207"
+font-ttf-noto-cjk = ">=2.4,<3"
+font-ttf-noto-emoji = ">=2.34,<3"
+libegl = ">=1.7.0,<2"
+libglvnd = ">=1.7.0,<2"
+libopengl = ">=1.7.0,<2"
+libglx = ">=1.7.0,<2"
+libgl = ">=1.7.0,<2"
+fontconfig = ">=2.18.3,<3"
+
+[pypi-dependencies]
+uharfbuzz = ">=0.57.0, <0.58"
+numpy = ">=2.5.4, <3"
+pytest = ">=9.2.0, <10"
+ruff = ">=0.17.3, <0.18"
+skia-python = ">=144.1, <145"

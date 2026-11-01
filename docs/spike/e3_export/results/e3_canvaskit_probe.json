@@ -1,0 +1,26 @@
+{
+ "engine": "canvaskit-wasm",
+ "version": "0.42.0",
+ "node": "v22.23.4",
+ "export_count": 159,
+ "vector_or_document_exports": [
+  "Vector"
+ ],
+ "surface_factories": [
+  "Canvas",
+  "MakeCanvas",
+  "MakeCanvasSurface",
+  "MakeImageFromCanvasImageSource",
+  "MakeOnScreenGLSurface",
+  "MakeRasterDirectSurface",
+  "MakeSWCanvasSurface",
+  "MakeSurface",
+  "MakeWebGLCanvasSurface",
+  "Surface",
+  "_MakeOnScreenGLSurface"
+ ],
+ "makes_pdf": false,
+ "has_svg_canvas": false,
+ "makes_png": true,
+ "png_bytes": 155
+}

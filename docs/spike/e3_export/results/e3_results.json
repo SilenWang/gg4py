@@ -1,0 +1,67 @@
+{
+ "experiment": "E3 export gap: CanvasKit cannot write PDF/SVG",
+ "passed": true,
+ "browser_side": {
+  "canvaskit": {
+   "engine": "canvaskit-wasm",
+   "version": "0.42.0",
+   "node": "v22.23.4",
+   "export_count": 159,
+   "vector_or_document_exports": [
+    "Vector"
+   ],
+   "surface_factories": [
+    "Canvas",
+    "MakeCanvas",
+    "MakeCanvasSurface",
+    "MakeImageFromCanvasImageSource",
+    "MakeOnScreenGLSurface",
+    "MakeRasterDirectSurface",
+    "MakeSWCanvasSurface",
+    "MakeSurface",
+    "MakeWebGLCanvasSurface",
+    "Surface",
+    "_MakeOnScreenGLSurface"
+   ],
+   "makes_pdf": false,
+   "has_svg_canvas": false,
+   "makes_png": true,
+   "png_bytes": 155
+  },
+  "verdict": "raster only (PNG); no PDF document, no SVG canvas"
+ },
+ "desktop_service_side": {
+  "skia_python": "144.1",
+  "pdf": {
+   "file": "results/artifacts/sample.pdf",
+   "bytes": 4735,
+   "header_ok": true,
+   "pages": 1,
+   "needs_font_resource": false,
+   "has_vector_paths": false
+  },
+  "svg": {
+   "file": "results/artifacts/sample.svg",
+   "bytes": 5377,
+   "parses_as_xml": true,
+   "root_tag": "svg",
+   "has_viewbox": false,
+   "path_elements": 2
+  },
+  "cjk_outlines": {
+   "labels": "月份 增长 42%",
+   "glyphs": 9,
+   "path_empty": false,
+   "bbox_w": 6279.0,
+   "bbox_h": 904.0,
+   "advance_px_at_16": 101.792
+  },
+  "verdict": "skia-python writes PDF and SVG; text travels as HarfBuzz outlines"
+ },
+ "conclusion": {
+  "svg": "TS serializer from IR (zero wasm), same IR -> DOM <svg>",
+  "pdf": "desktop / service only, skia.PDF.MakeDocument + HarfBuzz outlines",
+  "png": "browser via CanvasKit raster surface; desktop via skia-python",
+  "font_dependency": "none in output: text is geometry, not a font reference"
+ }
+}
