@@ -6,3 +6,5 @@ __pycache__/
 .pytest_cache/
 # generated network assets for the E1 spike (recreated by `pixi run spike:assets`)
 docs/spike/e1_coldstart/static/
+# Playwright browser downloads for the E1 spike (read-only $HOME in the runtime)
+.playwright-browsers/

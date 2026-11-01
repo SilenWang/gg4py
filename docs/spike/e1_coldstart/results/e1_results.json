@@ -1,0 +1,5507 @@
+{
+ "experiment": "E1 Pyodide cold start in a worker, throttled 4G/3G",
+ "generated_at": "2026-11-01T11:06:46+00:00",
+ "gate": {
+  "fast4g_ms": 3000,
+  "fast3g_ms": 8000
+ },
+ "profiles": {
+  "fast4g": {
+   "label": "Fast 4G",
+   "down_mbps": 9.0,
+   "up_mbps": 1.5,
+   "latency_ms": 170,
+   "gate_ms": 3000,
+   "gated": true,
+   "cdp": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  "fast3g": {
+   "label": "Fast 3G",
+   "down_mbps": 1.6,
+   "up_mbps": 0.75,
+   "latency_ms": 562,
+   "gate_ms": 8000,
+   "gated": true,
+   "cdp": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  "slow3g": {
+   "label": "Slow 3G (stress reference, not judged)",
+   "down_mbps": 0.4,
+   "up_mbps": 0.4,
+   "latency_ms": 2000,
+   "gate_ms": null,
+   "gated": false,
+   "cdp": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  }
+ },
+ "variants": {
+  "baseline": "numpy loaded, drawn with numpy",
+  "no_numpy": "no wheel loaded, same workload in pure Python",
+  "with_pandas": "numpy + pandas loaded (pandas never used for the plot)"
+ },
+ "environment": {
+  "browser": "chromium 156.0.8078.4 (playwright, headless)",
+  "playwright_python": "1.64.1",
+  "pyodide": "314.0.7",
+  "python_in_pyodide": "3.14.2",
+  "numpy": "2.4.6",
+  "node": "v22.23.4",
+  "cpu_count": 16,
+  "platform": "Linux-5.15.0-198-generic-x86_64-with-glibc2.39",
+  "viewport": "1280x800 @1x",
+  "server": "python http.server (HTTP/1.1, gzip, Cache-Control: max-age=3600)",
+  "throttling": "CDP Network.emulateNetworkConditions; Network.setCacheDisabled",
+  "timing": "performance.now() from navigation start to the 2nd rAF after drawing"
+ },
+ "assets": {
+  "files": [
+   {
+    "file": "manifest.json",
+    "disk_bytes": 2665,
+    "gzip_bytes": 1024,
+    "served_encoding": "gzip",
+    "wire_bytes": 1024
+   },
+   {
+    "file": "pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+    "disk_bytes": 2960568,
+    "gzip_bytes": 2924358,
+    "served_encoding": null,
+    "wire_bytes": 2960568
+   },
+   {
+    "file": "pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+    "disk_bytes": 4177749,
+    "gzip_bytes": 4141961,
+    "served_encoding": null,
+    "wire_bytes": 4177749
+   },
+   {
+    "file": "pyodide/pyodide-lock.json",
+    "disk_bytes": 119077,
+    "gzip_bytes": 26595,
+    "served_encoding": "gzip",
+    "wire_bytes": 26595
+   },
+   {
+    "file": "pyodide/pyodide.asm.mjs",
+    "disk_bytes": 1250344,
+    "gzip_bytes": 260107,
+    "served_encoding": "gzip",
+    "wire_bytes": 260107
+   },
+   {
+    "file": "pyodide/pyodide.asm.wasm",
+    "disk_bytes": 9598218,
+    "gzip_bytes": 3546122,
+    "served_encoding": "gzip",
+    "wire_bytes": 3546122
+   },
+   {
+    "file": "pyodide/pyodide.js",
+    "disk_bytes": 18912,
+    "gzip_bytes": 7466,
+    "served_encoding": "gzip",
+    "wire_bytes": 7466
+   },
+   {
+    "file": "pyodide/pyodide.mjs",
+    "disk_bytes": 17931,
+    "gzip_bytes": 7156,
+    "served_encoding": "gzip",
+    "wire_bytes": 7156
+   },
+   {
+    "file": "pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+    "disk_bytes": 229892,
+    "gzip_bytes": 228238,
+    "served_encoding": null,
+    "wire_bytes": 229892
+   },
+   {
+    "file": "pyodide/python_stdlib.zip",
+    "disk_bytes": 2545637,
+    "gzip_bytes": 2503167,
+    "served_encoding": null,
+    "wire_bytes": 2545637
+   },
+   {
+    "file": "pyodide/pytz-2026.1.post1-py2.py3-none-any.whl",
+    "disk_bytes": 510489,
+    "gzip_bytes": 377648,
+    "served_encoding": null,
+    "wire_bytes": 510489
+   },
+   {
+    "file": "pyodide/six-1.17.0-py2.py3-none-any.whl",
+    "disk_bytes": 11050,
+    "gzip_bytes": 10640,
+    "served_encoding": null,
+    "wire_bytes": 11050
+   }
+  ],
+  "total_disk_bytes": 21442532,
+  "total_wire_bytes": 14283855,
+  "note": "total_*_bytes cover every file the server can serve, i.e. all variants together; what one cold start actually downloads is per-run `bytes.server_wire` (baseline 9.35 MB, no_numpy 6.39 MB, +pandas 14.28 MB).",
+  "wire_bytes_by_group": {
+   "wheels/pandas": 4177749,
+   "pyodide.asm.wasm": 3546122,
+   "wheels/numpy": 2960568,
+   "python_stdlib.zip": 2545637,
+   "wheels/other": 751431,
+   "js/json/html glue": 302348
+  }
+ },
+ "plan": {
+  "cold_runs_per_profile": 5,
+  "warm_runs_per_profile": 5,
+  "sensitivity_runs": 3,
+  "sensitivity_profiles": [
+   "fast4g",
+   "fast3g"
+  ]
+ },
+ "summary": {
+  "fast4g": {
+   "baseline": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 11159.600000023842,
+      "mean": 11146.260000014305,
+      "p90": 11181.300000011921,
+      "min": 11087.200000047684,
+      "max": 11181.300000011921
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 182.9000000357628,
+      "worker_module_start": 542.4000487923622,
+      "wasm_download": 5845.10009765625,
+      "wasm_response_end": 6390.699951171875,
+      "pyodide_init": 7160.5,
+      "pyodide_ready": 7700.39990234375,
+      "packages_load": 3089.600000023842,
+      "packages_ready": 10790.099853515625,
+      "compute": 335.4000000357628,
+      "compute_done": 11130,
+      "worker_done": 11130.300048828125,
+      "points_received": 11130.400000035763,
+      "draw": 20.30000001192093,
+      "paint_after_draw": 8.5,
+      "first_paint": 11159.600000023842
+     },
+     "bytes": {
+      "server_wire_median": 9352096,
+      "total_transfer_size_median": 9354496,
+      "requests_median": 8
+     },
+     "gate_ms": 3000,
+     "gated": true,
+     "failed_runs": 0
+    },
+    "warm": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 2206.600000023842,
+      "mean": 2217.3200000166894,
+      "p90": 2274.100000023842,
+      "min": 2171.5,
+      "max": 2274.100000023842
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 187.9000000357628,
+      "worker_module_start": 207.900146484375,
+      "wasm_download": 106.60009765625,
+      "wasm_response_end": 322.900146484375,
+      "pyodide_init": 1371.5,
+      "pyodide_ready": 1586.5,
+      "packages_load": 249.80000001192093,
+      "packages_ready": 1843,
+      "compute": 339.5,
+      "compute_done": 2182.699951171875,
+      "worker_done": 2183.000048816204,
+      "points_received": 2183.300000011921,
+      "draw": 1.800000011920929,
+      "paint_after_draw": 26.69999998807907,
+      "first_paint": 2206.600000023842
+     },
+     "bytes": {
+      "server_wire_median": 3546,
+      "total_transfer_size_median": 9352396,
+      "requests_median": 1
+     },
+     "gate_ms": 3000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   },
+   "no_numpy": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 3,
+      "median": 7762.300000011921,
+      "mean": 7760.633333325386,
+      "p90": 7772.899999976158,
+      "min": 7746.699999988079,
+      "max": 7772.899999976158
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 181.39999997615814,
+      "worker_module_start": 539.4998534917831,
+      "wasm_download": 5844.39990234375,
+      "wasm_response_end": 6385.999755859375,
+      "pyodide_init": 7149.800000011921,
+      "pyodide_ready": 7693.400146484375,
+      "compute": 38.19999998807907,
+      "compute_done": 7732.2001953125,
+      "worker_done": 7732.500146508217,
+      "points_received": 7732.699999988079,
+      "draw": 22.19999998807907,
+      "paint_after_draw": 7.899999976158142,
+      "first_paint": 7762.300000011921
+     },
+     "bytes": {
+      "server_wire_median": 6391528,
+      "total_transfer_size_median": 6393628,
+      "requests_median": 7
+     },
+     "gate_ms": 3000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   },
+   "with_pandas": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 3,
+      "median": 15528.899999976158,
+      "mean": 15536.033333321413,
+      "p90": 15551.099999964237,
+      "min": 15528.100000023842,
+      "max": 15551.099999964237
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 182.10000002384186,
+      "worker_module_start": 541.3999999761581,
+      "wasm_download": 5844.300048828125,
+      "wasm_response_end": 6388.30029296875,
+      "pyodide_init": 7137.799999952316,
+      "pyodide_ready": 7680.60009765625,
+      "packages_load": 7489,
+      "packages_ready": 15164.5,
+      "compute": 337.5,
+      "compute_done": 15502.10009765625,
+      "worker_done": 15502.399999976158,
+      "points_received": 15502.699999988079,
+      "draw": 20.599999964237213,
+      "paint_after_draw": 5.5,
+      "first_paint": 15528.899999976158
+     },
+     "bytes": {
+      "server_wire_median": 14281276,
+      "total_transfer_size_median": 14284876,
+      "requests_median": 12
+     },
+     "gate_ms": 3000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   }
+  },
+  "fast3g": {
+   "baseline": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 51550.5,
+      "mean": 51551.9,
+      "p90": 51568.30000001192,
+      "min": 51542,
+      "max": 51568.30000001192
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 587.4000000357628,
+      "worker_module_start": 1765.2999999523163,
+      "wasm_download": 32469.800048828125,
+      "wasm_response_end": 34237,
+      "pyodide_init": 33760.700000047684,
+      "pyodide_ready": 35525.7998046875,
+      "packages_load": 15659.599999964237,
+      "packages_ready": 51184.499755859375,
+      "compute": 336.5999999642372,
+      "compute_done": 51523.19970703125,
+      "worker_done": 51523.49980467558,
+      "points_received": 51523.69999998808,
+      "draw": 21.0,
+      "paint_after_draw": 5.600000023841858,
+      "first_paint": 51550.5
+     },
+     "bytes": {
+      "server_wire_median": 9352096,
+      "total_transfer_size_median": 9354496,
+      "requests_median": 8
+     },
+     "gate_ms": 8000,
+     "gated": true,
+     "failed_runs": 0
+    },
+    "warm": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 2606.699999988079,
+      "mean": 2604.039999985695,
+      "p90": 2613.5,
+      "min": 2590.2999999523163,
+      "max": 2613.5
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 587.6000000238419,
+      "worker_module_start": 606.699951171875,
+      "wasm_download": 107.10009765625,
+      "wasm_response_end": 722.499755859375,
+      "pyodide_init": 1377.8999999761581,
+      "pyodide_ready": 1993.800048828125,
+      "packages_load": 244.0999999642372,
+      "packages_ready": 2236.89990234375,
+      "compute": 341.19999998807907,
+      "compute_done": 2578.199951171875,
+      "worker_done": 2578.399951159954,
+      "points_received": 2578.599999964237,
+      "draw": 1.800000011920929,
+      "paint_after_draw": 24.399999976158142,
+      "first_paint": 2606.699999988079
+     },
+     "bytes": {
+      "server_wire_median": 3546,
+      "total_transfer_size_median": 9352396,
+      "requests_median": 1
+     },
+     "gate_ms": 8000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   },
+   "no_numpy": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 3,
+      "median": 35612.09999996424,
+      "mean": 35602.333333333336,
+      "p90": 35614.10000002384,
+      "min": 35580.80000001192,
+      "max": 35614.10000002384
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 587.8000000119209,
+      "worker_module_start": 1765.6998534798622,
+      "wasm_download": 32469.39990234375,
+      "wasm_response_end": 34237.099853515625,
+      "pyodide_init": 33778.40000003576,
+      "pyodide_ready": 35544.5,
+      "compute": 37.59999996423721,
+      "compute_done": 35582.39990234375,
+      "worker_done": 35582.699951171875,
+      "points_received": 35582.90000003576,
+      "draw": 20.69999998807907,
+      "paint_after_draw": 5.799999952316284,
+      "first_paint": 35612.09999996424
+     },
+     "bytes": {
+      "server_wire_median": 6391528,
+      "total_transfer_size_median": 6393628,
+      "requests_median": 7
+     },
+     "gate_ms": 8000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   },
+   "with_pandas": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 3,
+      "median": 76266.69999998808,
+      "mean": 76242.03333332141,
+      "p90": 76284.69999998808,
+      "min": 76174.69999998808,
+      "max": 76284.69999998808
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 587.4000000357628,
+      "worker_module_start": 1765.199951171875,
+      "wasm_download": 32470.099853515625,
+      "wasm_response_end": 34237.39990234375,
+      "pyodide_init": 33796.10000002384,
+      "pyodide_ready": 35561.800048828125,
+      "packages_load": 40332.5,
+      "packages_ready": 75898.5,
+      "compute": 335.4000000357628,
+      "compute_done": 76234.10009765625,
+      "worker_done": 76234.40000003576,
+      "points_received": 76234.60000002384,
+      "draw": 20.600000023841858,
+      "paint_after_draw": 10.599999964237213,
+      "first_paint": 76266.69999998808
+     },
+     "bytes": {
+      "server_wire_median": 14281276,
+      "total_transfer_size_median": 14284876,
+      "requests_median": 12
+     },
+     "gate_ms": 8000,
+     "gated": true,
+     "failed_runs": 0
+    }
+   }
+  },
+  "slow3g": {
+   "baseline": {
+    "cold": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 199040.40000003576,
+      "mean": 199033.68000001909,
+      "p90": 199060.5,
+      "min": 199007.30000001192,
+      "max": 199060.5
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 2072.599999964237,
+      "worker_module_start": 6242.699853539467,
+      "wasm_download": 129625.09985351562,
+      "wasm_response_end": 135869.80004882812,
+      "pyodide_init": 130937.30000001192,
+      "pyodide_ready": 137180.60009765625,
+      "packages_load": 61493.80000001192,
+      "packages_ready": 198676.5,
+      "compute": 336.80000001192093,
+      "compute_done": 199013.5,
+      "worker_done": 199013.7000488639,
+      "points_received": 199013.90000003576,
+      "draw": 20.899999976158142,
+      "paint_after_draw": 5.5,
+      "first_paint": 199040.40000003576
+     },
+     "bytes": {
+      "server_wire_median": 9352096,
+      "total_transfer_size_median": 9354496,
+      "requests_median": 8
+     },
+     "gate_ms": null,
+     "gated": false,
+     "failed_runs": 0
+    },
+    "warm": {
+     "first_paint_ms": {
+      "n": 5,
+      "median": 4076.099999964237,
+      "mean": 4089.599999988079,
+      "p90": 4127,
+      "min": 4056,
+      "max": 4127
+     },
+     "stages_median_ms": {
+      "nav_to_worker_spawn": 2085.399999976158,
+      "worker_module_start": 2097.599853515625,
+      "wasm_download": 106.199951171875,
+      "wasm_response_end": 2212.2998046875,
+      "pyodide_init": 1375.300000011921,
+      "pyodide_ready": 3474.2998046875,
+      "packages_load": 245.29999995231628,
+      "packages_ready": 3716.099853515625,
+      "compute": 339.5,
+      "compute_done": 4055.69970703125,
+      "worker_done": 4055.999804675579,
+      "points_received": 4056.099999964237,
+      "draw": 1.800000011920929,
+      "paint_after_draw": 22.5,
+      "first_paint": 4076.099999964237
+     },
+     "bytes": {
+      "server_wire_median": 3546,
+      "total_transfer_size_median": 9352396,
+      "requests_median": 1
+     },
+     "gate_ms": null,
+     "gated": false,
+     "failed_runs": 0
+    }
+   }
+  }
+ },
+ "verdict": {
+  "fast4g": {
+   "judged": true,
+   "gate_ms": 3000,
+   "median_ms": 11159.600000023842,
+   "p90_ms": 11181.300000011921,
+   "passed_median": false,
+   "passed_p90": false
+  },
+  "fast3g": {
+   "judged": true,
+   "gate_ms": 8000,
+   "median_ms": 51550.5,
+   "p90_ms": 51568.30000001192,
+   "passed_median": false,
+   "passed_p90": false
+  },
+  "slow3g": {
+   "judged": false,
+   "gate_ms": null,
+   "median_ms": 199040.40000003576,
+   "p90_ms": 199060.5,
+   "passed_median": null,
+   "passed_p90": null
+  }
+ },
+ "verdict_all_gates_passed": false,
+ "console_errors": [],
+ "runs": [
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 11087.200000047684,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 182.9000000357628,
+    "worker_module_start": 543.5999999642372,
+    "wasm_download": 5845.300048828125,
+    "wasm_response_end": 6390.699951171875,
+    "pyodide_init": 7089.699999988079,
+    "pyodide_ready": 7633.699951171875,
+    "packages_load": 3088.800000011921,
+    "packages_ready": 10722.5,
+    "compute": 332.39999997615814,
+    "compute_done": 11055.10009765625,
+    "worker_done": 11055.399999976158,
+    "points_received": 11055.600000023842,
+    "draw": 25.80000001192093,
+    "paint_after_draw": 5.5,
+    "first_paint": 11087.200000047684,
+    "nav_to_worker_spawn": 182.9000000357628,
+    "spawn_to_first_paint": 10904.300000011921
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 258.9,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4951.1,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5845.3,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 891.2,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 2804.4,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529446153.6,
+   "worker_time_origin": 1793529446511.6,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 2171.5,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 185.89999997615814,
+    "worker_module_start": 206.39995115995407,
+    "wasm_download": 105.0,
+    "wasm_response_end": 318.800048828125,
+    "pyodide_init": 1350.3999999761581,
+    "pyodide_ready": 1562.89990234375,
+    "packages_load": 242.30000001192093,
+    "packages_ready": 1805.199951171875,
+    "compute": 335.80000001192093,
+    "compute_done": 2141.199951171875,
+    "worker_done": 2141.399951159954,
+    "points_received": 2141.599999964237,
+    "draw": 1.800000011920929,
+    "paint_after_draw": 27.80000001192093,
+    "first_paint": 2171.5,
+    "nav_to_worker_spawn": 185.89999997615814,
+    "spawn_to_first_paint": 1985.6000000238419
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.8,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.6,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 105.0,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.5,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 6.0,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529457322.1,
+   "worker_time_origin": 1793529457509.3,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 11138.800000011921,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 181.60000002384186,
+    "worker_module_start": 539.3999511599541,
+    "wasm_download": 5843.89990234375,
+    "wasm_response_end": 6385.39990234375,
+    "pyodide_init": 7139.100000023842,
+    "pyodide_ready": 7679,
+    "packages_load": 3092.699999988079,
+    "packages_ready": 10771.699951171875,
+    "compute": 334.60000002384186,
+    "compute_done": 11106.5,
+    "worker_done": 11106.799951195717,
+    "points_received": 11107,
+    "draw": 13.900000035762787,
+    "paint_after_draw": 17.599999964237213,
+    "first_paint": 11138.800000011921,
+    "nav_to_worker_spawn": 181.60000002384186,
+    "spawn_to_first_paint": 10957.199999988079
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.1,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.3,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5843.9,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.6,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 2804.4,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529459554.1,
+   "worker_time_origin": 1793529459909.3,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 2206.600000023842,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 188.9000000357628,
+    "worker_module_start": 208.800048828125,
+    "wasm_download": 107.599853515625,
+    "wasm_response_end": 324.199951171875,
+    "pyodide_init": 1371.5,
+    "pyodide_ready": 1586.5,
+    "packages_load": 256.5,
+    "packages_ready": 1843,
+    "compute": 339.5,
+    "compute_done": 2182.699951171875,
+    "worker_done": 2183.000048816204,
+    "points_received": 2183.300000011921,
+    "draw": 1.699999988079071,
+    "paint_after_draw": 21.19999998807907,
+    "first_paint": 2206.600000023842,
+    "nav_to_worker_spawn": 188.9000000357628,
+    "spawn_to_first_paint": 2017.699999988079
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1.0,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.6,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 107.6,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 11.8,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.5,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529470719.8,
+   "worker_time_origin": 1793529470910.1,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 11164.399999976158,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 180,
+    "worker_module_start": 539.3998047113419,
+    "wasm_download": 5844.2998046875,
+    "wasm_response_end": 6385.69970703125,
+    "pyodide_init": 7160.5,
+    "pyodide_ready": 7700.39990234375,
+    "packages_load": 3089.600000023842,
+    "packages_ready": 10790.099853515625,
+    "compute": 340,
+    "compute_done": 11130.2998046875,
+    "worker_done": 11130.499804675579,
+    "points_received": 11130.899999976158,
+    "draw": 14.199999988079071,
+    "paint_after_draw": 19.0,
+    "first_paint": 11164.399999976158,
+    "nav_to_worker_spawn": 180,
+    "spawn_to_first_paint": 10984.399999976158
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.3,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4949.3,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.3,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 891.1,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 2805.2,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529472978.6,
+   "worker_time_origin": 1793529473331.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 2274.100000023842,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 190.60000002384186,
+    "worker_module_start": 211.89995121955872,
+    "wasm_download": 115.199951171875,
+    "wasm_response_end": 336.599853515625,
+    "pyodide_init": 1424.6000000238419,
+    "pyodide_ready": 1644.599853515625,
+    "packages_load": 249.80000001192093,
+    "packages_ready": 1894.39990234375,
+    "compute": 347.0999999642372,
+    "compute_done": 2241.699951171875,
+    "worker_done": 2241.8999512195587,
+    "points_received": 2242,
+    "draw": 1.800000011920929,
+    "paint_after_draw": 30.0,
+    "first_paint": 2274.100000023842,
+    "nav_to_worker_spawn": 190.60000002384186,
+    "spawn_to_first_paint": 2083.5
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1.0,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 15.9,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 115.2,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 17.4,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.5,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529484168.6,
+   "worker_time_origin": 1793529484360.8,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 11181.300000011921,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 183.5999999642372,
+    "worker_module_start": 544.0998046994209,
+    "wasm_download": 5845.10009765625,
+    "wasm_response_end": 6391.099853515625,
+    "pyodide_init": 7176,
+    "pyodide_ready": 7720.499755859375,
+    "packages_load": 3094,
+    "packages_ready": 10814.499755859375,
+    "compute": 337.9000000357628,
+    "compute_done": 11152.69970703125,
+    "worker_done": 11152.999804675579,
+    "points_received": 11153.399999976158,
+    "draw": 20.80000001192093,
+    "paint_after_draw": 6.800000011920929,
+    "first_paint": 11181.300000011921,
+    "nav_to_worker_spawn": 183.5999999642372,
+    "spawn_to_first_paint": 10997.700000047684
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 258.9,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4951.0,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5845.1,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 893.5,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 2804.1,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529486494.1,
+   "worker_time_origin": 1793529486852.4,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 2257.400000035763,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 187.9000000357628,
+    "worker_module_start": 207.900146484375,
+    "wasm_download": 106.60009765625,
+    "wasm_response_end": 322.900146484375,
+    "pyodide_init": 1397,
+    "pyodide_ready": 1611.7001953125,
+    "packages_load": 258.80000001192093,
+    "packages_ready": 1870.500244140625,
+    "compute": 357.89999997615814,
+    "compute_done": 2228.60009765625,
+    "worker_done": 2228.800146520138,
+    "points_received": 2229,
+    "draw": 2.0,
+    "paint_after_draw": 26.0,
+    "first_paint": 2257.400000035763,
+    "nav_to_worker_spawn": 187.9000000357628,
+    "spawn_to_first_paint": 2069.5
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.8,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 14.0,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 106.6,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 12.3,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529497701.2,
+   "worker_time_origin": 1793529497891.6,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 11159.600000023842,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 183.10000002384186,
+    "worker_module_start": 542.4000487923622,
+    "wasm_download": 5846.39990234375,
+    "wasm_response_end": 6390.699951171875,
+    "pyodide_init": 7163.099999964237,
+    "pyodide_ready": 7705.900146484375,
+    "packages_load": 3088.5,
+    "packages_ready": 10794.400146484375,
+    "compute": 335.4000000357628,
+    "compute_done": 11130,
+    "worker_done": 11130.300048828125,
+    "points_received": 11130.400000035763,
+    "draw": 20.30000001192093,
+    "paint_after_draw": 8.5,
+    "first_paint": 11159.600000023842,
+    "nav_to_worker_spawn": 183.10000002384186,
+    "spawn_to_first_paint": 10976.5
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 258.0,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.6,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5846.4,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 891.1,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 2803.8,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529500015.2,
+   "worker_time_origin": 1793529500372,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 2177,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 187.70000004768372,
+    "worker_module_start": 202.89980471134186,
+    "wasm_download": 75.39990234375,
+    "wasm_response_end": 281.999755859375,
+    "pyodide_init": 1361.3999999761581,
+    "pyodide_ready": 1566.999755859375,
+    "packages_load": 242.70000004768372,
+    "packages_ready": 1809.69970703125,
+    "compute": 337.80000001192093,
+    "compute_done": 2147.69970703125,
+    "worker_done": 2147.899804711342,
+    "points_received": 2148.2000000476837,
+    "draw": 1.800000011920929,
+    "paint_after_draw": 26.69999998807907,
+    "first_paint": 2177,
+    "nav_to_worker_spawn": 187.70000004768372,
+    "spawn_to_first_paint": 1989.2999999523163
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.6,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 7.8,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 75.4,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 6.0,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.3,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529511197.6,
+   "worker_time_origin": 1793529511386.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 51550.5,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.3000000119209,
+    "worker_module_start": 1764.5998046398163,
+    "wasm_download": 32470.5,
+    "wasm_response_end": 34237.099853515625,
+    "pyodide_init": 33760.700000047684,
+    "pyodide_ready": 35525.7998046875,
+    "packages_load": 15658.699999988079,
+    "packages_ready": 51184.499755859375,
+    "compute": 338.39999997615814,
+    "compute_done": 51523.19970703125,
+    "worker_done": 51523.49980467558,
+    "points_received": 51523.69999998808,
+    "draw": 21,
+    "paint_after_draw": 5.5,
+    "first_paint": 51550.5,
+    "nav_to_worker_spawn": 587.3000000119209,
+    "spawn_to_first_paint": 50963.19999998808
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1061.6,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.3,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32470.5,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.8,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 15365.7,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529513430.6,
+   "worker_time_origin": 1793529514585.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 2613.5,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 582.4000000357628,
+    "worker_module_start": 599.6000000238419,
+    "wasm_download": 103.89990234375,
+    "wasm_response_end": 712,
+    "pyodide_init": 1357.199999988079,
+    "pyodide_ready": 1964,
+    "packages_load": 246.30000001192093,
+    "packages_ready": 2210.300048828125,
+    "compute": 375.30000001192093,
+    "compute_done": 2585.800048828125,
+    "worker_done": 2586.0,
+    "points_received": 2586.300000011921,
+    "draw": 2.5,
+    "paint_after_draw": 24.399999976158142,
+    "first_paint": 2613.5,
+    "nav_to_worker_spawn": 582.4000000357628,
+    "spawn_to_first_paint": 2031.0999999642372
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1.0,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.7,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 103.9,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.5,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.7,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529565042.4,
+   "worker_time_origin": 1793529565626.4,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 51553.09999996424,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 588,
+    "worker_module_start": 1765.4998534917831,
+    "wasm_download": 32470.099853515625,
+    "wasm_response_end": 34237.499755859375,
+    "pyodide_init": 33771.700000047684,
+    "pyodide_ready": 35537.599853515625,
+    "packages_load": 15651.600000023842,
+    "packages_ready": 51189.2998046875,
+    "compute": 335.2000000476837,
+    "compute_done": 51524.599853515625,
+    "worker_done": 51524.89985346794,
+    "points_received": 51525,
+    "draw": 22.0,
+    "paint_after_draw": 5.699999988079071,
+    "first_paint": 51553.09999996424,
+    "nav_to_worker_spawn": 588,
+    "spawn_to_first_paint": 50965.09999996424
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1060.8,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.4,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32470.1,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4600.2,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 15368.3,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529567709.8,
+   "worker_time_origin": 1793529568865.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 2600.699999988079,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 589.0999999642372,
+    "worker_module_start": 606.699951171875,
+    "wasm_download": 108.5,
+    "wasm_response_end": 726,
+    "pyodide_init": 1377.8999999761581,
+    "pyodide_ready": 1993.800048828125,
+    "packages_load": 243.10000002384186,
+    "packages_ready": 2236.89990234375,
+    "compute": 341.19999998807907,
+    "compute_done": 2578.199951171875,
+    "worker_done": 2578.399951159954,
+    "points_received": 2578.599999964237,
+    "draw": 2.300000011920929,
+    "paint_after_draw": 19.30000001192093,
+    "first_paint": 2600.699999988079,
+    "nav_to_worker_spawn": 589.0999999642372,
+    "spawn_to_first_paint": 2011.6000000238419
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.8,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 108.5,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 11.9,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.8,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529619688,
+   "worker_time_origin": 1793529620279.2,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 51545.60000002384,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.1000000238419,
+    "worker_module_start": 1765.2999999523163,
+    "wasm_download": 32469.199951171875,
+    "wasm_response_end": 34236.699951171875,
+    "pyodide_init": 33756.700000047684,
+    "pyodide_ready": 35522.5,
+    "packages_load": 15659.599999964237,
+    "packages_ready": 51182.10009765625,
+    "compute": 336.10000002384186,
+    "compute_done": 51518.39990234375,
+    "worker_done": 51518.69999998808,
+    "points_received": 51519.10000002384,
+    "draw": 20.5,
+    "paint_after_draw": 5.600000023841858,
+    "first_paint": 51545.60000002384,
+    "nav_to_worker_spawn": 587.1000000238419,
+    "spawn_to_first_paint": 50958.5
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1061.0,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.4,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.2,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.7,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 15369.0,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529622343.4,
+   "worker_time_origin": 1793529623499.4,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 2606.699999988079,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 588.8000000119209,
+    "worker_module_start": 609.5998046398163,
+    "wasm_download": 105.199951171875,
+    "wasm_response_end": 722.499755859375,
+    "pyodide_init": 1387.5999999642372,
+    "pyodide_ready": 2003.39990234375,
+    "packages_load": 241.80000001192093,
+    "packages_ready": 2245.19970703125,
+    "compute": 342.19999998807907,
+    "compute_done": 2587.499755859375,
+    "worker_done": 2587.699804663658,
+    "points_received": 2588,
+    "draw": 1.5999999642372131,
+    "paint_after_draw": 16.69999998807907,
+    "first_paint": 2606.699999988079,
+    "nav_to_worker_spawn": 588.8000000119209,
+    "spawn_to_first_paint": 2017.8999999761581
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.3,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 105.2,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.2,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.7,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529673422.6,
+   "worker_time_origin": 1793529674013.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 51568.30000001192,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.4000000357628,
+    "worker_module_start": 1764.600048840046,
+    "wasm_download": 32469.800048828125,
+    "wasm_response_end": 34236.5,
+    "pyodide_init": 33768.5,
+    "pyodide_ready": 35533.60009765625,
+    "packages_load": 15662.800000011921,
+    "packages_ready": 51196.400146484375,
+    "compute": 340.39999997615814,
+    "compute_done": 51537,
+    "worker_done": 51537.20004886389,
+    "points_received": 51537.5,
+    "draw": 21.0,
+    "paint_after_draw": 9.399999976158142,
+    "first_paint": 51568.30000001192,
+    "nav_to_worker_spawn": 587.4000000357628,
+    "spawn_to_first_paint": 50980.89999997616
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1061.7,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.7,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.8,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4600.3,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 15365.5,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529676092.2,
+   "worker_time_origin": 1793529677248,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 2609,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.6000000238419,
+    "worker_module_start": 606.89990234375,
+    "wasm_download": 110.199951171875,
+    "wasm_response_end": 725.89990234375,
+    "pyodide_init": 1382.5,
+    "pyodide_ready": 1996.7998046875,
+    "packages_load": 244.0999999642372,
+    "packages_ready": 2240.89990234375,
+    "compute": 336.69999998807907,
+    "compute_done": 2577.699951171875,
+    "worker_done": 2577.999902367592,
+    "points_received": 2578.199999988079,
+    "draw": 1.800000011920929,
+    "paint_after_draw": 28.69999998807907,
+    "first_paint": 2609,
+    "nav_to_worker_spawn": 587.6000000238419,
+    "spawn_to_first_paint": 2021.3999999761581
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1.0,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 15.5,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 110.2,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 17.2,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.8,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529727684.8,
+   "worker_time_origin": 1793529728274.7,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 51542,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.5,
+    "worker_module_start": 1766.099902331829,
+    "wasm_download": 32468.900146484375,
+    "wasm_response_end": 34237,
+    "pyodide_init": 33750.09999996424,
+    "pyodide_ready": 35516.699951171875,
+    "packages_load": 15661.300000011921,
+    "packages_ready": 51178,
+    "compute": 336.5999999642372,
+    "compute_done": 51514.699951171875,
+    "worker_done": 51514.89990234375,
+    "points_received": 51515.19999998808,
+    "draw": 21.0,
+    "paint_after_draw": 5.399999976158142,
+    "first_paint": 51542,
+    "nav_to_worker_spawn": 587.5,
+    "spawn_to_first_paint": 50954.5
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1059.8,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27459.0,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32468.9,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.0,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 15367.2,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529730354.5,
+   "worker_time_origin": 1793529731509.9,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 2590.2999999523163,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.5,
+    "worker_module_start": 606.1999999880791,
+    "wasm_download": 107.10009765625,
+    "wasm_response_end": 721.800048828125,
+    "pyodide_init": 1359.0999999642372,
+    "pyodide_ready": 1972.5,
+    "packages_load": 246.30000001192093,
+    "packages_ready": 2218.800048828125,
+    "compute": 339.10000002384186,
+    "compute_done": 2558.10009765625,
+    "worker_done": 2558.400000035763,
+    "points_received": 2558.7999999523163,
+    "draw": 1.699999988079071,
+    "paint_after_draw": 29.5,
+    "first_paint": 2590.2999999523163,
+    "nav_to_worker_spawn": 587.5,
+    "spawn_to_first_paint": 2002.7999999523163
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 14.0,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 107.1,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.8,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529781918,
+   "worker_time_origin": 1793529782507.5,
+   "packages": [
+    "numpy"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": true,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 199010.20000004768,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2073,
+    "worker_module_start": 6242.600048840046,
+    "wasm_download": 129625.5,
+    "wasm_response_end": 135869.80004882812,
+    "pyodide_init": 130904,
+    "pyodide_ready": 137147,
+    "packages_load": 61499.19999998808,
+    "packages_ready": 198646.19995117188,
+    "compute": 336.60000002384186,
+    "compute_done": 198983.10009765625,
+    "worker_done": 198983.30004882812,
+    "points_received": 198983.70000004768,
+    "draw": 20.700000047683716,
+    "paint_after_draw": 5.5,
+    "first_paint": 199010.20000004768,
+    "nav_to_worker_spawn": 2073,
+    "spawn_to_first_paint": 196937.20000004768
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 3986.1,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 109585.7,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 129625.5,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 18144.8,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 61209.5,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529784561.7,
+   "worker_time_origin": 1793529788642.5,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 4070,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2066.199999988079,
+    "worker_module_start": 2078.299951195717,
+    "wasm_download": 109.60009765625,
+    "wasm_response_end": 2197.199951171875,
+    "pyodide_init": 1360.800000011921,
+    "pyodide_ready": 3447,
+    "packages_load": 253.10000002384186,
+    "packages_ready": 3700.099853515625,
+    "compute": 336.9000000357628,
+    "compute_done": 4037.300048828125,
+    "worker_done": 4037.499951183796,
+    "points_received": 4037.699999988079,
+    "draw": 1.300000011920929,
+    "paint_after_draw": 30.69999998807907,
+    "first_paint": 4070,
+    "nav_to_worker_spawn": 2066.199999988079,
+    "spawn_to_first_paint": 2003.800000011921
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 14.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 109.6,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 13.1,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529983646.8,
+   "worker_time_origin": 1793529985714.5,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 199050,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2072,
+    "worker_module_start": 6242.599951207638,
+    "wasm_download": 129625.09985351562,
+    "wasm_response_end": 135869.59985351562,
+    "pyodide_init": 130949,
+    "pyodide_ready": 137192,
+    "packages_load": 61493.80000001192,
+    "packages_ready": 198685.80004882812,
+    "compute": 337.4000000357628,
+    "compute_done": 199023.39990234375,
+    "worker_done": 199023.59995120764,
+    "points_received": 199023.80000001192,
+    "draw": 20.5,
+    "paint_after_draw": 5.300000011920929,
+    "first_paint": 199050,
+    "nav_to_worker_spawn": 2072,
+    "spawn_to_first_paint": 196978
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 3986.4,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 109585.1,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 129625.1,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 18144.7,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 61194.2,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793529987761,
+   "worker_time_origin": 1793529991841.7,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 4076.099999964237,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2079.399999976158,
+    "worker_module_start": 2092.0998046398163,
+    "wasm_download": 101.89990234375,
+    "wasm_response_end": 2202.2998046875,
+    "pyodide_init": 1375.300000011921,
+    "pyodide_ready": 3474.2998046875,
+    "packages_load": 241.79999995231628,
+    "packages_ready": 3716.099853515625,
+    "compute": 339.5,
+    "compute_done": 4055.69970703125,
+    "worker_done": 4055.999804675579,
+    "points_received": 4056.099999964237,
+    "draw": 1.9000000357627869,
+    "paint_after_draw": 17.799999952316284,
+    "first_paint": 4076.099999964237,
+    "nav_to_worker_spawn": 2079.399999976158,
+    "spawn_to_first_paint": 1996.699999988079
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 101.9,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.1,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.1,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530186832.6,
+   "worker_time_origin": 1793530188913.4,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 199040.40000003576,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2072.600000023842,
+    "worker_module_start": 6242.800048828125,
+    "wasm_download": 129625.60009765625,
+    "wasm_response_end": 135870.30004882812,
+    "pyodide_init": 130937.30000001192,
+    "pyodide_ready": 137180.60009765625,
+    "packages_load": 61495.90000003576,
+    "packages_ready": 198676.5,
+    "compute": 336.80000001192093,
+    "compute_done": 199013.5,
+    "worker_done": 199013.7000488639,
+    "points_received": 199013.90000003576,
+    "draw": 20.899999976158142,
+    "paint_after_draw": 5.200000047683716,
+    "first_paint": 199040.40000003576,
+    "nav_to_worker_spawn": 2072.600000023842,
+    "spawn_to_first_paint": 196967.80000001192
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 3986.7,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 109585.4,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 129625.6,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 18144.9,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 61206.5,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530190962,
+   "worker_time_origin": 1793530195043.3,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 4056,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2085.399999976158,
+    "worker_module_start": 2097.599853515625,
+    "wasm_download": 106.199951171875,
+    "wasm_response_end": 2212.2998046875,
+    "pyodide_init": 1356.199999988079,
+    "pyodide_ready": 3460.89990234375,
+    "packages_load": 241,
+    "packages_ready": 3701.89990234375,
+    "compute": 335.69999998807907,
+    "compute_done": 4037.7998046875,
+    "worker_done": 4037.899853527546,
+    "points_received": 4038.199999988079,
+    "draw": 1.899999976158142,
+    "paint_after_draw": 15.600000023841858,
+    "first_paint": 4056,
+    "nav_to_worker_spawn": 2085.399999976158,
+    "spawn_to_first_paint": 1970.6000000238419
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 13.3,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 106.2,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 15.2,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5.4,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530390021.8,
+   "worker_time_origin": 1793530392108.9,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 199060.5,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2071.7999999523163,
+    "worker_module_start": 6242.699853539467,
+    "wasm_download": 129625.0,
+    "wasm_response_end": 135869.59985351562,
+    "pyodide_init": 130947.40000003576,
+    "pyodide_ready": 137190.49975585938,
+    "packages_load": 61489.89999997616,
+    "packages_ready": 198680.39990234375,
+    "compute": 351.19999998807907,
+    "compute_done": 199031.89990234375,
+    "worker_done": 199032.19985353947,
+    "points_received": 199032.39999997616,
+    "draw": 20.900000035762787,
+    "paint_after_draw": 6.800000011920929,
+    "first_paint": 199060.5,
+    "nav_to_worker_spawn": 2071.7999999523163,
+    "spawn_to_first_paint": 196988.70000004768
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 3986.1,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 109585.5,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 129625.0,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 18144.9,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 61195.5,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530394130.8,
+   "worker_time_origin": 1793530398211.4,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 3,
+   "ok": true,
+   "first_paint_ms": 4118.899999976158,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2094.2999999523163,
+    "worker_module_start": 2107.599804699421,
+    "wasm_download": 106.099853515625,
+    "wasm_response_end": 2222.69970703125,
+    "pyodide_init": 1383.5,
+    "pyodide_ready": 3498.39990234375,
+    "packages_load": 245.29999995231628,
+    "packages_ready": 3743.7998046875,
+    "compute": 343,
+    "compute_done": 4086.89990234375,
+    "worker_done": 4087.199804723263,
+    "points_received": 4087.399999976158,
+    "draw": 1.800000011920929,
+    "paint_after_draw": 29.399999976158142,
+    "first_paint": 4118.899999976158,
+    "nav_to_worker_spawn": 2094.2999999523163,
+    "spawn_to_first_paint": 2024.6000000238419
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 0.9,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 14.1,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 106.1,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 12.6,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 4.2,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530593734.1,
+   "worker_time_origin": 1793530595829.9,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "cold",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 199007.30000001192,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2072.599999964237,
+    "worker_module_start": 6243.400048792362,
+    "wasm_download": 129624.7001953125,
+    "wasm_response_end": 135869.90014648438,
+    "pyodide_init": 130910.5,
+    "pyodide_ready": 137154.30004882812,
+    "packages_load": 61487.799999952316,
+    "packages_ready": 198642.10009765625,
+    "compute": 335.39999997615814,
+    "compute_done": 198977.69995117188,
+    "worker_done": 198978.0000488162,
+    "points_received": 198978.30000001192,
+    "draw": 20.900000035762787,
+    "paint_after_draw": 7.800000011920929,
+    "first_paint": 199007.30000001192,
+    "nav_to_worker_spawn": 2072.599999964237,
+    "spawn_to_first_paint": 196934.70000004768
+   },
+   "bytes": {
+    "server_wire": 9352096,
+    "server_decoded": 16507600,
+    "requests": 8,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 9340529,
+    "total_transfer_size": 9354496,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 3985.5,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 109585.1,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 129624.7,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 18144.7,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 61202.8,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530597905.9,
+   "worker_time_origin": 1793530601987.2,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "slow3g",
+   "variant": "baseline",
+   "mode": "warm",
+   "index": 4,
+   "ok": true,
+   "first_paint_ms": 4127,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 2093,
+    "worker_module_start": 2105.800000011921,
+    "wasm_download": 109.599853515625,
+    "wasm_response_end": 2224.199951171875,
+    "pyodide_init": 1387.1000000238419,
+    "pyodide_ready": 3500.10009765625,
+    "packages_load": 258.5,
+    "packages_ready": 3758.60009765625,
+    "compute": 343.4000000357628,
+    "compute_done": 4102.10009765625,
+    "worker_done": 4102.300000011921,
+    "points_received": 4102.5,
+    "draw": 1.7000000476837158,
+    "paint_after_draw": 22.5,
+    "first_paint": 4127,
+    "nav_to_worker_spawn": 2093,
+    "spawn_to_first_paint": 2034
+   },
+   "bytes": {
+    "server_wire": 3546,
+    "server_decoded": 10159,
+    "requests": 1,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 9521,
+    "worker_transfer_size": 9339029,
+    "total_transfer_size": 9352396,
+    "by_path": {
+     "index.html": 3546
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1.0,
+     "transfer_size": 0,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 14.0,
+     "transfer_size": 0,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 109.6,
+     "transfer_size": 0,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 12.2,
+     "transfer_size": 0,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 5,
+     "transfer_size": 0,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530796327.4,
+   "worker_time_origin": 1793530798421.9,
+   "packages": [
+    "numpy"
+   ],
+   "throttle": {
+    "offline": false,
+    "latency": 2000,
+    "downloadThroughput": 50000,
+    "uploadThroughput": 50000,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 7746.699999988079,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 179.30000001192093,
+    "worker_module_start": 538.699951171875,
+    "wasm_download": 5844.699951171875,
+    "wasm_response_end": 6385.199951171875,
+    "pyodide_init": 7138.099999964237,
+    "pyodide_ready": 7677.199951171875,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 37.39999997615814,
+    "compute_done": 7714.699951171875,
+    "worker_done": 7714.999951183796,
+    "points_received": 7715.099999964237,
+    "draw": 22.100000023841858,
+    "paint_after_draw": 9.199999988079071,
+    "first_paint": 7746.699999988079,
+    "nav_to_worker_spawn": 179.30000001192093,
+    "spawn_to_first_paint": 7567.399999976158
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.2,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.9,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.7,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.3,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530800507.7,
+   "worker_time_origin": 1793530800860.9,
+   "packages": [],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 7762.300000011921,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 181.39999997615814,
+    "worker_module_start": 539.4998534917831,
+    "wasm_download": 5844.39990234375,
+    "wasm_response_end": 6385.999755859375,
+    "pyodide_init": 7154.900000035763,
+    "pyodide_ready": 7694.89990234375,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 38.19999998807907,
+    "compute_done": 7733.199951171875,
+    "worker_done": 7733.399853527546,
+    "points_received": 7733.699999988079,
+    "draw": 22.19999998807907,
+    "paint_after_draw": 5.900000035762787,
+    "first_paint": 7762.300000011921,
+    "nav_to_worker_spawn": 181.39999997615814,
+    "spawn_to_first_paint": 7580.900000035763
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.4,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.7,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.4,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.8,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530808300.6,
+   "worker_time_origin": 1793530808655.7,
+   "packages": [],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 7772.899999976158,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 182.30000001192093,
+    "worker_module_start": 543.2001464962959,
+    "wasm_download": 5844.199951171875,
+    "wasm_response_end": 6389.300048828125,
+    "pyodide_init": 7149.800000011921,
+    "pyodide_ready": 7693.400146484375,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 38.69999998807907,
+    "compute_done": 7732.2001953125,
+    "worker_done": 7732.500146508217,
+    "points_received": 7732.699999988079,
+    "draw": 31.69999998807907,
+    "paint_after_draw": 7.899999976158142,
+    "first_paint": 7772.899999976158,
+    "nav_to_worker_spawn": 182.30000001192093,
+    "spawn_to_first_paint": 7590.599999964237
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 254.3,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.8,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.2,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.4,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530816107.7,
+   "worker_time_origin": 1793530816464.6,
+   "packages": [],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 15551.099999964237,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 181.5999999642372,
+    "worker_module_start": 541.3999999761581,
+    "wasm_download": 5844.199951171875,
+    "wasm_response_end": 6387.39990234375,
+    "pyodide_init": 7158.400000035763,
+    "pyodide_ready": 7700.300048828125,
+    "packages_load": 7489,
+    "packages_ready": 15189.300048828125,
+    "compute": 334.5,
+    "compute_done": 15524,
+    "worker_done": 15524.199999988079,
+    "points_received": 15524.5,
+    "draw": 20.799999952316284,
+    "paint_after_draw": 5.5,
+    "first_paint": 15551.099999964237,
+    "nav_to_worker_spawn": 181.5999999642372,
+    "spawn_to_first_paint": 15369.5
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.5,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.4,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.2,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.5,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 6103.7,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 999.2,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 7189.6,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 219.6,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 1748.4,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530823922.7,
+   "worker_time_origin": 1793530824277.7,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 15528.100000023842,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 182.10000002384186,
+    "worker_module_start": 541.0001953244209,
+    "wasm_download": 5845.5,
+    "wasm_response_end": 6388.30029296875,
+    "pyodide_init": 7116.100000023842,
+    "pyodide_ready": 7657.500244140625,
+    "packages_load": 7490.899999976158,
+    "packages_ready": 15148.400146484375,
+    "compute": 349.60000002384186,
+    "compute_done": 15498.30029296875,
+    "worker_done": 15498.500195324421,
+    "points_received": 15498.800000011921,
+    "draw": 20.5,
+    "paint_after_draw": 8.400000035762787,
+    "first_paint": 15528.100000023842,
+    "nav_to_worker_spawn": 182.10000002384186,
+    "spawn_to_first_paint": 15346.0
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 259.1,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4951.3,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5845.5,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 891.0,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 6102.2,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 7188.5,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 998.7,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 218.8,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 1747.6,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530839524.4,
+   "worker_time_origin": 1793530839881.1,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast4g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 15528.899999976158,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 184,
+    "worker_module_start": 542.3000000119209,
+    "wasm_download": 5844.300048828125,
+    "wasm_response_end": 6388.5,
+    "pyodide_init": 7137.799999952316,
+    "pyodide_ready": 7680.60009765625,
+    "packages_load": 7483.900000035763,
+    "packages_ready": 15164.5,
+    "compute": 337.5,
+    "compute_done": 15502.10009765625,
+    "worker_done": 15502.399999976158,
+    "points_received": 15502.699999988079,
+    "draw": 20.599999964237213,
+    "paint_after_draw": 5.300000011920929,
+    "first_paint": 15528.899999976158,
+    "nav_to_worker_spawn": 184,
+    "spawn_to_first_paint": 15344.899999976158
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 257.3,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 4948.4,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 5844.3,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 890.6,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 6103.0,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 7187.6,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 1001.3,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 221.1,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 1749.8,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530855112.2,
+   "worker_time_origin": 1793530855469.7,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 3000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 170,
+    "downloadThroughput": 1125000,
+    "uploadThroughput": 187500,
+    "connectionType": "cellular4g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 35580.80000001192,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.5,
+    "worker_module_start": 1765.6998534798622,
+    "wasm_download": 32469.0,
+    "wasm_response_end": 34236.89990234375,
+    "pyodide_init": 33749.30000001192,
+    "pyodide_ready": 35515.499755859375,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 37.5,
+    "compute_done": 35553.099853515625,
+    "worker_done": 35553.299853503704,
+    "points_received": 35553.69999998808,
+    "draw": 20.69999998807907,
+    "paint_after_draw": 5.600000023841858,
+    "first_paint": 35580.80000001192,
+    "nav_to_worker_spawn": 587.5,
+    "spawn_to_first_paint": 34993.30000001192
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1060.8,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27459.8,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.0,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.3,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530870695.1,
+   "worker_time_origin": 1793530871850.7,
+   "packages": [],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 35612.09999996424,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.8000000119209,
+    "worker_module_start": 1765.8999512195587,
+    "wasm_download": 32469.39990234375,
+    "wasm_response_end": 34237.199951171875,
+    "pyodide_init": 33779.39999997616,
+    "pyodide_ready": 35545.800048828125,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 37.80000001192093,
+    "compute_done": 35583.800048828125,
+    "worker_done": 35583.89995121956,
+    "points_received": 35584.19999998808,
+    "draw": 21.80000001192093,
+    "paint_after_draw": 5.799999952316284,
+    "first_paint": 35612.09999996424,
+    "nav_to_worker_spawn": 587.8000000119209,
+    "spawn_to_first_paint": 35024.299999952316
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1060.9,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27459.8,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.4,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.2,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530906320.7,
+   "worker_time_origin": 1793530907476.4,
+   "packages": [],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "no_numpy",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 35614.10000002384,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 588,
+    "worker_module_start": 1765.5999511480331,
+    "wasm_download": 32469.39990234375,
+    "wasm_response_end": 34237.099853515625,
+    "pyodide_init": 33778.40000003576,
+    "pyodide_ready": 35544.5,
+    "packages_load": null,
+    "packages_ready": null,
+    "compute": 37.59999996423721,
+    "compute_done": 35582.39990234375,
+    "worker_done": 35582.699951171875,
+    "points_received": 35582.90000003576,
+    "draw": 20.30000001192093,
+    "paint_after_draw": 10.5,
+    "first_paint": 35614.10000002384,
+    "nav_to_worker_spawn": 588,
+    "spawn_to_first_paint": 35026.10000002384
+   },
+   "bytes": {
+    "server_wire": 6391528,
+    "server_decoded": 13547032,
+    "requests": 7,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 6379661,
+    "total_transfer_size": 6393628,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1060.9,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.2,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.4,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.0289429012345679,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 408.6263427734375
+   },
+   "stats": {
+    "backend": "pure-python",
+    "python": "3.14.2",
+    "numpy_version": null,
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211342658741,
+    "y_max": 0.9132853527316849,
+    "y_mean": 0.033106070890629065
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530941983.2,
+   "worker_time_origin": 1793530943139.4,
+   "packages": [],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 0,
+   "ok": true,
+   "first_paint_ms": 76284.69999998808,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.5,
+    "worker_module_start": 1765.199951171875,
+    "wasm_download": 32470.099853515625,
+    "wasm_response_end": 34237.099853515625,
+    "pyodide_init": 33796.10000002384,
+    "pyodide_ready": 35561.800048828125,
+    "packages_load": 40344.69999998808,
+    "packages_ready": 75906.5,
+    "compute": 351,
+    "compute_done": 76257.80004882812,
+    "worker_done": 76257.9999511838,
+    "points_received": 76258.30000001192,
+    "draw": 20.600000023841858,
+    "paint_after_draw": 5.5,
+    "first_paint": 76284.69999998808,
+    "nav_to_worker_spawn": 587.5,
+    "spawn_to_first_paint": 75697.19999998808
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1061.0,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.5,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32470.1,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4600.1,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 33937.0,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 40034.5,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 5220.1,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 832.3,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 9434.7,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793530977645.1,
+   "worker_time_origin": 1793530978800.8,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 1,
+   "ok": true,
+   "first_paint_ms": 76266.69999998808,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.4000000357628,
+    "worker_module_start": 1765.6000000238419,
+    "wasm_download": 32469.89990234375,
+    "wasm_response_end": 34237.39990234375,
+    "pyodide_init": 33800,
+    "pyodide_ready": 35566,
+    "packages_load": 40332.5,
+    "packages_ready": 75898.5,
+    "compute": 335.4000000357628,
+    "compute_done": 76234.10009765625,
+    "worker_done": 76234.40000003576,
+    "points_received": 76234.60000002384,
+    "draw": 21.19999998807907,
+    "paint_after_draw": 10.599999964237213,
+    "first_paint": 76266.69999998808,
+    "nav_to_worker_spawn": 587.4000000357628,
+    "spawn_to_first_paint": 75679.29999995232
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1061.1,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27460.0,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32469.9,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4599.1,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 33932.8,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 40030.2,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 5215.8,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 850.4,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 9445.1,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793531053974.6,
+   "worker_time_origin": 1793531055130.1,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  },
+  {
+   "profile": "fast3g",
+   "variant": "with_pandas",
+   "mode": "cold",
+   "index": 2,
+   "ok": true,
+   "first_paint_ms": 76174.69999998808,
+   "stages": {
+    "nav_start": 0.0,
+    "worker_spawn": 587.1999999880791,
+    "worker_module_start": 1764.4000487923622,
+    "wasm_download": 32471.800048828125,
+    "wasm_response_end": 34237.400146484375,
+    "pyodide_init": 33762.19999998808,
+    "pyodide_ready": 35526.900146484375,
+    "packages_load": 40287.40000003576,
+    "packages_ready": 75814.30004882812,
+    "compute": 327.89999997615814,
+    "compute_done": 76142.40014648438,
+    "worker_done": 76142.70004880428,
+    "points_received": 76143,
+    "draw": 20.400000035762787,
+    "paint_after_draw": 11.099999964237213,
+    "first_paint": 76174.69999998808,
+    "nav_to_worker_spawn": 587.1999999880791,
+    "spawn_to_first_paint": 75587.5
+   },
+   "bytes": {
+    "server_wire": 14281276,
+    "server_decoded": 21436780,
+    "requests": 12,
+    "nav_transfer_size": 3846,
+    "page_transfer_size": 10121,
+    "worker_transfer_size": 14270909,
+    "total_transfer_size": 14284876,
+    "by_path": {
+     "index.html": 3546,
+     "worker.js": 2365,
+     "static/pyodide/pyodide.mjs": 7156,
+     "static/pyodide/pyodide-lock.json": 26595,
+     "static/pyodide/python_stdlib.zip": 2545637,
+     "static/pyodide/pyodide.asm.mjs": 260107,
+     "static/pyodide/pyodide.asm.wasm": 3546122,
+     "static/pyodide/six-1.17.0-py2.py3-none-any.whl": 11050,
+     "static/pyodide/python_dateutil-2.9.0.post0-py2.py3-none-any.whl": 229892,
+     "static/pyodide/pytz-2026.1.post1-py2.py3-none-any.whl": 510489,
+     "static/pyodide/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 2960568,
+     "static/pyodide/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl": 4177749
+    }
+   },
+   "worker_resources": [
+    {
+     "name": "pyodide-lock.json",
+     "ms": 1077.3,
+     "transfer_size": 26895,
+     "encoded_body_size": 26595,
+     "decoded_body_size": 119077
+    },
+    {
+     "name": "python_stdlib.zip",
+     "ms": 27461.3,
+     "transfer_size": 2545937,
+     "encoded_body_size": 2545637,
+     "decoded_body_size": 2545637
+    },
+    {
+     "name": "pyodide.asm.wasm",
+     "ms": 32471.8,
+     "transfer_size": 3546422,
+     "encoded_body_size": 3546122,
+     "decoded_body_size": 9598218
+    },
+    {
+     "name": "pyodide.asm.mjs",
+     "ms": 4602.0,
+     "transfer_size": 260407,
+     "encoded_body_size": 260107,
+     "decoded_body_size": 1250344
+    },
+    {
+     "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 33934.1,
+     "transfer_size": 2960868,
+     "encoded_body_size": 2960568,
+     "decoded_body_size": 2960568
+    },
+    {
+     "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+     "ms": 40032.3,
+     "transfer_size": 4178049,
+     "encoded_body_size": 4177749,
+     "decoded_body_size": 4177749
+    },
+    {
+     "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+     "ms": 5224.3,
+     "transfer_size": 230192,
+     "encoded_body_size": 229892,
+     "decoded_body_size": 229892
+    },
+    {
+     "name": "six-1.17.0-py2.py3-none-any.whl",
+     "ms": 829.3,
+     "transfer_size": 11350,
+     "encoded_body_size": 11050,
+     "decoded_body_size": 11050
+    },
+    {
+     "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+     "ms": 9431.2,
+     "transfer_size": 510789,
+     "encoded_body_size": 510489,
+     "decoded_body_size": 510489
+    }
+   ],
+   "canvas": {
+    "ink_ratio": 0.028641975308641977,
+    "title_ink_ratio": 0.37320574162679426
+   },
+   "text_metrics": {
+    "title_width_px": 202.2711181640625,
+    "subtitle_width_px": 372.6044616699219
+   },
+   "stats": {
+    "backend": "numpy",
+    "python": "3.14.2",
+    "numpy_version": "2.4.6",
+    "samples": 20000,
+    "points": 4000,
+    "y_min": -0.7934211492538452,
+    "y_max": 0.9132853746414185,
+    "y_mean": 0.033106062561273575
+   },
+   "pyodide_version": "314.0.7",
+   "page_time_origin": 1793531130296.9,
+   "worker_time_origin": 1793531131452.2,
+   "packages": [
+    "numpy",
+    "pandas"
+   ],
+   "gate_ms": 8000,
+   "passed_gate": false,
+   "throttle": {
+    "offline": false,
+    "latency": 562,
+    "downloadThroughput": 200000,
+    "uploadThroughput": 93750,
+    "connectionType": "cellular3g"
+   }
+  }
+ ]
+}

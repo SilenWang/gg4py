@@ -13,6 +13,13 @@ lint = "ruff check . && ruff format --check ."
 "spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
 "spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
 "spike:e3" = { cmd = "python docs/spike/e3_export/run_e3.py", depends-on = ["spike:assets"] }
+# E1: Pyodide cold start behind a worker, measured under CDP throttling.
+# Browsers live in the checkout because $HOME is read-only in the runtime;
+# if cdn.playwright.dev is unreachable, point PLAYWRIGHT_DOWNLOAD_HOST at a
+# mirror (e.g. https://cdn.npmmirror.com/binaries/playwright) for the install.
+"spike:e1:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
+"spike:e1:assets" = "npm install --no-save --no-package-lock --prefix docs/spike/e1_coldstart/.npm pyodide@314.0.7 && python docs/spike/e1_coldstart/fetch_assets.py"
+"spike:e1" = { cmd = "python -u docs/spike/e1_coldstart/run_e1.py", depends-on = ["spike:e1:assets"] }
 
 [dependencies]
 python = "3.12.*"
@@ -27,6 +34,18 @@ libopengl = ">=1.7.0,<2"
 libglx = ">=1.7.0,<2"
 libgl = ">=1.7.0,<2"
 fontconfig = ">=2.18.3,<3"
+glib = ">=2.90.0,<3"
+nss = ">=3.118,<4"
+nspr = ">=4.40,<5"
+"atk-1.0" = ">=2.38.0,<3"
+at-spi2-core = ">=2.58.3,<3"
+libxkbcommon = ">=1.13.2,<2"
+alsa-lib = ">=1.2.16.1,<2"
+libgbm = ">=1.0.9,<2"
+xorg-libxcomposite = ">=0.4.7,<0.5"
+xorg-libxdamage = ">=1.1.6,<2"
+xorg-libxfixes = ">=6.0.2,<7"
+xorg-libxrandr = ">=1.5.5,<2"
 
 [pypi-dependencies]
 uharfbuzz = ">=0.57.0, <0.58"
@@ -34,3 +53,4 @@ numpy = ">=2.5.4, <3"
 pytest = ">=9.2.0, <10"
 ruff = ">=0.17.3, <0.18"
 skia-python = ">=144.1, <145"
+playwright = ">=1.64.1, <2"
