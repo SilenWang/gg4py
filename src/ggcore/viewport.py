@@ -1030,6 +1030,14 @@ class ViewportTree:
         `_parent_context()`）。`cex` / `alpha` / `lex` 与当前值相乘，同 `set.gpar()`。
 
         区别于 :meth:`push`：这里不改视口树，只改当前 gpar。
+
+        退出时它不看当前视口在哪，直接把 gpar 换回进入前的值。R 那边恢复 gpar
+        时一定已经回到 gTree 层：`drawGTree()` 把恢复挂在 `on.exit()` 上，而
+        `on.exit` 在 `postDraw()` pop 掉 gTree 的 `vp` / `childrenvp` **之后**
+        才跑；`preDraw.gTree()` 自己也是先 `upViewport()` 再 `C_setGPar` 复位
+        临时 gpar。所以调用方也要**先 up/pop 回 gTree 层再退出本上下文**（块内
+        push 的 `childrenvp` 在块内 pop 掉），否则会留下“当前视口还是子视口、
+        gpar 已经是 gTree 外那份”的不一致状态（M0-6 的 gTree 绘制循环最容易踩到）。
         """
         if not isinstance(gp, Gpar):
             raise ViewportError(f"invalid 'gp' value: {type(gp).__name__}")
