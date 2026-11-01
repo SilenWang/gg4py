@@ -4,6 +4,11 @@ __pycache__/
 *.pyc
 .ruff_cache/
 .pytest_cache/
+# pytest-benchmark 的自动存档（`pixi run bench`）
+.benchmarks/
+# 案例的渲染产物与按需拉取的上游参考图（纳管策略见 docs/notes/snapshot-policy.md）
+docs/cases/*/current/
+docs/cases/*/expected/
 # generated network assets for the E1 spike (recreated by `pixi run spike:assets`)
 docs/spike/e1_coldstart/static/
 # Playwright browser downloads for the E1 spike (read-only $HOME in the runtime)

@@ -4,22 +4,20 @@ name = "gg4py"
 platforms = ["linux-64"]
 version = "0.1.0"
 
-[tasks]
-test = "pytest -q"
-lint = "ruff check . && ruff format --check ."
-
-# M-1 feasibility gate (docs/spike). Every spike step is reproducible via pixi.
-"spike:corpus" = "python docs/spike/corpus/generate_corpus.py"
-"spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
-"spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
-"spike:e3" = { cmd = "python docs/spike/e3_export/run_e3.py", depends-on = ["spike:assets"] }
-# E1: Pyodide cold start behind a worker, measured under CDP throttling.
-# Browsers live in the checkout because $HOME is read-only in the runtime;
-# if cdn.playwright.dev is unreachable, point PLAYWRIGHT_DOWNLOAD_HOST at a
-# mirror (e.g. https://cdn.npmmirror.com/binaries/playwright) for the install.
-"spike:e1:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
-"spike:e1:assets" = "npm install --no-save --no-package-lock --prefix docs/spike/e1_coldstart/.npm pyodide@314.0.7 && python docs/spike/e1_coldstart/fetch_assets.py"
-"spike:e1" = { cmd = "python -u docs/spike/e1_coldstart/run_e1.py", depends-on = ["spike:e1:assets"] }
+# ---------------------------------------------------------------------------
+# Environment composition (see README "任务与环境")
+#
+#   default / dev : runtime deps + pytest / ruff / playwright (this is the env
+#                   `pixi run check` resolves against)
+#   prod          : runtime deps only — no pytest, no ruff, no playwright
+#
+# Both solve in the same solve-group so a lock has one version of numpy/skia
+# across environments; only the package *set* differs.
+# ---------------------------------------------------------------------------
+[environments]
+default = { features = ["dev"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+prod = { features = [], solve-group = "default" }
 
 [dependencies]
 python = "3.12.*"
@@ -50,7 +48,46 @@ xorg-libxrandr = ">=1.5.5,<2"
 [pypi-dependencies]
 uharfbuzz = ">=0.57.0, <0.58"
 numpy = ">=2.5.4, <3"
-pytest = ">=9.2.0, <10"
-ruff = ">=0.17.3, <0.18"
 skia-python = ">=144.1, <145"
+
+# `src/` layout without a build backend: the package is imported through
+# PYTHONPATH (pytest.ini carries the same path for the test runner).
+[tasks]
+render = "PYTHONPATH=src python -m ggcore.cli.render"
+diff = "PYTHONPATH=src python -m ggcore.cli.diff"
+# X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
+"upstream:diff" = "python tools/upstream_diff.py"
+
+# M-1 feasibility gate (docs/spike). Every spike step is reproducible via pixi.
+"spike:corpus" = "python docs/spike/corpus/generate_corpus.py"
+"spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
+"spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
+"spike:e3" = { cmd = "python docs/spike/e3_export/run_e3.py", depends-on = ["spike:assets"] }
+# E1: Pyodide cold start behind a worker, measured under CDP throttling.
+# Browsers live in the checkout because $HOME is read-only in the runtime;
+# if cdn.playwright.dev is unreachable, point PLAYWRIGHT_DOWNLOAD_HOST at a
+# mirror (e.g. https://cdn.npmmirror.com/binaries/playwright) for the install.
+"spike:e1:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
+"spike:e1:assets" = "npm install --no-save --no-package-lock --prefix docs/spike/e1_coldstart/.npm pyodide@314.0.7 && python docs/spike/e1_coldstart/fetch_assets.py"
+"spike:e1" = { cmd = "python -u docs/spike/e1_coldstart/run_e1.py", depends-on = ["spike:e1:assets"] }
+
+[feature.dev.pypi-dependencies]
+pytest = ">=9.2.0, <10"
+pytest-benchmark = ">=5.2.0, <6"
+ruff = ">=0.17.3, <0.18"
 playwright = ">=1.64.1, <2"
+
+[feature.dev.tasks]
+test = "pytest -q"
+lint = "ruff check . && ruff format --check ."
+# Benchmark baseline: `pytest benchmarks` with pytest-benchmark autosave.
+bench = "pytest benchmarks -q --benchmark-autosave"
+
+# --- 横切门禁 (X1) ---------------------------------------------------------
+# Every gate is a plain script with a non-zero exit code, so it runs both from
+# `pixi run check` and standalone. See docs/notes/gates.md.
+"gate:imports" = "python tools/gates/check_import_whitelist.py"
+"gate:ir-json" = "python tools/gates/check_ir_json.py"
+"gate:determinism" = "python tools/gates/check_determinism.py"
+
+check = { depends-on = ["lint", "test", "gate:imports", "gate:ir-json", "gate:determinism"] }
