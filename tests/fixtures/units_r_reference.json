@@ -1,0 +1,4085 @@
+{
+  "r_version": "R version 4.5.3 (2026-03-11)",
+  "generated_by": "tools/refs/units_ref.R",
+  "device": {
+    "type": "pdf(NULL)",
+    "width_in": 10,
+    "height_in": 10
+  },
+  "cases": [
+    {
+      "id": "npc-to-cm-x",
+      "r": "convertUnit(unit(0.25, 'npc'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-to-cm-y",
+      "r": "convertUnit(unit(0.25, 'npc'), 'cm', axisFrom='y', axisTo='y', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "y",
+        "type_from": "location",
+        "axis_to": "y",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.25,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-x-to-y-npc",
+      "r": "convertUnit(unit(0.25, 'npc'), 'npc', axisFrom='x', axisTo='y', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "y",
+        "type_to": "location",
+        "unit_to": "npc"
+      },
+      "expected": 0.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-x-dimension-to-cm",
+      "r": "convertUnit(unit(0.5, 'npc'), 'cm', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "cm"
+      },
+      "expected": 5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-x-to-native-location",
+      "r": "convertUnit(unit(0.5, 'npc'), 'native', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "native"
+      },
+      "expected": 50,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-location-to-dimension",
+      "r": "convertUnit(unit(0.25, 'npc'), 'npc', typeFrom='location', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "npc"
+      },
+      "expected": 0.25,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-x-dim-to-y-dim",
+      "r": "convertUnit(unit(0.5, 'npc'), 'npc', typeFrom='dimension', typeTo='dimension', axisFrom='x', axisTo='y', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "y",
+        "type_to": "dimension",
+        "unit_to": "npc"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-x-to-cm",
+      "r": "convertUnit(unit(25, 'native'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"native\",\"amount\":25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-y-to-cm",
+      "r": "convertUnit(unit(25, 'native'), 'cm', axisFrom='y', axisTo='y', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"native\",\"amount\":25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "y",
+        "type_from": "location",
+        "axis_to": "y",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-dimension-to-npc",
+      "r": "convertUnit(unit(50, 'native'), 'npc', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"native\",\"amount\":50}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "npc"
+      },
+      "expected": 0.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-to-native-dimension",
+      "r": "convertUnit(unit(2.54, 'cm'), 'native', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":2.54}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "native"
+      },
+      "expected": 25.399999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-reversed-scale-location",
+      "r": "convertUnit(unit(25, 'native'), 'cm', valueOnly=TRUE)  # xscale=c(100,0)",
+      "spec": "{\"kind\":\"native\",\"amount\":25}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          100,
+          0
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 7.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "native-reversed-scale-dimension",
+      "r": "convertUnit(unit(50, 'native'), 'cm', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)  # xscale=c(100,0)",
+      "spec": "{\"kind\":\"native\",\"amount\":50}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          100,
+          0
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "cm"
+      },
+      "expected": -5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "mm-to-inches",
+      "r": "convertUnit(unit(25.4, 'mm'), 'inches', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"mm\",\"amount\":25.4}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "mm-to-cm",
+      "r": "convertUnit(unit(10, 'mm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"mm\",\"amount\":10}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0.99999999999999989,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "mm-to-pt",
+      "r": "convertUnit(unit(10, 'mm'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"mm\",\"amount\":10}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 28.452755905511808,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-to-inches",
+      "r": "convertUnit(unit(2.54, 'cm'), 'inches', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":2.54}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "inches-to-mm",
+      "r": "convertUnit(unit(1, 'inches'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"inches\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 25.399999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pt-to-mm",
+      "r": "convertUnit(unit(72.27, 'pt'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"pt\",\"amount\":72.27}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 25.399999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "bigpts-to-mm",
+      "r": "convertUnit(unit(72, 'bigpts'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"bigpts\",\"amount\":72}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 25.399999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "picas-to-pt",
+      "r": "convertUnit(unit(1, 'picas'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"picas\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 12,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "dida-to-pt",
+      "r": "convertUnit(unit(1, 'dida'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"dida\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 1.070008643042351,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cicero-to-pt",
+      "r": "convertUnit(unit(1, 'cicero'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cicero\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 12.84010371650821,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "scaledpts-to-pt",
+      "r": "convertUnit(unit(65536, 'scaledpts'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"scaledpts\",\"amount\":65536}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "inch-alias-in",
+      "r": "convertUnit(unit(2.54, 'cm'), 'in', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":2.54}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "in"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "millimetre-alias",
+      "r": "convertUnit(unit(2.54, 'cm'), 'millimetres', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":2.54}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "millimetres"
+      },
+      "expected": 25.399999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "lines-to-inches",
+      "r": "convertUnit(unit(1, 'lines'), 'inches', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"lines\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.19999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "lines-big-font",
+      "r": "convertUnit(unit(1, 'lines'), 'inches', valueOnly=TRUE)  # fontsize=24, cex=1.5, lineheight=2",
+      "spec": "{\"kind\":\"lines\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 24,
+        "cex": 1.5,
+        "lineheight": 2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 1,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "lines-to-pt",
+      "r": "convertUnit(unit(2, 'lines'), 'pt', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"lines\",\"amount\":2}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 28.907999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "char-to-mm",
+      "r": "convertUnit(unit(3, 'char'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"char\",\"amount\":3}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 12.699999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "char-big-font",
+      "r": "convertUnit(unit(1, 'char'), 'inches', valueOnly=TRUE)  # fontsize=24, cex=1.5",
+      "spec": "{\"kind\":\"char\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 24,
+        "cex": 1.5,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "snpc-to-cm",
+      "r": "convertUnit(unit(0.5, 'snpc'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"snpc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "snpc-y-to-cm",
+      "r": "convertUnit(unit(0.5, 'snpc'), 'cm', axisFrom='y', axisTo='y', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"snpc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "y",
+        "type_from": "location",
+        "axis_to": "y",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "snpc-dimension-to-cm",
+      "r": "convertUnit(unit(0.5, 'snpc'), 'cm', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"snpc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "cm"
+      },
+      "expected": 2.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strwidth-to-inches",
+      "r": "convertUnit(stringWidth('abc'), 'inches', valueOnly=TRUE)",
+      "spec": "{\"op\":\"str_width\",\"text\":\"abc\"}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.26866666666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strheight-to-inches",
+      "r": "convertUnit(stringHeight('abc'), 'inches', valueOnly=TRUE)",
+      "spec": "{\"op\":\"str_height\",\"text\":\"abc\"}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.11966666666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strwidth-double-to-cm",
+      "r": "convertUnit(unit(2, 'strwidth', data='abc'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"strwidth\",\"amount\":2,\"text\":\"abc\"}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.3648266666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strwidth-big-font",
+      "r": "convertUnit(stringWidth('abc'), 'inches', valueOnly=TRUE)  # fontsize=24, cex=1.5",
+      "spec": "{\"op\":\"str_width\",\"text\":\"abc\"}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 24,
+        "cex": 1.5,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.80600000000000005,
+            "height": 0.35899999999999999
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.80600000000000005,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strheight-WWW-to-mm",
+      "r": "convertUnit(stringHeight('WWW'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"str_height\",\"text\":\"WWW\"}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "WWW": {
+            "width": 0.47199999999999992,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 3.039533333333333,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "strwidth-plus-cm",
+      "r": "convertUnit(stringWidth('abc') + unit(1, 'cm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"op\":\"str_width\",\"text\":\"abc\"},{\"kind\":\"cm\",\"amount\":1}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.6824133333333331,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "sum-two-strwidth",
+      "r": "convertUnit(sum(stringWidth('abc'), stringWidth('abc')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sum\",\"args\":[{\"op\":\"str_width\",\"text\":\"abc\"},{\"op\":\"str_width\",\"text\":\"abc\"}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.3648266666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "strwidth",
+              "amount": 1,
+              "text": "abc"
+            },
+            {
+              "kind": "strwidth",
+              "amount": 1,
+              "text": "abc"
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-strwidth-same",
+      "r": "convertUnit(unit.pmax(stringWidth('abc'), stringWidth('abc')), 'inches', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"op\":\"str_width\",\"text\":\"abc\"},{\"op\":\"str_width\",\"text\":\"abc\"}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.26866666666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "strwidth",
+          "amount": 1,
+          "text": "abc"
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "strwidth"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-strwidth-different",
+      "r": "convertUnit(unit.pmax(stringWidth('abc'), stringWidth('def')), 'inches', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"op\":\"str_width\",\"text\":\"abc\"},{\"op\":\"str_width\",\"text\":\"def\"}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": {
+          "abc": {
+            "width": 0.26866666666666666,
+            "height": 0.11966666666666666
+          },
+          "def": {
+            "width": 0.23166666666666666,
+            "height": 0.11966666666666666
+          }
+        }
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 0.26866666666666666,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "max",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "strwidth",
+              "amount": 1,
+              "text": "abc"
+            },
+            {
+              "kind": "strwidth",
+              "amount": 1,
+              "text": "def"
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "max"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "null-to-cm",
+      "r": "convertUnit(unit(1, 'null'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"null\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "null-dimension-to-cm",
+      "r": "convertUnit(unit(1, 'null'), 'cm', typeFrom='dimension', typeTo='dimension', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"null\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "dimension",
+        "axis_to": "x",
+        "type_to": "dimension",
+        "unit_to": "cm"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "null-plus-cm",
+      "r": "convertUnit(unit(1, 'null') + unit(2, 'cm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"null\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmin-null-cm",
+      "r": "convertUnit(unit.pmin(unit(1, 'null'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmin\",\"args\":[{\"kind\":\"null\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-null-cm",
+      "r": "convertUnit(unit.pmax(unit(1, 'null'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"kind\":\"null\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmin-null-inches",
+      "r": "convertUnit(unit.pmin(unit(1, 'null'), unit(5, 'inches')), 'inches', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmin\",\"args\":[{\"kind\":\"null\",\"amount\":1},{\"kind\":\"inches\",\"amount\":5}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "inches"
+      },
+      "expected": 5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-plus-mm",
+      "r": "convertUnit(unit(1, 'cm') + unit(2, 'mm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.2,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-plus-mm-vector",
+      "r": "convertUnit(unit(1:2, 'cm') + unit(3:4, 'mm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":[1,2]},{\"kind\":\"mm\",\"amount\":[3,4]}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        1.3,
+        2.3999999999999999
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 2
+            },
+            {
+              "kind": "mm",
+              "amount": 4
+            }
+          ]
+        }
+      ],
+      "length": 2,
+      "simple": false,
+      "types": [
+        "sum",
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-plus-mm-recycle",
+      "r": "convertUnit(unit(1:3, 'cm') + unit(2, 'mm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":[1,2,3]},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        1.2,
+        2.1999999999999997,
+        3.2000000000000002
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-plus-cm-vector",
+      "r": "convertUnit(unit(1:2, 'cm') + unit(10, 'cm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":[1,2]},{\"kind\":\"cm\",\"amount\":10}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        11.000000000000002,
+        12
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 11
+        },
+        {
+          "kind": "cm",
+          "amount": 12
+        }
+      ],
+      "length": 2,
+      "simple": true,
+      "types": [
+        "cm",
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-minus-cm",
+      "r": "convertUnit(unit(3, 'cm') - unit(1, 'cm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sub\",\"args\":[{\"kind\":\"cm\",\"amount\":3},{\"kind\":\"cm\",\"amount\":1}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 2
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-minus-mm",
+      "r": "convertUnit(unit(3, 'cm') - unit(1, 'mm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sub\",\"args\":[{\"kind\":\"cm\",\"amount\":3},{\"kind\":\"mm\",\"amount\":1}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.8999999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 3
+            },
+            {
+              "kind": "mm",
+              "amount": -1
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-times-2.5",
+      "r": "convertUnit(unit(1:2, 'cm') * 2.5, 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"mul\",\"scalar\":2.5,\"arg\":{\"kind\":\"cm\",\"amount\":[1,2]}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        2.5,
+        5
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-div-4",
+      "r": "convertUnit(unit(2, 'cm') / 4, 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"div\",\"scalar\":4,\"arg\":{\"kind\":\"cm\",\"amount\":2}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0.49999999999999994,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 0.5
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "cm-times-vector",
+      "r": "convertUnit(unit(1:3, 'cm') * c(1, 2), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"mul\",\"scalar\":[1,2],\"arg\":{\"kind\":\"cm\",\"amount\":[1,2,3]}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0.99999999999999989,
+        3.9999999999999996,
+        3
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "neg-unit",
+      "r": "convertUnit(-unit(1, 'cm'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"neg\",\"arg\":{\"kind\":\"cm\",\"amount\":1}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": -0.99999999999999989,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "neg-sum",
+      "r": "convertUnit(-(unit(1, 'cm') + unit(1, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"neg\",\"arg\":{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":1}]}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": -1.0999999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": -1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "zero-times-unit",
+      "r": "convertUnit(unit(1, 'cm') * 0, 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"mul\",\"scalar\":0,\"arg\":{\"kind\":\"cm\",\"amount\":1}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-same-kind",
+      "r": "convertUnit(unit.pmax(unit(1, 'cm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 2
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-mixed",
+      "r": "convertUnit(unit.pmax(unit(1, 'cm'), unit(2, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0.99999999999999989,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "max",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "max"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-three-units",
+      "r": "convertUnit(unit.pmax(unit(1, 'cm'), unit(2, 'mm'), unit(0.5, 'inches')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2},{\"kind\":\"inches\",\"amount\":0.5}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.27,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "max",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            },
+            {
+              "kind": "inches",
+              "amount": 0.5
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "max"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-vector",
+      "r": "convertUnit(unit.pmax(unit(1:3, 'cm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"kind\":\"cm\",\"amount\":[1,2,3]},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        1.9999999999999998,
+        1.9999999999999998,
+        3
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 2
+        },
+        {
+          "kind": "cm",
+          "amount": 2
+        },
+        {
+          "kind": "cm",
+          "amount": 3
+        }
+      ],
+      "length": 3,
+      "simple": true,
+      "types": [
+        "cm",
+        "cm",
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-with-sum-child",
+      "r": "convertUnit(unit.pmax(unit(1, 'cm') + unit(1, 'mm'), unit(0.5, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":1}]},{\"kind\":\"cm\",\"amount\":0.5}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.0999999999999999,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "max",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "sum",
+              "amount": 1,
+              "children": [
+                {
+                  "kind": "cm",
+                  "amount": 1
+                },
+                {
+                  "kind": "mm",
+                  "amount": 1
+                }
+              ]
+            },
+            {
+              "kind": "cm",
+              "amount": 0.5
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "max"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "psum-mixed",
+      "r": "convertUnit(unit.psum(unit(1, 'cm'), unit(2, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"psum\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.2,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "psum-same-kind",
+      "r": "convertUnit(unit.psum(unit(1, 'cm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"psum\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 3,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 3
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "psum-with-sum-child",
+      "r": "convertUnit(unit.psum(unit(1, 'cm') + unit(1, 'mm'), unit(0.5, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"psum\",\"args\":[{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":1}]},{\"kind\":\"cm\",\"amount\":0.5}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.6000000000000001,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 1
+            },
+            {
+              "kind": "cm",
+              "amount": 0.5
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-scaled-sum-child",
+      "r": "convertUnit(unit.pmax(2 * (unit(1, 'cm') + unit(1, 'mm')), unit(0.5, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[{\"op\":\"mul\",\"scalar\":2,\"arg\":{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":1}]}},{\"kind\":\"cm\",\"amount\":0.5}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 2.1999999999999997,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "max",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "sum",
+              "amount": 2,
+              "children": [
+                {
+                  "kind": "cm",
+                  "amount": 1
+                },
+                {
+                  "kind": "mm",
+                  "amount": 1
+                }
+              ]
+            },
+            {
+              "kind": "cm",
+              "amount": 0.5
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "max"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "sum-mixed",
+      "r": "convertUnit(sum(unit(1, 'cm'), unit(2, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sum\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.2,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "sum"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "sum-same-kind",
+      "r": "convertUnit(sum(unit(1, 'cm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"sum\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 3,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 3
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "max-same-kind",
+      "r": "convertUnit(max(unit(1, 'cm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"max\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 1.9999999999999998,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 2
+        }
+      ],
+      "length": 1,
+      "simple": true,
+      "types": [
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "min-mixed",
+      "r": "convertUnit(min(unit(1, 'cm'), unit(2, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"min\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 0.20000000000000001,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "min",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 2
+            }
+          ]
+        }
+      ],
+      "length": 1,
+      "simple": false,
+      "types": [
+        "min"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-c-same-kind",
+      "r": "convertUnit(unit.c(unit(1, 'cm'), unit(2, 'cm')), 'mm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"unit_c\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": [
+        9.9999999999999982,
+        19.999999999999996
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 1
+        },
+        {
+          "kind": "cm",
+          "amount": 2
+        }
+      ],
+      "length": 2,
+      "simple": true,
+      "types": [
+        "cm",
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-c-mixed",
+      "r": "convertUnit(unit.c(unit(1:2, 'cm'), unit(3, 'mm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"unit_c\",\"args\":[{\"kind\":\"cm\",\"amount\":[1,2]},{\"kind\":\"mm\",\"amount\":3}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0.99999999999999989,
+        1.9999999999999998,
+        0.29999999999999999
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "cm",
+          "amount": 1
+        },
+        {
+          "kind": "cm",
+          "amount": 2
+        },
+        {
+          "kind": "mm",
+          "amount": 3
+        }
+      ],
+      "length": 3,
+      "simple": false,
+      "types": [
+        "cm",
+        "cm",
+        "mm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-c-flatten",
+      "r": "convertUnit(unit.c(unit(1, 'null'), unit.c(unit(2, 'cm'), unit(3, 'mm'))), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"unit_c\",\"args\":[{\"kind\":\"null\",\"amount\":1},{\"op\":\"unit_c\",\"args\":[{\"kind\":\"cm\",\"amount\":2},{\"kind\":\"mm\",\"amount\":3}]}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        0,
+        1.9999999999999998,
+        0.29999999999999999
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "null",
+          "amount": 1
+        },
+        {
+          "kind": "cm",
+          "amount": 2
+        },
+        {
+          "kind": "mm",
+          "amount": 3
+        }
+      ],
+      "length": 3,
+      "simple": false,
+      "types": [
+        "null",
+        "cm",
+        "mm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "unit-c-compound",
+      "r": "convertUnit(unit.c(unit(1, 'cm') + unit(1, 'mm'), unit(2, 'cm')), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"unit_c\",\"args\":[{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":1},{\"kind\":\"mm\",\"amount\":1}]},{\"kind\":\"cm\",\"amount\":2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        1.0999999999999999,
+        1.9999999999999998
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "sum",
+          "amount": 1,
+          "children": [
+            {
+              "kind": "cm",
+              "amount": 1
+            },
+            {
+              "kind": "mm",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "kind": "cm",
+          "amount": 2
+        }
+      ],
+      "length": 2,
+      "simple": false,
+      "types": [
+        "sum",
+        "cm"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "npc-vector",
+      "r": "convertUnit(unit(1:3, 'npc'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":[1,2,3]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [
+        10,
+        20,
+        30
+      ],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [
+        {
+          "kind": "npc",
+          "amount": 1
+        },
+        {
+          "kind": "npc",
+          "amount": 2
+        },
+        {
+          "kind": "npc",
+          "amount": 3
+        }
+      ],
+      "length": 3,
+      "simple": true,
+      "types": [
+        "npc",
+        "npc",
+        "npc"
+      ],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "pmax-no-args",
+      "r": "convertUnit(unit.pmax(), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"pmax\",\"args\":[]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [],
+      "length": 0,
+      "simple": false,
+      "types": [],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "psum-no-args",
+      "r": "convertUnit(unit.psum(), 'cm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"psum\",\"args\":[]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": [],
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": [],
+      "length": 0,
+      "simple": false,
+      "types": [],
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "rounding-cm-sum-to-mm",
+      "r": "convertUnit(unit(0.1, 'cm') + unit(0.2, 'cm'), 'mm', valueOnly=TRUE)",
+      "spec": "{\"op\":\"add\",\"args\":[{\"kind\":\"cm\",\"amount\":0.1},{\"kind\":\"cm\",\"amount\":0.2}]}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "mm"
+      },
+      "expected": 3.0000000000000004,
+      "r_error": null,
+      "tolerance": 0,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "rounding-third-npc",
+      "r": "convertUnit(unit(1/3, 'npc'), 'cm', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.3333333333333333}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": 3.333333333333333,
+      "r_error": null,
+      "tolerance": 0,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "rounding-division-mm-pt",
+      "r": "convertUnit(unit(1, 'mm') / 3, 'pt', valueOnly=TRUE)",
+      "spec": "{\"op\":\"div\",\"scalar\":3,\"arg\":{\"kind\":\"mm\",\"amount\":1}}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "pt"
+      },
+      "expected": 0.94842519685039361,
+      "r_error": null,
+      "tolerance": 0,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "to-strwidth-errors",
+      "r": "convertUnit(unit(1, 'cm'), 'strwidth', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "strwidth"
+      },
+      "expected": null,
+      "r_error": "invalid unit or unit not yet implemented",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "to-strheight-errors",
+      "r": "convertUnit(unit(1, 'cm'), 'strheight', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "strheight"
+      },
+      "expected": null,
+      "r_error": "invalid unit or unit not yet implemented",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "to-null-errors",
+      "r": "convertUnit(unit(1, 'cm'), 'null', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "null"
+      },
+      "expected": null,
+      "r_error": "invalid unit or unit not yet implemented",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "to-snpc-errors",
+      "r": "convertUnit(unit(2.54, 'cm'), 'snpc', valueOnly=TRUE)",
+      "spec": "{\"kind\":\"cm\",\"amount\":2.54}",
+      "python_only": false,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "snpc"
+      },
+      "expected": null,
+      "r_error": "invalid unit or unit not yet implemented",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "empty-unit-python-only",
+      "r": "unit.c()",
+      "spec": "{\"op\":\"empty\"}",
+      "python_only": true,
+      "context": {
+        "width_cm": 10,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "cm"
+      },
+      "expected": null,
+      "r_error": "attempt to set an attribute on NULL",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": {
+        "length": 0,
+        "convert_to_cm": []
+      },
+      "note": "R 4.5.3: unit.c() -> attempt to set an attribute on NULL"
+    },
+    {
+      "id": "zero-dimension-npc-to-npc",
+      "r": "convertUnit(unit(0.5, 'npc'), 'npc', valueOnly=TRUE)  # width=0cm",
+      "spec": "{\"kind\":\"npc\",\"amount\":0.5}",
+      "python_only": false,
+      "context": {
+        "width_cm": 0,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "npc"
+      },
+      "expected": 0.5,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "zero-dimension-zero-cm-to-npc",
+      "r": "convertUnit(unit(0, 'cm'), 'npc', valueOnly=TRUE)  # width=0cm",
+      "spec": "{\"kind\":\"cm\",\"amount\":0}",
+      "python_only": false,
+      "context": {
+        "width_cm": 0,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "npc"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "zero-dimension-zero-native-to-npc",
+      "r": "convertUnit(unit(0, 'native'), 'npc', valueOnly=TRUE)  # width=0cm",
+      "spec": "{\"kind\":\"native\",\"amount\":0}",
+      "python_only": false,
+      "context": {
+        "width_cm": 0,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "npc"
+      },
+      "expected": 0,
+      "r_error": null,
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    },
+    {
+      "id": "zero-dimension-cm-to-npc-errors",
+      "r": "convertUnit(unit(1, 'cm'), 'npc', valueOnly=TRUE)  # width=0cm",
+      "spec": "{\"kind\":\"cm\",\"amount\":1}",
+      "python_only": false,
+      "context": {
+        "width_cm": 0,
+        "height_cm": 5,
+        "xscale": [
+          0,
+          100
+        ],
+        "yscale": [
+          0,
+          50
+        ],
+        "fontsize": 12,
+        "cex": 1,
+        "lineheight": 1.2,
+        "metrics": []
+      },
+      "convert": {
+        "axis_from": "x",
+        "type_from": "location",
+        "axis_to": "x",
+        "type_to": "location",
+        "unit_to": "npc"
+      },
+      "expected": null,
+      "r_error": "Viewport has zero dimension(s)",
+      "tolerance": 9.9999999999999998e-13,
+      "structure": null,
+      "length": null,
+      "simple": null,
+      "types": null,
+      "python_expect": null,
+      "note": null
+    }
+  ]
+}

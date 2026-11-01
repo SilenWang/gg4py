@@ -50,6 +50,15 @@ Python 模块，反之亦然。
 | `ggcore.render.skia` | — | 桌面/服务端渲染（skia-python，上游用 grid） | 未实现 |
 | `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 未实现 |
 
+## 基础设施（grid 对等）
+
+上游 `grid` 不在 ggplot2 仓库里，行号写 R 源码（版本由 `pixi.toml` 的 `refs`
+环境钉住，见 `docs/notes/units.md`）。
+
+| Python 模块 | 上游文件:行 | 上游符号 | 状态 |
+| --- | --- | --- | --- |
+| `ggcore.units` | `src/library/grid/R/unit.R:25`、`:59`、`:525`；`src/library/grid/src/unit.c:658`、`:1226` | `unit()` / `convertUnit()` / `unit.c()` / `transform()` / `transformFromINCHES()` | 已实现（M0-3，93 条 R 对拍） |
+
 ## 维护规则
 
 - 换 pin 时用 `pixi run upstream:diff` 的报表核对哪些文件动过，只更新动过的行。
