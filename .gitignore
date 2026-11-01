@@ -15,3 +15,5 @@ docs/spike/e1_coldstart/static/
 .playwright-browsers/
 # `pixi run gate:metrics` 的中间产物与报告（每次重跑覆盖，不入库）
 .gate-metrics/
+# `pixi run cases:matrix` 的运行时报告（红绿 + 差多少），每次重跑覆盖，不入库
+.cases-matrix/

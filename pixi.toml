@@ -66,6 +66,12 @@ diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
 # grob 可视化快照（M0-6）：每种原语一张，走 grob → 场景遍历 → 临时 skia 设备。
 "cases:grob" = "PYTHONPATH=src python tools/cases/grob_cases.py"
+# M0-11: 案例库覆盖矩阵 + CI 报告。扫 docs/cases 的三文件 case，渲染/比对走
+# render / diff 两个任务名；静态矩阵 docs/cases/matrix.md 入库，`--check` 守新鲜度。
+"cases:matrix" = "PYTHONPATH=src python tools/cases/matrix.py"
+# 静态校验（不渲染）：契约错 → 非 0；矩阵过期 → 非 0。挂进 `check`，所以普通
+# CI job 就能守住「新增 case 必须重生成矩阵」。真渲染/比对仍走 `cases:matrix`。
+"cases:matrix:check" = "PYTHONPATH=src python tools/cases/matrix.py --check --no-run"
 # 设备三路冒烟（M0-8）：一张手搓图 → PNG / SVG / PDF，产物进 docs/cases/device-smoke/current。
 "cases:device" = "PYTHONPATH=src python tools/cases/device_cases.py"
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
@@ -139,4 +145,5 @@ check = { depends-on = [
   "gate:ir-json",
   "gate:determinism",
   "gate:metrics",
+  "cases:matrix:check",
 ] }
