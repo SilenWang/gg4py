@@ -35,7 +35,11 @@ R 不在这里做整除检查，也不发 R 惯常的 recycling warning——`co
 
 `data`（`strwidth` / `strheight` 的文本）按 R `validData()`：长度为 1 时复用，
 **长于**单位数时取前 N 个，短于单位数且不为 1 时报
-`data must be NULL, have length 1, or match the final unit vector`。
+`data must be either NULL, have length 1, or match the length of the final unit vector`。
+
+注意 R 会把 character 向量整体包成**一个** data 元素（`data <- list(data)`），所以
+R 侧 `unit(1:3, "strwidth", data=c("a","b"))` 不报错、只有 `data=list("a","b")` 才报；
+ggcore 的「一元素一 data」模型是下面列的主动窄化，这句文案在它的触发面上自洽。
 
 主动窄化的两点（ggplot2 4.0.3 与 gtable 0.3.6 的调用面都没有命中）：
 
