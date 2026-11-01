@@ -35,8 +35,15 @@ Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转�
 `f("pandas")`、`getattr(importlib, "import_module")("pandas")` 都拦；别名可以成
 链（`g = f`），门禁迭代到不动点。
 
+`.__call__` 不算「再间接一层」：`f.__call__(...)` 调用的就是 `f`，所以还原调用
+目标时把尾部的 `.__call__` 剥掉（可连写 `f.__call__.__call__`），归约到同一条路径。
+`f.__call__("pandas")`、`getattr(f, "__call__")("pandas")`、
+`getattr(getattr(importlib, "import_module"), "__call__")("pandas")` 都在拦截范围内；
+属性链（`importlib.import_module.__call__`）与 `g = f.__call__` 这类别名同样还原。
+
 **保证范围**（AST 静态扫描，不是沙箱）：覆盖 `import` / `import … as` /
-`from … import`、非字面量动态导入、赋值别名、`getattr(<可还原>, "字面量")`。
+`from … import`、非字面量动态导入、赋值别名、`getattr(<可还原>, "字面量")`、
+属性链与经 `.__call__` 的调用。
 **不覆盖**再间接一层的写法——`operator.attrgetter("import_module")` 之后再调用、
 `functools.partial`、`eval` / `exec` 里的代码、运行时拼接的属性名
 （`getattr(importlib, name)`）、`importlib.__dict__[...]`。静态分析不可能完备，
@@ -81,12 +88,27 @@ rm src/ggcore/_probe.py
 | --- | --- | --- |
 | 双端 | `MetricProvider`（HarfBuzz）vs CanvasKit `SkParagraph`（node） | 逐标签相对差 < 0.5%，run 切分布局 0 不一致 |
 | 桌面端 | skia-python 逐字形 advance vs HarfBuzz（同一 glyph id） | < 0.5% |
-| 兜底表 | `TableBackend` vs HarfBuzz | run 切分 0 不一致；**声明支持**的文字 < 5% |
+| 兜底表 | `TableBackend` vs HarfBuzz | run 切分 0 不一致；**声明支持**的文字 < 5%（仅对本 200 条冻结语料成立，见下） |
 | 灵敏度 | 字体栈砍成单字族后的双端比较 | 必须判红（否则门禁失效） |
 | 表新鲜度 | `tools/metrics/build_table.py --check` | 重新生成的表与提交的表逐字节相同 |
 
 实测量级与口径推导见 `docs/notes/metrics-ledger.md` · M0-7。报告落在
 `.gate-metrics/metrics_gate.json`（不入库）。
+
+### 兜底表 5% 判据只对这份语料成立
+
+3.59% 与 5% 这组数是**这份 200 条冻结语料上的测量结果**，不是兜底表的误差上界：
+
+- 最差标签 `'#️⃣ Total'` 相对差 **3.5876%**，绝对差 **+2.71875 px @16px**（表偏宽）；
+- 这 2.72 px 全部来自 `To` 字对的 kerning（兜底表不建模 kern）：单独量 `'To'`
+  相对差 **16.14%**、`'Total'` **7.28%**，是标签前面约 38 px 的 emoji 前缀把标签级
+  相对差稀释到 3.59%；
+- 绝对值恒定：`'#️⃣ Total'`、`'🏳️‍🌈🏳️‍🌈 Total'`、`'Total: #️⃣ (40%)'` 的偏差都是
+  +2.71875 px，只有相对差随标签变长而变小——**短 kerning 标签的相对误差可达 16%**，
+  换一份语料 3.59% 立刻不成立。
+
+结论不变：兜底表不是权威宽度，布局必须走渲染端实测（L1）；`MetricProvider.supports()`
+为 False 时换引擎。
 
 **为什么 skia 腿比逐字形而不是整段**：`SkFont.getWidths` 不做 kerning/ligature
 shaping，整段比会把 kern 差算成实现差异（`Width` 的 `Wi` 能差 2%，阿拉伯文能差
