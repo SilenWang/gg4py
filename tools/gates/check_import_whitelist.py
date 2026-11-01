@@ -11,11 +11,13 @@ pandas / Arrow / 绘图库都必须留在包外，DataFrame-like 输入在边界
 别名也要跟：`import importlib as il`、`from importlib import import_module as load`、
 赋值别名（`f = importlib.import_module`，可成链）以及字面量取属性
 （`getattr(importlib, "import_module")`）都还原成同一条点分路径再判。
+`.__call__` 只是「把同一个目标再交出来一次」，还原时剥掉，所以
+`f.__call__("pandas")`、`getattr(f, "__call__")("pandas")` 都落回 `f` 本身。
 
 保证范围（边界见 `docs/notes/gates.md`）：静态扫描覆盖 `import` / `import … as` /
-`from … import` / 非字面量动态导入 / 赋值别名 / `getattr(<可还原>, "字面量")`；
-不覆盖 `operator.attrgetter`、`functools.partial`、`eval` / `exec`、运行时拼接
-属性名等再间接一层的写法。
+`from … import` / 非字面量动态导入 / 赋值别名 / `getattr(<可还原>, "字面量")` /
+经 `.__call__` 的调用；不覆盖 `operator.attrgetter`、`functools.partial`、
+`eval` / `exec`、运行时拼接属性名等再间接一层的写法。
 
 用法：
     pixi run gate:imports
@@ -112,14 +114,38 @@ def local_bindings(tree: ast.AST) -> dict[str, str]:
 def _resolved_callee(expr: ast.expr, bound: dict[str, str]) -> str | None:
     """把表达式还原成点分路径。
 
-    只认得三种形态：裸名、`Name.attr`、`getattr(<可还原>, "字面量")`。再间接一层
-    就还原不了（例如 `operator.attrgetter`），那是保证范围之外的已知漏口。
+    认得三种形态：裸名、属性链（`Name.attr` / `a.b.c`）、
+    `getattr(<可还原>, "字面量")`。再间接一层就还原不了（例如
+    `operator.attrgetter`），那是保证范围之外的已知漏口。
+
+    还原出来的路径先过一遍 `_strip_call_wrappers`：`f.__call__(...)` 与 `f(...)` 是
+    同一个目标，归约掉之后别名（`g = f.__call__`）与嵌套 getattr 都一并落回同一条
+    路径。
     """
+    path = _resolve_path(expr, bound)
+    return None if path is None else _strip_call_wrappers(path)
+
+
+def _resolve_path(expr: ast.expr, bound: dict[str, str]) -> str | None:
     if isinstance(expr, ast.Name):
         return bound.get(expr.id, expr.id)
-    if isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name):
-        return f"{bound.get(expr.value.id, expr.value.id)}.{expr.attr}"
+    if isinstance(expr, ast.Attribute):
+        base = _resolve_path(expr.value, bound)
+        return None if base is None else f"{base}.{expr.attr}"
     return _getattr_target(expr, bound)
+
+
+# 只是“把目标本身再交出来一次”的包装属性：`f.__call__` 就是 `f`。
+CALL_WRAPPERS = frozenset({"__call__"})
+
+
+def _strip_call_wrappers(path: str) -> str:
+    """剥掉尾部的 `.__call__`（可连成 `f.__call__.__call__`），剥到不动点。"""
+    while True:
+        head, _, attr = path.rpartition(".")
+        if not head or attr not in CALL_WRAPPERS:
+            return path
+        path = head
 
 
 def _getattr_target(expr: ast.expr, bound: dict[str, str]) -> str | None:

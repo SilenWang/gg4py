@@ -95,6 +95,22 @@ def test_import_gate_rejects_relative_import_escape(tmp_path: Path) -> None:
         "    return g('pandas')\n",
         # 内置 __import__ 的赋值别名。
         "importer = __import__\n\n\ndef load():\n    return importer('pandas')\n",
+        # `.__call__` 只是把同一个目标再交出来一次，不能当成“又间接了一层”。
+        "import importlib\n\n\nf = importlib.import_module\n\n\ndef load():\n"
+        "    return f.__call__('pandas')\n",
+        "import importlib\n\n\nf = importlib.import_module\n\n\ndef load():\n"
+        "    return getattr(f, '__call__')('pandas')\n",
+        "import importlib\n\n\ndef load():\n"
+        "    return getattr(getattr(importlib, 'import_module'), '__call__')('pandas')\n",
+        # 属性链直呼：`importlib.import_module.__call__`。
+        "import importlib\n\n\ndef load():\n"
+        "    return importlib.import_module.__call__('pandas')\n",
+        # `.__call__` 也能存成别名，再成链。
+        "import importlib\n\n\nf = importlib.import_module\ng = f.__call__\n\n\ndef load():\n"
+        "    return g('pandas')\n",
+        # 非字面量同样拦（归约之后仍取不到模块名）。
+        "import importlib\n\n\nf = importlib.import_module\n\n\ndef load(name):\n"
+        "    return f.__call__(name)\n",
     ],
 )
 def test_import_gate_rejects_dynamic_imports(tmp_path: Path, source: str) -> None:

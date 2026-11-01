@@ -64,10 +64,15 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
   `pixi run metrics:check-table` 重新生成并比对；`gate:metrics` 每次都跑这个检查。
 - 内容：每个受管字体的 upem / ascent / descent / `.notdef` advance / 是否把 emoji
   序列合成单字形，以及 cmap 覆盖的每个码点的 advance（字体设计单位）。
-- 精度（200 条语料 × 4 字号，`gate:metrics` 每次实测）：
+- 精度（200 条语料 × 4 字号，`gate:metrics` 每次实测，**只对这份冻结语料成立**）：
   - run 切分与 HarfBuzz **逐条一致（0/800 不一致）**；
-  - 兜底表声明支持的文字（178/200 条）最大相对差 **3.59%**（DejaVu 的 kerning，
-    典型是 `Total` 的 `To` 对），均值 0.46%；CJK 子集**完全一致**（advance 恒为 1 em）；
+  - 兜底表声明支持的文字（178/200 条）最大相对差 **3.59%**、均值 0.46%；差全部来自
+    DejaVu 的 kerning（兜底表不建模 kern），典型是 `Total` 的 `To` 对：绝对差恒定
+    **+2.71875 px @16px**（表偏宽，等价于 HarfBuzz 的 kern 修正 −2.72 px）；
+  - 相对差随标签变短而放大：`'To'` 单对 **16.14%**、`'Total'` **7.28%**，最差标签
+    `'#️⃣ Total'` 只有 3.59% 是因为前面约 38 px 的 emoji 前缀稀释了分母。
+    **3.59% / 5% 不是误差上界，换一份语料就不再成立**；
+  - CJK 子集**完全一致**（advance 恒为 1 em）；
   - **不建模**上下文 shaping：阿拉伯/希伯来/印度诸语/泰文/老挝/藏文/缅文/高棉/
     朝鲜 jamo 一律 `supports() == False`，最大偏差实测 95.8%，**不能**用于布局。
 - 口径：兜底表是「没有 HarfBuzz 时的近似」，不是权威宽度。IR 里的文本宽度按 L1
@@ -87,8 +92,10 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 - 缓存键 `(text, size, font_stack)`，值是该段文字的 run 结果（含每 run 宽度）；
   容量 4096，FIFO 淘汰，`cache_stats()` 暴露 `entries/hits/misses/evictions/hit_rate`。
 - `pixi run bench`（`benchmarks/test_metrics.py`）实测（本机，200 条语料 @16px）：
-  - cold（清缓存后全量）：约 **6.3 ms / 200 条**（≈31 µs/条，HarfBuzz shaping 成本）；
-  - warm（全命中）：约 **118 µs / 200 条**（≈0.6 µs/条，缓存查找 + 求和）；
+  - cold（清缓存后全量）：**median ≈ 6.35 ms / 200 条**（≈32 µs/条，HarfBuzz shaping
+    成本）；引用这个数请用 median——5 轮里有 1 轮 ≈52 ms 的离群，mean 因此是 15.1 ms，
+    写 mean 会把成本高估一倍多；
+  - warm（全命中）：median ≈ **119 µs / 200 条**（≈0.6 µs/条，缓存查找 + 求和）；
   - 命中率由 `test_cache_hit_rate` 断言：cold 全 miss、warm 全 hit（语料有重复
     标签，按去重后的条数计）。
 - 命中的现实形态：同一张图的 axis/legend/annotation 会反复量同一批字符串。
@@ -101,7 +108,7 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 | run 切分布局不一致 | 0 / 200（四个字号都是 0） |
 | 「必须显式切 run」的标签数 | **132 / 200**（与 E2 完全吻合） |
 | 桌面端 skia-python 逐字形 advance 最大差 | 0.18%（emoji CBDT strike 推导差异，L1） |
-| 兜底表最大差（支持子集） | 3.59% |
+| 兜底表最大差（支持子集） | 3.59%（仅本语料；绝对值恒定 +2.71875 px @16px，`To` 单对 16.14%，见 M0-7-d） |
 | 灵敏度：字体栈砍成单字族 | 132 条判红 → 门禁确实量的是「两端」，不是同一侧 |
 
 注意 **skia-python 腿比的是逐字形 advance**，不是整段宽度：`SkFont.getWidths` 不做

@@ -269,6 +269,8 @@ def test_table_and_harfbuzz_agree_on_the_corpus(hb: MetricProvider, table: Metri
         reference = hb.advance(text, 16)
         worst = max(worst, abs(table.advance(text, 16) - reference) / reference)
     # 表不做 kerning：DejaVu 上实测 3.59%，判据 5%（docs/notes/metrics-ledger.md · M0-7）。
+    # 3.59% 只是这份 200 条语料的结果，不是上界：同一 +2.71875 px @16px 的 `To` 字对
+    # 在 `'To'` 单对上就是 16.14%（短标签相对差更大）。
     assert worst < 0.05, f"fallback table drifts {worst:.2%} from HarfBuzz"
 
 
