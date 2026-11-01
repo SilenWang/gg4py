@@ -15,7 +15,7 @@
  "method": {
   "run_split": "both sides split each label into per-font runs with the rule 'first face in font_stack whose cmap covers the codepoint wins; joiners/selectors/combining marks stay in the current run'",
   "uharfbuzz": "hb.shape() per run, advance summed in font units, scaled by size/upem",
-  "canvaskit": "one SkParagraph per run with explicit fontFamilies, getMaxIntrinsicWidth() summed"
+  "canvaskit": "one SkParagraph per run (explicit fontFamilies), widths summed"
  },
  "versions": {
   "uharfbuzz_harfbuzz": "15.0.0",

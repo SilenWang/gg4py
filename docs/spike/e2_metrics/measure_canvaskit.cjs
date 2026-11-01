@@ -32,8 +32,16 @@ const FAMILY = {
   'NotoColorEmoji.ttf': 'Noto Color Emoji',
 };
 
-// Joiners, selectors and combining marks never start a new font run.
-const GLUE = new Set([0x200d, 0xfe0e, 0xfe0f, 0x200c]);
+// Joiners and variation selectors never start a new font run. Keep these
+// ranges identical to GLUE_RANGES in run_e2.py
+// (tests/test_run_split_rules.py asserts they match).
+const GLUE_RANGES = [
+  [0x200c, 0x200d],
+  [0xfe00, 0xfe0f],
+  [0xe0100, 0xe01ef],
+];
+const GLUE = new Set();
+for (const [lo, hi] of GLUE_RANGES) for (let cp = lo; cp <= hi; cp++) GLUE.add(cp);
 
 CanvasKitInit({ locateFile: (f) => path.join(ckBin, f) }).then((CK) => {
   const provider = CK.TypefaceFontProvider.Make();

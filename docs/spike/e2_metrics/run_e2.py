@@ -32,9 +32,12 @@ CORPUS = SPIKE / "corpus" / "labels_200.json"
 RESULTS = HERE / "results"
 GATE = 0.005
 
-# Characters that must never start a new font run: joiners, selectors and
-# combining marks belong to whatever face shaped the character before them.
-GLUE = {0x200D, 0xFE0E, 0xFE0F, 0xFE00, 0xE0100}
+# Code points that must never start a new font run: joiners and variation
+# selectors belong to whatever face shaped the character before them. The same
+# ranges are declared in measure_canvaskit.cjs; tests/test_run_split_rules.py
+# keeps the two lists in step.
+GLUE_RANGES = [(0x200C, 0x200D), (0xFE00, 0xFE0F), (0xE0100, 0xE01EF)]
+GLUE = {cp for lo, hi in GLUE_RANGES for cp in range(lo, hi + 1)}
 
 
 def font_dir() -> Path:
@@ -104,13 +107,17 @@ def measure(text: str, fonts, size: float) -> tuple[float, list[dict]]:
 
 def run_canvaskit(corpus: dict, out_json: Path, size: float) -> dict:
     script = HERE / "measure_canvaskit.cjs"
-    subprocess.run(
+    proc = subprocess.run(
         ["node", str(script), str(CORPUS), str(out_json), str(size)],
-        check=True,
         cwd=REPO,
         capture_output=True,
         text=True,
     )
+    if proc.returncode != 0:
+        sys.exit(
+            f"canvaskit measurement failed (node exit {proc.returncode}); "
+            f"run `pixi run spike:assets` first.\n{proc.stderr.strip()}"
+        )
     return json.loads(out_json.read_text(encoding="utf-8"))
 
 

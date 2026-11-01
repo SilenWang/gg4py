@@ -54,13 +54,17 @@ def draw(canvas: skia.Canvas, run) -> None:
 
 def canvas_probe() -> dict:
     out_json = RESULTS / "e3_canvaskit_probe.json"
-    subprocess.run(
+    proc = subprocess.run(
         ["node", str(HERE / "probe_canvaskit.cjs"), str(out_json)],
-        check=True,
         cwd=REPO,
         capture_output=True,
         text=True,
     )
+    if proc.returncode != 0:
+        sys.exit(
+            f"canvaskit probe failed (node exit {proc.returncode}); "
+            f"run `pixi run spike:assets` first.\n{proc.stderr.strip()}"
+        )
     return json.loads(out_json.read_text(encoding="utf-8"))
 
 

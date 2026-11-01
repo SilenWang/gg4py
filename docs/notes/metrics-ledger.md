@@ -19,5 +19,5 @@
 ## L3 · 字体回退由我们自己切 run，不依赖 CanvasKit（E2）
 
 - 现象：CanvasKit `TypefaceFontProvider` 不跨字族回退，整串按主字族排版会得到 `.notdef`（132/200 条语料受影响）。
-- 口径：`font_stack` + 「第一个覆盖该码点的字族」这条规则是**规范**，Python 与 TS 两端各自实现；测试断言两端 run 切分一致（当前 0 不一致）。
+- 口径：`font_stack` + 「第一个覆盖该码点的字族」这条规则是**规范**，Python 与 TS 两端各自实现。粘着码点固定为 `U+200C–200D`、`U+FE00–FE0F`、`U+E0100–E01EF` 三段，两端都按这份区间声明，`tests/test_run_split_rules.py` 校验两份声明逐字一致——早期两端的集合各缺一段，只因语料只含 `U+200D`/`U+FE0F` 才没暴露。
 - 复现：`pixi run spike:e2`，`run_layout_mismatches` 必须为 0。

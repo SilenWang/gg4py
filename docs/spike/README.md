@@ -18,7 +18,7 @@
 pixi install
 pixi run spike:e2     # E2：双端度量一致性（含自动下载 canvaskit-wasm）
 pixi run spike:e3     # E3：导出缺口
-pixi run spike:e1     # E1：Pyodide 冷启动（见 SIL-588）
+pixi run spike:e1     # E1：Pyodide 冷启动（任务由 SIL-588 落地，此任务与目录当前尚不存在）
 ```
 
 产物：`docs/spike/{e1_coldstart,e2_metrics,e3_export}/results/`。语料是冻结的：

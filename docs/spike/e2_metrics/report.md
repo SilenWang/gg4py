@@ -8,7 +8,7 @@
 
 - 语料：`docs/spike/corpus/labels_200.json`（冻结，sha256 `6c93e414…bedfb1`），5 类各 40 条：latin / cjk / emoji / combining（含 RTL、天城文、泰文、越南语）/ long（40–200 字符）。
 - 字体：conda-forge 提供的真实文件，两端读同一份字节：`DejaVuSans.ttf`、`NotoSansCJKsc-VF.ttf`、`NotoColorEmoji.ttf`。
-- 两侧 **run 切分规则完全一致**：逐码点选「font_stack 里第一个 cmap 覆盖它的字族」；`ZWJ`/变体选择符/组合标记黏在前一个 run 上。
+- 两侧 **run 切分规则完全一致**：逐码点选「font_stack 里第一个 cmap 覆盖它的字族」；`U+200C–200D`、`U+FE00–FE0F`、`U+E0100–E01EF` 三段粘着码点黏在前一个 run 上（两端声明由 `tests/test_run_split_rules.py` 校验一致）。
 - CPython 侧：`hb.shape()` 逐 run 取 `x_advance`，按 `size/upem` 换成 px。
 - 浏览器侧：每个 run 单独建一个 `SkParagraph`（`TypefaceFontProvider` + `FontCollection` + 显式 `fontFamilies`），取 `getMaxIntrinsicWidth()` 求和。这是渲染器真实会走的路径。
 - 字号：10 / 12 / 16 / 24 px（度量问题通常在字号边界暴露）。

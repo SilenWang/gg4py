@@ -12,7 +12,7 @@ lint = "ruff check . && ruff format --check ."
 "spike:corpus" = "python docs/spike/corpus/generate_corpus.py"
 "spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
 "spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
-"spike:e3" = "python docs/spike/e3_export/run_e3.py"
+"spike:e3" = { cmd = "python docs/spike/e3_export/run_e3.py", depends-on = ["spike:assets"] }
 
 [dependencies]
 python = "3.12.*"
