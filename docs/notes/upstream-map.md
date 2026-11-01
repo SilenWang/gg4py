@@ -42,6 +42,13 @@ Python 模块，反之亦然。
 | `ggcore.guide` | `R/guides-.R:69` | `guides()` | 未实现 |
 | `ggcore.theme` | `R/theme.R:341` | `theme()` | 未实现 |
 
+## 文本度量
+
+| Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
+| --- | --- | --- | --- |
+| `ggcore.metrics` | — | 上游在 grid 包：`grid::strwidth` / `grid::stringWidth`（不在 ggplot2 `R/` 内） | 已实现（M0-7）：run 切分 + `MetricProvider` + 兜底表 |
+| `ggshape.harfbuzz` | — | HarfBuzz 形状后端（上游由 Cairo/grid 内部承担，无对应文件） | 已实现（M0-7）：在 `ggcore` 之外 |
+
 ## 导出
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |

@@ -1,0 +1,193 @@
+{
+ "schema": 1,
+ "table_version": 1,
+ "run_rules_version": 1,
+ "format": "GGMT (magic) + zlib，布局见 src/ggcore/metrics/table.py",
+ "generator": "tools/metrics/build_table.py",
+ "generated_with": {
+  "uharfbuzz": "0.57.0",
+  "harfbuzz": "15.0.0",
+  "numpy": "2.5.4"
+ },
+ "font_stack": [
+  "DejaVuSans.ttf",
+  "NotoSansCJKsc-VF.ttf",
+  "NotoColorEmoji.ttf"
+ ],
+ "fonts": [
+  {
+   "file": "DejaVuSans.ttf",
+   "family": "DejaVu Sans",
+   "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+   "upem": 2048,
+   "ascent": 1901,
+   "descent": 483,
+   "notdef_advance": 1229,
+   "ligates_emoji_clusters": false,
+   "covered_codepoints": 5918
+  },
+  {
+   "file": "NotoSansCJKsc-VF.ttf",
+   "family": "Noto Sans CJK SC",
+   "sha256": "990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f",
+   "upem": 1000,
+   "ascent": 1000,
+   "descent": 200,
+   "notdef_advance": 1000,
+   "ligates_emoji_clusters": false,
+   "covered_codepoints": 44810
+  },
+  {
+   "file": "NotoColorEmoji.ttf",
+   "family": "Noto Color Emoji",
+   "sha256": "bf2a8506b80614ba190a34c7b037af1269a7d614fe9f3b613cc15cdeec6f814b",
+   "upem": 2048,
+   "ascent": 1900,
+   "descent": 500,
+   "notdef_advance": 2550,
+   "ligates_emoji_clusters": true,
+   "covered_codepoints": 1467
+  }
+ ],
+ "table_bytes": 79246,
+ "table_sha256": "ac7d37502259a34b5c3f421ea19b8fae2f3ee5df2a6b0d6aa57de724d617f1b0",
+ "rules": {
+  "glue_ranges": [
+   [
+    8204,
+    8205
+   ],
+   [
+    65024,
+    65039
+   ],
+   [
+    917760,
+    917999
+   ]
+  ],
+  "complex_script_ranges": [
+   [
+    1424,
+    1535
+   ],
+   [
+    1536,
+    1791
+   ],
+   [
+    1792,
+    1871
+   ],
+   [
+    1872,
+    1919
+   ],
+   [
+    1920,
+    1983
+   ],
+   [
+    1984,
+    2047
+   ],
+   [
+    2048,
+    2111
+   ],
+   [
+    2112,
+    2143
+   ],
+   [
+    2144,
+    2159
+   ],
+   [
+    2160,
+    2207
+   ],
+   [
+    2208,
+    2303
+   ],
+   [
+    2304,
+    3583
+   ],
+   [
+    3584,
+    3711
+   ],
+   [
+    3712,
+    3839
+   ],
+   [
+    3840,
+    4095
+   ],
+   [
+    4096,
+    4255
+   ],
+   [
+    4352,
+    4607
+   ],
+   [
+    4608,
+    5023
+   ],
+   [
+    5120,
+    5759
+   ],
+   [
+    6016,
+    6143
+   ],
+   [
+    6144,
+    6319
+   ],
+   [
+    6400,
+    6655
+   ],
+   [
+    6656,
+    6847
+   ],
+   [
+    6912,
+    7039
+   ],
+   [
+    7040,
+    7247
+   ],
+   [
+    43360,
+    43391
+   ],
+   [
+    43392,
+    43615
+   ],
+   [
+    55216,
+    55295
+   ],
+   [
+    64336,
+    65023
+   ],
+   [
+    65136,
+    65279
+   ]
+  ],
+  "note": "表只做逐码点 advance + 粘着码点 + grapheme cluster；不做 kerning/ligature/连写/重排（见 docs/notes/metrics-ledger.md · M0-7）"
+ }
+}

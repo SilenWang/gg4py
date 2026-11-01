@@ -24,6 +24,9 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run gate:imports` | X1 · ggcore import 白名单 |
 | `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
 | `pixi run gate:determinism` | X1 · 同输入同字节 |
+| `pixi run gate:metrics` | X5 · 双端文本度量一致性（uharfbuzz × CanvasKit，M0-7） |
+| `pixi run metrics:table` | M0-7 · 重新生成兜底度量表（改字体或规则后） |
+| `pixi run metrics:check-table` | M0-7 · 校验兜底表与当前字体/规则一致 |
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
 | `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
 | `pixi run -e refs refs:units` | 用 R 4.5.3 重新生成 units 对拍夹具 |
@@ -44,9 +47,12 @@ pytest.ini           # src 布局：pythonpath = src
 src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条边界）
   ir/                # IR v0：节点类型表 + CBOR 编解码（docs/notes/ir.md）
   units.py           # grid::unit 对等单位系统（M0-3）
+  metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   cli/               # render / diff 命令行入口
+src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
 tools/gates/         # 横切门禁脚本（X1）
 tools/refs/          # R 侧参考值生成（units 等）
+tools/metrics/       # 兜底表生成 + CanvasKit 度量脚本（门禁复用）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
 benchmarks/          # pytest-benchmark 基线
 tests/               # 单元测试 + 门禁自测

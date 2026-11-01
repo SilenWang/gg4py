@@ -12,7 +12,9 @@
 - CPython 侧：`hb.shape()` 逐 run 取 `x_advance`，按 `size/upem` 换成 px。
 - 浏览器侧：每个 run 单独建一个 `SkParagraph`（`TypefaceFontProvider` + `FontCollection` + 显式 `fontFamilies`），取 `getMaxIntrinsicWidth()` 求和。这是渲染器真实会走的路径。
 - 字号：10 / 12 / 16 / 24 px（度量问题通常在字号边界暴露）。
-- 代码：`run_e2.py`（编排 + CPython 侧）、`measure_canvaskit.cjs`（CanvasKit 侧）；`pixi run spike:e2` 一条命令复现。
+- 代码：`run_e2.py`（编排 + CPython 侧）、`measure_canvaskit.cjs`（CanvasKit 侧，M0-7 起是
+  `tools/metrics/measure_canvaskit.cjs` 的薄壳，规则读 `src/ggcore/metrics/data/rules.json`）；
+  `pixi run spike:e2` 一条命令复现，生产版门禁是 `pixi run gate:metrics`。
 
 ## 数据
 

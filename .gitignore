@@ -13,3 +13,5 @@ docs/cases/*/expected/
 docs/spike/e1_coldstart/static/
 # Playwright browser downloads for the E1 spike (read-only $HOME in the runtime)
 .playwright-browsers/
+# `pixi run gate:metrics` 的中间产物与报告（每次重跑覆盖，不入库）
+.gate-metrics/
