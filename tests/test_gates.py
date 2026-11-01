@@ -78,6 +78,23 @@ def test_import_gate_rejects_relative_import_escape(tmp_path: Path) -> None:
         "from builtins import __import__ as imp\n\n\ndef load():\n    return imp('pandas')\n",
         "def load():\n    return __import__('pandas')\n",
         "import importlib\n\n\ndef load(name):\n    return importlib.import_module(name)\n",
+        # 赋值别名：把函数对象存进另一个名字，再调用。
+        "import importlib\n\n\nf = importlib.import_module\n\n\ndef load():\n"
+        "    return f('pandas')\n",
+        # 别名成链：f → g，门禁要迭代到不动点。
+        "import importlib\n\n\nf = importlib.import_module\ng = f\n\n\ndef load():\n"
+        "    return g('pandas')\n",
+        # 字面量取属性，直接当调用目标。
+        "import importlib\n\n\ndef load():\n"
+        "    return getattr(importlib, 'import_module')('pandas')\n",
+        # 字面量取属性先存成别名。
+        "import importlib as il\n\n\nf = getattr(il, 'import_module')\n\n\ndef load():\n"
+        "    return f('pandas')\n",
+        # from-import 之后再赋值一次。
+        "from importlib import import_module\n\n\ng = import_module\n\n\ndef load():\n"
+        "    return g('pandas')\n",
+        # 内置 __import__ 的赋值别名。
+        "importer = __import__\n\n\ndef load():\n    return importer('pandas')\n",
     ],
 )
 def test_import_gate_rejects_dynamic_imports(tmp_path: Path, source: str) -> None:
@@ -95,6 +112,43 @@ def test_import_gate_allows_literal_dynamic_import_of_a_whitelisted_module(
         tmp_path,
         "import importlib\n\n\ndef load():\n    return importlib.import_module('numpy')\n",
     )
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 0, result.stderr
+
+
+def test_import_gate_allows_alias_of_a_whitelisted_module(tmp_path: Path) -> None:
+    root = plant(
+        tmp_path,
+        "import importlib\n\n\nf = importlib.import_module\n\n\ndef load():\n"
+        "    return f('numpy')\n",
+    )
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        # operator.attrgetter 把属性名交给一个库里函数，AST 上看不到调用与名字的连线。
+        "import importlib\nimport operator\n\n\ndef load():\n"
+        "    return operator.attrgetter('import_module')(importlib)('pandas')\n",
+        # 属性名在运行时才拼出来，字面量规则取不到。
+        "import importlib\n\n\ndef load(name='import_module'):\n"
+        "    return getattr(importlib, name)('pandas')\n",
+        # functools.partial 把函数对象藏进参数里，门禁只认“调用目标”。
+        "import functools\nimport importlib\n\n\ndef load():\n"
+        "    return functools.partial(importlib.import_module, 'pandas')()\n",
+        # eval / exec 的代码在字符串里，静态扫描按设计不看字符串里的源码。
+        "def load():\n    return eval(\"__import__('pandas')\")\n",
+    ],
+)
+def test_import_gate_documented_boundary_still_passes(tmp_path: Path, source: str) -> None:
+    """保证范围的边界（docs/notes/gates.md）：这几类再间接一层的写法静态扫描覆盖不到。
+
+    这条用例不是在证明门禁“拦得住”，而是把已知漏口钉在原地：哪天门禁扩张到能
+    拦它们，这里会先红，提醒同步改文档与保证范围。
+    """
+    root = plant(tmp_path, source)
     result = run_gate("check_import_whitelist.py", "--root", str(root))
     assert result.returncode == 0, result.stderr
 

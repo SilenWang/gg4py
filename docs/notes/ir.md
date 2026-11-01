@@ -69,15 +69,22 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - 常量：`IR_VERSION = (0, 1)`、`IR_VERSION_STR = "0.1"`，编码时写进 `ir_version`。
 - 解码只认 **major**：`major != 0` 抛 `IRVersionError`（`IRDecodeError` 的子类），
   不尝试“猜一个相近版本”。
-- 同一 major 内的规则：
-  - 线格式 minor ≤ 本实现 minor：**严格**，未知字段 / 缓冲都报错（防止截断或拼错被静默吞掉）；
-  - 线格式 minor > 本实现 minor：**容忍**未知字段（跳过），但未知**节点种类**仍然报错
-    —— 画不出来的东西不能猜。
+- 同一 major 内的规则只分两档，**每一层映射都走同一份判断**：
+
+  | 线格式 | 未知键（envelope / `scene` / `blobs` 条目 / 节点 / `params` / `bufs` / 缓冲对象 / `gpar`） | 未知节点种类 & 未知缓冲 `dtype` |
+  | --- | --- | --- |
+  | minor ≤ 本实现 | 报 `IRDecodeError`（防止截断或拼错被静默吞掉） | 报错 |
+  | minor > 本实现 | 跳过不读（前向兼容） | **报错**（画不出来、读不懂的东西不能猜） |
+
+  两档的边界由 `tests/test_ir.py::test_decode_rejects_unknown_keys_at_the_same_minor`
+  与 `::test_decode_tolerates_unknown_keys_from_a_newer_minor` 逐层钉住。
 - 因此新增字段是 minor，删除/改语义/改必需性是 major。
+- 已知一个 minor 升上去也会被严格拒绝的例外：`bufs[k].dtype` 必须是本实现认识的
+  `f4` / `i4`。新增 dtype 属于 major 变更。
 
 ## 4. 节点类型表
 
-18 种节点 = `viewport` + 15 个原语（M0-6 名单）+ `gtree` + `zeroGrob` + `clip`（形状裁剪）。
+18 种节点 = `viewport` + `clip` + 14 个原语（M0-6 名单，含 `nullGrob`）+ `gtree` + `zeroGrob`。
 
 | kind | 用途 | 缓冲（dtype / shape） | 参数（缺省） |
 | --- | --- | --- | --- |
@@ -93,8 +100,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 | `path` | 多条子路径 + 填充规则 | `points` f4 (n,2)；`id` 可选 | `rule`="winding" |
 | `points` | 散点 | `points` f4 (n,2) | `pch`=1、`size`=1.0（pt） |
 | `text` | 文本（见 §7） | `pos` f4 (n,2)、`width` f4 (n,) | `font`、`size` 必填；`anchor`="center"、`baseline`="middle"、`angle`=0 |
-| `raster` | 位图 | `rect` f4 (1,4) | `blob`、`width`、`height` 必填；`interpolate`=true |
-| `xspline` | xspline | `points` f4 (n,2)；`id` 可选 | `shape`=0.0、`open`=true |
+| `raster` | 位图 | `rect` f4 (1,4) | `blob`、`width` ≥1、`height` ≥1 必填；`interpolate`=true |
+| `xspline` | xspline | `points` f4 (n,2)；`id` 可选 | `shape`=0.0（-1..1）、`open`=true |
 | `bezier` | 三次贝塞尔段 | `control` f4 (4n,2)，每 4 行一段 | — |
 | `curve` | grid.curve | `ends` f4 (n,4) = (x1,y1,x2,y2) | `curvature`=1、`angle`=90、`ncp`=1、`shape`=0.5、`square`=true、`inflect`=false、`open`=true |
 | `null` | nullGrob：不画、不占位 | — | — |
@@ -112,6 +119,10 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   宁可报错也不要两端各猜一个。
 - **curve / xspline / bezier**：控制参数是**解析后的语义参数**，曲线由设备按同一公式求值；
   它们还没被展平成折线，因为上游快照的对齐点在曲线形状本身。
+- **取值范围在 IR 里校验，不留给渲染端**：`bezier.control` 的行数必须是 4 的倍数
+  （每 4 行一段；0 行合法，等于不画），`raster.width` / `raster.height` 是不小于 1
+  的整数像素，`xspline.shape` 落在 [-1, 1]。写方给错值在构造节点时就报
+  `IRValidationError`——渲染端不需要替写方猜一个合法值。
 - **null / zero**：区别只在布局阶段，布局信息不进 IR，所以两者在 IR 里都不产出绘制指令。
 
 ## 5. 缓冲

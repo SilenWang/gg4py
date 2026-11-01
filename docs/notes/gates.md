@@ -27,8 +27,21 @@ Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转�
 
 动态导入（`importlib.import_module("pandas")`、`__import__("pandas")`，含
 `import importlib as il` 的别名）同样拦：参数是字符串字面量时按同一份白名单判
-定，不是字面量（`importlib.import_module(name)`）则直接失败——门禁离线核对不了
-它到底导入了什么。
+定，不是字面量（`importlib.import_module(name)`）则直接失败——门禁离线核对不了它
+到底导入了什么。
+
+赋值别名与字面量取属性按同一条规则判：`f = importlib.import_module` 之后的
+`f("pandas")`、`getattr(importlib, "import_module")("pandas")` 都拦；别名可以成
+链（`g = f`），门禁迭代到不动点。
+
+**保证范围**（AST 静态扫描，不是沙箱）：覆盖 `import` / `import … as` /
+`from … import`、非字面量动态导入、赋值别名、`getattr(<可还原>, "字面量")`。
+**不覆盖**再间接一层的写法——`operator.attrgetter("import_module")` 之后再调用、
+`functools.partial`、`eval` / `exec` 里的代码、运行时拼接的属性名
+（`getattr(importlib, name)`）、`importlib.__dict__[...]`。静态分析不可能完备，
+这些属于 review 的职责；`tests/test_gates.py` 里的
+`test_import_gate_documented_boundary_still_passes` 把这几类钉成“已知漏口”，
+不假装它们被覆盖。
 
 ## IR 禁止逐元素 JSON
 

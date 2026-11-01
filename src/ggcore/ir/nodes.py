@@ -80,7 +80,8 @@ def buffer_equal(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]) -> bool:
 
 
 class NodeKind(StrEnum):
-    """节点种类。前 15 个是 M0-6 的原语，后 2 个是 gTree / zeroGrob，`viewport` 是容器。"""
+    """节点种类，共 18 种：3 个容器（`viewport` / `gtree` / `clip`）+ 14 个原语
+    （M0-6 名单，含 `nullGrob`）+ `zeroGrob`。"""
 
     # 容器
     VIEWPORT = "viewport"
@@ -280,11 +281,19 @@ ParamTag = str
 
 @dataclass(frozen=True)
 class ParamSpec:
+    """一个参数字段：类型标签、缺省值、是否必填，以及数值型的取值域。
+
+    `minimum` / `maximum` 只对 `float` / `int` 标签生效，端点都包含在内；取值域
+    和类型一样是**线格式口径**，编码与解码两边共用这份校验。
+    """
+
     name: str
     tag: ParamTag
     default: Any = None
     required: bool = False
     note: str = ""
+    minimum: float | None = None
+    maximum: float | None = None
 
 
 @dataclass(frozen=True)
@@ -415,8 +424,8 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
             buffers=(BufferSpec("rect", "f4", 4, note="(x0, y0, x1, y1) 目标矩形"),),
             params=(
                 ParamSpec("blob", "str", required=True, note="blob 表里的 id"),
-                ParamSpec("width", "int", required=True, note="像素宽"),
-                ParamSpec("height", "int", required=True, note="像素高"),
+                ParamSpec("width", "int", required=True, minimum=1, note="像素宽（≥1）"),
+                ParamSpec("height", "int", required=True, minimum=1, note="像素高（≥1）"),
                 ParamSpec("interpolate", "bool", True),
             ),
             doc="位图：像素在 blob 表，节点只说贴到哪、多大、是否插值。",
@@ -425,7 +434,14 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
             NodeKind.XSPLINE,
             buffers=(_POINTS, _ID_POINTS),
             params=(
-                ParamSpec("shape", "float", 0.0, note="-1..1，0 为 Catmull-Rom 样条"),
+                ParamSpec(
+                    "shape",
+                    "float",
+                    0.0,
+                    minimum=-1.0,
+                    maximum=1.0,
+                    note="-1..1，0 为 Catmull-Rom 样条",
+                ),
                 ParamSpec("open", "bool", True),
             ),
             doc="xspline：控制点 + 形状参数，曲线由设备按同一公式求出。",
@@ -604,12 +620,25 @@ def _check_params(kind: NodeKind, spec: NodeSpec, params: Mapping[str, Any]) -> 
     resolved: dict[str, Any] = {}
     for field_spec in spec.params:
         if field_spec.name in params:
-            resolved[field_spec.name] = _check_param(kind, field_spec, params[field_spec.name])
+            value = _check_param(kind, field_spec, params[field_spec.name])
+            _check_range(kind, field_spec, value)
+            resolved[field_spec.name] = value
         elif field_spec.required:
             raise IRValidationError(f"{kind} 缺少必填参数 {field_spec.name!r}")
         else:
             resolved[field_spec.name] = field_spec.default
     return MappingProxyType(resolved)
+
+
+def _check_range(kind: NodeKind, spec: ParamSpec, value: Any) -> None:
+    """数值参数的取值域（端点包含）；`minimum` / `maximum` 为空表示不限。"""
+    if spec.minimum is None and spec.maximum is None:
+        return
+    where = f"{kind}.{spec.name}"
+    if spec.minimum is not None and value < spec.minimum:
+        raise IRValidationError(f"{where} 不能小于 {spec.minimum:g}，收到 {value!r}")
+    if spec.maximum is not None and value > spec.maximum:
+        raise IRValidationError(f"{where} 不能大于 {spec.maximum:g}，收到 {value!r}")
 
 
 def _check_buffers(
@@ -672,6 +701,12 @@ def _check_cross_fields(node: Node, spec: NodeSpec) -> None:
                 )
             if points is None and kind is not NodeKind.CLIP:
                 raise IRValidationError(f"{kind}.id 只能和 points 一起给")
+    if kind is NodeKind.BEZIER:
+        rows = int(node.bufs["control"].shape[0])
+        if rows % 4:
+            raise IRValidationError(
+                f"bezier.control 的行数必须是 4 的倍数（每 4 行一段三次贝塞尔），收到 {rows} 行"
+            )
 
 
 def _non_default_params(node: Node) -> dict[str, Any]:
