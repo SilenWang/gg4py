@@ -13,12 +13,12 @@ Python 模块，反之亦然。
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
 | `ggcore.plot` | `R/plot.R:106` | `ggplot()` | 未实现（M0-1 只有占位 scene） |
-| `ggcore.plot` | `R/plot.R:128` | `class_ggplot`（S7 类） | 未实现 |
+| `ggcore.plot` | `R/all-classes.R:322` | `class_ggplot`（S7 类） | 未实现 |
 | `ggcore.layer` | `R/layer.R:99` | `layer()` | 未实现 |
 | `ggcore.aes` | `R/aes.R:93` | `aes()` | 未实现 |
 | `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 未实现 |
 | `ggcore.aes_eval` | `R/aes-evaluation.R` | 表达式求值（tidy-eval 对等物） | 未实现 |
-| `ggcore.scene` | — | IR（本项目自造，上游无对应） | 占位（`Scene`） |
+| `ggcore.ir` | — | IR（本项目自造，上游无对应） | 已实现（v0：18 种节点 + CBOR，`docs/notes/ir.md`） |
 
 ## geom
 

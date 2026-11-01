@@ -4,6 +4,9 @@
 `json.JSONEncoder` / `to_json()` 等）：bulk 数据的线格式是 float32 缓冲 +
 CBOR，逐元素 JSON 在 314 份快照的规模下体积和耗时都不可接受。
 
+模块别名同样算数：`import json as j` 之后 `j.dumps(...)` / `j.JSONEncoder`
+一样拦下（`orjson` / `ujson` / `simplejson` / `rapidjson` 同理）。
+
 同样只做 AST 扫描，不执行被检查的代码。
 
 用法：
@@ -60,10 +63,23 @@ def _json_aliases(tree: ast.AST) -> set[str]:
     return aliases
 
 
+def _json_modules(tree: ast.AST) -> dict[str, str]:
+    """`import json as j` / `import orjson as oj`：本地名 → JSON 库名。"""
+    modules: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                top = alias.name.split(".")[0]
+                if top in JSON_MODULES:
+                    modules[alias.asname or top] = top
+    return modules
+
+
 def violations(tree: ast.AST) -> list[tuple[int, str]]:
     """返回 (行号, 说明) 列表。"""
     found: list[tuple[int, str]] = []
     aliases = _json_aliases(tree)
+    modules = _json_modules(tree)
 
     for node in ast.walk(tree):
         # from json import dumps / JSONEncoder
@@ -72,18 +88,18 @@ def violations(tree: ast.AST) -> list[tuple[int, str]]:
                 for alias in node.names:
                     if alias.name in WRITE_ATTRS:
                         found.append((node.lineno, f"from {node.module} import {alias.name}"))
-        # json.dumps(...) / x.to_json(...)
-        elif isinstance(node, ast.Call):
-            func = node.func
-            if isinstance(func, ast.Attribute):
-                root = func.value
-                if isinstance(root, ast.Name) and root.id in JSON_MODULES:
-                    if func.attr in WRITE_ATTRS:
-                        found.append((node.lineno, f"{root.id}.{func.attr}(...)"))
-                elif func.attr in {"to_json"}:
-                    found.append((node.lineno, f".{func.attr}(...)"))
-            elif isinstance(func, ast.Name) and func.id in aliases | BARE_CALLS:
-                found.append((node.lineno, f"{func.id}(...)"))
+        # json.dumps(...) / j.dumps / oj.JSONEncoder（含 import ... as 的别名）
+        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+            literal = node.value.id if node.value.id in JSON_MODULES else None
+            module = modules.get(node.value.id, literal)
+            if module is not None and node.attr in WRITE_ATTRS:
+                found.append((node.lineno, f"{node.value.id}.{node.attr}"))
+            elif node.attr == "to_json":
+                found.append((node.lineno, f".{node.attr}"))
+        # from json import dumps as d 之后直接调 d(...)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in aliases | BARE_CALLS:
+                found.append((node.lineno, f"{node.func.id}(...)"))
     return found
 
 

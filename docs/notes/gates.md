@@ -25,6 +25,11 @@ Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转�
 
 包内相对导入（`from .scene import Scene`）不越界，直接跳过。
 
+动态导入（`importlib.import_module("pandas")`、`__import__("pandas")`，含
+`import importlib as il` 的别名）同样拦：参数是字符串字面量时按同一份白名单判
+定，不是字面量（`importlib.import_module(name)`）则直接失败——门禁离线核对不了
+它到底导入了什么。
+
 ## IR 禁止逐元素 JSON
 
 `src/ggcore/` 里禁止 `json.dumps` / `json.dump` / `json.JSONEncoder` /
@@ -32,11 +37,15 @@ Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转�
 float32 缓冲 + CBOR：314 份快照的规模下，逐元素 JSON 的体积与耗时都不达标。
 需要 JSON 的地方（例如 web 端读取配置）放在包外。
 
+模块别名算同一个东西：`import json as j` 之后 `j.dumps(...)` /
+`j.JSONEncoder` 一样拦（`orjson` / `ujson` / `simplejson` / `rapidjson` 同理）。
+
 ## 同输入同字节
 
-`check_determinism.py` 用两个不同 `PYTHONHASHSEED` 的解释器进程各序列化一次占位
-scene（`ggcore.scene.placeholder_scene()`），比较 stdout。真 IR 落地后把载荷换成
-真实 scene，判定方式不变。同一进程内重复调用也在子进程里自检。
+`check_determinism.py` 用三个不同 `PYTHONHASHSEED` 的解释器进程各编码一次真实
+scene（`ggcore.ir.demo_scene()`：嵌套视口 + path + text + raster blob + zeroGrob），
+比较 stdout（`digest` / `bytes`）。子进程同时自检 `encode(decode(data)) == data`，
+所以“编码 + 解码”合起来也要字节稳定。同一进程内重复调用也在子进程里检查。
 
 ## 手测一次门禁是否真的会拦
 

@@ -12,7 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from ggcore import __version__, placeholder_scene
+from ggcore import __version__
+from ggcore.ir import decode, demo_scene, encode
 
 REPO = Path(__file__).resolve().parent.parent
 GATES = REPO / "tools" / "gates"
@@ -66,6 +67,38 @@ def test_import_gate_rejects_relative_import_escape(tmp_path: Path) -> None:
     assert "helpers" not in result.stderr
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import importlib\n\n\ndef load():\n    return importlib.import_module('pandas')\n",
+        "import importlib as il\n\n\ndef load():\n    return il.import_module('pandas')\n",
+        "from importlib import import_module as load_mod\n\n\n"
+        "def load():\n    return load_mod('pandas')\n",
+        "import importlib.util\n\n\ndef load():\n    return importlib.import_module('pandas')\n",
+        "from builtins import __import__ as imp\n\n\ndef load():\n    return imp('pandas')\n",
+        "def load():\n    return __import__('pandas')\n",
+        "import importlib\n\n\ndef load(name):\n    return importlib.import_module(name)\n",
+    ],
+)
+def test_import_gate_rejects_dynamic_imports(tmp_path: Path, source: str) -> None:
+    # 模块名藏在字符串里（或根本取不到）时，import 语句扫描看不见，门禁必须另拦。
+    root = plant(tmp_path, source)
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 1, result.stdout
+    assert "pandas" in result.stderr or "non-literal" in result.stderr
+
+
+def test_import_gate_allows_literal_dynamic_import_of_a_whitelisted_module(
+    tmp_path: Path,
+) -> None:
+    root = plant(
+        tmp_path,
+        "import importlib\n\n\ndef load():\n    return importlib.import_module('numpy')\n",
+    )
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 0, result.stderr
+
+
 # --- X1 · IR 禁止逐元素 JSON ----------------------------------------------
 
 
@@ -93,6 +126,9 @@ def test_ir_json_gate_allows_binary_packing(tmp_path: Path) -> None:
         "import json\n\n\ndef dump(scene):\n    return json.dumps(scene)\n",
         "from json import dumps as encode\n\n\ndef dump(scene):\n    return encode(scene)\n",
         "import orjson\n\n\ndef dump(scene):\n    return orjson.dumps(scene)\n",
+        "import json as j\n\n\ndef dump(scene):\n    return j.dumps(scene)\n",
+        "import orjson as oj\n\n\ndef dump(scene):\n    return oj.dump(scene)\n",
+        "import json as j\n\n\ndef encoder():\n    return j.JSONEncoder()\n",
         "def dump(scene):\n    return scene.to_json()\n",
     ],
 )
@@ -113,11 +149,11 @@ def test_determinism_gate_is_stable_on_the_repo() -> None:
     assert "sha256=" in result.stdout
 
 
-def test_placeholder_scene_serialises_stably() -> None:
-    scene = placeholder_scene()
-    assert scene.to_bytes() == scene.to_bytes()
-    assert scene.digest() == placeholder_scene().digest()
-    assert len(scene.to_bytes()) == len(placeholder_scene().to_bytes())
+def test_demo_scene_serialises_stably() -> None:
+    data = encode(demo_scene())
+    assert encode(demo_scene()) == data
+    assert decode(data) == demo_scene()
+    assert encode(decode(data)) == data
 
 
 def test_version_is_exported() -> None:
