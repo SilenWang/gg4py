@@ -299,18 +299,24 @@ case.json → grob 树 → scene()（场景遍历）→ Scene（float64）→ to
           → 临时 skia 设备（只吃 ir.Scene）→ PNG
 ```
 
-也就是说快照验证的是遍历结果**加写 IR 这一步**（坐标、gpar、裁剪、顺序、节点分组），
-不是另一套几何计算。临时设备在 `tools/cases/grob_cases.py` 的 `SkiaDevice` 里，
-M0-8 的 raster 设备落地后接班，输入同一份 `ir.Scene`（§7.2）。它刻意只实现 IR
-已经钉死的那层，剩下的按下面近似：
+也就是说快照验证的是遍历结果**加写 IR 这一步**（坐标、gpar、裁剪、顺序、节点分组）
+加设备本身，不是另一套几何计算。画图的是 M0-8 的
+`ggskia.SkiaRasterDevice`（`docs/notes/device.md`），输入同一份 `ir.Scene`（§7.2），
+所以快照同时也是设备的回归资产：16 张 `pixi run cases:grob --check` 全绿。
 
-| 原语 | 临时设备的做法 | 什么时候换真实现 |
+临时设备在 M0-8 落地时退休，它当初的几处近似如下（现在都有真实现）：
+
+| 原语 | 临时设备（M0-6） | M0-8 |
 | --- | --- | --- |
-| `xspline` | `shape = 0` 用 Catmull-Rom（每段 16 采样）；`shape ≠ 0` 退化成折线 | M0-8 |
-| `bezier` | 每 4 个控制点 `cubicTo` 一段（IR 的语义） | M0-8 |
-| `curve` | 两端点 + 直角拐点的二次曲线（`square=True`） | M0-8 |
-| `points.pch` | 0/1/2/3/4/5/15..20/21..25 一个子集；15..20 用 `col` 实心、21..25 用 `fill` | M0-8 补全表 |
-| `text` | 一律 Noto Sans CJK SC 单一字面；`anchor` / `baseline` 按 IR 参数落字，`angle` 只叠**局部**旋转（§7.1） | M0-7 字体目录 + M0-8 |
+| `xspline` | `shape = 0` 用 Catmull-Rom；`shape ≠ 0` 退化成折线 | R `xspline.c` 的移植（`ggskia.curves`） |
+| `bezier` | 每 4 个控制点 `cubicTo` 一段 | 同左（本来就是 IR 的语义） |
+| `curve` | 两端点 + 直角拐点的二次曲线 | `grid::curveGrob` 的移植（控制点 + xspline） |
+| `points.pch` | 半径 `size / 2`，只实现一个子集 | `engine.c::GESymbol()` 的全表，半径 `0.375 * size` |
+| `text` | 一律 Noto Sans CJK SC 单一字面 | 字体栈 + run 切分 + 轮廓（矢量后端） |
+
+`grob-points` / `grob-xspline` / `grob-curve` 三张基线随真实现重录（前者的符号
+直径、后两者的曲线形状都变了），其余 13 张逐字节不变——尤其是 `grob-text` /
+`grob-text-rot`，它们钉的是 §7.1 的旋转合成，不该受设备换代影响。
 
 **解码 PNG 的坑**（写快照工具时踩到的，留个记号）：`skia.Image.MakeFromEncoded`
 是懒解码，它引用的是那份 `bytes`；字节对象先死掉再 `toarray()` 会安静地读出一片
@@ -344,6 +350,7 @@ M0-8 的 raster 设备落地后接班，输入同一份 `ir.Scene`（§7.2）。
 - **M0-8 设备**：只认 `ir.Scene`（`scene(...).to_ir_scene()` 的产物，§7.2）：
   逐层合成 `viewport.transform`、按 `viewport.clip_rect` 在**页面空间**裁剪、
   按 `gpar` 上色；`text.angle` 只叠局部旋转（§7.1）。`pch` 表、曲线求值、
-  文本 shaping 都在设备侧。
+  文本 shaping 都在设备侧（`ggskia`，协议是 `ggcore.device.Device`，
+  口径见 `docs/notes/device.md`）。
 - **M1 语法层**：ggplot2 的 `geom_*` 落到这里就是 `points_grob` / `path_grob` /
   `text_grob` + `g_table_grob`；面板/轴/图例的组版走 gtable（§9）。

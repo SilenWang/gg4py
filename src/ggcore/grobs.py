@@ -2086,7 +2086,9 @@ def _extent_unit(grob: GrobLike, node: VpNode, axis: str, gp: ResolvedGpar) -> U
             ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex) for label in labels
         ]
         if axis == "x":
-            return unit(max(widths) if widths else 0.0, "inches")
+            # 度量提供者返回英寸；这一层统一折成 bigpts（与下面的高度、以及
+            # `_to_absolute_pt` 同一口径），下游再用任何上下文换算都是同一个数。
+            return unit(max(widths) * 72.0 if widths else 0.0, "bigpts")
         return unit(ctx.fontsize * ctx.cex * ctx.lineheight, "bigpts")
 
     xs, ys = _bbox_points(item, frame)

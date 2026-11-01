@@ -24,6 +24,11 @@
 Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转成 IR，渲染后端在
 包外。门禁只做 AST 扫描，不执行被检查的代码。
 
+包外后端的两个例证：`ggshape`（HarfBuzz 形状后端，M0-7）与 `ggskia`
+（PNG / SVG / PDF 设备，M0-8）。它们依赖 `uharfbuzz` / `skia-python`，协议留在
+`ggcore`（`ggcore.metrics` / `ggcore.device`），实现与 CLI 在包外——所以内核
+永远不需要加载 skia。
+
 包内相对导入（`from .scene import Scene`）不越界，直接跳过。
 
 动态导入（`importlib.import_module("pandas")`、`__import__("pandas")`，含

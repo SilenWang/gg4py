@@ -183,8 +183,12 @@ def test_each_primitive_lands_on_its_ir_kind(factory, kind) -> None:
     assert instruction.to_node().kind is kind
 
 
-def test_the_fifteen_primitives_are_all_reachable() -> None:
-    """名单固定：14 个叶子原语 + clipPath + nullGrob + zeroGrob + gTree。"""
+def test_the_thirteen_primitives_are_all_reachable() -> None:
+    """名单固定：13 种可绘制原语 + clipPath / nullGrob / zeroGrob / gTree 四个容器。
+
+    计数口径只有一份（`docs/notes/grobs.md` §1）：18 个 grob 构造器 = 13 种
+    可绘制原语 + 这 4 个容器 + gtable 的 grob 视图。
+    """
     tree = make_tree(metrics=texts(hi=0.1))
     leaves = [
         rect_grob(),
