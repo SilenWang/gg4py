@@ -9,8 +9,11 @@
 #
 # 1. **ggplot2 版本钉死 4.0.3**（`docs/notes/upstream.md` 的 pin）。版本不符直接
 #    退出，不做「差不多」的参考图。
-# 2. **UTF-8 locale**：C locale 下 R 把中文标签当字节串，svglite 会画成一行点
-#    （`.`）。pixi 任务已经带 `LC_ALL=C.UTF-8`，这里的断言防止手跑时悄悄退化。
+# 2. **UTF-8 locale**：SVG 里的中文必须原样落字。注意 `nchar("中文") == 2` 是个
+#    假判据——R 4.5.3 即使在 `LC_ALL=C` 下也按原生 UTF-8 处理字符串（实测两种
+#    locale 的产物逐字节相同，SIL-649），所以「C locale 画成一行点」在本环境复现
+#    不出来。但这是 R 的实现细节，不能当保护：断言改成按 locale 判
+#    （`l10n_info()$codeset`），非 UTF-8 直接退出。pixi 任务已带 `LC_ALL=C.UTF-8`。
 # 3. 每张图都是 `theme_void()` + 显式 limits + `expand = c(0, 0)`：面板就是整页，
 #    与 `src/ggcore/plotspec.py` 的适配层一一对应，没有轴/图例/边距。
 # 4. 颜色/字号/线宽都与 `plot.py` 同值：`palette` ↔ `scale_*_manual()`，
@@ -28,8 +31,12 @@ if (!identical(as.character(packageVersion("ggplot2")), "4.0.3")) {
     as.character(packageVersion("ggplot2"))
   ))
 }
-if (nchar("\u4e2d\u6587") != 2) {
-  stop("R 不在 UTF-8 locale 下：用 `LC_ALL=C.UTF-8 LANG=C.UTF-8` 重跑（见文件头第 2 条）")
+if (!isTRUE(l10n_info()[["UTF-8"]])) {
+  codeset <- l10n_info()[["codeset"]]
+  stop(sprintf(
+    "R 不在 UTF-8 locale 下（l10n_info()$codeset = %s）：用 `LC_ALL=C.UTF-8 LANG=C.UTF-8` 重跑（见文件头第 2 条）",
+    if (is.null(codeset) || !nzchar(codeset)) "?" else codeset
+  ))
 }
 
 repo <- normalizePath(".")
@@ -83,15 +90,19 @@ save_case("geom-col-basic", ggplot(df_col, aes(x, y, fill = g)) +
   theme_case())
 
 # --- 3. 中文标签：geom-text-cjk ------------------------------------------------
+# 一条 18 字的左对齐长标签 + 一条短标签（SIL-649）。宽度误差沿字符串累积：
+# 左对齐时第 i 个字偏移 ≈ 2% × i × 字号，短标签在 2% 的图级阈值下只剩
+# 抗锯齿噪声。字号 10 pt（不是越大越好）：两边基线差的绝对值随字号线性增长，
+# 而宽度误差只跟标签总宽有关，实测 10 pt + 长标签的信噪比最好。
 df_text <- data.frame(
-  x = c(0.15, 0.5, 0.85, 0.3, 0.7),
-  y = c(0.15, 0.35, 0.55, 0.75, 0.9),
-  label = c("\u4e2d\u6587", "\u6807\u7b7e\u6d4b\u8bd5", "gg4py",
-            "\u7b2c\u4e09\u884c", "\u6df7\u6392 A1"),
-  g = c("a", "b", "a", "b", "a")
+  x = c(0.03, 0.03),
+  y = c(0.62, 0.28),
+  label = c("\u4e2d\u6587\u6807\u7b7e\u5bbd\u5ea6\u57fa\u51c6\u6821\u9a8c\u7b2c\u4e8c\u884c\u6587\u672c\u5bf9\u6bd4",
+            "\u7b2c\u4e09\u884c"),
+  g = c("a", "b")
 )
 save_case("geom-text-cjk", ggplot(df_text, aes(x, y, label = label, colour = g)) +
-  geom_text(size = 13 / .pt, family = "Noto Sans CJK SC") +
+  geom_text(size = 10 / .pt, hjust = 0, family = "Noto Sans CJK SC") +
   scale_colour_manual(values = c(a = "#222222", b = "#C0392B")) +
   axis_fixed(c(0, 1)) +
   y_fixed(c(0, 1)) +

@@ -27,11 +27,8 @@
 </defs>
 <g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
 <rect x='0.00' y='0.00' width='288.00' height='216.00' style='stroke-width: 0.00; stroke: none;' />
-<text x='43.20' y='188.37' text-anchor='middle' style='font-size: 13.00px;fill: #222222; font-family: "Noto Sans CJK SC";' textLength='26.00px' lengthAdjust='spacingAndGlyphs'>中文</text>
-<text x='144.00' y='145.17' text-anchor='middle' style='font-size: 13.00px;fill: #C0392B; font-family: "Noto Sans CJK SC";' textLength='52.00px' lengthAdjust='spacingAndGlyphs'>标签测试</text>
-<text x='244.80' y='101.97' text-anchor='middle' style='font-size: 13.00px;fill: #222222; font-family: "Noto Sans CJK SC";' textLength='36.64px' lengthAdjust='spacingAndGlyphs'>gg4py</text>
-<text x='86.40' y='58.77' text-anchor='middle' style='font-size: 13.00px;fill: #C0392B; font-family: "Noto Sans CJK SC";' textLength='39.00px' lengthAdjust='spacingAndGlyphs'>第三行</text>
-<text x='201.60' y='26.37' text-anchor='middle' style='font-size: 13.00px;fill: #222222; font-family: "Noto Sans CJK SC";' textLength='44.02px' lengthAdjust='spacingAndGlyphs'>混排 A1</text>
+<text x='8.64' y='85.75' style='font-size: 10.00px;fill: #222222; font-family: "Noto Sans CJK SC";' textLength='170.00px' lengthAdjust='spacingAndGlyphs'>中文标签宽度基准校验第二行文本对比</text>
+<text x='8.64' y='159.19' style='font-size: 10.00px;fill: #C0392B; font-family: "Noto Sans CJK SC";' textLength='30.00px' lengthAdjust='spacingAndGlyphs'>第三行</text>
 </g>
 </g>
 </svg>

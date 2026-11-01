@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tomllib
 from pathlib import Path
 
 import numpy as np
@@ -87,6 +88,17 @@ def test_size_mismatch_is_red_with_a_clear_reason() -> None:
 # ---------------------------------------------------------------------------
 # CLI：报告 / 热图 / JSON / 退出码
 # ---------------------------------------------------------------------------
+
+
+def _solid_svg(fill: str) -> str:
+    """一张只有整块色块的 SVG（没有 `<text>`，不会被文本转路径改写）。"""
+    return (
+        "<?xml version='1.0' encoding='UTF-8' ?>\n"
+        "<svg xmlns='http://www.w3.org/2000/svg' width='72' height='54' viewBox='0 0 72 54'>\n"
+        f"<rect width='72' height='54' fill='#FFFFFF'/>\n"
+        f"<rect x='10' y='8' width='40' height='30' fill='{fill}'/>\n"
+        "</svg>\n"
+    )
 
 
 def _case_dir(tmp_path: Path, *, shift: tuple[int, int] = (0, 0)) -> Path:
@@ -227,6 +239,50 @@ def test_resvg_renders_converted_cjk_text(tmp_path: Path) -> None:
 
 
 @requires_resvg
+def test_same_named_svgs_are_not_compared_against_themselves(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SIL-649：`baseline/foo.svg` vs `current/foo.svg` 内容不同 → 必须红。
+
+    修之前两侧的光栅化产物都叫 `scratch/foo.png`，后写的一侧覆盖先写的一侧，
+    随后比的是同一张位图：`verdict=pass`、`image_diff=0`、退出码 0。同名文件在
+    baseline 对比里是常态，静默判绿是差分体系里最不能有的失效模式。
+    """
+    reference = tmp_path / "baseline" / "foo.svg"
+    actual = tmp_path / "current" / "foo.svg"
+    reference.parent.mkdir()
+    actual.parent.mkdir()
+    reference.write_text(_solid_svg("#4C78A8"), encoding="utf-8")
+    actual.write_text(_solid_svg("#F58518"), encoding="utf-8")
+    assert reference.stem == actual.stem
+
+    code = diff_main([str(reference), str(actual), "--json"])
+    assert code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["verdict"] == "fail"
+    assert payload["diff_pixels"] > 0
+    assert payload["image_diff_fraction"] > payload["thresholds"]["image_diff_fraction"]
+
+
+@requires_resvg
+def test_same_named_identical_svgs_still_pass(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """反面：同名且内容相同 → 仍然绿（不是靠「长得像」放过，是真比出 0）。"""
+    reference = tmp_path / "a" / "foo.svg"
+    actual = tmp_path / "b" / "foo.svg"
+    reference.parent.mkdir()
+    actual.parent.mkdir()
+    for path in (reference, actual):
+        path.write_text(_solid_svg("#4C78A8"), encoding="utf-8")
+
+    assert diff_main([str(reference), str(actual), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["verdict"] == "pass"
+    assert payload["image_diff_fraction"] == 0.0
+
+
+@requires_resvg
 def test_diff_of_the_same_svg_is_zero(tmp_path: Path) -> None:
     source = tmp_path / "in.svg"
     source.write_text(SVGLITE_LIKE, encoding="utf-8")
@@ -265,6 +321,64 @@ def test_repository_baselines_pass_the_gate() -> None:
         meta = (case / "meta.toml").read_text(encoding="utf-8")
         assert 'source = "svglite:' in meta
         assert (case / "expected.svg").is_file()
+
+
+def _render_text_case(scale: float) -> bytes:
+    """渲染 `geom-text-cjk`，并把每个字形的推进与位置按 `scale` 缩放。
+
+    这就是「实测侧文字宽度 +X%」的扰动：字形轮廓不变，只有步进变宽/变窄——
+    等价于度量端算错宽度，而不是换字体或改字号。
+    """
+    from ggcore.plotspec import build_scene, load_plot
+    from ggskia.skia import SkiaSvgDevice
+    from ggskia.text import GlyphRun, ShaperMetrics, TextShaper
+
+    case = REPO / "docs" / "cases" / "geom-text-cjk"
+    shaper = TextShaper()
+    runs = shaper.runs
+
+    def scaled(key: str, text: str, size: float) -> tuple[GlyphRun, ...]:
+        return tuple(
+            GlyphRun(
+                run.filename,
+                run.gids,
+                tuple(offset * scale for offset in run.offsets),
+                run.advance * scale,
+            )
+            for run in runs(key, text, size)
+        )
+
+    shaper.runs = scaled  # type: ignore[method-assign]
+    scene = build_scene(load_plot(case), metrics=ShaperMetrics(shaper))
+    return SkiaSvgDevice(*scene.size, dpi=scene.dpi, shaper=shaper).render(scene)
+
+
+@requires_resvg
+def test_two_percent_text_width_error_is_red(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SIL-649 的验收：实测侧文字宽度 **+2%** 时 `cases:matrix` 必须红。
+
+    阈值取 case 自己的 `tolerance.png`（1.4%），基线必须绿、+2% 必须红。
+    这个 case 的标签是 18 字左对齐长标签：宽度误差沿字符串累积，短标签在
+    2% 阈值下只剩垂直度量差的噪声（改之前 +2% 只有 1.47% → 1.50%）。
+    """
+    case = REPO / "docs" / "cases" / "geom-text-cjk"
+    meta = tomllib.loads((case / "meta.toml").read_text(encoding="utf-8"))
+    tolerance = float(meta["tolerance"]["png"])
+    assert tolerance < 0.02, "文字类 case 必须比默认 2% 更紧"
+
+    for scale, expected in ((1.0, 0), (1.02, 1)):
+        target = tmp_path / f"text-{scale}.svg"
+        target.write_bytes(_render_text_case(scale))
+        code = diff_main(
+            [str(case / "expected.svg"), str(target), "--tolerance", f"{tolerance:g}", "--json"]
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert code == expected, (scale, payload)
+        if scale == 1.02:
+            assert payload["verdict"] == "fail"
+            assert payload["image_diff_fraction"] > tolerance
 
 
 def test_png_roundtrip(tmp_path: Path) -> None:

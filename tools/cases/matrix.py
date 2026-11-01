@@ -972,6 +972,21 @@ def render_report(
                 "",
             ]
         )
+    if static_only:
+        # 静态跑时每个 case 都是 skipped，不落进「待落地」——不写这一节，报告里就
+        # 只剩一句「--no-run：只做静态校验」，读者容易把结论当成「没红的就没有红」。
+        lines.extend(
+            [
+                "## 静态校验",
+                "",
+                "本次是 `--no-run` / `--check`：只校验三文件契约与矩阵新鲜度，"
+                "**没有真跑 render / diff**，因此结论是 `verdict = pending`（不是绿）；"
+                + (
+                    "`--strict` 已打开：判**红**，退出码 1。" if strict else "`--strict` 会判失败。"
+                ),
+                "",
+            ]
+        )
     lines.extend(["## 怎么新增 case", "", "见 `docs/cases/README.md`：放三个文件，不改代码。"])
     lines.append("")
     return "\n".join(lines)
@@ -1028,12 +1043,23 @@ def render_summary(
         lines.append("")
     tail = ["", "见 `docs/cases/README.md`：放三个文件就能新增 case。", ""]
     if verdict == VERDICT_PENDING:
-        hint = (
-            f"- ❌ `--strict` 已打开：{len(pending)} 个 pending 计为失败。"
-            if strict
-            else f"- ⏳ {len(pending)} 个 case 待落地（render / diff 未接线），本次**未判绿**；"
-            "`--strict` 会把它们判失败。"
-        )
+        if strict:
+            hint = (
+                f"- ❌ `--strict` 已打开：{len(pending)} 个 pending 计为失败。"
+                if pending
+                else "- ❌ `--strict` 已打开：本次只做静态校验（`--no-run` / `--check`），"
+                "没跑过 render / diff，计为失败。"
+            )
+        elif pending:
+            hint = (
+                f"- ⏳ {len(pending)} 个 case 待落地（render / diff 未接线），本次**未判绿**；"
+                "`--strict` 会把它们判失败。"
+            )
+        else:
+            hint = (
+                "- ⏳ 本次只做静态校验（`--no-run` / `--check`），没跑过 render / diff，"
+                "本次**未判绿**；`--strict` 会把这种情况判失败。"
+            )
         lines.extend([hint, *tail])
         return "\n".join(lines)
     if verdict == VERDICT_PASS:
@@ -1263,6 +1289,8 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
         for verdict_item in verdicts:
             if verdict_item.status == PENDING:
                 _gha_error(f"{verdict_item.case.name}: render / diff 未落地（--strict）")
+        if static_only and verdict == VERDICT_PENDING:
+            _gha_error("--strict：本次只做静态校验（--no-run / --check），没有真跑 render / diff")
 
     counts = _counts(verdicts)
     print(
@@ -1273,6 +1301,10 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
     )
     failures = [item for item in verdicts if item.status in RED_STATES]
     strict_pending = [item for item in verdicts if args.strict and item.status == PENDING]
+    # `--no-run` / `--check` 下每个 case 是 skipped（不是 pending），但矩阵结论仍是
+    # pending：`--strict` 的语义是「没判绿就是失败」，退出码必须跟着文字走
+    # （SIL-649：之前这里只数 status == pending，静态跑加 --strict 仍退 0）。
+    strict_static = args.strict and static_only and verdict == VERDICT_PENDING
     if failures:
         for item in failures:
             print(f"  ❌ {item.case.name}: {item.detail}", file=sys.stderr)
@@ -1280,6 +1312,12 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
     if strict_pending:
         for item in strict_pending:
             print(f"  ⏳ {item.case.name}: render / diff 未落地（--strict）", file=sys.stderr)
+        exit_code = 1
+    if strict_static:
+        print(
+            "  ⏳ 本次只做静态校验（--no-run / --check），没有真跑 render / diff（--strict）",
+            file=sys.stderr,
+        )
         exit_code = 1
     if verdict == VERDICT_PENDING and not args.strict:
         if static_only:

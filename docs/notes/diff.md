@@ -25,8 +25,11 @@ tools/refs/cases_ref.R          docs/cases/<case>/expected.svg
 `pixi run -e refs refs:cases` 跑 `tools/refs/cases_ref.R`：
 
 - **ggplot2 必须 4.0.3**（与 `docs/notes/upstream.md` 的 pin 同版本），脚本里硬断言；
-- **UTF-8 locale**（`LC_ALL=C.UTF-8`）：C locale 下 R 把中文当字节串，svglite 会画成
-  一行 `.`——参考图会「看起来有字、实际是点」；
+- **UTF-8 locale**（`LC_ALL=C.UTF-8`）：脚本按 `l10n_info()$codeset` 硬断言，非
+  UTF-8 直接退出。注意 `nchar("中文") == 2` 不是有效判据——R 4.5.3 即使在
+  `LC_ALL=C` 下也按原生 UTF-8 处理字符串，两种 locale 的产物**逐字节相同**
+  （SIL-649 实测），所以「C locale 画成一行点」在本环境复现不出来；断言按 locale
+  判，不依赖这个实现细节；
 - 四张图：散点、柱状、中文标签、曲线。每张都是 `theme_void()` + 显式 limits +
   `expand = c(0, 0)`，面板就是整页；没有轴、图例、边距，位置与
   `src/ggcore/plotspec.py` 的适配层一一对应；
@@ -156,10 +159,12 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 | --- | --- | --- |
 | `geom-point-basic` | 图级 1.12% / 均值 0.17% → 绿 | 2.33% → **红** |
 | `geom-col-basic` | 0.00% / 0.00% → 绿 | 6.15% → **红** |
-| `geom-text-cjk` | 1.47% / 0.25% → 绿 | 2.31% → **红** |
+| `geom-text-cjk` | 1.15% / 0.15% → 绿（阈值 1.4%） | 3.82% → **红** |
 | `geom-curve-basic` | 0.02% / 0.00% → 绿 | 2.70% → **红** |
 
 数字随字体/resvg 版本略有浮动；`pixi run cases:matrix` 是唯一入口。
+`geom-text-cjk` 的阈值按 case 收紧到 1.4%（默认 2% 抓不到文字宽度 +2%），口径见
+`docs/notes/snapshot-policy.md` §文字类 case。
 
 **负向验证（集成级）**：把 `ggskia/skia.py::_draw_curve` 的 y 翻转改回「直喂页面
 坐标」的镜像版，`geom-curve-basic` 的图级差异升到 **2.99%**，`pixi run cases:matrix`
@@ -168,11 +173,14 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 ## 7. 已知限制
 
 - **图级差异的分母是整张画布**。稀疏图（几个点）平移 2 px 的差异本来就不到 2%，
-  所以基准图要有足够的墨：散点铺满面板、文本 13 pt 五条、柱子占满宽度。这不是
-  阈值松，是画面本来就没多少信息——真要放宽得改阈值（走 issue），不能调 case
-  去凑。
-- 文本的**竖直基线**来自两端的字体度量：R 的 systemfonts 与 skia 的 hinted
-  metrics 差 0.3–0.5 px，这是 `geom-text-cjk` 那 1.47% 的主要来源，不是错位。
+  所以基准图要有足够的墨：散点铺满面板、文本用长标签（18 字左对齐）、柱子占满
+  宽度。这不是阈值松，是画面本来就没多少信息——真要放宽得改阈值（走 issue），
+  不能调 case 去凑。
+- 文本的**竖直基线**来自两端的字体度量：R 的 `strheight` 与 skia 的 ascent/descent
+  差 0.032 em（10 pt ≈ 0.32 px，13 pt ≈ 0.42 px）。它是 `geom-text-cjk` 那 1.15%
+  基线的全部来源（把这 0.3 px 补上之后两边差 0.015%），也是「文字宽度 +2% 为什么
+  要用长标签才抓得到」的原因，见 `docs/notes/snapshot-policy.md` §文字类 case。
+  不做逐 case 的偏移补偿：那是掩盖，不是判据。
 - `inline_text_paths` 只处理 svglite 会写的那几种属性；`<tspan>` 等复杂结构原样
   留给 resvg（画不出来就红，不静默忽略）。
 - 渐变、图案、彩色 emoji 不在 M0 的判据里（设备本身也不支持，见

@@ -79,7 +79,7 @@
 | `geom-col-basic` | `geom-col` | `aes-mapping`<br>`colour-aes`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-curve-basic` | `geom-curve` | `aes-mapping`<br>`colour-aes` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-point-basic` | `geom-point` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
-| `geom-text-cjk` | `geom-text` | `aes-mapping`<br>`colour-aes`<br>`cjk-text` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-text-cjk` | `geom-text` | `aes-mapping`<br>`colour-aes`<br>`cjk-text` | png 0.014 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 
 ## 未登记的族 / 特性
 

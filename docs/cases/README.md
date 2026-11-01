@@ -113,6 +113,9 @@ notes = "…"                           # 可选：自由文本
 - `ci = false` 用于「先登记、参考图后补」的草稿 case：矩阵里有它，CI 不跑它。
 - `tolerance` 只认 `png`（所有 case 都按像素比）；它收紧的是**图级差异**上限，
   平均差异仍按 `docs/notes/snapshot-policy.md` 的 1%。
+- 默认 2% 抓不住文字宽度这一级的偏差：文字类 case 要在 `tolerance` 里收紧
+  （`geom-text-cjk` 用 `0.014`），理由与实测数字见 `docs/notes/snapshot-policy.md`
+  §文字类 case。
 - 未登记的键只报警告（不红），所以可以随手记 `notes`。
 
 **忘写 `meta.toml` 不是「这个目录不存在」**：只要目录里有 `plot.py` 或 `expected.*`，
@@ -193,7 +196,7 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 | --- | --- |
 | `geom-point-basic/` | 25 个点的分组散点（`colour` 映射 + `palette`） |
 | `geom-col-basic/` | 连续 x 上的四根柱子（宽度是数据单位） |
-| `geom-text-cjk/` | 五条中文 / 中英混排标签（Noto Sans CJK SC） |
+| `geom-text-cjk/` | 长中文标签（18 字左对齐 + 短标签，Noto Sans CJK SC）；文字宽度 +2% 会红，阈值按 case 收紧到 1.4% |
 | `geom-curve-basic/` | 两条拐弯曲线；设备 curve 的 y 翻转镜像会让它红（SIL-636 回归） |
 
 `pixi run cases:matrix` 对它们真跑 render + diff；`pixi run -e refs refs:cases`

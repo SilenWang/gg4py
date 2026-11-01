@@ -294,6 +294,39 @@ def test_pending_is_not_red_but_strict_is(tmp_path: Path) -> None:
     assert json.loads((report_dir / "report.json").read_text(encoding="utf-8"))["strict"] is True
 
 
+def test_static_run_with_strict_fails_with_a_nonzero_exit_code(tmp_path: Path) -> None:
+    """`--no-run --strict` / `--check --strict`：文案写红，退出码也必须是 1。
+
+    SIL-649：静态跑时每个 case 是 `skipped`（不是 `pending`），以前只按 case 的
+    `pending` 计失败，于是报告写「红（--strict）」、退出码却是 0——文字结论与
+    退出码互相打脸。CI 不用这个组合，但工具自己不能自相矛盾。
+    """
+    root = make_root(tmp_path)
+    write_case(root, "geom-point-basic")
+    assert run(root, tmp_path, "--no-run")[0] == 0  # 非 strict：静态跑仍不算失败
+
+    code, _, report_dir = run(root, tmp_path, "--no-run", "--strict")
+    assert code == 1
+    report = (report_dir / "report.md").read_text(encoding="utf-8")
+    assert "**红（--strict：待落地算失败）**" in report
+    assert "只做静态校验" in report
+    summary = TOOL.render_summary(
+        TOOL.evaluate(TOOL.discover(root), None),
+        TOOL.discover(root),
+        TOOL.load_taxonomy(root / "taxonomy.toml"),
+        now="2026-11-01T00:00:00Z",
+        strict=True,
+        static_only=True,
+    )
+    assert "**红（--strict：待落地算失败）**" in summary
+    assert "静态校验" in summary and "0 个 pending" not in summary
+
+    # `--check` 同样：矩阵是最新的（上面刚写过），所以非 0 只能来自 strict。
+    code = TOOL.main(["--root", str(root), "--check"], backend=None)
+    assert code == 0
+    assert TOOL.main(["--root", str(root), "--check", "--strict"], backend=None) == 1
+
+
 def test_failing_diff_is_red_and_reports_how_far(tmp_path: Path) -> None:
     root = make_root(tmp_path)
     write_case(root, "geom-point-basic")

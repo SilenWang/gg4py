@@ -170,6 +170,11 @@ def _resolve_paths(args: argparse.Namespace) -> tuple[Path, Path, Path | None]:
 def _rasterize_if_needed(path: Path, scratch: Path, dpi: int) -> tuple[Path, bool]:
     """SVG → PNG；PNG 原样返回。返回（位图路径, 是否做了光栅化）。
 
+    `scratch` 必须是**这一侧独占**的目录（调用方传 `<tmp>/reference` /
+    `<tmp>/actual`）：两侧产物只按 `path.stem` 命名，同名 SVG（`a/foo.svg` 与
+    `b/foo.svg`）落到同一个名字上会互相覆盖，随后比的是同一张图 → 静默判绿
+    （SIL-649）。
+
     SVG 先过 `ggdiff.svgtext`：`<text>` 就地换成字形轮廓。resvg 0.47 画不出
     pixi 的 Noto CJK VF（参考图会整段空白），这一步把文本变成路径后两边就只比
     几何与字形，不再依赖光栅器的字体栈。转换仍是「R 的位置 + R 的宽度」。
@@ -178,6 +183,7 @@ def _rasterize_if_needed(path: Path, scratch: Path, dpi: int) -> tuple[Path, boo
         return path, False
     if path.suffix.lower() != ".svg":
         raise DiffError(f"只支持 .png / .svg，收到 {path}")
+    scratch.mkdir(parents=True, exist_ok=True)
     prepared = scratch / f"{path.stem}-outlined.svg"
     try:
         inline_text_paths(path, prepared)
@@ -231,8 +237,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="ggdiff-") as scratch_name:
             scratch = Path(scratch_name)
-            reference_png, reference_raster = _rasterize_if_needed(reference, scratch, args.dpi)
-            actual_png, actual_raster = _rasterize_if_needed(actual, scratch, args.dpi)
+            # 两侧各用一个子目录：只按文件名命名，同名参考/实测不能落在一起。
+            reference_png, reference_raster = _rasterize_if_needed(
+                reference, scratch / "reference", args.dpi
+            )
+            actual_png, actual_raster = _rasterize_if_needed(actual, scratch / "actual", args.dpi)
+            if reference_png.resolve() == actual_png.resolve():  # pragma: no cover - 防御
+                raise DiffError("参考与实测落到了同一张位图上，拒绝比「自己和自己」")
             reference_pixels = load_image(reference_png)
             actual_pixels = load_image(actual_png)
     except (DiffError, RasterError, OSError) as error:
