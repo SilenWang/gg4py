@@ -170,6 +170,12 @@ def test_null_value_is_per_element_like_r_s_layout_count() -> None:
     assert not is_pure_null(mixed, 0)
     assert null_value(mixed, 0) == 0.0
 
+    # 0 权重的 null 仍然是纯 null：gtable 的 sumWeight > 0 门禁靠这两个判断各自
+    # 成立，把 is_pure_null 退化成 null_value > 0 就会漏掉 0 权重的 null 行/列。
+    zero_null = unit(0, "null")
+    assert is_pure_null(zero_null, 0) is True
+    assert null_value(zero_null, 0) == 0.0
+
     # 纯 null 的复合元素按 R 的递归走：sum 展开累加，min / max 取子项最值，
     # 最后乘外层 amount。
     def compound(op: str, *amounts: float, outer: float = 1.0) -> Unit:
@@ -180,6 +186,17 @@ def test_null_value_is_per_element_like_r_s_layout_count() -> None:
     assert null_value(compound("min", 1, 3), 0) == 1.0
     assert null_value(compound("max", 1, 3), 0) == 3.0
     assert is_pure_null(compound("sum", 1, 3), 0)
+    # min / max 的外层 amount 也是整体乘数：漏乘就会退回 1.0 / 3.0。
+    assert null_value(compound("min", 1, 3, outer=2), 0) == 2.0
+    assert null_value(compound("max", 1, 3, outer=2), 0) == 6.0
+
+    # 嵌套复合：(1null + 3null) * 2 再嵌进外层 sum，要逐层递归后再乘各自的
+    # amount（2*(1+3) + 1 = 9）。R 的 `+` 会把同单位合并成 4null，所以这个
+    # unit.arithmetic 形状直接按元素搭。
+    inner = UnitElement(2.0, "sum", (UnitElement(1.0, "null"), UnitElement(3.0, "null")))
+    nested = Unit((UnitElement(1.0, "sum", (inner, UnitElement(1.0, "null"))),))
+    assert is_pure_null(nested, 0)
+    assert null_value(nested, 0) == 9.0
 
 
 def test_unit_recycles_amount_and_kind_like_r_construct_units() -> None:
@@ -200,7 +217,12 @@ def test_unit_recycles_amount_and_kind_like_r_construct_units() -> None:
     longer_data = unit([1, 2], "strwidth", data=["a", "b", "c"])
     assert [element.data for element in longer_data] == ["a", "b"]
 
-    with pytest.raises(UnitError):
+    # 文案与 R 4.5.3 validData() 的原话一致（docs/notes/units.md 引用同一句）。
+    with pytest.raises(
+        UnitError,
+        match="data must be either NULL, have length 1, "
+        "or match the length of the final unit vector",
+    ):
         unit([1, 2, 3], "strwidth", data=["a", "b"])
 
 
