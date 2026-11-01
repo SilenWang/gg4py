@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "note": "M0-7 度量规则的唯一声明：run 切分（字族回退 + 粘着码点）、兜底表不支持的书写字系统、受管字体与默认字体栈。Python（ggcore.metrics）与 CanvasKit 度量脚本（tools/metrics/measure_canvaskit.cjs）都读这一份，改这里必须同时 bump version 并重新生成度量表（pixi run metrics:table）。码点用十六进制字符串表示。",
+  "default_font_stack": [
+    "DejaVuSans.ttf",
+    "NotoSansCJKsc-VF.ttf",
+    "NotoColorEmoji.ttf"
+  ],
+  "fonts": [
+    { "file": "DejaVuSans.ttf", "family": "DejaVu Sans" },
+    { "file": "NotoSansCJKsc-VF.ttf", "family": "Noto Sans CJK SC" },
+    { "file": "NotoColorEmoji.ttf", "family": "Noto Color Emoji" },
+    { "file": "NotoEmoji-Regular.ttf", "family": "Noto Emoji" },
+    { "file": "NotoSans-VF.ttf", "family": "Noto Sans" }
+  ],
+  "glue_ranges": [["200c", "200d"], ["fe00", "fe0f"], ["e0100", "e01ef"]],
+  "complex_script_ranges": [
+    ["0590", "05ff"],
+    ["0600", "06ff"],
+    ["0700", "074f"],
+    ["0750", "077f"],
+    ["0780", "07bf"],
+    ["07c0", "07ff"],
+    ["0800", "083f"],
+    ["0840", "085f"],
+    ["0860", "086f"],
+    ["0870", "089f"],
+    ["08a0", "08ff"],
+    ["0900", "0dff"],
+    ["0e00", "0e7f"],
+    ["0e80", "0eff"],
+    ["0f00", "0fff"],
+    ["1000", "109f"],
+    ["1100", "11ff"],
+    ["1200", "139f"],
+    ["1400", "167f"],
+    ["1780", "17ff"],
+    ["1800", "18af"],
+    ["1900", "19ff"],
+    ["1a00", "1abf"],
+    ["1b00", "1b7f"],
+    ["1b80", "1c4f"],
+    ["a960", "a97f"],
+    ["a980", "aa5f"],
+    ["d7b0", "d7ff"],
+    ["fb50", "fdff"],
+    ["fe70", "feff"]
+  ],
+  "complex_script_note": "阿拉伯/希伯来/印度诸语/泰文/老挝/藏文/缅文/高棉/朝鲜 jamo 等需要上下文 shaping（连写、字形重排、合字），逐码点 advance 表无法复现；兜底表 is_supported() 对这些返回 False。"
+}

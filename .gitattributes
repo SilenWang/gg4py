@@ -1,2 +1,4 @@
 # SCM syntax highlighting & preventing 3-way merges
 pixi.lock merge=binary linguist-language=YAML linguist-generated=true -diff
+# 兜底度量表与 IR 的 bulk 数据一样是生成物：二进制，不参与文本 diff / 三方合并
+src/ggcore/metrics/data/*.bin binary

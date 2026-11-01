@@ -66,7 +66,10 @@ diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 
 # M-1 feasibility gate (docs/spike). Every spike step is reproducible via pixi.
 "spike:corpus" = "python docs/spike/corpus/generate_corpus.py"
-"spike:assets" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
+# CanvasKit (the browser-side text engine) is fetched by npm, not pip: it is the
+# wasm build the viewer actually runs. Shared by the E2 spike and gate:metrics.
+"assets:canvaskit" = "npm install --no-save --no-package-lock canvaskit-wasm@0.42.0"
+"spike:assets" = { cmd = "echo canvaskit-wasm ready", depends-on = ["assets:canvaskit"] }
 "spike:e2" = { cmd = "python docs/spike/e2_metrics/run_e2.py", depends-on = ["spike:assets"] }
 "spike:e3" = { cmd = "python docs/spike/e3_export/run_e3.py", depends-on = ["spike:assets"] }
 # E1: Pyodide cold start behind a worker, measured under CDP throttling.
@@ -103,5 +106,20 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 "gate:imports" = "python tools/gates/check_import_whitelist.py"
 "gate:ir-json" = "python tools/gates/check_ir_json.py"
 "gate:determinism" = "python tools/gates/check_determinism.py"
+# X5: uharfbuzz × CanvasKit advance parity on the frozen 200-label corpus, plus
+# skia-python per-glyph parity and the offline fallback table (M0-7).
+"gate:metrics" = { cmd = "python tools/gates/check_metrics.py", depends-on = ["assets:canvaskit"] }
 
-check = { depends-on = ["lint", "test", "gate:imports", "gate:ir-json", "gate:determinism"] }
+# --- 度量表 (M0-7) --------------------------------------------------------
+# 兜底表由同一脚本从受管字体生成；`--check` 重新生成并比对，CI 里由 gate:metrics 调用。
+"metrics:table" = "python tools/metrics/build_table.py"
+"metrics:check-table" = "python tools/metrics/build_table.py --check"
+
+check = { depends-on = [
+  "lint",
+  "test",
+  "gate:imports",
+  "gate:ir-json",
+  "gate:determinism",
+  "gate:metrics",
+] }
