@@ -73,6 +73,68 @@ def raster_node(blob_table: BlobTable, data: bytes, mime: str = "image/png") -> 
     return node, bid
 
 
+def future_key_scene() -> Scene:
+    """一个小 scene：带 gpar 的 rect + 带 blob 的 raster，覆盖所有可注入“未来键”的层。"""
+    table, bid = BlobTable.empty().add(b"\x89PNG\r\n\x1a\n", "image/png")
+    return Scene(
+        root=viewport(
+            (
+                Node(
+                    NodeKind.RECT,
+                    Gpar(col=COLOUR),
+                    bufs={"rect": f32([[0.0, 0.0, 1.0, 1.0]])},
+                ),
+                Node(
+                    NodeKind.RASTER,
+                    params={"blob": bid, "width": 1, "height": 1},
+                    bufs={"rect": f32([[0.0, 0.0, 1.0, 1.0]])},
+                ),
+            )
+        ),
+        blobs=table,
+    )
+
+
+def inject_future_key(payload: dict, surface: str) -> None:
+    """在线格式的某一层塞一个本实现不认识的键；层名对应 docs/notes/ir.md §3 的表。"""
+    scene = payload["scene"]
+    root = scene["root"]
+    if surface == "envelope":
+        payload["future_top_key"] = 1
+    elif surface == "scene":
+        scene["future_scene_key"] = 1
+    elif surface == "blob":
+        next(iter(scene["blobs"].values()))["future_blob_key"] = 1
+    elif surface == "node":
+        root["future_node_key"] = 1
+    elif surface == "params":
+        root["params"] = {**root.get("params", {}), "future_param": 1}
+    elif surface == "bufs":
+        root["bufs"] = {"future_buffer": {"dtype": "f4", "shape": [1], "data": b"\x00\x00\x80\x3f"}}
+    elif surface == "buffer":
+        root["children"][0]["bufs"]["rect"]["future_buffer_key"] = 1
+    elif surface == "gpar":
+        root["children"][0]["gpar"] = {
+            **root["children"][0]["gpar"],
+            "future_gpar_field": 1,
+        }
+    else:  # pragma: no cover - 用例写错才会走到
+        raise AssertionError(f"未知注入层 {surface!r}")
+
+
+#: §3 表里的每一层映射：未知键在两档 minor 下分别必须报错 / 必须跳过。
+UNKNOWN_KEY_SURFACES = [
+    "envelope",
+    "scene",
+    "blob",
+    "node",
+    "params",
+    "bufs",
+    "buffer",
+    "gpar",
+]
+
+
 def all_kinds_scene() -> Scene:
     """把 18 种节点都铺一遍的 scene。"""
     points = f32([[0.0, 0.0], [1.0, 1.0], [2.0, 0.5], [3.0, 2.0]])
@@ -217,6 +279,7 @@ def test_every_node_kind_round_trips() -> None:
     scene = all_kinds_scene()
     kinds = {node.kind for node in walk(scene.root)}
     assert kinds == set(NodeKind)  # 18 种一个不漏，M0-6 加原语时这里会红
+    assert len(NodeKind) == 18  # docs/notes/ir.md §4 的 18 由这里钉住
     decoded = decode(encode(scene))
     assert_bitwise_equal(scene, decoded)
     assert encode(decoded) == encode(scene)
@@ -410,6 +473,40 @@ def test_decode_rejects_unknown_node_kind() -> None:
         decode(rebuild(payload))
 
 
+@pytest.mark.parametrize("surface", UNKNOWN_KEY_SURFACES)
+def test_decode_rejects_unknown_keys_at_the_same_minor(surface: str) -> None:
+    # 同一 minor 内严格：每一层映射的未知键都报错，不留“这层校验了那层没校验”。
+    payload = wire(future_key_scene())
+    inject_future_key(payload, surface)
+    with pytest.raises(IRDecodeError, match="future_"):
+        decode(rebuild(payload))
+
+
+@pytest.mark.parametrize("surface", UNKNOWN_KEY_SURFACES)
+def test_decode_tolerates_unknown_keys_from_a_newer_minor(surface: str) -> None:
+    # minor 比本实现新：同一批未知键全部跳过，解出来的 scene 与写方一致。
+    scene = future_key_scene()
+    payload = wire(scene)
+    payload["ir_version"] = [IR_VERSION[0], IR_VERSION[1] + 1]
+    inject_future_key(payload, surface)
+    assert decode(rebuild(payload)) == scene
+
+
+def test_tolerant_decode_still_rejects_unknown_kind_and_dtype() -> None:
+    # 前向兼容只放宽“未知键”；画不出来的节点种类、读不懂的缓冲 dtype 必须报错。
+    payload = wire(future_key_scene())
+    payload["ir_version"] = [IR_VERSION[0], IR_VERSION[1] + 1]
+    payload["scene"]["root"]["children"][0]["kind"] = "ellipse"
+    with pytest.raises(IRDecodeError, match="ellipse"):
+        decode(rebuild(payload))
+
+    payload = wire(future_key_scene())
+    payload["ir_version"] = [IR_VERSION[0], IR_VERSION[1] + 1]
+    payload["scene"]["root"]["children"][0]["bufs"]["rect"]["dtype"] = "f8"
+    with pytest.raises(IRDecodeError, match="dtype"):
+        decode(rebuild(payload))
+
+
 def test_decode_rejects_broken_payloads() -> None:
     data = encode(demo_scene())
     with pytest.raises(IRDecodeError):
@@ -493,6 +590,24 @@ def test_text_node_carries_no_measurement_intent() -> None:
             )
 
 
+def test_text_width_is_carried_verbatim() -> None:
+    """宽度是写方的最终值：明显非实测的数字原样解回来，IR 不做任何重算。"""
+    width = 987.625
+    text = Node(
+        NodeKind.TEXT,
+        Gpar(col=(0, 0, 0, 255)),
+        params={"font": "DejaVu Sans", "size": 1.0},
+        bufs={"pos": f32([[0.0, 0.0]]), "width": f32([width])},
+        texts=("x",),
+    )
+    decoded = decode(encode(Scene(root=viewport((text,)))))
+    restored = decoded.root.children[0].bufs["width"]
+    assert restored.tobytes() == f32([width]).tobytes()
+    assert float(restored[0]) == width
+    # 1pt 字体、单个字符却写着 987.625pt 宽：这个值只能是写方给的，不是量出来的。
+    assert float(restored[0]) > 100 * text.params["size"] * len(text.texts[0])
+
+
 def test_text_rows_must_line_up() -> None:
     with pytest.raises(IRValidationError, match="行数"):
         Node(
@@ -566,6 +681,46 @@ def test_buffers_are_read_only_float32() -> None:
         Node(NodeKind.POINTS, bufs={"points": np.zeros((1, 2), dtype=np.float64)})
     with pytest.raises(IRValidationError, match="shape"):
         Node(NodeKind.POINTS, bufs={"points": f32([[0.0, 0.0, 0.0]])})
+
+
+def test_bezier_control_rows_must_come_in_fours() -> None:
+    with pytest.raises(IRValidationError, match="4 的倍数"):
+        Node(
+            NodeKind.BEZIER,
+            Gpar(col=COLOUR),
+            bufs={"control": f32(np.zeros((3, 2), dtype=np.float32))},
+        )
+    # 4n 行合法；0 行表示没有曲线段（不画），不是错误。
+    for rows in (0, 4, 8):
+        node = Node(
+            NodeKind.BEZIER,
+            Gpar(col=COLOUR),
+            bufs={"control": f32(np.zeros((rows, 2), dtype=np.float32))},
+        )
+        assert node.bufs["control"].shape == (rows, 2)
+
+
+def test_raster_pixel_size_must_be_positive() -> None:
+    _table, bid = BlobTable.empty().add(b"pixels", "image/png")
+    rect = f32([[0.0, 0.0, 1.0, 1.0]])
+    for width, height in ((0, 1), (1, 0), (-2, 4)):
+        with pytest.raises(IRValidationError, match=r"width|height"):
+            Node(
+                NodeKind.RASTER,
+                params={"blob": bid, "width": width, "height": height},
+                bufs={"rect": rect},
+            )
+    Node(NodeKind.RASTER, params={"blob": bid, "width": 1, "height": 1}, bufs={"rect": rect})
+
+
+def test_xspline_shape_stays_within_minus_one_and_one() -> None:
+    bufs = {"points": f32([[0.0, 0.0], [1.0, 1.0]])}
+    for shape in (-1.5, 1.5):
+        with pytest.raises(IRValidationError, match="shape"):
+            Node(NodeKind.XSPLINE, params={"shape": shape}, bufs=bufs)
+    for shape in (-1.0, 0.0, 1.0):
+        node = Node(NodeKind.XSPLINE, params={"shape": shape}, bufs=bufs)
+        assert node.params["shape"] == shape
 
 
 def test_invalid_scenes_are_rejected() -> None:

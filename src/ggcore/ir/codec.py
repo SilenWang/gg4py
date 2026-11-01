@@ -21,7 +21,9 @@
 - bulk 数据是**原始 float32 小端字节**（`{"dtype": "f4", "shape": [...], "data": b"…"}`），
   不做逐元素 JSON，也不 base64。
 - 解码方只认 `ir_version` 的 major；major 不认识直接拒绝。minor 比本实现新时，
-  忽略不认识的字段（前向兼容），但未知节点种类仍然报错——画不出来的东西不能猜。
+  忽略每一层不认识的键（envelope / `scene` / `blobs` 条目 / 节点 / `params` /
+  `bufs` / 缓冲对象 / `gpar`），但未知节点种类和未知缓冲 dtype 仍然报错——
+  画不出来、读不懂的东西不能猜。minor ≤ 本实现时这些未知键都报错。
 """
 
 from __future__ import annotations
@@ -54,6 +56,33 @@ from ggcore.ir.nodes import (
 IR_VERSION: tuple[int, int] = (0, 1)
 IR_VERSION_STR = ".".join(str(part) for part in IR_VERSION)
 MAGIC = "ggir"
+
+# 每一层映射的已知键。未知键在 minor ≤ 本实现时报错，minor > 本实现时跳过。
+_ENVELOPE_KEYS = frozenset({"magic", "ir_version", "scene"})
+_SCENE_KEYS = frozenset({"size", "dpi", "blobs", "root"})
+_BLOB_KEYS = frozenset({"mime", "data"})
+_BUFFER_KEYS = frozenset({"dtype", "shape", "data"})
+_NODE_KEYS = frozenset({"kind", "gpar", "params", "bufs", "texts", "children"})
+
+_FORWARD_HINT = "未知字段只在 minor 比本实现新时容忍（docs/notes/ir.md §3）"
+
+
+def _reject_unknown_keys(
+    raw: Mapping[Any, Any],
+    known: frozenset[str],
+    *,
+    where: str,
+    what: str,
+    tolerant: bool,
+) -> None:
+    """同一 major 内的未知键口径：minor ≤ 本实现严格，minor > 本实现跳过。
+
+    每一层映射都走这里，不留“这一层校验了、那一层没校验”的口子。
+    """
+    unknown = sorted(repr(key) for key in raw if key not in known)
+    if not unknown or tolerant:
+        return
+    raise IRDecodeError(f"{where} 有未知{what} {unknown}；可选 {sorted(known)}（{_FORWARD_HINT}）")
 
 
 # ---------------------------------------------------------------------------
@@ -144,13 +173,17 @@ def decode(data: bytes | bytearray | memoryview) -> Scene:
     if payload.get("magic") != MAGIC:
         raise IRDecodeError(f"magic 不是 {MAGIC!r}：{payload.get('magic')!r}")
     tolerant = _check_version(payload.get("ir_version"))
+    _reject_unknown_keys(
+        payload, _ENVELOPE_KEYS, where="envelope", what="顶层键", tolerant=tolerant
+    )
 
     scene_obj = payload.get("scene")
     if not isinstance(scene_obj, Mapping):
         raise IRDecodeError("缺少 scene 映射")
+    _reject_unknown_keys(scene_obj, _SCENE_KEYS, where="scene", what="字段", tolerant=tolerant)
 
     try:
-        blobs = _blobs_from_obj(scene_obj.get("blobs", {}))
+        blobs = _blobs_from_obj(scene_obj.get("blobs", {}), tolerant=tolerant)
         size = _pair(scene_obj.get("size"), "scene.size")
         dpi = _number(scene_obj.get("dpi", 72.0), "scene.dpi")
         root = _node_from_obj(scene_obj.get("root"), tolerant=tolerant, path="scene.root")
@@ -175,7 +208,7 @@ def _check_version(raw: Any) -> bool:
     return minor > IR_VERSION[1]
 
 
-def _blobs_from_obj(raw: Any) -> BlobTable:
+def _blobs_from_obj(raw: Any, *, tolerant: bool) -> BlobTable:
     if not isinstance(raw, Mapping):
         raise IRDecodeError(f"scene.blobs 必须是映射，收到 {type(raw).__name__}")
     entries: dict[str, Blob] = {}
@@ -184,6 +217,13 @@ def _blobs_from_obj(raw: Any) -> BlobTable:
             raise IRDecodeError(f"blob id 必须是非空字符串，收到 {bid!r}")
         if not isinstance(blob_obj, Mapping):
             raise IRDecodeError(f"blob[{bid!r}] 必须是映射")
+        _reject_unknown_keys(
+            blob_obj,
+            _BLOB_KEYS,
+            where=f"blob[{bid!r}]",
+            what="字段",
+            tolerant=tolerant,
+        )
         data = blob_obj.get("data")
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise IRDecodeError(f"blob[{bid!r}].data 必须是 bytes")
@@ -203,36 +243,42 @@ def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
     except ValueError as exc:
         raise IRDecodeError(f"{path}.kind 不认识：{kind_raw!r}") from exc
     spec = NODE_SPECS[kind]
+    _reject_unknown_keys(
+        raw, _NODE_KEYS, where=f"{path}（{kind.value}）", what="字段", tolerant=tolerant
+    )
 
     gpar = None
     if "gpar" in raw:
         if not spec.gpar:
             raise IRDecodeError(f"{path}（{kind.value}）不携带 gpar")
-        gpar = _gpar_from_obj(raw["gpar"], path=f"{path}.gpar")
+        gpar = _gpar_from_obj(raw["gpar"], path=f"{path}.gpar", tolerant=tolerant)
 
     params_raw = raw.get("params", {})
     if not isinstance(params_raw, Mapping):
         raise IRDecodeError(f"{path}.params 必须是映射")
-    known_params = {param_spec.name for param_spec in spec.params}
-    unknown_params = sorted(set(params_raw) - known_params)
-    if unknown_params and not tolerant:
-        raise IRDecodeError(
-            f"{path}（{kind.value}）有未知参数 {unknown_params}；"
-            f"可选 {sorted(known_params)}（前向兼容只在 minor 更新时生效）"
-        )
+    known_params = frozenset(param_spec.name for param_spec in spec.params)
+    _reject_unknown_keys(
+        params_raw,
+        known_params,
+        where=f"{path}（{kind.value}）",
+        what="参数",
+        tolerant=tolerant,
+    )
     params = {name: value for name, value in params_raw.items() if name in known_params}
 
     bufs_raw = raw.get("bufs", {})
     if not isinstance(bufs_raw, Mapping):
         raise IRDecodeError(f"{path}.bufs 必须是映射")
-    known_bufs = {buffer_spec.name for buffer_spec in spec.buffers}
-    unknown_bufs = sorted(set(bufs_raw) - known_bufs)
-    if unknown_bufs and not tolerant:
-        raise IRDecodeError(
-            f"{path}（{kind.value}）有未知缓冲 {unknown_bufs}；可选 {sorted(known_bufs)}"
-        )
+    known_bufs = frozenset(buffer_spec.name for buffer_spec in spec.buffers)
+    _reject_unknown_keys(
+        bufs_raw,
+        known_bufs,
+        where=f"{path}（{kind.value}）",
+        what="缓冲",
+        tolerant=tolerant,
+    )
     bufs = {
-        name: _buffer_from_obj(value, path=f"{path}.bufs.{name}")
+        name: _buffer_from_obj(value, path=f"{path}.bufs.{name}", tolerant=tolerant)
         for name, value in bufs_raw.items()
         if name in known_bufs
     }
@@ -265,13 +311,11 @@ def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
         raise IRDecodeError(f"{path}: {exc}") from exc
 
 
-def _gpar_from_obj(raw: Any, *, path: str) -> Gpar:
+def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool) -> Gpar:
     if not isinstance(raw, Mapping):
         raise IRDecodeError(f"{path} 必须是映射")
     defaults = dict(GPAR_FIELDS)
-    unknown = sorted(set(raw) - set(defaults))
-    if unknown:
-        raise IRDecodeError(f"{path} 有未知字段 {unknown}")
+    _reject_unknown_keys(raw, frozenset(defaults), where=path, what="字段", tolerant=tolerant)
     fields = {name: raw.get(name, default) for name, default in defaults.items()}
     for name, enum in (("lineend", LineEnd), ("linejoin", LineJoin)):
         value = fields[name]
@@ -287,9 +331,18 @@ def _gpar_from_obj(raw: Any, *, path: str) -> Gpar:
         raise IRDecodeError(f"{path}: {exc}") from exc
 
 
-def _buffer_from_obj(raw: Any, *, path: str) -> np.ndarray[Any, Any]:
+def _buffer_from_obj(raw: Any, *, path: str, tolerant: bool) -> np.ndarray[Any, Any]:
     if not isinstance(raw, Mapping):
         raise IRDecodeError(f"{path} 必须是映射")
+    # 未知子键与其它层同一口径（minor 比本实现新时跳过）；但 dtype 必须认识——
+    # 读不懂的缓冲不能当成已知的处理，所以这一条不随 tolerant 放宽。
+    _reject_unknown_keys(
+        raw,
+        _BUFFER_KEYS,
+        where=path,
+        what="字段",
+        tolerant=tolerant,
+    )
     dtype_code = raw.get("dtype")
     dtype = WIRE_DTYPES.get(dtype_code) if isinstance(dtype_code, str) else None
     if dtype is None:

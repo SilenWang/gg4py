@@ -8,6 +8,15 @@ pandas / Arrow / 绘图库都必须留在包外，DataFrame-like 输入在边界
 `importlib.import_module(...)` / `__import__(...)` 的参数是字符串字面量时按同
 一份白名单判定，不是字面量则直接判失败（无法离线核对）。
 
+别名也要跟：`import importlib as il`、`from importlib import import_module as load`、
+赋值别名（`f = importlib.import_module`，可成链）以及字面量取属性
+（`getattr(importlib, "import_module")`）都还原成同一条点分路径再判。
+
+保证范围（边界见 `docs/notes/gates.md`）：静态扫描覆盖 `import` / `import … as` /
+`from … import` / 非字面量动态导入 / 赋值别名 / `getattr(<可还原>, "字面量")`；
+不覆盖 `operator.attrgetter`、`functools.partial`、`eval` / `exec`、运行时拼接
+属性名等再间接一层的写法。
+
 用法：
     pixi run gate:imports
     python tools/gates/check_import_whitelist.py --root path/to/pkg
@@ -63,7 +72,12 @@ def imported_roots(tree: ast.AST) -> Iterator[tuple[str, int]]:
 
 
 def local_bindings(tree: ast.AST) -> dict[str, str]:
-    """本地名 → 被导入的点分路径，用来解析 `import importlib as il` 这类别名。"""
+    """本地名 → 被还原的点分路径，用来解析 `import importlib as il` 这类别名。
+
+    赋值别名同样算：`f = importlib.import_module`、`h = getattr(importlib,
+    "import_module")`、以及 `g = f` 这样的链。赋值链的长度事先不知道，按不动点
+    迭代（最多“赋值条数 + 1”轮，收敛就停）。
+    """
     bound: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -72,16 +86,55 @@ def local_bindings(tree: ast.AST) -> dict[str, str]:
         elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
             for alias in node.names:
                 bound[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+
+    assignments: list[tuple[ast.expr, ast.expr | None]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            assignments.append((node.targets[0], node.value))
+        elif isinstance(node, ast.AnnAssign):
+            assignments.append((node.target, node.value))
+
+    for _ in range(len(assignments) + 1):
+        changed = False
+        for target, value in assignments:
+            if not isinstance(target, ast.Name) or value is None:
+                continue
+            resolved = _resolved_callee(value, bound)
+            if resolved is None or bound.get(target.id) == resolved:
+                continue
+            bound[target.id] = resolved
+            changed = True
+        if not changed:
+            break
     return bound
 
 
-def _resolved_callee(func: ast.expr, bound: dict[str, str]) -> str | None:
-    """把调用目标还原成点分路径；无本地绑定时裸名（如 `__import__`）按原名。"""
-    if isinstance(func, ast.Name):
-        return bound.get(func.id, func.id)
-    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
-        return f"{bound.get(func.value.id, func.value.id)}.{func.attr}"
-    return None
+def _resolved_callee(expr: ast.expr, bound: dict[str, str]) -> str | None:
+    """把表达式还原成点分路径。
+
+    只认得三种形态：裸名、`Name.attr`、`getattr(<可还原>, "字面量")`。再间接一层
+    就还原不了（例如 `operator.attrgetter`），那是保证范围之外的已知漏口。
+    """
+    if isinstance(expr, ast.Name):
+        return bound.get(expr.id, expr.id)
+    if isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name):
+        return f"{bound.get(expr.value.id, expr.value.id)}.{expr.attr}"
+    return _getattr_target(expr, bound)
+
+
+def _getattr_target(expr: ast.expr, bound: dict[str, str]) -> str | None:
+    """`getattr(<可还原表达式>, "import_module")` → `<路径>.import_module`；否则 None。"""
+    if not (isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name)):
+        return None
+    if expr.func.id != "getattr" or len(expr.args) < 2:
+        return None
+    attr = expr.args[1]
+    if not (isinstance(attr, ast.Constant) and isinstance(attr.value, str)):
+        return None
+    base = _resolved_callee(expr.args[0], bound)
+    if base is None:
+        return None
+    return f"{base}.{attr.value}"
 
 
 def _is_dynamic_import(callee: str | None) -> bool:
