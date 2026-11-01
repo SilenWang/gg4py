@@ -1,0 +1,13 @@
+line-length = 100
+target-version = "py312"
+extend-exclude = [".pixi", "node_modules"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF"]
+# The corpus is real-world text: fullwidth parens, minus signs and emoji are data.
+ignore = ["RUF001"]
+
+[lint.per-file-ignores]
+# spike scripts deliberately mutate sys.path before importing local helpers
+"docs/spike/**/*.py" = ["E402"]
+"tests/*.py" = ["E402"]

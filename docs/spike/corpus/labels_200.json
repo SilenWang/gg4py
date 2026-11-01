@@ -1,0 +1,1013 @@
+{
+ "schema": 1,
+ "seed": 20261101,
+ "count": 200,
+ "font_stack": [
+  "DejaVuSans.ttf",
+  "NotoSansCJKsc-VF.ttf",
+  "NotoColorEmoji.ttf"
+ ],
+ "font_size_px": 16.0,
+ "labels": [
+  {
+   "id": "L000",
+   "category": "latin",
+   "text": "Width"
+  },
+  {
+   "id": "L001",
+   "category": "latin",
+   "text": "Petal [%]"
+  },
+  {
+   "id": "L002",
+   "category": "latin",
+   "text": "Species / drv"
+  },
+  {
+   "id": "L003",
+   "category": "latin",
+   "text": "95% CI [%]"
+  },
+  {
+   "id": "L004",
+   "category": "latin",
+   "text": "Intercept"
+  },
+  {
+   "id": "L005",
+   "category": "latin",
+   "text": "Sepal setosa ±0.02"
+  },
+  {
+   "id": "L006",
+   "category": "latin",
+   "text": "naïve versicolor [%]"
+  },
+  {
+   "id": "L007",
+   "category": "latin",
+   "text": "3.14159 Sepal #12"
+  },
+  {
+   "id": "L008",
+   "category": "latin",
+   "text": "hwy [%]"
+  },
+  {
+   "id": "L009",
+   "category": "latin",
+   "text": "drv/day"
+  },
+  {
+   "id": "L010",
+   "category": "latin",
+   "text": "95% CI — total"
+  },
+  {
+   "id": "L011",
+   "category": "latin",
+   "text": "setosa / mpg #12"
+  },
+  {
+   "id": "L012",
+   "category": "latin",
+   "text": "Intercept"
+  },
+  {
+   "id": "L013",
+   "category": "latin",
+   "text": "naïve / Species — total"
+  },
+  {
+   "id": "L014",
+   "category": "latin",
+   "text": "n = 1,234 1 000 000 café ±0.02"
+  },
+  {
+   "id": "L015",
+   "category": "latin",
+   "text": "−1.5e-3 #12"
+  },
+  {
+   "id": "L016",
+   "category": "latin",
+   "text": "Species / naïve / R² (mm)"
+  },
+  {
+   "id": "L017",
+   "category": "latin",
+   "text": "drv setosa #12"
+  },
+  {
+   "id": "L018",
+   "category": "latin",
+   "text": "Petal · setosa · n = 1,234 — total"
+  },
+  {
+   "id": "L019",
+   "category": "latin",
+   "text": "−40 °C · hwy · 3.14159"
+  },
+  {
+   "id": "L020",
+   "category": "latin",
+   "text": "setosa [%]"
+  },
+  {
+   "id": "L021",
+   "category": "latin",
+   "text": "Sepal · R² [%]"
+  },
+  {
+   "id": "L022",
+   "category": "latin",
+   "text": "Intercept / naïve (mm)"
+  },
+  {
+   "id": "L023",
+   "category": "latin",
+   "text": "displ (mm)"
+  },
+  {
+   "id": "L024",
+   "category": "latin",
+   "text": "p-value / hwy / Species ±0.02"
+  },
+  {
+   "id": "L025",
+   "category": "latin",
+   "text": "slope (mm)"
+  },
+  {
+   "id": "L026",
+   "category": "latin",
+   "text": "Ångström / −1.5e-3 / Length ±0.02"
+  },
+  {
+   "id": "L027",
+   "category": "latin",
+   "text": "setosa · n = 1,234 · Length [%]"
+  },
+  {
+   "id": "L028",
+   "category": "latin",
+   "text": "Width Intercept/day"
+  },
+  {
+   "id": "L029",
+   "category": "latin",
+   "text": "95% CI #12"
+  },
+  {
+   "id": "L030",
+   "category": "latin",
+   "text": "mpg setosa/day"
+  },
+  {
+   "id": "L031",
+   "category": "latin",
+   "text": "µg/L / 1 000 000 / p-value/day"
+  },
+  {
+   "id": "L032",
+   "category": "latin",
+   "text": "−40 °C / count #12"
+  },
+  {
+   "id": "L033",
+   "category": "latin",
+   "text": "drv Intercept (mm)"
+  },
+  {
+   "id": "L034",
+   "category": "latin",
+   "text": "n = 1,234"
+  },
+  {
+   "id": "L035",
+   "category": "latin",
+   "text": "virginica / Petal"
+  },
+  {
+   "id": "L036",
+   "category": "latin",
+   "text": "slope"
+  },
+  {
+   "id": "L037",
+   "category": "latin",
+   "text": "n = 1,234/day"
+  },
+  {
+   "id": "L038",
+   "category": "latin",
+   "text": "n = 1,234 · café"
+  },
+  {
+   "id": "L039",
+   "category": "latin",
+   "text": "Width 1 000 000 displ"
+  },
+  {
+   "id": "L040",
+   "category": "cjk",
+   "text": "密度 219"
+  },
+  {
+   "id": "L041",
+   "category": "cjk",
+   "text": "华北·总计"
+  },
+  {
+   "id": "L042",
+   "category": "cjk",
+   "text": "直径と西南と增长率／天"
+  },
+  {
+   "id": "L043",
+   "category": "cjk",
+   "text": "기온销售额总计（含税）"
+  },
+  {
+   "id": "L044",
+   "category": "cjk",
+   "text": "华南"
+  },
+  {
+   "id": "L045",
+   "category": "cjk",
+   "text": "제주도 59"
+  },
+  {
+   "id": "L046",
+   "category": "cjk",
+   "text": "中位数（%）"
+  },
+  {
+   "id": "L047",
+   "category": "cjk",
+   "text": "관측소、売上高、处理后（含税）"
+  },
+  {
+   "id": "L048",
+   "category": "cjk",
+   "text": "관측소기온华东（%）"
+  },
+  {
+   "id": "L049",
+   "category": "cjk",
+   "text": "温度と大阪府・平均"
+  },
+  {
+   "id": "L050",
+   "category": "cjk",
+   "text": "华南（含税）"
+  },
+  {
+   "id": "L051",
+   "category": "cjk",
+   "text": "华南 323"
+  },
+  {
+   "id": "L052",
+   "category": "cjk",
+   "text": "温度密度（含税）"
+  },
+  {
+   "id": "L053",
+   "category": "cjk",
+   "text": "华北 36"
+  },
+  {
+   "id": "L054",
+   "category": "cjk",
+   "text": "华南と压力／天"
+  },
+  {
+   "id": "L055",
+   "category": "cjk",
+   "text": "平均值直径売上高（%）"
+  },
+  {
+   "id": "L056",
+   "category": "cjk",
+   "text": "刚度 제주도（含税）"
+  },
+  {
+   "id": "L057",
+   "category": "cjk",
+   "text": "기온 52"
+  },
+  {
+   "id": "L058",
+   "category": "cjk",
+   "text": "平均值／天"
+  },
+  {
+   "id": "L059",
+   "category": "cjk",
+   "text": "地区と处理后 564"
+  },
+  {
+   "id": "L060",
+   "category": "cjk",
+   "text": "温度・平均"
+  },
+  {
+   "id": "L061",
+   "category": "cjk",
+   "text": "平均值大阪府直径（%）"
+  },
+  {
+   "id": "L062",
+   "category": "cjk",
+   "text": "总计 725"
+  },
+  {
+   "id": "L063",
+   "category": "cjk",
+   "text": "直径／天"
+  },
+  {
+   "id": "L064",
+   "category": "cjk",
+   "text": "处理后と東京都と总计・平均"
+  },
+  {
+   "id": "L065",
+   "category": "cjk",
+   "text": "大阪府売上高对照组／天"
+  },
+  {
+   "id": "L066",
+   "category": "cjk",
+   "text": "华北"
+  },
+  {
+   "id": "L067",
+   "category": "cjk",
+   "text": "第一组 503"
+  },
+  {
+   "id": "L068",
+   "category": "cjk",
+   "text": "处理前と前年比と売上高（含税）"
+  },
+  {
+   "id": "L069",
+   "category": "cjk",
+   "text": "处理后、处理前、华北 867"
+  },
+  {
+   "id": "L070",
+   "category": "cjk",
+   "text": "기온 313"
+  },
+  {
+   "id": "L071",
+   "category": "cjk",
+   "text": "占比（含税）"
+  },
+  {
+   "id": "L072",
+   "category": "cjk",
+   "text": "平均值中位数华北（含税）"
+  },
+  {
+   "id": "L073",
+   "category": "cjk",
+   "text": "前年比（%）"
+  },
+  {
+   "id": "L074",
+   "category": "cjk",
+   "text": "제주도（%）"
+  },
+  {
+   "id": "L075",
+   "category": "cjk",
+   "text": "평균값（万元）"
+  },
+  {
+   "id": "L076",
+   "category": "cjk",
+   "text": "관측소 972"
+  },
+  {
+   "id": "L077",
+   "category": "cjk",
+   "text": "销售额 31"
+  },
+  {
+   "id": "L078",
+   "category": "cjk",
+   "text": "华南·总计"
+  },
+  {
+   "id": "L079",
+   "category": "cjk",
+   "text": "总计と기온·总计"
+  },
+  {
+   "id": "L080",
+   "category": "emoji",
+   "text": "样本: 🕰️ (48%)"
+  },
+  {
+   "id": "L081",
+   "category": "emoji",
+   "text": "Sales 🦠"
+  },
+  {
+   "id": "L082",
+   "category": "emoji",
+   "text": "Yield 🧑‍🔬"
+  },
+  {
+   "id": "L083",
+   "category": "emoji",
+   "text": "增长 🫶"
+  },
+  {
+   "id": "L084",
+   "category": "emoji",
+   "text": "🇯🇵🇯🇵 Yield"
+  },
+  {
+   "id": "L085",
+   "category": "emoji",
+   "text": "增长 🧭"
+  },
+  {
+   "id": "L086",
+   "category": "emoji",
+   "text": "🇩🇪🇩🇪 Yield"
+  },
+  {
+   "id": "L087",
+   "category": "emoji",
+   "text": "增长 🇨🇳"
+  },
+  {
+   "id": "L088",
+   "category": "emoji",
+   "text": "🤝 Yield"
+  },
+  {
+   "id": "L089",
+   "category": "emoji",
+   "text": "🤝 Sales"
+  },
+  {
+   "id": "L090",
+   "category": "emoji",
+   "text": "❤️‍🔥"
+  },
+  {
+   "id": "L091",
+   "category": "emoji",
+   "text": "👨‍👩‍👧‍👦 Sales"
+  },
+  {
+   "id": "L092",
+   "category": "emoji",
+   "text": "👨‍👩‍👧‍👦 Sales"
+  },
+  {
+   "id": "L093",
+   "category": "emoji",
+   "text": "❤️‍🔥 增长"
+  },
+  {
+   "id": "L094",
+   "category": "emoji",
+   "text": "🧭 样本"
+  },
+  {
+   "id": "L095",
+   "category": "emoji",
+   "text": "Total: #️⃣ (40%)"
+  },
+  {
+   "id": "L096",
+   "category": "emoji",
+   "text": "🕰️"
+  },
+  {
+   "id": "L097",
+   "category": "emoji",
+   "text": "增长 🦠"
+  },
+  {
+   "id": "L098",
+   "category": "emoji",
+   "text": "🫶"
+  },
+  {
+   "id": "L099",
+   "category": "emoji",
+   "text": "#️⃣ 增长"
+  },
+  {
+   "id": "L100",
+   "category": "emoji",
+   "text": "🏳️‍🌈🏳️‍🌈 Total"
+  },
+  {
+   "id": "L101",
+   "category": "emoji",
+   "text": "👍🏽👍🏽 样本"
+  },
+  {
+   "id": "L102",
+   "category": "emoji",
+   "text": "增长 🇩🇪"
+  },
+  {
+   "id": "L103",
+   "category": "emoji",
+   "text": "1️⃣ Sales"
+  },
+  {
+   "id": "L104",
+   "category": "emoji",
+   "text": "👍🏽 Yield"
+  },
+  {
+   "id": "L105",
+   "category": "emoji",
+   "text": "🧑‍🔬🧑‍🔬 增长"
+  },
+  {
+   "id": "L106",
+   "category": "emoji",
+   "text": "1️⃣1️⃣ Sales"
+  },
+  {
+   "id": "L107",
+   "category": "emoji",
+   "text": "Yield: 🔬 (81%)"
+  },
+  {
+   "id": "L108",
+   "category": "emoji",
+   "text": "🇩🇪 Yield"
+  },
+  {
+   "id": "L109",
+   "category": "emoji",
+   "text": "🇩🇪 Yield"
+  },
+  {
+   "id": "L110",
+   "category": "emoji",
+   "text": "#️⃣ Total"
+  },
+  {
+   "id": "L111",
+   "category": "emoji",
+   "text": "Yield: 🔬 (62%)"
+  },
+  {
+   "id": "L112",
+   "category": "emoji",
+   "text": "Yield 👍🏽"
+  },
+  {
+   "id": "L113",
+   "category": "emoji",
+   "text": "Yield 👩‍💻"
+  },
+  {
+   "id": "L114",
+   "category": "emoji",
+   "text": "Yield 🫶"
+  },
+  {
+   "id": "L115",
+   "category": "emoji",
+   "text": "👍🏽 Sales"
+  },
+  {
+   "id": "L116",
+   "category": "emoji",
+   "text": "#️⃣ 增长"
+  },
+  {
+   "id": "L117",
+   "category": "emoji",
+   "text": "🇯🇵🇯🇵 Sales"
+  },
+  {
+   "id": "L118",
+   "category": "emoji",
+   "text": "🔬🔬 增长"
+  },
+  {
+   "id": "L119",
+   "category": "emoji",
+   "text": "增长: 🧑‍🔬 (20%)"
+  },
+  {
+   "id": "L120",
+   "category": "combining",
+   "text": "עברית (2026)"
+  },
+  {
+   "id": "L121",
+   "category": "combining",
+   "text": "n=हिन्दी"
+  },
+  {
+   "id": "L122",
+   "category": "combining",
+   "text": "Å (2026)"
+  },
+  {
+   "id": "L123",
+   "category": "combining",
+   "text": "वर्ष 2026 — 12.5%"
+  },
+  {
+   "id": "L124",
+   "category": "combining",
+   "text": "Å — 12.5%"
+  },
+  {
+   "id": "L125",
+   "category": "combining",
+   "text": "n=ǟ"
+  },
+  {
+   "id": "L126",
+   "category": "combining",
+   "text": "n=각"
+  },
+  {
+   "id": "L127",
+   "category": "combining",
+   "text": "ü组"
+  },
+  {
+   "id": "L128",
+   "category": "combining",
+   "text": "གེ组"
+  },
+  {
+   "id": "L129",
+   "category": "combining",
+   "text": "각 — 12.5%"
+  },
+  {
+   "id": "L130",
+   "category": "combining",
+   "text": "ź̧ — 12.5%"
+  },
+  {
+   "id": "L131",
+   "category": "combining",
+   "text": "가백组"
+  },
+  {
+   "id": "L132",
+   "category": "combining",
+   "text": "العربية"
+  },
+  {
+   "id": "L133",
+   "category": "combining",
+   "text": "é́́ (2026)"
+  },
+  {
+   "id": "L134",
+   "category": "combining",
+   "text": "n=नमस्ते"
+  },
+  {
+   "id": "L135",
+   "category": "combining",
+   "text": "ź̧组"
+  },
+  {
+   "id": "L136",
+   "category": "combining",
+   "text": "ñ组"
+  },
+  {
+   "id": "L137",
+   "category": "combining",
+   "text": "n=é"
+  },
+  {
+   "id": "L138",
+   "category": "combining",
+   "text": "é́́ — 12.5%"
+  },
+  {
+   "id": "L139",
+   "category": "combining",
+   "text": "مُرحَّبًا"
+  },
+  {
+   "id": "L140",
+   "category": "combining",
+   "text": "ภาษาไทย组"
+  },
+  {
+   "id": "L141",
+   "category": "combining",
+   "text": "वर्ष 2026 (2026)"
+  },
+  {
+   "id": "L142",
+   "category": "combining",
+   "text": "தமிழ்组"
+  },
+  {
+   "id": "L143",
+   "category": "combining",
+   "text": "n=ü"
+  },
+  {
+   "id": "L144",
+   "category": "combining",
+   "text": "தமிழ்"
+  },
+  {
+   "id": "L145",
+   "category": "combining",
+   "text": "Nguyễn"
+  },
+  {
+   "id": "L146",
+   "category": "combining",
+   "text": "العربية"
+  },
+  {
+   "id": "L147",
+   "category": "combining",
+   "text": "གེ (2026)"
+  },
+  {
+   "id": "L148",
+   "category": "combining",
+   "text": "กำ (2026)"
+  },
+  {
+   "id": "L149",
+   "category": "combining",
+   "text": "العربية — 12.5%"
+  },
+  {
+   "id": "L150",
+   "category": "combining",
+   "text": "مُرحَّبًا — 12.5%"
+  },
+  {
+   "id": "L151",
+   "category": "combining",
+   "text": "עברית组"
+  },
+  {
+   "id": "L152",
+   "category": "combining",
+   "text": "हिन्दी — 12.5%"
+  },
+  {
+   "id": "L153",
+   "category": "combining",
+   "text": "각组"
+  },
+  {
+   "id": "L154",
+   "category": "combining",
+   "text": "Ĳsselmeer"
+  },
+  {
+   "id": "L155",
+   "category": "combining",
+   "text": "ü — 12.5%"
+  },
+  {
+   "id": "L156",
+   "category": "combining",
+   "text": "กำ"
+  },
+  {
+   "id": "L157",
+   "category": "combining",
+   "text": "n=ﬁ ligature"
+  },
+  {
+   "id": "L158",
+   "category": "combining",
+   "text": "n=Ĳsselmeer"
+  },
+  {
+   "id": "L159",
+   "category": "combining",
+   "text": "가백 (2026)"
+  },
+  {
+   "id": "L160",
+   "category": "long",
+   "text": "观察值estimated, — 分位数— 拟合曲线, Confidence interva"
+  },
+  {
+   "id": "L161",
+   "category": "long",
+   "text": "残差平方和 标准误 p < 0.001, 分位数观察值拟合曲线 p < 0.001, residual and , 观察值  Confidence interval Confidence interval, Confidence interval — and  Confidence interval 残差平"
+  },
+  {
+   "id": "L162",
+   "category": "long",
+   "text": "—  — 观察值p < 0.001, 观察值 Confidence interval, Confidence intervalp < 0.001残差平方和, Confidence interval , — 标准误标准误标准误 estimated 残差平方和标准误,  残差平方和— — p < 0.001 —  p < 0.001 — 标准误— , 分位数 an"
+  },
+  {
+   "id": "L163",
+   "category": "long",
+   "text": "拟合曲线, 残差平方和and , 观察值, estimated标准误and  拟合曲线 — Confidence interval p < 0.001  拟合曲线, and Confidence intervalresidual观察值拟合曲线Confidence interval Confidence interval, 分位数 拟合曲线, and 分位数, p < 0.001 分位数 es"
+  },
+  {
+   "id": "L164",
+   "category": "long",
+   "text": "观察值 residual 标准误, and  and , — , 残差平方和, 分位数,  , 分位数残差平方和分位数 p < 0.001, Confidence interval and  Confidence interval观察"
+  },
+  {
+   "id": "L165",
+   "category": "long",
+   "text": " , 分位数, 拟合曲线,  , —  拟合曲线 分位数 残差平方和, 标准误 estimated, residual 观察值 观察值—  estimated拟合曲线p < 0.001re"
+  },
+  {
+   "id": "L166",
+   "category": "long",
+   "text": "residual  , residual and  Confidence interval, 分位数estimatedresidual — , 观察值 分位数 观察值拟合曲线 estimated,   残差平方和 p < 0.001and  残差平方和, residua"
+  },
+  {
+   "id": "L167",
+   "category": "long",
+   "text": "Confidence interval Confidence interval, 标准误 residual— , p < 0.001 拟合曲线,   标准误 残差平方和 标准误, 观察值, 观察值 观察值estimat"
+  },
+  {
+   "id": "L168",
+   "category": "long",
+   "text": "拟合曲线, 拟合曲线, residual 标准误标准误, estimated—  观察值 residual, estimated 残差平方和标准误,  ,  estimated 拟合曲线, and  残差平方和, 残差平方和, 观察值Confidenc"
+  },
+  {
+   "id": "L169",
+   "category": "long",
+   "text": "观察值 观察值, 标准误, 观察值residual 观察值and  —  拟合曲线 分位数, 观察值, — and , estimated残差平方和 残差平方和   —  观察值 and , 分位数Confidence interval, residual and  and , 分位数, p < 0.001 分位数, 观察值, p < 0.001 分位数标准误 观察值观察值"
+  },
+  {
+   "id": "L170",
+   "category": "long",
+   "text": "and , and  残差平方和, 分位数, —  Confidence interval, estimated 分位数 Confidence intervalConfidence interval, 观察值 分位数 — 拟合曲线观察值 分位数 分位数 观察值—  — , 拟合曲线 残差平方和 p < 0"
+  },
+  {
+   "id": "L171",
+   "category": "long",
+   "text": "p < 0.001, 拟合曲线分位数 观察值 标准误— , 拟合曲线, 标准误观察值, 标准误, p < 0.001标准误residual, residual, residualestima"
+  },
+  {
+   "id": "L172",
+   "category": "long",
+   "text": "estimated, — 残差平方和, 分位数 观察值, — — Confidence interval, p < 0.001 and and 分位数 分位数— 观察值 and  Confidence interval, estimated, 分位数, — , and  残差平方和  , and , residual, residual, estimated标准误 — e"
+  },
+  {
+   "id": "L173",
+   "category": "long",
+   "text": "观察值estimated观察值 estimated 观察值 residualp < 0.001 观察值拟合曲线 观察值观察值拟合曲线 Confidenc"
+  },
+  {
+   "id": "L174",
+   "category": "long",
+   "text": "残差平方和Confidence interval 观察值 and , —  residualand , 残差平方和— and —  residual, and 拟合曲线残差平方和, 标准误, Confidence interval Confidence interval 拟合曲线观察值, "
+  },
+  {
+   "id": "L175",
+   "category": "long",
+   "text": "  estimated, 标准误残差平方和 观察值分位数, Confidence intervalres"
+  },
+  {
+   "id": "L176",
+   "category": "long",
+   "text": "— 分位数,   estimated, 残差平方和 — 拟合曲线,  残差平方和 residualand 观察值  , 标准误 and  p < 0.001, Confidence intervalp < 0.001, — p < 0.001— ,   拟合曲线, 标准误 残差平方和标准误 residual p < 0.001 拟合曲线 p < 0.00"
+  },
+  {
+   "id": "L177",
+   "category": "long",
+   "text": "标准误residual残差平方和residual,  , Confidence interval 残差平方和, 残差平方和, and 残差平方和 p < 0.001 标准误 an"
+  },
+  {
+   "id": "L178",
+   "category": "long",
+   "text": "p < 0.001estimated, 分位数, —  分位数, 分位数, an"
+  },
+  {
+   "id": "L179",
+   "category": "long",
+   "text": "观察值分位数 residual标准误p < 0.001分位数   Confidence interval  — — , estimated, 标准误, 残差平方和分位数 分位数   residualp < 0.00"
+  },
+  {
+   "id": "L180",
+   "category": "long",
+   "text": "p < 0.001, — , Confidence interval 拟合曲线, 分位数, 残差平方和, estimatedConfidence interval, 拟合曲线, 残差平方和, 拟合曲线   拟合曲线 estimated, 标准误观察值and   ,  观察值, estimated标准误, residual观察值"
+  },
+  {
+   "id": "L181",
+   "category": "long",
+   "text": "and , 分位数Confidence interval, 分位数, p < 0.001Confidence intervaland  residual , —  观察值, 残差平方和 观察值 分位数, Confidence intervalp < 0.001residualand Confidence intervalConfidence intervalConfidence inte"
+  },
+  {
+   "id": "L182",
+   "category": "long",
+   "text": "观察值p < 0.001estimated, residual, 观察值estimatedand  拟合曲线p"
+  },
+  {
+   "id": "L183",
+   "category": "long",
+   "text": "estimated, 标准误, and  , p < 0.001— , and , 标准误, estimated残差平方和, 观察值, p"
+  },
+  {
+   "id": "L184",
+   "category": "long",
+   "text": "残差平方和residualestimated — , 分位数观察值, residu"
+  },
+  {
+   "id": "L185",
+   "category": "long",
+   "text": "—  观察值—  —   , and , 拟合曲线estimated观察值, 拟合曲线 p < 0.001 分位数标准误分位数 estimatedp <"
+  },
+  {
+   "id": "L186",
+   "category": "long",
+   "text": "estimated   estimated, p < 0.001 estimated, Confidence interval, p < 0.001Confidence interval 拟合曲线, 分位数, Confidence intervalConfidence interval标准误 —  观察值and p <"
+  },
+  {
+   "id": "L187",
+   "category": "long",
+   "text": "p < 0.001, residualand and    观察值 residual,  estimated 分位数, Confidence interval, 拟合曲线,   观察值标准误, p < 0.001, 标准误 拟合曲线est"
+  },
+  {
+   "id": "L188",
+   "category": "long",
+   "text": "Confidence interval, Confidence interval — 标准误观察值Confidence interval残差平方和, 分位数, Confidence interval拟合曲线Confidence interval, — , and , 拟合曲线, 分位数Confidence "
+  },
+  {
+   "id": "L189",
+   "category": "long",
+   "text": "标准误, and , 残差平方和 分位数—  and  标准误残差平方和标准误, residual, p < 0.001, p < 0.001 分位数residual分位数 拟合曲线残差平方和分位数 残差平方和, 标准误 p < 0.00"
+  },
+  {
+   "id": "L190",
+   "category": "long",
+   "text": "— 分位数estimated观察值,  , 拟合曲线 残差平方和 观察值, 分位数, and p < 0.001拟合曲线     p < 0.001, 观察值分位数, 残差平方和标准误, estimatedConfidence interval, p"
+  },
+  {
+   "id": "L191",
+   "category": "long",
+   "text": "  p < 0.001, residual 观察值, estimated, 拟合曲线 Confidence intervalp < 0.001 p < 0.001 residual, 分位数 分位数, 拟合曲线 Confidence interval, — , Confidence interval标准误 观察值"
+  },
+  {
+   "id": "L192",
+   "category": "long",
+   "text": "residual 拟合曲线拟合曲线 Confidence interval  残差平方和 and —  p < 0.001 residual estimatedp < 0.001分位数   residu"
+  },
+  {
+   "id": "L193",
+   "category": "long",
+   "text": "estimated , Confidence interval, 标准误 拟合曲线— 拟合曲线, 残差平方和, residual残差平方和p < 0.001 — 分位数 —  Confidence interv"
+  },
+  {
+   "id": "L194",
+   "category": "long",
+   "text": "拟合曲线 观察值, p < 0.001, p < 0.001 and 观察值Confidence intervaland 观察值拟合曲线 标准误拟合曲线, — , 拟合曲线, 标准误estimated, p < 0.001分位数residual and  分位数, — and , p < 0.001and  estimatedp < 0.001 观察值, 标准误观察值, "
+  },
+  {
+   "id": "L195",
+   "category": "long",
+   "text": "残差平方和, 拟合曲线 — ,  , and , 残差平方和, 残差平方和, 分位数 标准误, and   , 标准误, 分位数, residual, Confidence interv"
+  },
+  {
+   "id": "L196",
+   "category": "long",
+   "text": "标准误 观察值 残差平方和—  and  Confidence intervaland 拟合曲线, 拟合曲线观察值 "
+  },
+  {
+   "id": "L197",
+   "category": "long",
+   "text": "观察值  , 标准误, Confidence interval,   ,   residual, —  estimated分位数 residual 观察值观察值 —  and and and  — , 残差平方和and  分位数分位数 Confidence interval 分位数拟合曲线 and 标准误,  , 分位数 , 观察值残差平方和"
+  },
+  {
+   "id": "L198",
+   "category": "long",
+   "text": "分位数, 标准误 residual 观察值, 残差平方和, 拟合曲线Confidence interval残差平方和标准误拟合曲线 and  标准误 — 观察值, 残差平方和 拟合曲线 , Confidence interval —  — , residual 观察值 — , residual拟合曲线 观察值"
+  },
+  {
+   "id": "L199",
+   "category": "long",
+   "text": "观察值and , Confidence interval estimated分位数残差平"
+  }
+ ]
+}
