@@ -24,6 +24,9 @@ pixi run spike:e1     # E1：Pyodide 冷启动（见 SIL-588）
 产物：`docs/spike/{e1_coldstart,e2_metrics,e3_export}/results/`。语料是冻结的：
 `docs/spike/corpus/labels_200.json`，sha256 `6c93e414…bedfb1`，由 `pixi run spike:corpus` 可重现。
 
+CI 侧只需要三条命令：`pixi run lint`、`pixi run test`、`pixi run spike:e2`（后者就是 M0-7 门禁的雏形）。
+`.github/workflows/ci.yml` 暂未入库：本任务使用的 GitHub token 缺 `workflow` scope，推送被拒；M0-1 落地时补上。
+
 ## 环境与版本（实测记录）
 
 | 项 | 值 |
