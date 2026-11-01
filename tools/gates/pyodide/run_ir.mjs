@@ -115,6 +115,9 @@ rc
 
   mkdirSync(dirname(resolve(args.out)), { recursive: true });
   writeFileSync(resolve(args.out), bytes);
+  // 边角取值矩阵（NaN 位型 / ±Inf / 64 位 int 上界）：同样一份，两侧逐字节比。
+  const edge = Buffer.from(pyodide.FS.readFile("/out/pyodide.ir.edge"));
+  writeFileSync(resolve(`${args.out}.edge`), edge);
 
   const meta = JSON.parse(pyodide.FS.readFile("/out/meta.json", { encoding: "utf8" }));
   Object.assign(meta, {
@@ -130,7 +133,9 @@ rc
     mkdirSync(dirname(resolve(args.meta)), { recursive: true });
     writeFileSync(resolve(args.meta), JSON.stringify(meta, null, 1) + "\n");
   }
-  console.log(`${bytes.length} B via pyodide ${pyodide.version}, numpy ${meta.numpy}`);
+  console.log(
+    `${bytes.length} B (+${edge.length} B edge) via pyodide ${pyodide.version}, numpy ${meta.numpy}`,
+  );
 }
 
 const round = (value) => Math.round(value * 1000) / 1000;

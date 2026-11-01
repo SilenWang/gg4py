@@ -53,7 +53,8 @@ def window(data: bytes, offset: int, radius: int = 12) -> str:
     return f"@{start:04x} {chunk.hex(' ')}"
 
 
-def run_cpython(out_dir: Path) -> tuple[bytes, dict]:
+def run_cpython(out_dir: Path) -> tuple[bytes, bytes, dict]:
+    """返回 (plot 产出的 IR, 边角取值 IR, 元数据)。"""
     out = out_dir / "cpython.ir"
     meta_path = out_dir / "cpython.json"
     env = dict(os.environ)
@@ -65,10 +66,14 @@ def run_cpython(out_dir: Path) -> tuple[bytes, dict]:
         env=env,
         cwd=REPO,
     )
-    return out.read_bytes(), json.loads(meta_path.read_text(encoding="utf-8"))
+    return (
+        out.read_bytes(),
+        out.with_name(out.name + ".edge").read_bytes(),
+        json.loads(meta_path.read_text(encoding="utf-8")),
+    )
 
 
-def run_pyodide(out_dir: Path, inject_offset: int | None) -> tuple[bytes, dict]:
+def run_pyodide(out_dir: Path, inject_offset: int | None) -> tuple[bytes, bytes, dict]:
     node = shutil.which("node")
     if node is None:
         raise SystemExit("gate:pyodide: `node` 不在 PATH 上（应该由 pixi 提供 nodejs）")
@@ -85,7 +90,11 @@ def run_pyodide(out_dir: Path, inject_offset: int | None) -> tuple[bytes, dict]:
     if inject_offset is not None:
         command += ["--inject-diff", str(inject_offset)]
     subprocess.run(command, check=True, cwd=REPO)
-    return out.read_bytes(), json.loads(meta_path.read_text(encoding="utf-8"))
+    return (
+        out.read_bytes(),
+        out.with_name(out.name + ".edge").read_bytes(),
+        json.loads(meta_path.read_text(encoding="utf-8")),
+    )
 
 
 def require_assets() -> None:
@@ -138,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = args.out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cpython_bytes, cpython_meta = run_cpython(out_dir)
+    cpython_bytes, cpython_edge, cpython_meta = run_cpython(out_dir)
     if cpython_meta["cbor_backend"] != "cbor2":
         # 两边必须真的用了不同的 CBOR 实现；否则“一致”只是同一个实现跑了两遍。
         print(
@@ -151,8 +160,9 @@ def main(argv: list[str] | None = None) -> int:
 
     runs: list[dict] = []
     bad_run: int | None = None
+    bad_edge_run: int | None = None
     for attempt in range(max(1, args.repeat)):
-        pyodide_bytes, pyodide_meta = run_pyodide(out_dir, args.inject_diff)
+        pyodide_bytes, pyodide_edge, pyodide_meta = run_pyodide(out_dir, args.inject_diff)
         runs.append(pyodide_meta)
         if pyodide_meta["cbor_backend"] == "cbor2":
             print(
@@ -163,19 +173,38 @@ def main(argv: list[str] | None = None) -> int:
         if attempt == 0:
             print(f"  pyodide : {describe(pyodide_meta)}")
         offset = first_diff(cpython_bytes, pyodide_bytes)
-        if offset is None:
-            continue
-        bad_run = attempt
-        print(f"  diff    : run {attempt + 1} first differs at byte {offset}")
-        print(f"    cpython: {window(cpython_bytes, offset)}")
-        print(f"    pyodide: {window(pyodide_bytes, offset)}")
-        break
+        if offset is not None:
+            bad_run = attempt
+            print(f"  diff    : run {attempt + 1} first differs at byte {offset}")
+            print(f"    cpython: {window(cpython_bytes, offset)}")
+            print(f"    pyodide: {window(pyodide_bytes, offset)}")
+            break
+        # 边角取值矩阵（NaN 位型 / ±Inf / -0.0 / 64 位 int 上界，SIL-646）同样要比：
+        # 一份「正常」scene 的字节相同，证明不了这些边角两边写得一样。
+        edge_offset = first_diff(cpython_edge, pyodide_edge)
+        if edge_offset is not None:
+            bad_edge_run = attempt
+            print(f"  edge    : run {attempt + 1} first differs at byte {edge_offset}")
+            print(f"    cpython: {window(cpython_edge, edge_offset)}")
+            print(f"    pyodide: {window(pyodide_edge, edge_offset)}")
+            break
 
     sizes = sorted({meta["ir_bytes"] for meta in runs})
-    identical = bad_run is None and sizes == [len(cpython_bytes)]
+    edge_sizes = sorted({meta["edge_bytes"] for meta in runs})
+    identical = (
+        bad_run is None
+        and bad_edge_run is None
+        and sizes == [len(cpython_bytes)]
+        and edge_sizes == [len(cpython_edge)]
+    )
     print(
         f"  ir      : {len(cpython_bytes)} B (cpython) / {sizes[0]} B (pyodide), "
         f"sha256 {hashlib.sha256(cpython_bytes).hexdigest()[:16]}…"
+    )
+    print(
+        f"  edge ir : {len(cpython_edge)} B (cpython) / {edge_sizes[0]} B (pyodide), "
+        f"sha256 {hashlib.sha256(cpython_edge).hexdigest()[:16]}… "
+        f"(NaN / ±Inf / -0.0 缓冲 + int {2**64 - 1} 参数)"
     )
     if identical:
         print("  diff    : none")

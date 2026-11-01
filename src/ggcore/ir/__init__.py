@@ -16,6 +16,8 @@ from ggcore.ir.errors import IRDecodeError, IRError, IRValidationError, IRVersio
 from ggcore.ir.nodes import (
     DEFAULT_MIME,
     GPAR_FIELDS,
+    INT_MAX,
+    INT_MIN,
     NODE_SPECS,
     Anchor,
     Baseline,
@@ -41,6 +43,8 @@ __all__ = [
     "CBOR_BACKEND",
     "DEFAULT_MIME",
     "GPAR_FIELDS",
+    "INT_MAX",
+    "INT_MIN",
     "IR_VERSION",
     "IR_VERSION_STR",
     "MAGIC",

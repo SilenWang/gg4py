@@ -8,16 +8,25 @@
 
 口径只覆盖 IR 实际用到的类型：dict / list / tuple / str / bytes / int /
 float / bool / None。浮点写「能逐位还原的最短宽度」（half → single → double），
-这是 `cbor2.dumps(..., canonical=True)` 6.1.5 的行为；`pixi run gate:pyodide`
-用真实 `cbor2` 的输出逐字节守住这条。
+NaN 一律写首选编码 `f97e00`（符号位与 payload 都丢掉），这也是
+`cbor2.dumps(..., canonical=True)` 6.1.5 的行为；`pixi run gate:pyodide` 与
+`pixi run gate:cbor` 用真实 `cbor2` 的输出逐字节守住这两条。
 
 canonical 规则（RFC 8949 §4.2.1）：整数与长度用最短编码；映射的键按
-「编码后字节长度，再按字节序」排序。不定长、tag、大整数一律不支持：IR 不写它们，
-读不懂的东西不该猜。
+「编码后字节长度，再按字节序」排序。不定长与 tag 一律不支持：IR 不写它们，
+读不懂的东西不该猜。超 64 位整数要写 bignum tag（2/3），所以 `_cbor` 拒绝它们，
+由 IR 层在构造节点时就把 `int` 参数收进 64 位（`nodes.INT_MIN` / `INT_MAX`）——
+这样「CPython 能 encode 的 scene，Pyodide 也能 encode 且能 decode 回来」不是靠
+两边碰巧一致，而是格式上不存在这种输入。
+
+`memoryview` 也**不支持**（直接报错）：`cbor2` 6.1.5 把 `memoryview` 编成整数数组
+而不是 byte string，保留一条会写出两边不一致的字节；IR 编码路径从不传它，所以
+这里选择「不认」，而不是「认错」。
 """
 
 from __future__ import annotations
 
+import math
 import struct
 from typing import Any
 
@@ -46,7 +55,7 @@ def _head(buf: bytearray, major: int, value: int) -> None:
         buf.append((major << 5) | 27)
         buf += struct.pack(">Q", value)
     else:
-        raise CBORError(f"整数超出 64 位：{value}")
+        raise CBORError(f"整数超出 64 位（本模块不写 bignum tag）：{value}")
 
 
 def _encode(obj: Any, buf: bytearray) -> None:
@@ -61,7 +70,7 @@ def _encode(obj: Any, buf: bytearray) -> None:
         data = obj.encode("utf-8")
         _head(buf, 3, len(data))
         buf += data
-    elif isinstance(obj, (bytes, bytearray, memoryview)):
+    elif isinstance(obj, (bytes, bytearray)):
         data = bytes(obj)
         _head(buf, 2, len(data))
         buf += data
@@ -95,6 +104,10 @@ def _dumps(obj: Any) -> bytes:
 
 def _float(value: float) -> bytes:
     """最短且能逐位还原的浮点编码（canonical 的浮点规则）。"""
+    # NaN 没有「逐位还原」可言，canonical 只留一个首选编码（RFC 8949 §3.3）：
+    # 正负号的 NaN、带 payload 的 NaN 全部归一成 f97e00，与 cbor2 一致。
+    if math.isnan(value):
+        return b"\xf9\x7e\x00"
     double = struct.pack(">d", value)
     for marker, code in ((0xF9, ">e"), (0xFA, ">f")):
         try:

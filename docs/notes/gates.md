@@ -9,6 +9,7 @@
 | `pixi run gate:determinism` | `tools/gates/check_determinism.py` | 同输入序列化出不同字节 | 两个进程摘要不一致 |
 | `pixi run gate:metrics` | `tools/gates/check_metrics.py` | 双端文本度量不一致（M0-7，X5） | CanvasKit 把整串按主字族排版 |
 | `pixi run gate:pyodide` | `tools/gates/check_pyodide_ir.py` | CPython 与 Pyodide 的 IR 字节不一致（M0-10） | 两个 CBOR 实现写出的字节不同 |
+| `pixi run gate:cbor` | `tools/gates/check_cbor_diff.py` | `_cbor` 与 `cbor2` canonical 不等价（M0-10/SIL-646） | NaN 不归一成 `f97e00`、长度头写错 |
 
 `pixi run check` = `lint` + `test` + 几道门全部。
 
@@ -165,3 +166,18 @@ Pyodide 包索引里没有 `cbor2`）。两个实现写出的字节必须完全�
 
 负向对照走 `pixi run gate:pyodide:selftest`：让 Pyodide 侧产出差 1 个比特，门禁
 必须红；CI 里正负两步都跑。细节、版本与加载耗时基线见 `docs/notes/pyodide.md`。
+
+门禁比的是**两份** scene：`plot.json` 那份，加一份边角取值 scene（f32 缓冲里的
+NaN 全部位型 / ±Inf / -0.0，以及取到 64 位上界的 `int` 参数，477 B）。第二份是
+SIL-646 加的——超 64 位整数曾经让 Pyodide 直接抛 `CBORError`，而一份正常 scene
+永远走不到那个分支。
+
+`gate:pyodide` 只比**一份** scene，证明不了 `_cbor` 是 canonical CBOR——边角取值
+没有输入就永远走不到。`gate:cbor` 补的就是这一层：9330 个取值（NaN 的全部位型、
+±Inf、负数分支、23/24/255/256/65535/65536 长度头、嵌套容器、5000 条随机模糊）
+逐个与 `cbor2.dumps(..., canonical=True)` 比字节，解码方向也比。两类**按设计不写**
+的取值在这里断言「必须抛 `CBORError`」，而不是静默放过：
+
+- 超 64 位整数要 bignum tag，IR 线格式不写 tag → 由 `ggcore.ir.INT_MIN/INT_MAX`
+  在构造节点时就把 `int` 参数收进 64 位；
+- `memoryview` 在 `cbor2` 里是整数数组、不是 byte string → `_cbor` 拒绝，不认错。

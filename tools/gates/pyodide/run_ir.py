@@ -24,13 +24,69 @@ from pathlib import Path
 import mini_plot
 import numpy as np
 
-from ggcore.ir import CBOR_BACKEND, IR_VERSION_STR, decode, encode, scene_equal
+from ggcore.ir import (
+    CBOR_BACKEND,
+    INT_MAX,
+    IR_VERSION_STR,
+    BlobTable,
+    Node,
+    NodeKind,
+    Scene,
+    decode,
+    encode,
+    f32,
+    scene_equal,
+)
 
 HERE = Path(__file__).resolve().parent
 
 
 def runtime_name() -> str:
     return "pyodide" if sys.platform == "emscripten" else "cpython"
+
+
+def edge_scene() -> Scene:
+    """线格式里最容易让两个实现写出不同字节的取值（SIL-646）。
+
+    - f32 缓冲里放 NaN 的全部位型（正/负 quiet、带 payload）、±Inf、-0.0：这些值
+      在线格式里是原始 float32 字节（byte string），两侧必须写出同一串字面字节、
+      且 decode 回来的位型不变。NaN 作为 **CBOR 浮点**时的归一化（`f97e00`）由
+      `gate:cbor` 守——IR 的浮点参数本身仍须有限，NaN 只出现在缓冲里；
+    - `int` 参数取 64 位上界 `INT_MAX`：再大就要 bignum tag，而线格式不写 tag，
+      所以上界是格式的一部分（`ggcore.ir.nodes.INT_MIN/INT_MAX`）。
+
+    这份 scene 与 `plot.json` 那份一起过门禁：CPython 写得出来，Pyodide 就必须
+    写得出同样的字节，并且解得回来。
+    """
+    bit_patterns = np.array(
+        [
+            [0x7FC00000, 0xFFC00000],  # 正 / 负 quiet NaN
+            [0x7F800001, 0x7F800000],  # signaling NaN（payload 非零）/ +Inf
+            [0xFF800000, 0x80000000],  # -Inf / -0.0
+        ],
+        dtype=np.uint32,
+    )
+    points = f32(bit_patterns.view(np.float32).copy())
+    blobs, bid = BlobTable.empty().add(b"\x89PNG\r\n\x1a\n", "image/png")
+    return Scene(
+        root=Node(
+            NodeKind.VIEWPORT,
+            params={"clip": False},
+            children=(
+                Node(
+                    NodeKind.POINTS,
+                    params={"pch": INT_MAX, "size": 1.0},
+                    bufs={"points": points},
+                ),
+                Node(
+                    NodeKind.RASTER,
+                    params={"blob": bid, "width": INT_MAX, "height": 1},
+                    bufs={"rect": f32([[0.0, 0.0, 1.0, 1.0]])},
+                ),
+            ),
+        ),
+        blobs=blobs,
+    )
 
 
 def cbor2_version() -> str | None:
@@ -68,6 +124,13 @@ def main(argv: list[str] | None = None) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_bytes(data)
 
+    # 第二份：取值矩阵的边角（NaN 位型 / ±Inf / -0.0 / 64 位 int 上界）。
+    edge = edge_scene()
+    edge_data = encode(edge)
+    edge_roundtrip = scene_equal(decode(edge_data), edge)
+    edge_path = args.out.with_name(args.out.name + ".edge")
+    edge_path.write_bytes(edge_data)
+
     meta = {
         "runtime": runtime_name(),
         "python": ".".join(str(part) for part in sys.version_info[:3]),
@@ -79,6 +142,9 @@ def main(argv: list[str] | None = None) -> int:
         "ir_version": IR_VERSION_STR,
         "ir_bytes": len(data),
         "ir_sha256": hashlib.sha256(data).hexdigest(),
+        "edge_bytes": len(edge_data),
+        "edge_sha256": hashlib.sha256(edge_data).hexdigest(),
+        "edge_roundtrip": edge_roundtrip,
         "build_ms": round(build_ms, 3),
         "encode_ms": round(encode_ms, 3),
         "script_ms": round(total_ms, 3),
@@ -89,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         args.meta.write_text(json.dumps(meta, indent=1) + "\n", encoding="utf-8")
     digest = meta["ir_sha256"][:16]
     print(f"{meta['runtime']}: {len(data)} B sha256={digest} backend={CBOR_BACKEND}")
-    return 0 if roundtrip else 1
+    return 0 if roundtrip and edge_roundtrip else 1
 
 
 if __name__ == "__main__":
