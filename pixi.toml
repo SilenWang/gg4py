@@ -61,6 +61,9 @@ render = "PYTHONPATH=src python -m ggcore.cli.render"
 diff = "PYTHONPATH=src python -m ggcore.cli.diff"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
+# viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
+# `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
+"cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 
@@ -97,6 +100,8 @@ r-gtable = "0.3.*"
 # gtable 的行列尺寸由 grid 的 calcViewportLayout() 分配，参考值靠设备测量
 # （draw + 视口读回），口径见 docs/notes/gtable.md。
 "refs:gtable" = "Rscript tools/refs/gtable_ref.R"
+# viewport（M0-4）的对拍夹具：push/pop/down 栈 + 变换 + 裁剪 + gpar 继承
+"refs:viewport" = "Rscript tools/refs/viewport_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"
