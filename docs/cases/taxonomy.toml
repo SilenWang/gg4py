@@ -28,6 +28,7 @@ families = [
   "geom-ribbon",
   "geom-step",
   "geom-hline",
+  "geom-curve",
   # 非 geom 族
   "scale",
   "coord",

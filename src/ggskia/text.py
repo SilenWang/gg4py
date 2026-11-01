@@ -40,7 +40,7 @@ from ggcore.metrics.catalog import MANAGED_FONTS, FontCatalog
 from ggcore.metrics.rules import DEFAULT_FONT_STACK
 from ggcore.metrics.runs import is_supported, split_runs
 
-__all__ = ["GlyphRun", "TextShaper", "resolve_stack"]
+__all__ = ["GlyphRun", "ShaperMetrics", "TextShaper", "resolve_stack"]
 
 SANS = "NotoSansCJKsc-VF.ttf"
 
@@ -159,3 +159,22 @@ class TextShaper:
             offsets = tuple(float(value) for value in self.font(filename, size_pt).getXPos(gids))
             out.append(GlyphRun(filename, gids, offsets, advance))
         return tuple(out)
+
+
+class ShaperMetrics:
+    """`ggcore.units.Metrics` 的实现：宽度问设备自己的排版（英寸）。
+
+    与设备逐字落地用的是同一份 `TextShaper`，所以写进 IR 的 `text.width` 与
+    SVG / PNG 里实际占的宽度一致（M0-7 的「宽度来自实际渲染端」口径）。
+    """
+
+    def __init__(self, shaper: TextShaper | None = None) -> None:
+        self.shaper = shaper if shaper is not None else TextShaper()
+
+    def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
+        runs = self.shaper.runs("sans", text, fontsize * cex)
+        return sum(run.advance for run in runs) / 72.0
+
+    def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
+        metrics = self.shaper.font(SANS, fontsize * cex).getMetrics()
+        return float(-metrics.fAscent + metrics.fDescent) / 72.0

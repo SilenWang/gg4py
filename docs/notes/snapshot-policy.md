@@ -23,15 +23,18 @@ SVG 是派生资产：上游一换 pin 就整批失效，进 git 只会制造大
 与上面的 314 份批量快照**不是一回事**：
 
 - 每个 case 只留一张，是该 case 的判据，**允许入库**（它和生产代码一样要被 review）；
-- 来源写在 `meta.toml` 的 `source`（`upstream:<路径>` / `svglite:<R 版本>` /
-  `baseline:<PR>`），换 pin 时随同 PR 换掉这一张；
+- 来源写在 `meta.toml` 的 `source`（`upstream:<路径>` / `svglite:<R + 版本>`），
+  换 pin 时随同 PR 换掉这一张；
 - 314 份批量快照仍按上面的策略按需拉取，`docs/cases/*/expected/` 继续忽略。
 
-⚠️ **尚未生效的硬要求（SIL-599 差分管线定案）**：三文件 case 现在允许 `ci = true`
-配 `source = local`（本仓库自录基线）。这正是「基线自己录、自洽快照永远绿」的洞：
-curve 镜像 / lwd 偏差可以靠自录基线永久判绿。SIL-599 的验收写死了 `ci = true` 的
-case 必须 `source` 非 `local`，闸门随 M0-9 一起打开；在此之前 `source` 只是说明，
-不是判据。
+**硬要求（SIL-599 已生效）**：`ci = true` 的三文件 case 必须来自外部参考——
+`source` 以 `upstream:` / `svglite:` 开头。`source = local`（本仓库自录基线）只允许
+和 `ci = false` 的探索 case 一起用：自录基线让「基线 == 当前输出」永远绿，SIL-638
+的 curve 镜像 / lwd 单位偏差就是这么漏掉的。闸门在 `tools/cases/matrix.py` 的
+契约校验里，矩阵会把它标成 `⛔ invalid` 并让 CI 红。
+
+参考图的产线是 `pixi run -e refs refs:cases`（R 4.5.3 + ggplot2 4.0.3 + svglite，
+UTF-8 locale），口径见 `docs/notes/diff.md`。
 
 这样新增 case 只需要三个文件，不需要先跑一次网络拉取才能进矩阵。
 
@@ -46,10 +49,26 @@ case 必须 `source` 非 `local`，闸门随 M0-9 一起打开；在此之前 `s
 
 ### 位图（PNG，像素级）
 
+两条门，用途不同，**不要混用**：
+
+**A. 同一管线的自产基线**（grob / viewport 快照等，`pixi run cases:*`）：
+
 1. 默认阈值：**不一致像素 ≤ 0.1%**，且**单通道最大绝对误差 ≤ 4/255**（抗锯齿
    边缘的舍入）。
 2. 差异像素必须能整块解释成“边缘/半透明叠加”：离散的孤立像素点视为失败。
 3. 文字区域单独统计：见下一条。
+
+**B. 跨管线的外部参考**（M0-9 的 `expected.svg|png`，R svglite → resvg vs 我们）：
+
+1. **图级差异 ≤ 2%**：单像素最大通道差 > 4/255 的像素占比；
+2. **平均差异 ≤ 1%**：全通道平均绝对差 / 255；
+3. 两条同时满足才判绿；尺寸不一致直接红。
+4. 两侧都先由 **resvg**（同一版本、pixi 受管字体、`--dpi 72`）光栅化，见
+   `docs/notes/diff.md` §2。
+
+B 比 A 宽，是因为 R 与我们的文字度量（hinted vs linear）、抗锯齿实现本就不同；
+A 的 0.1% 是「同一条管线有没有改坏」的回归口径。把 B 的阈值套到 A 上会放过回归，
+把 A 的阈值套到 B 上会让 CI 永远红——所以两栏都写死在这里。
 
 ### 文字与度量
 
@@ -72,11 +91,13 @@ case 必须 `source` 非 `local`，闸门随 M0-9 一起打开；在此之前 `s
 - 基线文件放 `docs/cases/<case>/baseline/`，命名 `<case>.<format>`，一个文件一个
   case，避免同名覆盖。
 
-## 还没定的事
+## 已定的事（M0-9 定案）
 
-以下口径在实现比对器（M0 后续阶段）时必须先在 issue 里定，不能自己改验收标准：
-
-- 上游 SVG 是 grid 产物、我们是 DOM SVG，结构本就不同：只比“视觉”还是也比结构？
-  当前倾向只比视觉（位图化后比像素），结构 diff 仅作诊断。
-- 314 份快照里有多少属于我们尚未实现的 geom：未实现的部分默认 `skip`，不让它
+- 上游 SVG 是 grid 产物、我们是 skia SVG 设备产物，结构本就不同：**只比视觉**
+  （两侧都光栅化成 PNG 后再比像素，`docs/notes/diff.md` §2）。结构 diff 不做——
+  它只会把「同一张图、不同序列化」判红。
+- **所有三文件 case 都按像素比**，`tolerance.svg` 删除。
+- 314 份批量快照里有多少属于我们尚未实现的 geom：未实现的部分默认 `skip`，不让它
   变成“容差放水”的借口。
+- 文本：`<text>` 在光栅化前转成字形轮廓（resvg 0.47 画不出 Noto CJK VF），宽度与
+  位置仍取 R 写下的值；见 `docs/notes/diff.md` §2。

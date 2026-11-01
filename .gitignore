@@ -9,6 +9,10 @@ __pycache__/
 # 案例的渲染产物与按需拉取的上游参考图（纳管策略见 docs/notes/snapshot-policy.md）
 docs/cases/*/current/
 docs/cases/*/expected/
+# `pixi run diff <case>` 的默认报告与热图（issue 约定的路径；运行时产物，不入库）
+docs/cases/*/diff_report.md
+docs/cases/*/diff_heatmap.png
+docs/cases/*/diff_report_heatmap.png
 # generated network assets for the E1 spike (recreated by `pixi run spike:assets`)
 docs/spike/e1_coldstart/static/
 # Playwright browser downloads for the E1 spike (read-only $HOME in the runtime)

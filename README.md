@@ -18,8 +18,8 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run lint` | `ruff check` + `ruff format --check` |
 | `pixi run test` | `pytest`（`tests/`） |
 | `pixi run bench` | pytest-benchmark 基线（`.benchmarks/`，不入库） |
-| `pixi run render` | M0-8 · `--scene <file.ggir.cbor> --out x.png\|svg\|pdf` 出图 |
-| `pixi run diff` | 案例比对入口（同上） |
+| `pixi run render` | M0-8/9 · `--scene <file.ggir.cbor> --out x.png\|svg\|pdf`，或 `render <case-dir> --format svg --out <case>/current` |
+| `pixi run diff` | M0-9 · 参考图 × 实测图：图级差异 + 平均差异 + 热图 + `--json`（`docs/notes/diff.md`） |
 | `pixi run ir:size` | 10k 点 path 的 IR vs 逐元素 JSON 体积（`docs/notes/ir.md` §10） |
 | `pixi run gate:imports` | X1 · ggcore import 白名单 |
 | `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
@@ -30,7 +30,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
 | `pixi run cases:viewport` | M0-4 · 重画 `docs/cases/viewport-*` 的 PNG 快照（`--check` 只比对） |
 | `pixi run cases:grob` | M0-6 · 重画 `docs/cases/grob-*` 的 PNG 快照（一种原语一张） |
-| `pixi run cases:matrix` | M0-11 · 扫三文件 case，渲染 + 比对，写 `docs/cases/matrix.md` 与 `.cases-matrix/report.md` |
+| `pixi run cases:matrix` | M0-11/9 · 扫三文件 case，真跑 render + diff，写 `docs/cases/matrix.md` 与 `.cases-matrix/report.{md,json}` |
 | `pixi run cases:matrix:check` | M0-11 · 只做静态校验：契约错或矩阵过期即非 0（挂在 `check` 里） |
 | `pixi run cases:device` | M0-8 · 一张手搓图三路出图到 `docs/cases/device-smoke/current/`（`--check` 只验验收） |
 | `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
@@ -39,6 +39,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run -e refs refs:viewport` | 用 R 4.5.3 重新生成 viewport 对拍夹具 |
 | `pixi run -e refs refs:device` | 用 R 4.5.3 重新生成 xspline / curve 对拍夹具 |
 | `pixi run -e refs refs:device-render` | 用 R 4.5.3 重新生成设备级渲染对拍夹具（PNG + 设备坐标折线） |
+| `pixi run -e refs refs:cases` | M0-9 · 用 R 4.5.3 + ggplot2 4.0.3 + svglite 重新生成 `docs/cases/*/expected.svg` |
 
 ## 环境
 
@@ -61,9 +62,11 @@ src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条
   grobs.py           # grob 模型：18 个构造器 + 场景遍历 → IR（M0-6）
   metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   device.py          # 设备协议：open / draw_scene / close（M0-8）
-  cli/               # diff 命令行入口（render 跟 skia 后端一起在包外）
+  plotspec.py        # 案例适配层：plot 规格 → grob → IR（M0-9）
+  cli/               # 命令行辅助（render / diff 的入口在包外）
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
 src/ggskia/          # skia 设备（PNG / SVG / PDF）与 `pixi run render`（M0-8）
+src/ggdiff/          # 差分：resvg 统一栅格 + 像素判据 + 报告（M0-9）
 tools/gates/         # 横切门禁脚本（X1）
 tools/refs/          # R 侧参考值生成（units / gtable / viewport）
 tools/cases/         # 可视化快照渲染（viewport 快照 M0-4 / grob 快照 M0-6）
@@ -92,3 +95,4 @@ docs/spike/          # M-1 可行性实验与结论
 - 视口口径账本：`docs/notes/viewport.md`
 - grob 口径账本：`docs/notes/grobs.md`
 - 设备口径账本（pt/DPI、文字轮廓、pch 表、曲线求值）：`docs/notes/device.md`
+- 差分管线（R 参考、resvg 统一栅格、2%/1% 判据、JSON 契约）：`docs/notes/diff.md`

@@ -1,0 +1,7 @@
+family = "geom-col"
+features = ["aes-mapping", "colour-aes", "scale-limits"]
+ci = true
+title = "geom_col：连续 x 上的分组柱状图"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "柱子宽度是数据单位（0.7），两侧都用 expand = c(0, 0)。"

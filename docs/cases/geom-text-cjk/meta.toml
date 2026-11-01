@@ -1,0 +1,7 @@
+family = "geom-text"
+features = ["aes-mapping", "colour-aes", "cjk-text"]
+ci = true
+title = "geom_text：中文标签 + 拉丁混排"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "标签必须原样落字：R 侧在 LC_ALL=C.UTF-8 下生成，字体是 Noto Sans CJK SC。"

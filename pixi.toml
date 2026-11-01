@@ -47,18 +47,23 @@ xorg-libxcomposite = ">=0.4.7,<0.5"
 xorg-libxdamage = ">=1.1.6,<2"
 xorg-libxfixes = ">=6.0.2,<7"
 xorg-libxrandr = ">=1.5.5,<2"
+# M0-9 的统一栅格：SVG → PNG 只走一个实现（resvg），参考图（R svglite 产出）
+# 与实测图（我们的 SVG 设备产出）用同一个光栅器，文字/抗锯齿才不会各说各话。
+resvg = ">=0.47,<0.48"
 
 [pypi-dependencies]
 uharfbuzz = ">=0.57.0, <0.58"
 numpy = ">=2.5.4, <3"
 skia-python = ">=144.1, <145"
 cbor2 = ">=6.1.5, <7"
+# `pixi run diff` 的位图读写（PNG 解码 / 差异热图编码），不依赖绘图库。
+pillow = ">=11, <14"
 
 # `src/` layout without a build backend: the package is imported through
 # PYTHONPATH (pytest.ini carries the same path for the test runner).
 [tasks]
 render = "PYTHONPATH=src python -m ggskia.cli.render"
-diff = "PYTHONPATH=src python -m ggcore.cli.diff"
+diff = "PYTHONPATH=src python -m ggdiff.cli"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
@@ -104,6 +109,10 @@ playwright = ">=1.64.1, <2"
 [feature.refs.dependencies]
 "r-base" = "4.5.*"
 r-gtable = "0.3.*"
+# M0-9 参考图产线：钉死 ggplot2 4.0.3（与 docs/notes/upstream.md 的 pin 同一版本），
+# 用 svglite 出 SVG。这一组只活在 refs 环境里，dev/prod 不会带上 R。
+r-ggplot2 = "==4.0.3"
+r-svglite = ">=2.2,<3"
 
 [feature.refs.tasks]
 "refs:units" = "Rscript tools/refs/units_ref.R"
@@ -116,6 +125,9 @@ r-gtable = "0.3.*"
 "refs:device" = "Rscript tools/refs/device_ref.R"
 # 设备级渲染对拍（SIL-636）：同一页面上 R 真画一遍，PNG 比墨迹、折线比设备坐标
 "refs:device-render" = "Rscript tools/refs/device_render_ref.R"
+# M0-9 参考图产线：ggplot2 4.0.3 + svglite 出 docs/cases/<case>/expected.svg。
+# 只在换 pin 或有意改口径时重跑；产物入库，CI 不装 R。
+"refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"

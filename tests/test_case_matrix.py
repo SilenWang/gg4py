@@ -85,6 +85,7 @@ def write_case(
     plot: str = GOOD_PLOT,
     expected: str | None = "expected.svg",
     meta: str | None = None,
+    source: str = "svglite:test",
 ) -> Path:
     directory = root / name
     directory.mkdir(parents=True, exist_ok=True)
@@ -98,7 +99,8 @@ def write_case(
     if meta is None:
         feature_text = ", ".join(json.dumps(feature) for feature in features)
         meta = (
-            f'family = "{family}"\nfeatures = [{feature_text}]\nci = {"true" if ci else "false"}\n'
+            f'family = "{family}"\nfeatures = [{feature_text}]\n'
+            f'ci = {"true" if ci else "false"}\nsource = "{source}"\n'
         )
     (directory / "meta.toml").write_text(meta, encoding="utf-8")
     return directory
@@ -277,10 +279,19 @@ def test_pending_is_not_red_but_strict_is(tmp_path: Path) -> None:
     assert backend.calls == [("render", "geom-point-basic")]
     report = (report_dir / "report.md").read_text(encoding="utf-8")
     assert "⏳ pending" in report
-    assert "**绿**" in report
+    # pending 不是绿（SIL-644 S2）：既不能写「绿」，也不能写「全部绿」。
+    assert "**绿**" not in report
+    assert "待落地" in report
+    assert "verdict = pending" in report
+    payload = json.loads((report_dir / "report.json").read_text(encoding="utf-8"))
+    assert payload["verdict"] == "pending"
+    assert payload["ok"] is False
 
-    code, _, _ = run(root, tmp_path, "--strict", backend=backend)
+    code, _, report_dir = run(root, tmp_path, "--strict", backend=backend)
     assert code == 1
+    strict_report = (report_dir / "report.md").read_text(encoding="utf-8")
+    assert "**红" in strict_report and "**绿**" not in strict_report
+    assert json.loads((report_dir / "report.json").read_text(encoding="utf-8"))["strict"] is True
 
 
 def test_failing_diff_is_red_and_reports_how_far(tmp_path: Path) -> None:
@@ -598,7 +609,7 @@ def test_ci_is_optional_and_defaults_to_true(tmp_path: Path) -> None:
     write_case(
         root,
         "geom-point-basic",
-        meta='family = "geom-point"\nfeatures = ["aes-mapping"]\n',
+        meta='family = "geom-point"\nfeatures = ["aes-mapping"]\nsource = "svglite:test"\n',
     )
     directory = root / "geom-point-basic"
     case = TOOL.load_case(directory)
@@ -608,3 +619,139 @@ def test_ci_is_optional_and_defaults_to_true(tmp_path: Path) -> None:
     code, _, _ = run(root, tmp_path, backend=backend)
     assert code == 0
     assert backend.calls == [("render", "geom-point-basic")]
+
+
+def test_ci_true_with_local_source_is_invalid(tmp_path: Path) -> None:
+    """硬要求 1：`ci = true` 的参考必须来自外部；自录基线永远自洽，等于没判据。"""
+    root = make_root(tmp_path)
+    write_case(
+        root,
+        "geom-point-local",
+        meta='family = "geom-point"\nfeatures = ["aes-mapping"]\nsource = "local"\n',
+    )
+    case = TOOL.load_case(root / "geom-point-local")
+    assert not case.valid
+    assert any("必须来自外部参考" in error for error in case.errors)
+
+    # `ci = false` 的草稿 case 允许 local（只登记，不进 CI）。
+    write_case(
+        root,
+        "geom-point-draft",
+        meta='family = "geom-point"\nfeatures = []\nci = false\nsource = "local"\n',
+    )
+    assert TOOL.load_case(root / "geom-point-draft").valid
+
+
+def test_tolerance_svg_is_invalid_after_the_pixel_only_decision(tmp_path: Path) -> None:
+    """硬要求 2：所有 case 都按像素比，`tolerance.svg` 已删除（不是静默忽略）。"""
+    root = make_root(tmp_path)
+    write_case(
+        root,
+        "geom-point-svg-tolerance",
+        meta='family = "geom-point"\nfeatures = []\nsource = "svglite:test"\n'
+        "tolerance = { svg = 0.001 }\n",
+    )
+    case = TOOL.load_case(root / "geom-point-svg-tolerance")
+    assert not case.valid
+    assert any("tolerance.svg" in error and "像素比" in error for error in case.errors)
+
+
+def test_render_and_diff_use_the_expected_suffix(tmp_path: Path) -> None:
+    """硬要求 2：格式由 `expected.*` 的后缀决定，并把 `tolerance.png` 传给 diff。"""
+    import subprocess
+
+    root = make_root(tmp_path)
+    png_case = TOOL.load_case(write_case(root, "geom-point-png", expected="expected.png"))
+    svg_case = TOOL.load_case(write_case(root, "geom-point-svg", expected="expected.svg"))
+    assert (png_case.format, svg_case.format) == ("png", "svg")
+
+    commands: list[list[str]] = []
+
+    def runner(command, **kwargs):
+        commands.append(list(command))
+        if "render" in command:
+            out = Path(command[command.index("--out") + 1])
+            out.mkdir(parents=True, exist_ok=True)
+            fmt = command[command.index("--format") + 1]
+            case_dir = Path(command[command.index("render") + 1])
+            (out / f"{case_dir.name}.{fmt}").write_bytes(
+                b"\x89PNG\r\n\x1a\n" if fmt == "png" else b"<svg/>"
+            )
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps({"verdict": "pass", "image_diff_fraction": 0.0, "mean_diff": 0.0}),
+            stderr="",
+        )
+
+    backend = TOOL.TaskBackend(prefix=("pixi", "run"), runner=runner)
+    assert backend.render(png_case).status == TOOL.PASS
+    assert backend.render(svg_case).status == TOOL.PASS
+
+    # 带 tolerance 的 case：diff 必须收到 --json 与 --tolerance。
+    tolerance_case = TOOL.load_case(
+        write_case(
+            root,
+            "geom-point-tol",
+            meta='family = "geom-point"\nfeatures = []\nsource = "svglite:test"\n'
+            "tolerance = { png = 0.005 }\n",
+        )
+    )
+    backend.diff(tolerance_case)
+
+    render_commands = [cmd for cmd in commands if "render" in cmd]
+    diff_commands = [cmd for cmd in commands if "diff" in cmd]
+    assert render_commands[0][render_commands[0].index("--format") + 1] == "png"
+    assert render_commands[1][render_commands[1].index("--format") + 1] == "svg"
+    assert "--json" in diff_commands[0]
+    assert diff_commands[0][diff_commands[0].index("--tolerance") + 1] == "0.005"
+
+
+def test_diff_json_metrics_land_in_report(tmp_path: Path) -> None:
+    """硬要求 3：矩阵从 `diff --json` 读百分比，写进报告与 report.json。"""
+    import subprocess
+
+    root = make_root(tmp_path)
+    case = TOOL.load_case(write_case(root, "geom-point-basic"))
+
+    payload = {
+        "verdict": "pass",
+        "ok": True,
+        "image_diff_fraction": 0.0042,
+        "mean_diff": 0.0007,
+        "diff_pixels": 261,
+        "total_pixels": 62208,
+    }
+    backend = TOOL.TaskBackend(
+        runner=lambda command, **kwargs: subprocess.CompletedProcess(
+            command, 0, stdout=json.dumps(payload), stderr=""
+        )
+    )
+    step = backend.diff(case)
+    assert step.status == TOOL.PASS
+    assert step.metrics["image_diff_fraction"] == 0.0042
+    assert step.metrics["mean_diff"] == 0.0007
+    assert "图级 0.42%" in step.diff
+
+    # 同样的结论进 report.json / report.md。
+    verdicts = [TOOL.Verdict(case, TOOL.PASS, step.detail, step.diff, step.metrics)]
+    written = TOOL.report_payload(
+        verdicts, [case], TOOL.load_taxonomy(root / "taxonomy.toml"), "now"
+    )
+    assert written["cases"][0]["metrics"]["image_diff_fraction"] == 0.0042
+    report = TOOL.render_report(
+        verdicts, [case], TOOL.load_taxonomy(root / "taxonomy.toml"), now="now"
+    )
+    assert "图级 0.42%" in report
+
+    # 超容差时：退出码 1 + reason 原样带出来。
+    fail_payload = dict(payload, verdict="fail", ok=False, reason="图级差异 3.00% > 阈值 2.00%")
+    failing = TOOL.TaskBackend(
+        runner=lambda command, **kwargs: subprocess.CompletedProcess(
+            command, 1, stdout=json.dumps(fail_payload), stderr=""
+        )
+    )
+    failed = failing.diff(case)
+    assert failed.status == TOOL.FAIL
+    assert "图级差异 3.00%" in failed.detail

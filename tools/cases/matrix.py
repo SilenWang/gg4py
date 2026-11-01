@@ -34,9 +34,15 @@
 半成品 case 收进来标 `invalid`（只有 `case.json` 的历史快照目录除外）。
 
 渲染与比对不另造命令：就走 M0-8 的 `pixi run render` 与 M0-9 的 `pixi run diff`
-（`pixi.toml` 里的任务名）。两个入口还没落地时以退出码 3 报“未实现”，本工具把
-它记成 `pending`（⏳），**不算红**——否则 M0-8 / M0-9 合并之前整条 CI 永远是红的；
-`--strict` 可以把 pending 也当失败，等两个入口落地后由 CI 打开。
+（`pixi.toml` 里的任务名）。入口以退出码 3 报“未实现”时，本工具把它记成
+`pending`（⏳），**不算红**；`--strict` 可以把 pending 也当失败。`--no-run` /
+`--check` 同样不判绿：静态校验一个 case 都没真跑，结论归 `pending`。
+
+三个硬约束（SIL-599，写进契约校验，违规即 `invalid`）：
+
+- `ci = true` 的 case 必须来自外部参考：`source` 以 `upstream:` / `svglite:` 开头；
+- `tolerance` 只认 `png`（所有 case 都按像素比，`tolerance.svg` 已删）；
+- 渲染格式跟着 `expected.*` 的后缀走，diff 用 `--json` 读百分比。
 
 Case 状态：
 
@@ -93,6 +99,12 @@ EXTERNAL_CORPORA = (
 # 占位入口的退出码，与 src/ggcore/cli/__init__.py 的 EXIT_NOT_IMPLEMENTED 对齐。
 EXIT_NOT_IMPLEMENTED = 3
 
+# `ci = true` 的 case 只认外部参考（SIL-599 硬要求 1）：自录基线会让
+# 「基线 == 当前输出」的自洽比对永远绿，SIL-638 的 curve 镜像与 lwd 偏差就是这么漏掉的。
+EXTERNAL_SOURCE_PREFIXES = ("upstream:", "svglite:")
+# 参考图后缀 → 渲染/比对格式（硬要求 2：按 `expected.*` 的后缀选，不写死 png）。
+FORMAT_BY_SUFFIX = {".svg": "svg", ".png": "png"}
+
 PASS = "pass"
 FAIL = "fail"
 PENDING = "pending"
@@ -129,6 +141,16 @@ class Case:
     def valid(self) -> bool:
         return not self.errors
 
+    @property
+    def format(self) -> str:
+        """渲染 / 比对格式由参考图后缀决定（`expected.svg` → svg）。"""
+        return FORMAT_BY_SUFFIX.get(Path(self.expected).suffix.lower(), "png")
+
+
+def _external_source(source: str) -> bool:
+    """`source` 是不是外部参考（`upstream:` / `svglite:`）。"""
+    return any(source.strip().startswith(prefix) for prefix in EXTERNAL_SOURCE_PREFIXES)
+
 
 def _meta_errors(meta: Any) -> tuple[dict[str, Any], list[str]]:
     """校验 meta.toml 的必填项，返回（规整后的值, 错误列表）。"""
@@ -156,8 +178,13 @@ def _meta_errors(meta: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("meta.toml 的 `tolerance` 必须是表")
         tolerance = {}
     for fmt, value in tolerance.items():
-        if fmt not in ("png", "svg"):
-            errors.append(f"meta.toml 的 `tolerance.{fmt}` 不认识（只支持 png / svg）")
+        if fmt == "svg":
+            errors.append(
+                "meta.toml 的 `tolerance.svg` 已删除：M0-9 定案**所有 case 都按像素比**"
+                "（SVG 与 PNG 都先由 resvg 光栅化），只留 `tolerance.png`"
+            )
+        elif fmt != "png":
+            errors.append(f"meta.toml 的 `tolerance.{fmt}` 不认识（只支持 png）")
         elif not isinstance(value, (int, float)) or not 0.0 <= float(value) < 1.0:
             errors.append(f"meta.toml 的 `tolerance.{fmt}` 必须是 [0, 1) 的数（比例）")
 
@@ -165,6 +192,13 @@ def _meta_errors(meta: Any) -> tuple[dict[str, Any], list[str]]:
     if not isinstance(source, str):
         errors.append("meta.toml 的 `source` 必须是字符串")
         source = "local"
+    suffix = " / ".join(EXTERNAL_SOURCE_PREFIXES)
+    if ci is True and not _external_source(source):
+        errors.append(
+            f"`ci = true` 的 case 必须来自外部参考（`source` 以 {suffix} 开头），"
+            f"当前是 {source!r}：自录基线会让「基线 == 当前输出」永远绿"
+            "（SIL-599 硬要求 1）"
+        )
 
     return (
         {
@@ -353,6 +387,7 @@ class StepResult:
     status: str
     detail: str = ""
     diff: str = ""
+    metrics: dict[str, float] = field(default_factory=dict)
 
 
 def _tail(text: str, lines: int = 3, limit: int = 240) -> str:
@@ -360,15 +395,23 @@ def _tail(text: str, lines: int = 3, limit: int = 240) -> str:
     return " / ".join(rows[-lines:])[:limit]
 
 
+def _percent(value: Any) -> str:
+    return f"{float(value):.2%}" if isinstance(value, (int, float)) else "—"
+
+
 class TaskBackend:
     """通过 `pixi run render` / `pixi run diff` 调用渲染与比对。
 
     M0-8 / M0-9 的入口契约（本工具依赖的就是这两条，不要另造命令）：
 
-    - `pixi run render <case-dir> --format png --out <case-dir>/current`
-      退出码 0 = 写出 PNG；3 = 未实现（记 pending）；其余 = 失败。
-    - `pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --tolerance <t>`
+    - `pixi run render <case-dir> --format <expected 后缀> --out <case-dir>/current`
+      退出码 0 = 写出产物；3 = 未实现（记 pending）；其余 = 失败。
+    - `pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--tolerance t]`
       退出码 0 = 通过；1 = 超容差；3 = 未实现（记 pending）；其余 = 失败。
+      `--json` 是硬要求 3：结论与两个百分比从 JSON 读，不再截 stdout 末尾。
+
+    格式由 `expected.*` 的后缀决定（`Case.format`），不再写死 png；容差只传
+    `tolerance.png`（M0-9 定案：所有 case 都按像素比，`tolerance.svg` 已删）。
     """
 
     def __init__(
@@ -397,30 +440,75 @@ class TaskBackend:
         )
 
     def render(self, case: Case) -> StepResult:
+        fmt = case.format
         out = case.directory / "current"
-        result = self._run("render", str(case.directory), "--format", "png", "--out", str(out))
+        result = self._run("render", str(case.directory), "--format", fmt, "--out", str(out))
         if result.returncode == EXIT_NOT_IMPLEMENTED:
             return StepResult(PENDING, "render 未落地（M0-8）")
         if result.returncode != 0:
             return StepResult(FAIL, f"render 退出 {result.returncode}：{_tail(result.stderr)}")
-        produced = sorted(out.glob("*.png")) if out.is_dir() else []
+        preferred = out / f"{case.name}.{fmt}"
+        produced = (
+            [preferred]
+            if preferred.is_file()
+            else (sorted(out.glob(f"*.{fmt}")) if out.is_dir() else [])
+        )
         if not produced:
-            return StepResult(FAIL, f"render 退出 0 但 {out.name}/ 里没有 PNG")
+            return StepResult(FAIL, f"render 退出 0 但 {out.name}/ 里没有 {fmt.upper()}")
         return StepResult(PASS, f"render → {produced[0].name}")
 
     def diff(self, case: Case) -> StepResult:
         report = case.directory / "current" / "diff_report.md"
-        args = ["diff", str(case.directory), "--report", str(report)]
+        args = ["diff", str(case.directory), "--report", str(report), "--json"]
         tolerance = case.tolerance.get("png")
         if tolerance is not None:
             args.extend(["--tolerance", f"{tolerance:g}"])
         result = self._run(*args)
-        detail = _tail(result.stdout) or _tail(result.stderr)
+        parsed = _payload(result.stdout)
+        metrics = {
+            key: float(parsed[key])
+            for key in ("image_diff_fraction", "mean_diff")
+            if isinstance(parsed.get(key), (int, float))
+        }
+        for key in ("diff_pixels", "total_pixels"):
+            if isinstance(parsed.get(key), int):
+                metrics[key] = parsed[key]
+        if metrics:
+            summary = (
+                f"图级 {_percent(metrics.get('image_diff_fraction'))}"
+                f" / 均值 {_percent(metrics.get('mean_diff'))}"
+            )
+        else:
+            summary = ""
         if result.returncode == EXIT_NOT_IMPLEMENTED:
             return StepResult(PENDING, "diff 未落地（M0-9）")
-        if result.returncode == 0:
-            return StepResult(PASS, detail or "diff 通过", detail)
-        return StepResult(FAIL, f"diff 退出 {result.returncode}：{detail}", detail)
+        reason = str(parsed.get("reason") or "") or _tail(result.stderr)
+        if result.returncode == 0 and parsed.get("verdict") == "pass":
+            return StepResult(PASS, summary or "diff 通过", summary, metrics)
+        return StepResult(
+            FAIL,
+            f"diff {summary or '未通过'}" + (f"：{reason}" if reason else ""),
+            summary,
+            metrics,
+        )
+
+
+def _payload(stdout: str) -> dict[str, Any]:
+    """`diff --json` 的 stdout → dict；解析不了就返回空（退化到退出码 / stderr）。"""
+    text = stdout.strip()
+    if not text:
+        return {}
+    try:
+        payload = json.loads(text)
+    except ValueError:
+        start = text.find("{")
+        if start < 0:
+            return {}
+        try:
+            payload = json.loads(text[start:])
+        except ValueError:
+            return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 @dataclass
@@ -431,6 +519,7 @@ class Verdict:
     status: str
     detail: str = ""
     diff: str = ""
+    metrics: dict[str, float] = field(default_factory=dict)
 
 
 def evaluate(cases: Sequence[Case], backend: TaskBackend | None) -> list[Verdict]:
@@ -453,7 +542,13 @@ def evaluate(cases: Sequence[Case], backend: TaskBackend | None) -> list[Verdict
             continue
         compared = backend.diff(case)
         verdicts.append(
-            Verdict(case, compared.status, compared.detail or rendered.detail, compared.diff)
+            Verdict(
+                case,
+                compared.status,
+                compared.detail or rendered.detail,
+                compared.diff,
+                compared.metrics,
+            )
         )
     return verdicts
 
@@ -721,11 +816,41 @@ def _counts(verdicts: Sequence[Verdict]) -> dict[str, int]:
     return counts
 
 
-def _verdict_text(red: Sequence[Verdict], total: int) -> str:
-    # 0 个 case 既不是红也不是绿：那是「空跑」，报绿等于说 job 守住了矩阵。
-    if total == 0:
+# 机读结论（`report.json` 的 `verdict`）：四种状态互斥，下游可以直接判。
+VERDICT_PASS = "pass"
+VERDICT_EMPTY = "empty"
+VERDICT_PENDING = "pending"
+VERDICT_FAIL = "fail"
+
+
+def matrix_verdict(verdicts: Sequence[Verdict], *, static_only: bool = False) -> str:
+    """矩阵级结论：fail > pending > pass；0 个 case 是 `empty`，不是 pass。
+
+    `pending` 不算通过：它表示 render / diff 没接线（或没落地），矩阵什么都没比过。
+    `--strict` 只改退出码与文案（见 `verdict_label()`），不改这里的分类——下游要能
+    机械区分「失败」「空跑」「待落地」三件事。
+
+    `static_only`（`--no-run` / `--check`）同样不是绿：一个 case 都没真跑，
+    归到 `pending`——「只校验矩阵是不是最新」不能当成「案例都过了」。
+    """
+    if not verdicts:
+        return VERDICT_EMPTY
+    if any(verdict.status in RED_STATES for verdict in verdicts):
+        return VERDICT_FAIL
+    if static_only or any(verdict.status == PENDING for verdict in verdicts):
+        return VERDICT_PENDING
+    return VERDICT_PASS
+
+
+def verdict_label(verdict: str, *, strict: bool = False) -> str:
+    """人读标签。`--strict` 下 pending 也写成红，且不能再说「全部绿」。"""
+    if verdict == VERDICT_EMPTY:
         return "**空**"
-    return "**红**" if red else "**绿**"
+    if verdict == VERDICT_FAIL:
+        return "**红**"
+    if verdict == VERDICT_PENDING:
+        return "**红（--strict：待落地算失败）**" if strict else "**待落地（未判绿）**"
+    return "**绿**"
 
 
 def _counts_text(counts: Mapping[str, int]) -> str:
@@ -762,12 +887,17 @@ def render_report(
     *,
     now: str,
     matrix_file: Path = MATRIX_FILE,
+    strict: bool = False,
+    static_only: bool = False,
 ) -> str:
     """运行时报告（**完整版**，写进 `.cases-matrix/report.md`）。
 
     这里**不截断**：上游验收资产是 314 份 SVG，案例库必然超过几十个；一旦按行数
     截断，逐 case 表和「需要修的 case」整节都会被切掉，红名单就没人看得到。
     贴到 GHA step summary 的短版本是另一个函数（`render_summary()`）。
+
+    `strict` 只影响结论文字：pending 在 `--strict` 下与红同义，不能继续写成
+    「待落地但没问题」（SIL-644 S2）。
     """
     families, features, cells = aggregate(cases, taxonomy)
     gaps = [
@@ -779,11 +909,13 @@ def render_report(
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
     pending = [verdict for verdict in verdicts if verdict.status == PENDING]
     counts = _counts(verdicts)
+    verdict = matrix_verdict(verdicts, static_only=static_only)
     lines = [
         "# 案例矩阵运行报告",
         "",
         f"- 时间：{now}",
-        f"- 结论：{_verdict_text(red, len(cases))}（{_counts_text(counts)}）",
+        f"- 结论：{verdict_label(verdict, strict=strict)}（`verdict = {verdict}`，"
+        f"{_counts_text(counts)}）",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
         f"空位 {len(gaps)} 个）",
         f"- 覆盖视图：`{_rel(matrix_file)}`（族 × 特性的覆盖矩阵、缺口与清单）；"
@@ -832,7 +964,11 @@ def render_report(
                 "",
                 f"{len(pending)} 个 case 的 render / diff 报“未实现”（退出码 3）："
                 "M0-8（`pixi run render`）与 M0-9（`pixi run diff`）落地后自动转真跑；"
-                "`--strict` 可以把它们当失败。",
+                + (
+                    "`--strict` 已打开：本次判**红**。"
+                    if strict
+                    else "`--strict` 可以把它们当失败。"
+                ),
                 "",
             ]
         )
@@ -849,6 +985,8 @@ def render_summary(
     now: str,
     report_file: Path = REPORT_DIR / "report.md",
     max_lines: int = SUMMARY_MAX_LINES,
+    strict: bool = False,
+    static_only: bool = False,
 ) -> str:
     """GHA step summary 用的短版本：结论 + 红名单。
 
@@ -858,6 +996,9 @@ def render_summary(
     `report_file` 必须是**这次实际写出的**报告路径（`--report-dir` 会改它）：
     短版本里两处「全文见 …」都指向它，硬编码 `.cases-matrix/report.md` 会在
     自定义目录时把人带到不存在的文件。
+
+    `strict` 与退出码同一语义（SIL-644 S2）：pending 在 `--strict` 下判失败，
+    短版本必须写红；非 strict 时也绝不写成「全部绿」。
     """
     families, features, cells = aggregate(cases, taxonomy)
     report_hint = f"`{_rel(report_file)}`"
@@ -868,30 +1009,38 @@ def render_summary(
         if not cells.get((family, feature))
     ]
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
+    pending = [verdict for verdict in verdicts if verdict.status == PENDING]
     counts = _counts(verdicts)
+    verdict = matrix_verdict(verdicts, static_only=static_only)
     lines = [
-        f"# 案例矩阵：{_verdict_text(red, len(cases))}",
+        f"# 案例矩阵：{verdict_label(verdict, strict=strict)}",
         "",
         f"- 时间：{now}",
-        f"- 结论：{_counts_text(counts)}",
+        f"- 结论：`verdict = {verdict}`；{_counts_text(counts)}",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
         f"空位 {len(gaps)} 个）",
         f"- 逐 case 表、「差多少」与完整红名单：{report_hint}",
         "",
     ]
-    if not cases:
+    if verdict == VERDICT_EMPTY:
         # 0 个 case 时不能报「全部绿」：那正是「空跑绿」——job 什么都没验证。
-        lines.append(
-            "- ⚠️ 一个三文件 case 都没有：本 job 只验证静态矩阵，没有真实渲染覆盖"
-            "（真实覆盖随 SIL-599 打开）"
-        )
+        lines.append("- ⚠️ 一个三文件 case 都没有：本 job 只验证静态矩阵，没有真实渲染覆盖")
         lines.append("")
     tail = ["", "见 `docs/cases/README.md`：放三个文件就能新增 case。", ""]
-    if not red:
-        if cases:
-            lines.extend(["全部绿。", *tail])
-        else:
-            lines.extend(["没有 case 可跑。", *tail])
+    if verdict == VERDICT_PENDING:
+        hint = (
+            f"- ❌ `--strict` 已打开：{len(pending)} 个 pending 计为失败。"
+            if strict
+            else f"- ⏳ {len(pending)} 个 case 待落地（render / diff 未接线），本次**未判绿**；"
+            "`--strict` 会把它们判失败。"
+        )
+        lines.extend([hint, *tail])
+        return "\n".join(lines)
+    if verdict == VERDICT_PASS:
+        lines.extend(["全部绿。", *tail])
+        return "\n".join(lines)
+    if verdict == VERDICT_EMPTY:
+        lines.extend(["没有 case 可跑。", *tail])
         return "\n".join(lines)
 
     lines.extend(["## 需要修的 case", ""])
@@ -909,14 +1058,31 @@ def render_summary(
 
 
 def report_payload(
-    verdicts: Sequence[Verdict], cases: Sequence[Case], taxonomy: Taxonomy, now: str
+    verdicts: Sequence[Verdict],
+    cases: Sequence[Case],
+    taxonomy: Taxonomy,
+    now: str,
+    *,
+    strict: bool = False,
+    static_only: bool = False,
 ) -> dict[str, Any]:
+    """`report.json`：机读结论。
+
+    `verdict` 四态互斥（pass / empty / pending / fail），`ok` 只在 `pass` 时为真——
+    这样 0 case（空跑）与 pending 都不会被下游当成绿（SIL-644 S1）。`--no-run` 也算
+    `pending`：静态校验没有真跑过任何 case。
+    """
     families, features, cells = aggregate(cases, taxonomy)
-    red = [verdict.case.name for verdict in verdicts if verdict.status in RED_STATES]
+    verdict = matrix_verdict(verdicts, static_only=static_only)
+    red = [verdict_item.case.name for verdict_item in verdicts if verdict_item.status in RED_STATES]
+    pending = [item.case.name for item in verdicts if item.status == PENDING]
     return {
         "generated_at": now,
-        "ok": not red,
+        "verdict": verdict,
+        "ok": verdict == VERDICT_PASS,
+        "strict": strict,
         "red": red,
+        "pending": pending,
         "axes": {"families": families, "features": features},
         "gaps": [
             [family, feature]
@@ -926,17 +1092,18 @@ def report_payload(
         ],
         "cases": [
             {
-                "name": verdict.case.name,
-                "family": verdict.case.family,
-                "features": list(verdict.case.features),
-                "status": verdict.status,
-                "diff": verdict.diff,
-                "detail": verdict.detail,
-                "ci": verdict.case.ci,
-                "expected": verdict.case.expected,
-                "source": verdict.case.source,
+                "name": verdict_item.case.name,
+                "family": verdict_item.case.family,
+                "features": list(verdict_item.case.features),
+                "status": verdict_item.status,
+                "diff": verdict_item.diff,
+                "metrics": dict(verdict_item.metrics),
+                "detail": verdict_item.detail,
+                "ci": verdict_item.case.ci,
+                "expected": verdict_item.case.expected,
+                "source": verdict_item.case.source,
             }
-            for verdict in verdicts
+            for verdict_item in verdicts
         ],
     }
 
@@ -1042,14 +1209,16 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
 
     if not cases:
         # 0 个 case 时 job 仍是绿的，但什么都没验证——把这件事写进日志，
-        # 别让「空跑绿」被当成「矩阵守住了」。真实覆盖随 SIL-599 打开。
+        # 别让「空跑绿」被当成「矩阵守住了」。真实覆盖是 M0-9 的四个 case。
         print(
             "cases:matrix: 没有三文件 case —— 本次只校验 docs/cases/matrix.md 是否最新，"
-            "没有真实渲染 / 比对覆盖（真实覆盖随 SIL-599 打开）",
+            "没有真实渲染 / 比对覆盖（报告结论标 empty，不是绿）",
             file=sys.stderr,
         )
 
     verdicts = evaluate(cases, backend)
+    static_only = backend is None
+    verdict = matrix_verdict(verdicts, static_only=static_only)
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     if not check_only:
         report_dir: Path = args.report_dir
@@ -1057,40 +1226,74 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
         report_file = report_dir / "report.md"
         # 报告文件永远完整（314 份上游快照量级也不能截断）；截断只发生在 step summary。
         report_file.write_text(
-            render_report(verdicts, cases, taxonomy, now=now, matrix_file=matrix_file),
+            render_report(
+                verdicts,
+                cases,
+                taxonomy,
+                now=now,
+                matrix_file=matrix_file,
+                strict=args.strict,
+                static_only=static_only,
+            ),
             encoding="utf-8",
         )
-        payload = report_payload(verdicts, cases, taxonomy, now)
+        payload = report_payload(
+            verdicts, cases, taxonomy, now, strict=args.strict, static_only=static_only
+        )
         (report_dir / "report.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         if args.summary:
-            print(render_summary(verdicts, cases, taxonomy, now=now, report_file=report_file))
+            print(
+                render_summary(
+                    verdicts,
+                    cases,
+                    taxonomy,
+                    now=now,
+                    report_file=report_file,
+                    strict=args.strict,
+                    static_only=static_only,
+                )
+            )
 
-    for verdict in verdicts:
-        if verdict.status in RED_STATES:
-            _gha_error(f"{verdict.case.name}: {verdict.detail}")
+    for verdict_item in verdicts:
+        if verdict_item.status in RED_STATES:
+            _gha_error(f"{verdict_item.case.name}: {verdict_item.detail}")
     if args.strict:
-        for verdict in verdicts:
-            if verdict.status == PENDING:
-                _gha_error(f"{verdict.case.name}: render / diff 未落地（--strict）")
+        for verdict_item in verdicts:
+            if verdict_item.status == PENDING:
+                _gha_error(f"{verdict_item.case.name}: render / diff 未落地（--strict）")
 
     counts = _counts(verdicts)
     print(
         "cases:matrix: "
         f"{len(cases)} case(s) — pass {counts[PASS]}, fail {counts[FAIL]}, "
         f"invalid {counts[INVALID]}, pending {counts[PENDING]}, skipped {counts[SKIPPED]}"
+        f" — verdict {verdict}"
     )
-    failures = [verdict for verdict in verdicts if verdict.status in RED_STATES]
-    strict_pending = [verdict for verdict in verdicts if args.strict and verdict.status == PENDING]
+    failures = [item for item in verdicts if item.status in RED_STATES]
+    strict_pending = [item for item in verdicts if args.strict and item.status == PENDING]
     if failures:
-        for verdict in failures:
-            print(f"  ❌ {verdict.case.name}: {verdict.detail}", file=sys.stderr)
+        for item in failures:
+            print(f"  ❌ {item.case.name}: {item.detail}", file=sys.stderr)
         exit_code = 1
     if strict_pending:
-        for verdict in strict_pending:
-            print(f"  ⏳ {verdict.case.name}: render / diff 未落地（--strict）", file=sys.stderr)
+        for item in strict_pending:
+            print(f"  ⏳ {item.case.name}: render / diff 未落地（--strict）", file=sys.stderr)
         exit_code = 1
+    if verdict == VERDICT_PENDING and not args.strict:
+        if static_only:
+            print(
+                "cases:matrix: 本次只做静态校验（--no-run / --check），没有真跑 render / diff；"
+                "结论不是绿",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "cases:matrix: 结论是 pending（未判绿）：有 case 的 render / diff 还没接线；"
+                "`--strict` 会把它们判失败",
+                file=sys.stderr,
+            )
     return exit_code
 
 
