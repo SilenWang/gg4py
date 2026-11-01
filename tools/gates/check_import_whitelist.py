@@ -4,6 +4,10 @@
 模块名必须是标准库、numpy、CBOR 编码库或 `ggcore` 自身。其余一律失败——
 pandas / Arrow / 绘图库都必须留在包外，DataFrame-like 输入在边界处转成 IR。
 
+`import` 语句看得见，模块名字符串看不见，所以动态导入单独看住：
+`importlib.import_module(...)` / `__import__(...)` 的参数是字符串字面量时按同
+一份白名单判定，不是字面量则直接判失败（无法离线核对）。
+
 用法：
     pixi run gate:imports
     python tools/gates/check_import_whitelist.py --root path/to/pkg
@@ -25,6 +29,12 @@ SELF = "ggcore"
 # 唯一允许的第三方：numpy 是计算内核；CBOR 编码库是 IR 的序列化格式。
 THIRD_PARTY = frozenset({"numpy", "cbor2"})
 STDLIB = frozenset(sys.stdlib_module_names) | {"__future__"}
+
+# 动态导入：模块名在字符串里，`import` 扫描看不到，必须单独拦。
+# 按「调用目标的顶层模块 + 属性名」判定，这样 `import importlib as il`、
+# `import importlib.util`、`from builtins import __import__ as imp` 都是同一个东西。
+DYNAMIC_IMPORT_MODULES = frozenset({"importlib", "builtins"})
+DYNAMIC_IMPORT_ATTRS = frozenset({"import_module", "__import__"})
 
 HINT = (
     "ggcore 只允许标准库 / numpy / CBOR；DataFrame-like 输入与渲染都在包外，"
@@ -52,6 +62,54 @@ def imported_roots(tree: ast.AST) -> Iterator[tuple[str, int]]:
                 yield node.module.split(".")[0], node.lineno
 
 
+def local_bindings(tree: ast.AST) -> dict[str, str]:
+    """本地名 → 被导入的点分路径，用来解析 `import importlib as il` 这类别名。"""
+    bound: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                bound[alias.asname or alias.name.split(".")[0]] = alias.name
+        elif isinstance(node, ast.ImportFrom) and not node.level and node.module:
+            for alias in node.names:
+                bound[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+    return bound
+
+
+def _resolved_callee(func: ast.expr, bound: dict[str, str]) -> str | None:
+    """把调用目标还原成点分路径；无本地绑定时裸名（如 `__import__`）按原名。"""
+    if isinstance(func, ast.Name):
+        return bound.get(func.id, func.id)
+    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+        return f"{bound.get(func.value.id, func.value.id)}.{func.attr}"
+    return None
+
+
+def _is_dynamic_import(callee: str | None) -> bool:
+    """`__import__` / `importlib.import_module` / `builtins.__import__`（含别名）。"""
+    if callee is None:
+        return False
+    if callee == "__import__":  # 内置名，没有 import 语句
+        return True
+    head, _, attr = callee.rpartition(".")
+    in_module = head.split(".")[0] in DYNAMIC_IMPORT_MODULES
+    return bool(head) and in_module and attr in DYNAMIC_IMPORT_ATTRS
+
+
+def dynamic_imports(tree: ast.AST) -> Iterator[tuple[int, str | None]]:
+    """产出 (行号, 字面量模块名 或 None=非字面量/取不到)。"""
+    bound = local_bindings(tree)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not _is_dynamic_import(_resolved_callee(node.func, bound)):
+            continue
+        first = node.args[0] if node.args else None
+        if isinstance(first, ast.Constant) and isinstance(first.value, str):
+            yield node.lineno, first.value
+        else:
+            yield node.lineno, None
+
+
 def _display(path: Path) -> str:
     try:
         return str(path.relative_to(REPO))
@@ -72,6 +130,18 @@ def check(root: Path) -> list[str]:
             if name in STDLIB or name in THIRD_PARTY or name == SELF:
                 continue
             problems.append(f"{_display(path)}:{lineno}: forbidden import {name!r} — {HINT}")
+        for lineno, target in dynamic_imports(tree):
+            if target is None:
+                problems.append(
+                    f"{_display(path)}:{lineno}: dynamic import with a non-literal module "
+                    f"name — the whitelist cannot be checked — {HINT}"
+                )
+                continue
+            if target.split(".")[0] in STDLIB | THIRD_PARTY | {SELF}:
+                continue
+            problems.append(
+                f"{_display(path)}:{lineno}: forbidden dynamic import {target!r} — {HINT}"
+            )
     return problems
 
 
