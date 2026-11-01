@@ -77,3 +77,43 @@ jobs:
           EOF
       - name: runtime imports work
         run: PYTHONPATH=src pixi run -e prod python -c "import ggcore, numpy, skia; print('ggcore', ggcore.__version__)"
+
+  cases-matrix:
+    name: cases matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.0
+        with:
+          environments: default
+          cache: true
+      # 一、扫描 docs/cases 的三文件 case，渲染 + 比对，写 docs/cases/matrix.md
+      #    与 .cases-matrix/report.md；有红 case 就直接非 0 退出（失败 case 名
+      #    同时以 ::error 注解出现在 PR 的 Files changed 里）。
+      - name: pixi run cases:matrix
+        run: pixi run cases:matrix
+      # 二、静态矩阵是入库产物：新增/删除 case 后必须把重生成的矩阵一起提交。
+      - name: matrix.md is up to date
+        run: git diff --exit-code -- docs/cases/matrix.md
+      # 三、PR 上贴摘要：报告文件 + 失败 case 名（step summary 逐 job 保留）。
+      - name: publish summary
+        if: always()
+        run: |
+          {
+            echo "### 案例矩阵"
+            echo
+            if [ -f .cases-matrix/report.md ]; then
+              cat .cases-matrix/report.md
+            else
+              echo "报告没生成：上一步在写报告前就失败了。"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cases-matrix
+          path: |
+            docs/cases/matrix.md
+            .cases-matrix/
+          if-no-files-found: warn
