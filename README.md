@@ -14,7 +14,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 
 | 任务 | 作用 |
 | --- | --- |
-| `pixi run check` | `lint` + `test` + `gate:*`，CI 跑的就是它 |
+| `pixi run check` | `lint` + `test` + `gate:*` + `cases:matrix:check`，CI 跑的就是它 |
 | `pixi run lint` | `ruff check` + `ruff format --check` |
 | `pixi run test` | `pytest`（`tests/`） |
 | `pixi run bench` | pytest-benchmark 基线（`.benchmarks/`，不入库） |
@@ -30,6 +30,8 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
 | `pixi run cases:viewport` | M0-4 · 重画 `docs/cases/viewport-*` 的 PNG 快照（`--check` 只比对） |
 | `pixi run cases:grob` | M0-6 · 重画 `docs/cases/grob-*` 的 PNG 快照（一种原语一张） |
+| `pixi run cases:matrix` | M0-11 · 扫三文件 case，渲染 + 比对，写 `docs/cases/matrix.md` 与 `.cases-matrix/report.md` |
+| `pixi run cases:matrix:check` | M0-11 · 只做静态校验：契约错或矩阵过期即非 0（挂在 `check` 里） |
 | `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
 | `pixi run -e refs refs:units` | 用 R 4.5.3 重新生成 units 对拍夹具 |
 | `pixi run -e refs refs:gtable` | 用 R 4.5.3 + gtable 0.3.6 重新生成 gtable 对拍夹具 |

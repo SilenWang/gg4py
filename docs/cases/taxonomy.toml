@@ -1,0 +1,68 @@
+# 覆盖矩阵的两条轴（M0-11）。
+#
+# 行 = 族（geom 族优先，也收 scale / coord / facet / theme / annotation 这类非 geom 族），
+# 列 = 特性标签（case 的 meta.toml 里 `features` 用到的值）。
+#
+# - 新 case 的 `family` / `features` 出现在这里登记过的值上，就落进对应格子；
+# - 没登记的值不会让矩阵失败：会自动加行/列，并在 matrix.md 的「未登记的族 / 特性」
+#   一节里点名，补登记即可（顺序 = 表格顺序，请按主题追加，不要重排）。
+# - 空位在 matrix.md 里显式写 `—`，这就是「覆盖缺口」清单的来源。
+
+families = [
+  # geom 族
+  "geom-point",
+  "geom-line",
+  "geom-path",
+  "geom-bar",
+  "geom-col",
+  "geom-area",
+  "geom-histogram",
+  "geom-boxplot",
+  "geom-violin",
+  "geom-smooth",
+  "geom-text",
+  "geom-tile",
+  "geom-raster",
+  "geom-polygon",
+  "geom-errorbar",
+  "geom-ribbon",
+  "geom-step",
+  "geom-hline",
+  # 非 geom 族
+  "scale",
+  "coord",
+  "facet",
+  "theme",
+  "annotation",
+  "guide",
+  "lab",
+]
+
+features = [
+  "aes-mapping",
+  "aes-grouping",
+  "aes-inherit",
+  "colour-aes",
+  "size-aes",
+  "alpha-aes",
+  "shape-aes",
+  "line-type",
+  "na-removal",
+  "sort-order",
+  "scale-log10",
+  "scale-discrete",
+  "scale-limits",
+  "coord-flip",
+  "facet-wrap",
+  "stat-count",
+  "stat-bin",
+  "position-dodge",
+  "position-stack",
+  "position-jitter",
+  "theme-text",
+  "guide-legend",
+  "annotation-text",
+  "lab-title",
+  "rotation",
+  "cjk-text",
+]

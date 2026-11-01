@@ -17,6 +17,18 @@ SVG 是派生资产：上游一换 pin 就整批失效，进 git 只会制造大
 
 目录约定见 `docs/cases/README.md`。
 
+## 案例库的 `expected.svg|png`（M0-11）
+
+三文件 case（`plot.py` + `expected.svg|png` + `meta.toml`）里那一张 `expected.*`
+与上面的 314 份批量快照**不是一回事**：
+
+- 每个 case 只留一张，是该 case 的判据，**允许入库**（它和生产代码一样要被 review）；
+- 来源写在 `meta.toml` 的 `source`（`upstream:<路径>` / `svglite:<R 版本>` /
+  `baseline:<PR>`），换 pin 时随同 PR 换掉这一张；
+- 314 份批量快照仍按上面的策略按需拉取，`docs/cases/*/expected/` 继续忽略。
+
+这样新增 case 只需要三个文件，不需要先跑一次网络拉取才能进矩阵。
+
 ## 容差口径
 
 ### SVG（文本级）
