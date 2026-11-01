@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from ggcore.ir.codec import IR_VERSION, IR_VERSION_STR, MAGIC, decode, encode
+from ggcore.ir.codec import CBOR_BACKEND, IR_VERSION, IR_VERSION_STR, MAGIC, decode, encode
 from ggcore.ir.demo import demo_scene
 from ggcore.ir.errors import IRDecodeError, IRError, IRValidationError, IRVersionError
 from ggcore.ir.nodes import (
@@ -38,6 +38,7 @@ from ggcore.ir.nodes import (
 )
 
 __all__ = [
+    "CBOR_BACKEND",
     "DEFAULT_MIME",
     "GPAR_FIELDS",
     "IR_VERSION",

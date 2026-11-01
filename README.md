@@ -25,6 +25,8 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
 | `pixi run gate:determinism` | X1 · 同输入同字节 |
 | `pixi run gate:metrics` | X5 · 双端文本度量一致性（uharfbuzz × CanvasKit，M0-7） |
+| `pixi run gate:pyodide` | M0-10 · CPython 与 Pyodide 的 plot→IR 逐字节一致（只跑 node） |
+| `pixi run gate:pyodide:selftest` | M0-10 · 负向对照：故意差 1 比特，门禁必须红 |
 | `pixi run metrics:table` | M0-7 · 重新生成兜底度量表（改字体或规则后） |
 | `pixi run metrics:check-table` | M0-7 · 校验兜底表与当前字体/规则一致 |
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |

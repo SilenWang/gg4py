@@ -17,3 +17,5 @@ docs/spike/e1_coldstart/static/
 .gate-metrics/
 # `pixi run cases:matrix` 的运行时报告（红绿 + 差多少），每次重跑覆盖，不入库
 .cases-matrix/
+# `pixi run gate:pyodide` 的两侧产物（IR 字节 + 元数据），每次重跑覆盖，不入库
+.gate-pyodide/

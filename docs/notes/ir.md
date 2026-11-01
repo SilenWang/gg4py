@@ -35,7 +35,9 @@ IR 里**没有**：单位对象、scale、主题继承链、font stack、字符�
 
 ## 2. 线格式
 
-CBOR（`cbor2`），canonical 编码。结构：
+CBOR（`cbor2`），canonical 编码。Pyodide 里没有 `cbor2`（没有 wasm 轮子），那边
+换用同字节的纯 Python 实现 `ggcore/ir/_cbor.py`，一致性由 `pixi run gate:pyodide`
+逐字节守住（`docs/notes/pyodide.md`）。结构：
 
 ```
 {

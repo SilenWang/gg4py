@@ -129,6 +129,12 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 "gate:imports" = "python tools/gates/check_import_whitelist.py"
 "gate:ir-json" = "python tools/gates/check_ir_json.py"
 "gate:determinism" = "python tools/gates/check_determinism.py"
+# M0-10: 同一份 plot → IR 在 CPython（cbor2）与 Pyodide（ggcore 自带纯 Python
+# 编码器）上各跑一次，逐字节比较。只要 node，不需要浏览器；资产复用 E1 的
+# `spike:e1:assets`（pyodide 运行时 + numpy 轮子，均来自本地目录）。
+"gate:pyodide" = { cmd = "python tools/gates/check_pyodide_ir.py", depends-on = ["spike:e1:assets"] }
+# 负向对照：让 Pyodide 侧故意差 1 个比特，门禁必须判红才说明它真的在看字节。
+"gate:pyodide:selftest" = { cmd = "python tools/gates/check_pyodide_ir.py --expect-diff", depends-on = ["spike:e1:assets"] }
 # X5: uharfbuzz × CanvasKit advance parity on the frozen 200-label corpus, plus
 # skia-python per-glyph parity and the offline fallback table (M0-7).
 "gate:metrics" = { cmd = "python tools/gates/check_metrics.py", depends-on = ["assets:canvaskit"] }
@@ -145,5 +151,7 @@ check = { depends-on = [
   "gate:ir-json",
   "gate:determinism",
   "gate:metrics",
+  "gate:pyodide",
+  "gate:pyodide:selftest",
   "cases:matrix:check",
 ] }

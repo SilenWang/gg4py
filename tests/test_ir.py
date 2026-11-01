@@ -17,6 +17,7 @@ import numpy as np
 import pytest
 
 from ggcore.ir import (
+    CBOR_BACKEND,
     DEFAULT_MIME,
     IR_VERSION,
     IR_VERSION_STR,
@@ -35,6 +36,7 @@ from ggcore.ir import (
     Node,
     NodeKind,
     Scene,
+    _cbor,
     blob_id,
     decode,
     demo_scene,
@@ -375,6 +377,69 @@ def test_encoding_is_byte_stable() -> None:
     scene = demo_scene()
     assert encode(scene) == encode(scene)
     assert encode(demo_scene()) == encode(demo_scene())
+
+
+# --- 纯 Python CBOR 回退（Pyodide 没有 cbor2，M0-10 / docs/notes/pyodide.md）---
+
+#: 覆盖 IR 线格式用到的每个标量面 + canonical 排序与浮点宽度选择的边界。
+CBOR_BATTERY = [
+    0,
+    23,
+    24,
+    255,
+    256,
+    65535,
+    65536,
+    2**32,
+    2**64 - 1,
+    -1,
+    -24,
+    -25,
+    -256,
+    "",
+    "a",
+    "占位",
+    b"",
+    b"\x00\xff",
+    [],
+    [1, 2],
+    {},
+    {"b": 1, "a": 2, "": 3, "ab": 4},
+    True,
+    False,
+    None,
+    0.0,
+    -0.0,
+    1.5,
+    600.0,
+    0.1,
+    1e-300,
+    1e300,
+    65504.0,
+    65520.0,
+]
+
+
+@pytest.mark.parametrize("value", CBOR_BATTERY, ids=repr)
+def test_pure_cbor_matches_cbor2_canonical(value: object) -> None:
+    assert _cbor.dumps(value) == cbor2.dumps(value, canonical=True)
+
+
+def test_pure_cbor_matches_cbor2_on_the_demo_scene() -> None:
+    # 整条编码路径（含 canonical 键排序、f32 字节串、StrEnum）逐字节对拍。
+    data = encode(demo_scene())
+    assert _cbor.dumps(cbor2.loads(data)) == data
+
+
+def test_pure_cbor_round_trips_a_scene() -> None:
+    scene = demo_scene()
+    assert scene_equal(decode(_cbor.dumps(cbor2.loads(encode(scene)))), scene)
+
+
+def test_cpython_codec_backend_is_cbor2() -> None:
+    # gate:pyodide 的前提：CPython 侧必须用 cbor2，Pyodide 侧必须用纯 Python
+    # 实现——两边实现不同而字节相同，才证明线格式是可移植的。
+    assert CBOR_BACKEND == "cbor2"
 
 
 def test_encoding_ignores_dict_and_blob_insertion_order() -> None:
