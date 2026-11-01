@@ -26,6 +26,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run gate:determinism` | X1 · 同输入同字节 |
 | `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
 | `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
+| `pixi run -e refs refs:units` | 用 R 4.5.3 重新生成 units 对拍夹具 |
 
 ## 环境
 
@@ -42,8 +43,10 @@ pixi.toml            # 唯一依赖与任务声明（+ pixi.lock）
 pytest.ini           # src 布局：pythonpath = src
 src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条边界）
   ir/                # IR v0：节点类型表 + CBOR 编解码（docs/notes/ir.md）
+  units.py           # grid::unit 对等单位系统（M0-3）
   cli/               # render / diff 命令行入口
 tools/gates/         # 横切门禁脚本（X1）
+tools/refs/          # R 侧参考值生成（units 等）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
 benchmarks/          # pytest-benchmark 基线
 tests/               # 单元测试 + 门禁自测
@@ -63,3 +66,4 @@ docs/spike/          # M-1 可行性实验与结论
 - 门禁口径：`docs/notes/gates.md`
 - IR 口径（节点表 / blob / 版本 / 体积）：`docs/notes/ir.md`
 - 度量口径账本：`docs/notes/metrics-ledger.md`
+- 单位口径账本：`docs/notes/units.md`
