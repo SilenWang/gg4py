@@ -83,9 +83,9 @@ warm 4G 只剩 HTML 一个请求（3.5 KB），其余全是 CPU：Pyodide init 1
 | `numpy-2.4.6-…-wasm32.whl` | 2,960,568 | 2,924,358 | **2,960,568** | 已是 zip，按原样发 |
 | `pyodide.mjs` | 17,931 | 7,156 | **7,156** | |
 | `pyodide-lock.json` | 119,077 | 26,595 | **26,595** | 包索引 |
-| `index.html` | 10,132 | 3,530 | **3,530** | |
-| `worker.js` | 5,244 | 2,224 | **2,224** | |
-| **baseline 合计** | **16,507,151** | — | **9,352,096** | 8 个请求，gzip 省 43% |
+| `index.html` | 10,159 | 3,546 | **3,546** | |
+| `worker.js` | 5,666 | 2,365 | **2,365** | |
+| **baseline 合计** | **16,507,600** | — | **9,352,096** | 8 个请求，gzip 省 43% |
 | `pandas-3.0.2-…-wasm32.whl` + 依赖 | 4,929,180 | — | **4,929,180** | 仅 +pandas 变体下载 |
 
 静态目录里还有 `pyodide.js`（UMD 版，模块 worker 用不到）、`pandas`、`dateutil/pytz/six` 等共 21.4 MB，
@@ -134,7 +134,7 @@ E1_PROFILES=fast4g E1_RUNS=1 E1_SENS_RUNS=0 pixi run spike:e1
 产物：
 
 - `results/e1_results.json` —— 每次原始样本、分阶段耗时、逐请求字节、汇总与判定（`summary` / `verdict` / `runs`）
-- `results/first_paint_fast4g.png`、`results/first_paint_fast3g.png`、`results/first_paint_slow3g.png` —— 首图画布
+- `results/first_paint_fast4g.png`、`results/first_paint_fast3g.png`、`results/first_paint_slow3g.png` —— 首图整页截图（1280×800 视口，画布 + 标题；三档内容一致所以字节相同）
 - `static/`（git-ignored）—— pyodide 314.0.7 运行时 + numpy/pandas 轮子，由 `fetch_assets.py` 逐文件校验 sha256，来源写在 `static/manifest.json`
 
 环境坑（都已在 `run_e1.py` / `pixi.toml` 里处理，换机器复现时会再遇到）：

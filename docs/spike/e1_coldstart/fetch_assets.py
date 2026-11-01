@@ -114,7 +114,7 @@ def fetch_wheel(lock: dict, name: str) -> dict:
         try:
             with urllib.request.urlopen(url, timeout=120) as resp:
                 data = resp.read()
-        except Exception as exc:  # noqa: BLE001 - report every mirror we tried
+        except Exception as exc:  # report every mirror we tried
             errors.append(f"{url}: {exc}")
             continue
         got = sha256_bytes(data)
@@ -154,9 +154,7 @@ def main() -> int:
             "recreates it byte for byte (sha256 above)."
         ),
     }
-    (OUT / "manifest.json").write_text(
-        json.dumps(manifest, indent=1) + "\n", encoding="utf-8"
-    )
+    (OUT / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
     for f in files:
         print(f"{f['bytes']:>10,d}  {f['file']}  <- {f['source']}")

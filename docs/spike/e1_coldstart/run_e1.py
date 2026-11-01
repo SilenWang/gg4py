@@ -268,13 +268,9 @@ def assets_table() -> dict:
                 "file": path.relative_to(STATIC).as_posix(),
                 "disk_bytes": len(raw),
                 "gzip_bytes": compressed,
-                "served_encoding": None
-                if path.suffix.lower() in INCOMPRESSIBLE
-                else "gzip",
+                "served_encoding": None if path.suffix.lower() in INCOMPRESSIBLE else "gzip",
                 # what the browser actually downloads (throttle applies to this)
-                "wire_bytes": len(raw)
-                if path.suffix.lower() in INCOMPRESSIBLE
-                else compressed,
+                "wire_bytes": len(raw) if path.suffix.lower() in INCOMPRESSIBLE else compressed,
             }
         )
     total_disk = sum(r["disk_bytes"] for r in rows)
@@ -345,11 +341,7 @@ def stage_table(samples: list[dict]) -> dict:
     ]
     out = {}
     for key in keys:
-        values = [
-            s["stages"][key]
-            for s in samples
-            if s.get("stages", {}).get(key) is not None
-        ]
+        values = [s["stages"][key] for s in samples if s.get("stages", {}).get(key) is not None]
         if values:
             out[key] = statistics.median(values)
     return out
@@ -410,18 +402,10 @@ def run_one(
         "worker_module_start": worker["module_start"] + origin_delta,
         "wasm_download": (wasm["end"] - wasm["start"]) if wasm else None,
         "wasm_response_end": wasm["end"] if wasm else None,
-        "pyodide_init": phases["pyodide_init"]["ms"]
-        if phases.get("pyodide_init")
-        else None,
-        "pyodide_ready": phases["pyodide_init"]["end"]
-        if phases.get("pyodide_init")
-        else None,
-        "packages_load": phases["packages_load"]["ms"]
-        if phases.get("packages_load")
-        else None,
-        "packages_ready": phases["packages_load"]["end"]
-        if phases.get("packages_load")
-        else None,
+        "pyodide_init": phases["pyodide_init"]["ms"] if phases.get("pyodide_init") else None,
+        "pyodide_ready": phases["pyodide_init"]["end"] if phases.get("pyodide_init") else None,
+        "packages_load": phases["packages_load"]["ms"] if phases.get("packages_load") else None,
+        "packages_ready": phases["packages_load"]["end"] if phases.get("packages_load") else None,
         "compute": phases["compute"]["ms"],
         "compute_done": phases["compute"]["end"],
         "worker_done": worker["worker_done"] + origin_delta,
@@ -434,12 +418,8 @@ def run_one(
     stages["nav_to_worker_spawn"] = stages["worker_spawn"]
     stages["spawn_to_first_paint"] = stages["first_paint"] - stages["worker_spawn"]
 
-    worker_transfer = sum(
-        r["transfer_size"] or r["encoded_body_size"] or 0 for r in resources
-    )
-    page_transfer = sum(
-        r["transfer_size"] or r["encoded_body_size"] or 0 for r in page_resources
-    )
+    worker_transfer = sum(r["transfer_size"] or r["encoded_body_size"] or 0 for r in resources)
+    page_transfer = sum(r["transfer_size"] or r["encoded_body_size"] or 0 for r in page_resources)
     nav_transfer = (nav or {}).get("transfer_size") or 0
     ledger_wire = sum(e["wire_bytes"] for e in ledger)
 
@@ -455,9 +435,7 @@ def run_one(
                 "page_transfer_size": page_transfer,
                 "worker_transfer_size": worker_transfer,
                 "total_transfer_size": nav_transfer + page_transfer + worker_transfer,
-                "by_path": {
-                    e["path"]: e["wire_bytes"] for e in ledger if e["wire_bytes"]
-                },
+                "by_path": {e["path"]: e["wire_bytes"] for e in ledger if e["wire_bytes"]},
             },
             "worker_resources": [
                 {
@@ -482,6 +460,14 @@ def run_one(
         record["gate_ms"] = profile["gate_ms"]
         record["passed_gate"] = record["first_paint_ms"] < profile["gate_ms"]
     return record
+
+
+def progress(label: str, rec: dict) -> str:
+    """One progress line per navigation, printed as soon as it lands."""
+    if not rec["ok"]:
+        return f"  {label} FAILED {rec.get('error')}"
+    nbytes = rec["bytes"]["server_wire"]
+    return f"  {label} {rec['first_paint_ms']:9.0f} ms  wire {nbytes:>9,d} B"
 
 
 def main() -> int:
@@ -548,39 +534,19 @@ def main() -> int:
             profile = PROFILES[profile_key]
             for i in range(runs_per_profile):
                 context, page, cdp = new_page(profile_key, cache_disabled=True)
-                rec = run_one(
-                    page, cdp, profile_key, "baseline", i, "cold", base_url, 600_000
-                )
+                rec = run_one(page, cdp, profile_key, "baseline", i, "cold", base_url, 600_000)
                 rec["throttle"] = cdp_params(profile)
                 runs.append(rec)
-                print(
-                    f"  {profile_key:7s} cold #{i + 1} "
-                    + (
-                        f"{rec['first_paint_ms']:9.0f} ms  wire {rec['bytes']['server_wire']:>9,d} B"
-                        if rec["ok"]
-                        else f"FAILED {rec.get('error')}"
-                    )
-                )
+                print(progress(f"{profile_key:7s} cold #{i + 1}", rec))
                 if rec["ok"] and i == 0:
-                    page.screenshot(
-                        path=str(RESULTS / f"first_paint_{profile_key}.png")
-                    )
+                    page.screenshot(path=str(RESULTS / f"first_paint_{profile_key}.png"))
 
                 if warm_runs and rec["ok"]:
                     cdp.send("Network.setCacheDisabled", {"cacheDisabled": False})
-                    warm = run_one(
-                        page, cdp, profile_key, "baseline", i, "warm", base_url, 600_000
-                    )
+                    warm = run_one(page, cdp, profile_key, "baseline", i, "warm", base_url, 600_000)
                     warm["throttle"] = cdp_params(profile)
                     runs.append(warm)
-                    print(
-                        f"  {profile_key:7s} warm #{i + 1} "
-                        + (
-                            f"{warm['first_paint_ms']:9.0f} ms  wire {warm['bytes']['server_wire']:>9,d} B"
-                            if warm["ok"]
-                            else f"FAILED {warm.get('error')}"
-                        )
-                    )
+                    print(progress(f"{profile_key:7s} warm #{i + 1}", warm))
                 context.close()
 
         # --- sensitivity: what the numeric stack costs ------------------------
@@ -590,19 +556,10 @@ def main() -> int:
             for variant in ("no_numpy", "with_pandas"):
                 for i in range(sens_runs):
                     context, page, cdp = new_page(profile_key, cache_disabled=True)
-                    rec = run_one(
-                        page, cdp, profile_key, variant, i, "cold", base_url, 600_000
-                    )
+                    rec = run_one(page, cdp, profile_key, variant, i, "cold", base_url, 600_000)
                     rec["throttle"] = cdp_params(PROFILES[profile_key])
                     runs.append(rec)
-                    print(
-                        f"  {profile_key:7s} {variant:11s} #{i + 1} "
-                        + (
-                            f"{rec['first_paint_ms']:9.0f} ms  wire {rec['bytes']['server_wire']:>9,d} B"
-                            if rec["ok"]
-                            else f"FAILED {rec.get('error')}"
-                        )
-                    )
+                    print(progress(f"{profile_key:7s} {variant:11s} #{i + 1}", rec))
                     context.close()
 
         browser.close()
@@ -675,13 +632,10 @@ def main() -> int:
     gated = [v for v in verdict.values() if v.get("judged")]
     payload = {
         "experiment": "E1 Pyodide cold start in a worker, throttled 4G/3G",
-        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(
-            timespec="seconds"
-        ),
+        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
         "gate": {"fast4g_ms": 3000, "fast3g_ms": 8000},
         "profiles": {
-            key: {**PROFILES[key], "cdp": cdp_params(PROFILES[key])}
-            for key in profile_keys
+            key: {**PROFILES[key], "cdp": cdp_params(PROFILES[key])} for key in profile_keys
         },
         "variants": VARIANTS,
         "environment": {
@@ -689,11 +643,7 @@ def main() -> int:
             "playwright_python": importlib.metadata.version("playwright"),
             "pyodide": "314.0.7",
             "python_in_pyodide": next(
-                (
-                    r["stats"]["python"]
-                    for r in runs
-                    if r.get("stats") and r["stats"].get("python")
-                ),
+                (r["stats"]["python"] for r in runs if r.get("stats") and r["stats"].get("python")),
                 None,
             ),
             "numpy": next(
@@ -720,22 +670,17 @@ def main() -> int:
             "cold_runs_per_profile": runs_per_profile,
             "warm_runs_per_profile": runs_per_profile if warm_runs else 0,
             "sensitivity_runs": sens_runs,
-            "sensitivity_profiles": [
-                p for p in SENSITIVITY_PROFILES if p in profile_keys
-            ],
+            "sensitivity_profiles": [p for p in SENSITIVITY_PROFILES if p in profile_keys],
         },
         "summary": summary,
         "verdict": verdict,
-        "verdict_all_gates_passed": bool(gated)
-        and all(v["passed_median"] for v in gated),
+        "verdict_all_gates_passed": bool(gated) and all(v["passed_median"] for v in gated),
         "console_errors": console_errors[:40],
         "runs": runs,
     }
 
     out = RESULTS / "e1_results.json"
-    out.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
-    )
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     print()
     print(
