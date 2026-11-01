@@ -164,7 +164,8 @@ def test_import_gate_allows_call_wrappers_outside_the_blocked_set(
     tmp_path: Path, source: str
 ) -> None:
     """放行侧：归约 `.__call__` 只能把目标还原成“同一个东西”，不能把非导入目标
-    也算成导入，也不能把白名单导入算成越界。拦截侧的 6 条反例保证不了这一侧。
+    也算成导入，也不能把白名单导入算成越界。拦截侧保证不了这一侧——
+    `test_import_gate_rejects_dynamic_imports` 本组共 19 条，其中 6 条来自 SIL-607。
     """
     root = plant(tmp_path, source)
     result = run_gate("check_import_whitelist.py", "--root", str(root))
