@@ -20,6 +20,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run bench` | pytest-benchmark 基线（`.benchmarks/`，不入库） |
 | `pixi run render` | 案例渲染入口（M0-1 占位，未实现时退出码 3） |
 | `pixi run diff` | 案例比对入口（同上） |
+| `pixi run ir:size` | 10k 点 path 的 IR vs 逐元素 JSON 体积（`docs/notes/ir.md` §10） |
 | `pixi run gate:imports` | X1 · ggcore import 白名单 |
 | `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
 | `pixi run gate:determinism` | X1 · 同输入同字节 |
@@ -40,7 +41,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 pixi.toml            # 唯一依赖与任务声明（+ pixi.lock）
 pytest.ini           # src 布局：pythonpath = src
 src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条边界）
-  scene.py           # 占位 IR（真 IR 后续阶段落地）
+  ir/                # IR v0：节点类型表 + CBOR 编解码（docs/notes/ir.md）
   cli/               # render / diff 命令行入口
 tools/gates/         # 横切门禁脚本（X1）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
@@ -60,4 +61,5 @@ docs/spike/          # M-1 可行性实验与结论
 - Python 模块 ↔ 上游 `file:line`：`docs/notes/upstream-map.md`
 - 快照容差与参考图纳管：`docs/notes/snapshot-policy.md`
 - 门禁口径：`docs/notes/gates.md`
+- IR 口径（节点表 / blob / 版本 / 体积）：`docs/notes/ir.md`
 - 度量口径账本：`docs/notes/metrics-ledger.md`

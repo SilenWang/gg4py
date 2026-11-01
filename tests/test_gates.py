@@ -12,7 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from ggcore import __version__, placeholder_scene
+from ggcore import __version__
+from ggcore.ir import decode, demo_scene, encode
 
 REPO = Path(__file__).resolve().parent.parent
 GATES = REPO / "tools" / "gates"
@@ -113,11 +114,11 @@ def test_determinism_gate_is_stable_on_the_repo() -> None:
     assert "sha256=" in result.stdout
 
 
-def test_placeholder_scene_serialises_stably() -> None:
-    scene = placeholder_scene()
-    assert scene.to_bytes() == scene.to_bytes()
-    assert scene.digest() == placeholder_scene().digest()
-    assert len(scene.to_bytes()) == len(placeholder_scene().to_bytes())
+def test_demo_scene_serialises_stably() -> None:
+    data = encode(demo_scene())
+    assert encode(demo_scene()) == data
+    assert decode(data) == demo_scene()
+    assert encode(decode(data)) == data
 
 
 def test_version_is_exported() -> None:

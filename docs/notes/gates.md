@@ -34,9 +34,10 @@ float32 缓冲 + CBOR：314 份快照的规模下，逐元素 JSON 的体积与�
 
 ## 同输入同字节
 
-`check_determinism.py` 用两个不同 `PYTHONHASHSEED` 的解释器进程各序列化一次占位
-scene（`ggcore.scene.placeholder_scene()`），比较 stdout。真 IR 落地后把载荷换成
-真实 scene，判定方式不变。同一进程内重复调用也在子进程里自检。
+`check_determinism.py` 用三个不同 `PYTHONHASHSEED` 的解释器进程各编码一次真实
+scene（`ggcore.ir.demo_scene()`：嵌套视口 + path + text + raster blob + zeroGrob），
+比较 stdout（`digest` / `bytes`）。子进程同时自检 `encode(decode(data)) == data`，
+所以“编码 + 解码”合起来也要字节稳定。同一进程内重复调用也在子进程里检查。
 
 ## 手测一次门禁是否真的会拦
 

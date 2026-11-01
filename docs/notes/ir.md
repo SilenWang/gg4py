@@ -1,0 +1,244 @@
+# IR v0 口径
+
+IR（`ggcore.ir`）承载**已解析几何**，是渲染（skia / DOM SVG）、差分、浏览器查看器
+唯一的中间表示。本文记录字段、约定和账本数字；改字段先改
+`src/ggcore/ir/nodes.py` 的 `NODE_SPECS`，再改这里。
+
+- 代码：`src/ggcore/ir/nodes.py`（节点表 + 校验）、`codec.py`（CBOR）、`demo.py`（门禁载荷）
+- 用例：`tests/test_ir.py`（round-trip / 确定性 / 版本 / 体积 / 校验）
+- 门禁：`pixi run gate:determinism`（真实 scene，跨进程字节一致）
+
+## 1. 定位：写进 IR 的都是“已经算完的”
+
+在写 IR 之前完成，IR 里不再出现：
+
+| 已经做完的事 | 归属阶段 | IR 里对应什么 |
+| --- | --- | --- |
+| 单位换算（npc/native/mm/pt/lines/strwidth…） | M0-3 | 最终坐标（float32） |
+| 视口 push/pop、旋转、gpar 继承、裁剪 | M0-4 | `viewport` 的 2×3 仿射 + 裁剪框 |
+| gtable 布局（null 单位、padding） | M0-5 | 已消费：只有最终矩形 |
+| grob 树遍历、gpar 解析 | M0-6 | 扁平的节点顺序 + 解析后的 `gpar` |
+| 字体度量、字族回退切 run | M0-7 | `text` 的最终 `width` + 单个已解析字体 key |
+| data → npc 的 scale/coord 映射 | M1 | 最终坐标 |
+
+IR 里**没有**：单位对象、scale、主题继承链、font stack、字符测量上下文、布局约束。
+容器（`viewport` / `gtree` / `clip`）不带 `gpar`——每个可绘制节点带的就是解析后的
+最终值，没有“继承”这一步。
+
+坐标约定：
+
+- **y 轴向下**，原点在页面左上角（与 SVG / Canvas / skia 一致；grid 的 y-up 在写 IR 前翻转）。
+- 几何坐标是所在节点坐标系下的最终值；`viewport` 的 `transform` 把子坐标映射到父坐标。
+- 页面尺寸 `Scene.size` 单位 pt；`Scene.dpi` 只影响栅格化的像素换算，不改变几何。
+- 子节点顺序即绘制顺序：先出现先画（自后向前）。
+
+## 2. 线格式
+
+CBOR（`cbor2`），canonical 编码。结构：
+
+```
+{
+  "magic": "ggir",
+  "ir_version": [0, 1],
+  "scene": {
+    "size": [w, h],                       # pt
+    "dpi": 72.0,
+    "blobs": {"sha256:…": {"mime": "image/png", "data": b"…"}},
+    "root": {"kind": "viewport", …}       # 必须是 viewport
+  }
+}
+```
+
+节点：
+
+```
+{
+  "kind": "path",
+  "gpar": {"col": [31, 119, 180, 255], "lwd": 1.5},        # 只写非缺省字段
+  "params": {"rule": "evenodd"},                            # 只写非缺省字段
+  "bufs": {"points": {"dtype": "f4", "shape": [10000, 2], "data": b"…"}},
+  "texts": ["…"],                                           # 仅 text
+  "children": [ … ]                                         # 仅容器
+}
+```
+
+bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也不 base64（体积账见 §10）。
+
+## 3. 版本
+
+- 常量：`IR_VERSION = (0, 1)`、`IR_VERSION_STR = "0.1"`，编码时写进 `ir_version`。
+- 解码只认 **major**：`major != 0` 抛 `IRVersionError`（`IRDecodeError` 的子类），
+  不尝试“猜一个相近版本”。
+- 同一 major 内的规则：
+  - 线格式 minor ≤ 本实现 minor：**严格**，未知字段 / 缓冲都报错（防止截断或拼错被静默吞掉）；
+  - 线格式 minor > 本实现 minor：**容忍**未知字段（跳过），但未知**节点种类**仍然报错
+    —— 画不出来的东西不能猜。
+- 因此新增字段是 minor，删除/改语义/改必需性是 major。
+
+## 4. 节点类型表
+
+18 种节点 = `viewport` + 15 个原语（M0-6 名单）+ `gtree` + `zeroGrob` + `clip`（形状裁剪）。
+
+| kind | 用途 | 缓冲（dtype / shape） | 参数（缺省） |
+| --- | --- | --- | --- |
+| `viewport` | 变换 + 裁剪 + 子节点 | `clip_rect` f4 (1,4) 可选 | `name`=""、`clip`=true、`transform`=(1,0,0,1,0,0) |
+| `gtree` | 纯分组容器（v0 只表达顺序） | — | `name`="" |
+| `clip` | 任意形状裁剪 | `rect` f4 (1,4) 或 `points` f4 (n,2)；`id` i4 (n,) 可选 | `name`=""、`rule`="winding" |
+| `rect` | 矩形 | `rect` f4 (n,4) | — |
+| `circle` | 圆 | `circle` f4 (n,3) = (cx, cy, r) | — |
+| `lines` | 折线组 | `points` f4 (n,2)；`id` i4 (n,) 可选 | — |
+| `segments` | 独立线段 | `segments` f4 (n,4) | — |
+| `polyline` | 单条/多条折线 | `points` f4 (n,2)；`id` 可选 | — |
+| `polygon` | 多边形 | `points` f4 (n,2)；`id` 可选 | — |
+| `path` | 多条子路径 + 填充规则 | `points` f4 (n,2)；`id` 可选 | `rule`="winding" |
+| `points` | 散点 | `points` f4 (n,2) | `pch`=1、`size`=1.0（pt） |
+| `text` | 文本（见 §7） | `pos` f4 (n,2)、`width` f4 (n,) | `font`、`size` 必填；`anchor`="center"、`baseline`="middle"、`angle`=0 |
+| `raster` | 位图 | `rect` f4 (1,4) | `blob`、`width`、`height` 必填；`interpolate`=true |
+| `xspline` | xspline | `points` f4 (n,2)；`id` 可选 | `shape`=0.0、`open`=true |
+| `bezier` | 三次贝塞尔段 | `control` f4 (4n,2)，每 4 行一段 | — |
+| `curve` | grid.curve | `ends` f4 (n,4) = (x1,y1,x2,y2) | `curvature`=1、`angle`=90、`ncp`=1、`shape`=0.5、`square`=true、`inflect`=false、`open`=true |
+| `null` | nullGrob：不画、不占位 | — | — |
+| `zero` | zeroGrob：不画，参与布局 | — | — |
+
+细则：
+
+- **id 分组**：每个顶点一个分组号，值一变化就切一条子路径（grid 的 `id` 语义）。
+  `id` 行数必须等于 `points` 行数。
+- **矩形/圆**：不要求 `x0 < x1`，设备自己归一化；`circle` 的半径在视口单位下，
+  椭圆用视口变换表达（不做 rx/ry）。
+- **clip**：`rect` 与 `points` 二选一，且 `rect` 只能一行；`points` 可配 `id` 画多子路径。
+  子节点在裁剪形状内绘制。
+- **viewport.clip**：`clip=true` 时 `clip_rect` 必填（子坐标），不存在“猜一个单位框”的默认；
+  宁可报错也不要两端各猜一个。
+- **curve / xspline / bezier**：控制参数是**解析后的语义参数**，曲线由设备按同一公式求值；
+  它们还没被展平成折线，因为上游快照的对齐点在曲线形状本身。
+- **null / zero**：区别只在布局阶段，布局信息不进 IR，所以两者在 IR 里都不产出绘制指令。
+
+## 5. 缓冲
+
+- dtype 只有两种：`f4`（float32，几何/宽度）、`i4`（int32，分组 id）；**小端**（写死 `<f4` / `<i4`）。
+- 必须 C 连续；用 `ggcore.ir.f32()` / `i32()` 构造，构造后是只读视图（`writeable=False`）。
+- 输入是 float64 / Python list 时在 `f32()` 一次性舍入到 float32，IR 里不再有第二次舍入，
+  所以 round-trip 是**逐位**相同（dtype + shape + 原始字节），不是 `allclose`。
+- 解码用 `np.frombuffer` 直接看线格式里的 bytes，不复制；形状与字节长度不符直接报错。
+- 允许缓冲里出现 NaN / ±Inf / -0.0（缺失点、断线用 NaN 表达），但**参数字段**必须是有限值。
+
+## 6. gpar
+
+| 字段 | 类型 | 缺省 | 说明 |
+| --- | --- | --- | --- |
+| `fill` | RGBA 整数元组 (0..255) 或 null | null | 不填充 |
+| `col` | RGBA 整数元组或 null | null | 不描边；`text` 的文字颜色也用 `col` |
+| `lwd` | float | 1.0 | pt |
+| `lty` | float 元组 | () | 已按 `lwd` 折算的 pt 段长；空 = 实线 |
+| `lineend` | "round" / "butt" / "square" | "round" | 对标 grid 缺省 |
+| `linejoin` | "round" / "miter" / "bevel" | "round" | 对标 grid 缺省 |
+| `linemitre` | float ≥ 1 | 1.0 | 对标 grid 缺省 |
+| `alpha` | float 0..1 | 1.0 | 乘在颜色上 |
+
+- 颜色在写 IR 前完成 8 位舍入（`col2rgb` 口径）；IR 不做色彩空间转换。
+- 缺省 = 什么都不画；`gpar` 键缺省与 `gpar: {}` 不同：前者表示“没有 gpar”，后者表示
+  “gpar 全是缺省值”。解码保持这个区别。
+- 只有非缺省字段上线（canonical + 体积）。
+
+## 7. text：只带最终宽度与锚点
+
+度量账本 L1 的结论：**文本宽度必须来自实际渲染端**，Python 端算完跨端复用会撞上
+emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 的结论：字族回退是两端
+各自实现的**规范**，不是 IR 的请求。所以 text 节点只有：
+
+| 字段 | 形状 | 含义 |
+| --- | --- | --- |
+| `texts` | (n,) str | 要画的字符串 |
+| `pos` | f4 (n,2) | 锚点坐标（已按 anchor/baseline 对齐后的最终位置） |
+| `width` | f4 (n,) | 最终文本宽度，pt |
+| `font` | str | 已解析的**单个**字族 key（不是 font stack，不含回退链） |
+| `size` | float | 字号 pt |
+| `anchor` | "left" / "center" / "right" | `pos` 指文本的哪一边 |
+| `baseline` | "top" / "middle" / "bottom" / "alphabetic" | 竖直锚定方式（不是数值偏移） |
+| `angle` | float | 旋转角，度 |
+
+**不携带**测量意图：没有 `font_stack` / `fallback` / `glyphs` / `advance` / `shaping` /
+`hjust` / `vjust` 之类的字段（`tests/test_ir.py::test_text_node_carries_no_measurement_intent`
+逐名断言，加这类字段会红）。逐元素的 hjust/vjust 差异由写 IR 的一方折进 `pos`。
+
+渲染端拿 `width` 做对齐与差分统计；它自己排出来的宽度如果和 IR 里的 `width` 有差
+（不同字体版本、emoji strike），按 `docs/notes/snapshot-policy.md` 的文字容差处理，
+不回写 IR、不做二次测量。
+
+## 8. blob 表
+
+- 位置：`scene.blobs`，`id → {mime, data}`；`raster` 等节点用 `params.blob` 引用。
+- **内容寻址**：`id = "sha256:" + sha256(mime + b"\0" + data).hexdigest()`（`blob_id()`）。
+  同一份字节 + 同一个 mime 在任何机器上同 id，所以编码确定、重复内容不会进表两次。
+  mime 参与哈希：同样的字节按不同 mime 引用是两个 blob。
+- **mime 缺省**：解码时缺 `mime` 或为 null → `application/octet-stream`；编码总是写出 mime。
+- 编码按 id 排序写出，表内插入顺序不影响字节。
+- **不做压缩、不做 base64**；大 blob 原样通过（用例覆盖 4 MiB）。
+- 表里可以有不被引用的 blob（删除节点时不必同步清理），但节点引用了**不存在**的 id
+  会在构造 `Scene` 时直接报错。
+- 本阶段不打包字体文件：字体由两端各自按 `font` key 解析（M0-7 的受管字体目录）。
+
+## 9. 确定性
+
+同一 scene 两次编码字节完全一致，规则：
+
+1. canonical CBOR（键排序）；
+2. 参数 / gpar 只写非缺省字段（缺省值由 `NODE_SPECS` 单点定义）；
+3. blob 表按 id 排序；
+4. 不含时间戳、随机 id、运行环境信息；
+5. 缓冲直接取 numpy 的 C 连续原始字节（无字典序、无浮点格式化）。
+
+门禁 `pixi run gate:determinism` 用三个不同 `PYTHONHASHSEED` 的进程编码同一个
+`demo_scene()`，比较 stdout（digest / 字节数）；子进程同时做 `encode(decode(data)) == data`
+自检。
+
+## 10. 体积：10k 点 path vs 逐元素 JSON
+
+`pixi run ir:size`（`tools/ir_size_report.py`，固定种子、10,000 个顶点、一份 path 节点）：
+
+| 表示 | 字节 | 每点 | IR 小多少 |
+| --- | ---: | ---: | ---: |
+| IR（CBOR + float32 缓冲） | 80,187 | 8.02 B | — |
+| JSON `[[x, y], …]`（float64 文本，信息无损） | 412,816 | 41.28 B | **5.15×** |
+| JSON `[{"x":…,"y":…}, …]`（每点带字段名） | 492,816 | 49.28 B | **6.15×** |
+| JSON `[[round(x,4), round(y,4)], …]`（**丢精度**） | 167,872 | 16.79 B | 2.09× |
+| JSON 里塞 base64(float32)（同样的位串） | 106,668 | 10.67 B | 1.33× |
+
+结论写清楚，别把话说大：
+
+- **信息无损**的 JSON 基线（前两行）是 5.2–6.2×，不是 10×。原因很直白：float32 二进制
+  就是 8 B/点，文本十进制最省也要 ~16 B/点（4 位小数），而完整十进制是 41 B/点。
+- JSON 想压到 2× 以内只能丢精度（第三行），那已经破坏了“float32 逐位一致”这条验收；
+  base64 是“把同样的位串塞进 JSON”的最好情况，仍比 CBOR 大 33%，而且还要额外容器。
+- 所以“禁止逐元素 JSON”这条门禁（X1）站得住：不是为了 10× 的营销数字，而是 5× 起步、
+  且是**唯一**能保住逐位精度的表示。314 份快照的规模下这个差值是几百 MB 的量级。
+
+## 11. 错误类型
+
+| 异常 | 何时 | 调用方怎么处理 |
+| --- | --- | --- |
+| `IRValidationError` | 构造节点/scene 时字段不合法（类型、形状、交叉约束、缺省必填） | 写方 bug，直接修 |
+| `IRDecodeError` | 线格式坏：缺 magic、截断、字段类型不符、未知节点/字段 | 拒收，不要猜 |
+| `IRVersionError` | `ir_version` 的 major 不认识（`IRDecodeError` 子类） | 提示升级渲染端 |
+
+解码时构造 `Scene` 期间的校验错误会包成 `IRDecodeError`，所以“读不进来”只需捕一个类型。
+
+## 12. 明确不做（留给后续 minor / major）
+
+- **箭头**（`arrow()`）：M0-6 落地真实箭头需求时按 minor 加 param，不预留空字段。
+- **渐变 / 图案笔刷**：`fill` 目前只有 RGBA；渐变要么进 gpar 的联合类型（minor），要么进 blob。
+- **组级不透明度 / 混合模式**：`gtree` 在 v0 只是顺序容器。
+- **glyph run / 字体文件表**：如果 M0-8 的 PDF 需要“字体随 IR 走”，届时定 blob 里的字体约定；
+  现在按 `font` key 两端各自解析。
+- **布局信息**（gtable 单元格、null 单位分配结果）：写 IR 前消费掉，不进 IR。
+- **上游 SVG 结构对齐**：IR 不对标 svglite 的 DOM 结构（对齐走像素 diff，见 snapshot-policy）。
+
+## 13. 复现
+
+```bash
+pixi run test                      # 含 tests/test_ir.py
+pixi run gate:determinism          # 跨进程字节一致（真实 scene）
+pixi run ir:size                   # §10 的体积表
+pixi run bench                     # 编解码基准
+```
