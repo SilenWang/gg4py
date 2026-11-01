@@ -79,6 +79,24 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
     朝鲜 jamo 一律 `supports() == False`，最大偏差实测 95.8%，**不能**用于布局。
 - 口径：兜底表是「没有 HarfBuzz 时的近似」，不是权威宽度。IR 里的文本宽度按 L1
   仍然必须来自实际渲染端；`MetricProvider.supports(text)` 为 False 时必须换引擎。
+- 「178 条整体平均 0.14%」是一个被引用了很多次的数，口径钉死在这里，换个算法就是
+  另一个数：
+  - **分母是 178 条 supported 标签**（`TableBackend.supports()` 为 True 的那些），
+    不是 200 条全量。按 200 条算、把 22 条不支持的直接记 0，得到 **0.1282%**，
+    那是另一个口径，不要混用。
+  - 相对差是**逐标签** `abs(table - ref) / ref`，`ref` 是同一标签在 HarfBuzz/provider
+    下的整段 advance（不是字形单位，不是 CanvasKit 的宽度）。
+  - 178 个相对差做**未加权算术平均**：每条标签权重相同，不按字符数、不按宽度加权。
+  - 与 HarfBuzz 逐条相同的 **119 条照样进分母、按 0 计**——只平均那 59 条有差的，
+    得到的是 0.43%，不是 0.14%。
+  - 精确值 **0.144087%** @16px（下面命令输出的 `0.001440869726923`）。账本里写过
+    的 0.1445% 复现不出来，是本轮之前临时脚本的口径/转录差异，以这里为准。
+- 复现：跑一遍门禁，再从报告里取已经算好的 `table_fallback.mean_rel`。
+  `gate:metrics` 现在也直接把同一个值打在 `table max …` 那行，两边必须一致。
+
+  ```
+  pixi run gate:metrics >/dev/null && pixi run python -c "import json;print(json.load(open('.gate-metrics/metrics_gate.json'))['per_size']['16']['table_fallback']['mean_rel'])"
+  ```
 
 ### M0-7-e · strheight / ascent / descent 的定义
 
@@ -110,7 +128,7 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 | run 切分布局不一致 | 0 / 200（四个字号都是 0） |
 | 「必须显式切 run」的标签数 | **132 / 200**（与 E2 完全吻合） |
 | 桌面端 skia-python 逐字形 advance 最大差 | 0.18%（emoji CBDT strike 推导差异，L1） |
-| 兜底表最大差（支持子集） | 3.59%（仅本语料；绝对值恒定 +2.71875 px @16px，`To` 单对 16.14%，见 M0-7-d） |
+| 兜底表最大差 / 均值（178 条支持子集） | 3.59% / **0.1441%**（仅本语料；均值口径见 M0-7-d，绝对值恒定 +2.71875 px @16px，`To` 单对 16.14%） |
 | 灵敏度：字体栈砍成单字族 | 132 条判红 → 门禁确实量的是「两端」，不是同一侧 |
 
 注意 **skia-python 腿比的是逐字形 advance**，不是整段宽度：`SkFont.getWidths` 不做

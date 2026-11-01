@@ -365,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             f"          table max {table_summary['max_rel']:.4%} "
+            f"mean {table_summary['mean_rel']:.4%} "
             f"(supported {table_summary['supported_n']}, "
             f"unsupported {table_summary['unsupported_n']}) "
             f"fail {len(table_summary['failures'])} "
