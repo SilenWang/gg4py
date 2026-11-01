@@ -57,7 +57,10 @@ HJUST = 0.5
 VJUST = 0.5
 """同上，垂直方向（grid 的 `just` 是 `(hjust, vjust)`）。"""
 
-_CLIP = frozenset({"on", "off"})
+# gtable 0.3.6 的 `gtable_add_grob()` 文档列的就是这三个值（R 不校验）。
+# `"inherit"` 只存值：「继承父视口 clip」要等 M0-6 的视口栈，
+# 见 docs/notes/gtable.md 的 `vp` 决策点。
+_CLIP = frozenset({"on", "off", "inherit"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +107,7 @@ class Placement:
 
     def __post_init__(self) -> None:
         if self.clip not in _CLIP:
-            raise ValueError(f"clip must be 'on' or 'off', got {self.clip!r}")
+            raise ValueError(f"clip must be 'on', 'off' or 'inherit', got {self.clip!r}")
 
 
 def _has_room(initial: float, remaining: float) -> bool:
@@ -538,7 +541,7 @@ def _clip_value(value: Any) -> str:
         return "on" if value else "off"
     if value in _CLIP:
         return str(value)
-    raise ValueError(f"clip must be a logical or 'on'/'off', got {value!r}")
+    raise ValueError(f"clip must be a logical or 'on'/'off'/'inherit', got {value!r}")
 
 
 def gtable_add_grob(

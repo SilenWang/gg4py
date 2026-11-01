@@ -37,6 +37,42 @@ CASES: list[dict[str, Any]] = DOCUMENT["cases"]
 TOLERANCE = 1e-9
 """cm；验收要求 < 0.01 pt = 3.5e-4 cm，这里留了五个数量级的余量。"""
 
+REQUIRED_LAYOUTS = frozenset(
+    {
+        # 纯 null：等权 / 不等权
+        "pure-null-equal",
+        "pure-null-uneven",
+        # 任务点名的三组
+        "zero-null-zero-null",
+        "zero-null-one-null",
+        "mixed-element-not-null",
+        # 固定 + null、纯固定、单格、0 宽列
+        "fixed-plus-null",
+        "fixed-only-centred",
+        "single-cell",
+        "zero-width-fixed-col",
+        "fixed-overflow-eats-null",
+        # respect
+        "respect-square-cells",
+        "respect-with-fixed",
+        # 其它单位与 padding
+        "mixed-units",
+        "padding-mm-stack",
+        "padding-pt-null",
+        "padding-mixed-units",
+        # 嵌套 + span
+        "nested-two-levels",
+        "nested-and-span",
+        # 加行 / 加列
+        "add-rows-cols-positions",
+        # 边界
+        "zero-viewport",
+        "zero-viewport-fixed-col",
+        "small-viewport",
+    }
+)
+"""夹具必须覆盖的布局，逐 id 钉死——删一组夹具要让这里红，而不是静默通过。"""
+
 
 def build_unit(spec: dict[str, Any]) -> Unit:
     """夹具里的单位 spec → ggcore Unit。"""
@@ -187,8 +223,12 @@ def test_matches_r_geometry(case: dict[str, Any]) -> None:
 
 def test_fixture_covers_the_required_layouts() -> None:
     ids = [case["id"] for case in CASES]
-    assert len(ids) >= 8, "验收要求至少 8 组布局"
     assert len(ids) == len(set(ids)), "用例 id 必须唯一"
+    # 逐 id 比：删一组夹具、或改名都直接红（`len(ids) >= N` 抓不到删除）。
+    assert set(ids) == REQUIRED_LAYOUTS, (
+        f"夹具集合变了：多出 {sorted(set(ids) - REQUIRED_LAYOUTS)}，"
+        f"缺少 {sorted(REQUIRED_LAYOUTS - set(ids))}"
+    )
     assert DOCUMENT["r_version"].startswith("R version 4.5"), "夹具必须由钉住的 R 生成"
     assert DOCUMENT["gtable_version"] == "0.3.6", "夹具必须由钉住的 gtable 生成"
 
@@ -198,6 +238,8 @@ def test_fixture_covers_the_required_layouts() -> None:
         "zero-null-zero-null": [0.0, 0.0],
         "zero-null-one-null": [0.0, 10.0],
         "mixed-element-not-null": [2.0, 8.0],
+        # 0 视口 + 固定列的 R 4.5.3 怪癖：负剩余照样分给 null 列。
+        "zero-viewport-fixed-col": [2.0, -2.0],
     }
     for case_id, widths in expected.items():
         case = by_id[case_id]

@@ -65,7 +65,7 @@ Python 模块，反之亦然。
 | Python 模块 | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
 | `ggcore.units` | `src/library/grid/R/unit.R:25`、`:59`、`:525`；`src/library/grid/src/unit.c:658`、`:1226` | `unit()` / `convertUnit()` / `unit.c()` / `transform()` / `transformFromINCHES()` | 已实现（M0-3，93 条 R 对拍） |
-| `ggcore.gtable` | `gtable/R/gtable.R:94`、`:291`；`R/add-grob.R:45`；`R/add-rows-cols.R:40`、`:96`；`R/padding.R:29`；`R/grid.R:20`；`src/library/grid/src/layout.c:492` | `gtable()` / `gtable_width()` / `gtable_add_grob()` / `gtable_add_rows()` / `gtable_add_cols()` / `gtable_add_padding()` / `gtable_layout()` / `calcViewportLayout()` | 已实现（M0-5，20 组 R 设备测量对拍） |
+| `ggcore.gtable` | `gtable/R/gtable.R:94`、`:291`；`R/add-grob.R:45`；`R/add-rows-cols.R:40`、`:96`；`R/padding.R:29`；`R/grid.R:20`；`src/library/grid/src/layout.c:492` | `gtable()` / `gtable_width()` / `gtable_add_grob()` / `gtable_add_rows()` / `gtable_add_cols()` / `gtable_add_padding()` / `gtable_layout()` / `calcViewportLayout()` | 已实现（M0-5，22 组 R 设备测量对拍） |
 
 ## 维护规则
 

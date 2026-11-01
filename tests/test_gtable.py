@@ -274,6 +274,9 @@ def test_add_grob_recycles_and_validates_arguments() -> None:
     with pytest.raises(ValueError):
         gtable_add_grob(table, object(), t=1, l=1, clip="maybe")
     assert gtable_add_grob(table, object(), t=1, l=1, clip=False).layout[0].clip == "off"
+    # gtable 0.3.6 支持 "on"/"inherit"/"off"；inherit 只存值，继承语义等 M0-6 视口栈。
+    inherit = gtable_add_grob(table, object(), t=1, l=1, clip="inherit")
+    assert inherit.layout[0].clip == "inherit"
 
 
 def test_add_grob_with_no_grobs_is_a_no_op() -> None:
