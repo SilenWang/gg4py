@@ -261,7 +261,10 @@ def unit(
             raise UnitError("no string supplied for 'strwidth/height' unit")
         texts = [data] if isinstance(data, str) else list(data)  # type: ignore[arg-type]
         if not texts or (len(texts) != 1 and len(texts) < count):
-            raise UnitError("data must be NULL, have length 1, or match the final unit vector")
+            raise UnitError(
+                "data must be either NULL, have length 1, "
+                "or match the length of the final unit vector"
+            )
         if not all(isinstance(text, str) for text in texts):
             raise UnitError("no string supplied for 'strwidth/height' unit")
         return Unit(
