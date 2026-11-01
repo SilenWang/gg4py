@@ -23,19 +23,19 @@ class SkiaPen:
     def __init__(self, path: skia.Path | None = None) -> None:
         self.path = path if path is not None else skia.Path()
 
-    def moveTo(self, pt) -> None:  # noqa: N802 - HarfBuzz pen protocol
+    def moveTo(self, pt) -> None:
         self.path.moveTo(pt[0], pt[1])
 
-    def lineTo(self, pt) -> None:  # noqa: N802
+    def lineTo(self, pt) -> None:
         self.path.lineTo(pt[0], pt[1])
 
-    def curveTo(self, *pts) -> None:  # noqa: N802
+    def curveTo(self, *pts) -> None:
         if len(pts) == 3:
             self.path.cubicTo(*pts[0], *pts[1], *pts[2])
         else:
             raise NotImplementedError(f"cubic with {len(pts)} points")
 
-    def qCurveTo(self, *pts) -> None:  # noqa: N802
+    def qCurveTo(self, *pts) -> None:
         if pts and pts[-1] is None:
             raise NotImplementedError("TrueType contour starting off-curve")
         if len(pts) == 2:
@@ -45,7 +45,7 @@ class SkiaPen:
         else:
             raise NotImplementedError(f"quadratic with {len(pts)} points")
 
-    def closePath(self) -> None:  # noqa: N802
+    def closePath(self) -> None:
         self.path.close()
 
 
@@ -78,7 +78,7 @@ def text_path(run: ShapedRun) -> skia.Path:
     """Glyph outlines in font units, laid out along the baseline."""
     out = skia.Path()
     x = 0.0
-    for gid, advance in zip(run.glyphs, run.advances):
+    for gid, advance in zip(run.glyphs, run.advances, strict=True):
         glyph_pen = SkiaPen()
         run.font.draw_glyph_with_pen(gid, glyph_pen)
         matrix = skia.Matrix()
@@ -88,7 +88,9 @@ def text_path(run: ShapedRun) -> skia.Path:
     return out
 
 
-def draw_text_units(canvas: skia.Canvas, run: ShapedRun, x: float, y: float, size: float, paint) -> None:
+def draw_text_units(
+    canvas: skia.Canvas, run: ShapedRun, x: float, y: float, size: float, paint
+) -> None:
     """Draw font-unit outlines at (x, y) baseline with the given font size."""
     canvas.save()
     canvas.translate(x, y)

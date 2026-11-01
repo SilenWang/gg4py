@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parent.parent
 CORPUS = REPO / "docs" / "spike" / "corpus" / "labels_200.json"
 sys.path.insert(0, str(CORPUS.parent))
 
-import generate_corpus  # noqa: E402
+import generate_corpus
 
 # Frozen on purpose: E2 and M0-7 must measure the same strings. Changing the
 # corpus is a deliberate act that moves this digest.

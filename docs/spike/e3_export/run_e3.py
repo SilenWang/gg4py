@@ -21,6 +21,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+import zlib
 from pathlib import Path
 
 import skia
@@ -28,7 +29,7 @@ import skia
 SPIKE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SPIKE))
 
-from common.hb_path import draw_text_units, shape, text_path  # noqa: E402
+from common.hb_path import draw_text_units, shape, text_path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent.parent
@@ -73,13 +74,24 @@ def pdf_probe(run) -> dict:
     blob = stream.detachAsData().bytes()
     path = ARTIFACTS / "sample.pdf"
     path.write_bytes(blob)
+    # Content streams are Flate-compressed; decompress to prove the label ended
+    # up as painted geometry rather than an embedded font reference.
+    ops = b""
+    for chunk in re.findall(rb"stream\r?\n(.*?)endstream", blob, re.S):
+        try:
+            ops += zlib.decompress(chunk)
+        except zlib.error:
+            ops += chunk
     return {
         "file": str(path.relative_to(HERE)),
         "bytes": len(blob),
         "header_ok": blob.startswith(b"%PDF-"),
         "pages": len(re.findall(rb"/Type\s*/Page[^s]", blob)),
         "needs_font_resource": b"/Font" in blob,
-        "has_vector_paths": b" m\n" in blob or b" l\n" in blob or b" c\n" in blob,
+        "path_ops": sum(
+            ops.count(op) for op in (b" m\n", b" l\n", b" c\n", b" m ", b" l ", b" c ")
+        ),
+        "content_stream_bytes": len(ops),
     }
 
 

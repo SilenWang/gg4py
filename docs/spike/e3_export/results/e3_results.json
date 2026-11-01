@@ -38,7 +38,8 @@
    "header_ok": true,
    "pages": 1,
    "needs_font_resource": false,
-   "has_vector_paths": false
+   "path_ops": 342,
+   "content_stream_bytes": 10615
   },
   "svg": {
    "file": "results/artifacts/sample.svg",

@@ -15,12 +15,12 @@ Run: pixi run spike:e2
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import statistics
 import subprocess
 import sys
-import hashlib
 from pathlib import Path
 
 import uharfbuzz as hb
@@ -225,7 +225,7 @@ def main() -> int:
                 "joiners/selectors/combining marks stay in the current run'"
             ),
             "uharfbuzz": "hb.shape() per run, advance summed in font units, scaled by size/upem",
-            "canvaskit": "one SkParagraph per run with explicit fontFamilies, getMaxIntrinsicWidth() summed",
+            "canvaskit": "one SkParagraph per run (explicit fontFamilies), widths summed",
         },
         "versions": {
             "uharfbuzz_harfbuzz": hb.version_string(),
