@@ -432,20 +432,23 @@ def test_report_keeps_full_list_and_red_section_beyond_line_limit(tmp_path: Path
 
 
 def test_step_summary_is_truncated_but_points_at_full_report(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """`--summary` 是唯一可截断的地方：保住结论 + 指向完整报告。"""
+    # 结果不能取决于宿主是不是 GHA：注解走 stderr，stdout 只放正文。
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     root = make_root(tmp_path)
     names = [f"geom-point-case-{index:02d}" for index in range(70)]
     for name in names:
         write_case(root, name)
     backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%")
+    report_dir = tmp_path / "report"
     code = TOOL.main(
         [
             "--root",
             str(root),
             "--report-dir",
-            str(tmp_path / "report"),
+            str(report_dir),
             "--summary",
         ],
         backend=backend,
@@ -459,11 +462,72 @@ def test_step_summary_is_truncated_but_points_at_full_report(
     assert "案例矩阵：**红**" in summary
     assert "## 需要修的 case" in summary
     assert "…还有" in summary
-    assert ".cases-matrix/report.md" in summary
+    # 指向的是这次实际写出的报告（`--report-dir` 不是默认目录）。
+    assert str(report_dir / "report.md") in summary
+    assert ".cases-matrix/report.md" not in summary
+    # stdout 里没有 workflow command。
+    assert "::error" not in out
     # 报告文件本身没有被 summary 的截断影响。
-    full = (tmp_path / "report" / "report.md").read_text(encoding="utf-8")
+    full = (report_dir / "report.md").read_text(encoding="utf-8")
     for name in names:
         assert f"- `{name}`：diff" in full
+
+
+def test_gha_annotations_go_to_stderr_and_keep_summary_clean(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI 的宿主环境（GITHUB_ACTIONS=true）下：stdout 仍是 ≤60 行的干净正文。
+
+    这是 B2 的回归：注解曾写 stdout，70 个红 case 让短版本膨胀到 130 行。
+    """
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    root = make_root(tmp_path)
+    names = [f"geom-point-case-{index:02d}" for index in range(70)]
+    for name in names:
+        write_case(root, name)
+    backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%")
+    code = TOOL.main(
+        [
+            "--root",
+            str(root),
+            "--report-dir",
+            str(tmp_path / "ci-report"),
+            "--summary",
+        ],
+        backend=backend,
+    )
+    assert code == 1
+
+    captured = capsys.readouterr()
+    out = captured.out
+    start = out.index("# 案例矩阵：")
+    summary = out[start : out.index("cases:matrix: ", start)]
+    assert len(summary.splitlines()) <= TOOL.SUMMARY_MAX_LINES
+    assert "::error" not in out
+    # 注解没丢：每个红 case 仍然以 workflow command 出现在 stderr（runner 两个流都认）。
+    annotations = [line for line in captured.err.splitlines() if line.startswith("::error")]
+    assert annotations == [f"::error title=案例矩阵::{name}: diff" for name in names]
+    assert str(tmp_path / "ci-report" / "report.md") in summary
+
+
+def test_zero_case_summary_says_no_coverage(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """0 个 case 不能报「全部绿」：那是空跑绿，日志与摘要都要点明没有真实验证。"""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    root = make_root(tmp_path)
+    code = TOOL.main(
+        ["--root", str(root), "--report-dir", str(tmp_path / "report"), "--summary"],
+        backend=FakeBackend(render=TOOL.PASS, diff=TOOL.PASS),
+    )
+    assert code == 0
+
+    captured = capsys.readouterr()
+    assert "没有三文件 case" in captured.err
+    assert "全部绿" not in captured.out
+    assert "案例矩阵：**空**" in captured.out
+    assert "没有 case 可跑" in captured.out
+    assert "没有真实渲染覆盖" in captured.out
 
 
 def test_report_has_family_rollup_and_points_to_matrix(tmp_path: Path) -> None:

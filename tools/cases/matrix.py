@@ -721,7 +721,10 @@ def _counts(verdicts: Sequence[Verdict]) -> dict[str, int]:
     return counts
 
 
-def _verdict_text(red: Sequence[Verdict]) -> str:
+def _verdict_text(red: Sequence[Verdict], total: int) -> str:
+    # 0 个 case 既不是红也不是绿：那是「空跑」，报绿等于说 job 守住了矩阵。
+    if total == 0:
+        return "**空**"
     return "**红**" if red else "**绿**"
 
 
@@ -780,7 +783,7 @@ def render_report(
         "# 案例矩阵运行报告",
         "",
         f"- 时间：{now}",
-        f"- 结论：{_verdict_text(red)}（{_counts_text(counts)}）",
+        f"- 结论：{_verdict_text(red, len(cases))}（{_counts_text(counts)}）",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
         f"空位 {len(gaps)} 个）",
         f"- 覆盖视图：`{_rel(matrix_file)}`（族 × 特性的覆盖矩阵、缺口与清单）；"
@@ -844,14 +847,20 @@ def render_summary(
     taxonomy: Taxonomy,
     *,
     now: str,
+    report_file: Path = REPORT_DIR / "report.md",
     max_lines: int = SUMMARY_MAX_LINES,
 ) -> str:
     """GHA step summary 用的短版本：结论 + 红名单。
 
     这是唯一会截断的地方，而且只截名单尾部（保留「还有 N 个」与完整报告的指向）：
     把「需要修的 case」整节切掉才是真正的问题。
+
+    `report_file` 必须是**这次实际写出的**报告路径（`--report-dir` 会改它）：
+    短版本里两处「全文见 …」都指向它，硬编码 `.cases-matrix/report.md` 会在
+    自定义目录时把人带到不存在的文件。
     """
     families, features, cells = aggregate(cases, taxonomy)
+    report_hint = f"`{_rel(report_file)}`"
     gaps = [
         (family, feature)
         for family in families
@@ -861,18 +870,28 @@ def render_summary(
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
     counts = _counts(verdicts)
     lines = [
-        f"# 案例矩阵：{_verdict_text(red)}",
+        f"# 案例矩阵：{_verdict_text(red, len(cases))}",
         "",
         f"- 时间：{now}",
         f"- 结论：{_counts_text(counts)}",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
         f"空位 {len(gaps)} 个）",
-        "- 逐 case 表、「差多少」与完整红名单：`.cases-matrix/report.md`",
+        f"- 逐 case 表、「差多少」与完整红名单：{report_hint}",
         "",
     ]
+    if not cases:
+        # 0 个 case 时不能报「全部绿」：那正是「空跑绿」——job 什么都没验证。
+        lines.append(
+            "- ⚠️ 一个三文件 case 都没有：本 job 只验证静态矩阵，没有真实渲染覆盖"
+            "（真实覆盖随 SIL-599 打开）"
+        )
+        lines.append("")
     tail = ["", "见 `docs/cases/README.md`：放三个文件就能新增 case。", ""]
     if not red:
-        lines.extend(["全部绿。", *tail])
+        if cases:
+            lines.extend(["全部绿。", *tail])
+        else:
+            lines.extend(["没有 case 可跑。", *tail])
         return "\n".join(lines)
 
     lines.extend(["## 需要修的 case", ""])
@@ -882,7 +901,7 @@ def render_summary(
     for index, entry in enumerate(entries):
         if index >= max(budget, 0):
             hidden = len(entries) - index
-            lines.append(f"- …还有 {hidden} 个红 case 没列出，全文见 `.cases-matrix/report.md`")
+            lines.append(f"- …还有 {hidden} 个红 case 没列出，全文见 {report_hint}")
             break
         lines.append(entry)
     lines.extend(tail)
@@ -937,8 +956,15 @@ def _first_difference(committed: str, generated: str) -> str:
 
 
 def _gha_error(message: str) -> None:
+    """GHA workflow command 走 **stderr**，stdout 只留正文。
+
+    runner 对两个流都识别 workflow command，注解照样出现在 PR 的
+    Annotations 里；但 `--summary` 的正文在 stdout，注解若也写 stdout 就会
+    混进短版本（70 个红 case 直接多出 70 行），贴到 step summary 的内容就
+    不再是「结论 + 红名单」。
+    """
     if os.environ.get("GITHUB_ACTIONS") == "true":
-        print(f"::error title=案例矩阵::{message}")
+        print(f"::error title=案例矩阵::{message}", file=sys.stderr)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1014,13 +1040,23 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
         matrix_file.write_text(generated, encoding="utf-8")
         print(f"wrote {_rel(matrix_file)}")
 
+    if not cases:
+        # 0 个 case 时 job 仍是绿的，但什么都没验证——把这件事写进日志，
+        # 别让「空跑绿」被当成「矩阵守住了」。真实覆盖随 SIL-599 打开。
+        print(
+            "cases:matrix: 没有三文件 case —— 本次只校验 docs/cases/matrix.md 是否最新，"
+            "没有真实渲染 / 比对覆盖（真实覆盖随 SIL-599 打开）",
+            file=sys.stderr,
+        )
+
     verdicts = evaluate(cases, backend)
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     if not check_only:
         report_dir: Path = args.report_dir
         report_dir.mkdir(parents=True, exist_ok=True)
+        report_file = report_dir / "report.md"
         # 报告文件永远完整（314 份上游快照量级也不能截断）；截断只发生在 step summary。
-        (report_dir / "report.md").write_text(
+        report_file.write_text(
             render_report(verdicts, cases, taxonomy, now=now, matrix_file=matrix_file),
             encoding="utf-8",
         )
@@ -1029,7 +1065,7 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         if args.summary:
-            print(render_summary(verdicts, cases, taxonomy, now=now))
+            print(render_summary(verdicts, cases, taxonomy, now=now, report_file=report_file))
 
     for verdict in verdicts:
         if verdict.status in RED_STATES:
