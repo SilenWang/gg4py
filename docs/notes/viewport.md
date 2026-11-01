@@ -138,8 +138,13 @@ gpar 层的 `lty` 还收 R 的编号 `0..6`（`0` 是 `blank`）——段长折�
   值），`down` 则**直接换成**目标视口的解析值（R 特意没用 `set.gpar()`，因为
   `cex` 会累积）。`parentgpar` 单独存，是为了 gTree 在视口之间临时改 gpar：
   `ViewportTree.temporary_gpar(gp)` 就是那条路径（R 的 `set.gpar()` + 退出时恢复，
-  `drawGTree()` / `preDraw.gTree()` 的 `tempgpar`），临时 gpar 下 push 的子视口按
-  它算 `lines` / `char` 几何，见 §3。
+  `preDraw.gTree()` 的 `tempgp` / `drawGTree()` 的 `tempgpar`），临时 gpar 下 push
+  的子视口按它算 `lines` / `char` 几何，见 §3。退出时它只换 gpar、不动视口栈，
+  所以调用方要**先 up/pop 回 gTree 层再退出**。R 的视口也在那儿回到 gTree 层，
+  但两条恢复路径不是一回事：`childrenvp` 在 `preDraw.gTree()` 里
+  `pushViewport()` 之后**立刻** `upViewport(depth(childrenvp))`，早于画子节点、
+  更早于 `drawGTree()` 的 `on.exit()`；`postDraw.grob()` 只 `popgrobvp(x$vp)`，
+  弹的是 gTree 自己的 `vp`。
 
 ## 6. 导航语义
 
@@ -187,8 +192,9 @@ R 的 `down("a::b")` 能命中（`"a::b$"` 匹配 `"xxa::b"`），名字里的 `
   **页面绝对坐标**（不是子坐标），供 IR 的 `clip_rect` 用。IR v0.2 起
   `viewport.clip_rect` 的口径就是页面坐标：旋转 `inherit` 的生效裁剪框在子坐标
   里不是轴对齐矩形，4 元组表达不了。M0-8 的消费约束是「节点自下而上合成页面
-  变换后，在页面空间裁剪」——别拿它去和子坐标求交，那会裁掉左边和下边
-  （反例见 `tests/test_viewport.py::test_ir_clip_rect_is_page_space_pt`）。
+  变换后，在页面空间裁剪」——别拿它去和子坐标求交，那会裁掉右边和下边
+  （反例见 `tests/test_viewport.py::test_ir_clip_rect_is_page_space_pt`；父视口不是
+  `ROOT` 时的口径见 `::test_ir_clip_rect_is_page_space_under_a_non_root_parent`）。
 - `VpNode.convert(unit, to, axis=…, measure=…)`：在视口里换算单位（`convertX`
   / `convertWidth` 的等价物），给 grob 尺寸计算用。
 
