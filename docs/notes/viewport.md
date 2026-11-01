@@ -132,11 +132,13 @@ R 4.5.3 的字符串形式映射到逻辑值（`R/viewport.R` 的 `valid.viewpor
   值），`down` 则**直接换成**目标视口的解析值（R 特意没用 `set.gpar()`，因为
   `cex` 会累积）。`parentgpar` 单独存，是为了 gTree 在视口之间临时改 gpar：
   `ViewportTree.temporary_gpar(gp)` 就是那条路径（R 的 `set.gpar()` + 退出时恢复，
-  `drawGTree()` / `preDraw.gTree()` 的 `tempgpar`），临时 gpar 下 push 的子视口按
-  它算 `lines` / `char` 几何，见 §3。退出时它只换 gpar、不动视口栈，所以调用方
-  要**先 up/pop 回 gTree 层再退出**——R 恢复 gpar 时也一定已经在 gTree 层
-  （`drawGTree()` 的 `on.exit()` 排在 `postDraw()` 之后，`preDraw.gTree()` 先
-  `upViewport()` 再复位）。
+  `preDraw.gTree()` 的 `tempgp` / `drawGTree()` 的 `tempgpar`），临时 gpar 下 push
+  的子视口按它算 `lines` / `char` 几何，见 §3。退出时它只换 gpar、不动视口栈，
+  所以调用方要**先 up/pop 回 gTree 层再退出**。R 的视口也在那儿回到 gTree 层，
+  但两条恢复路径不是一回事：`childrenvp` 在 `preDraw.gTree()` 里
+  `pushViewport()` 之后**立刻** `upViewport(depth(childrenvp))`，早于画子节点、
+  更早于 `drawGTree()` 的 `on.exit()`；`postDraw.grob()` 只 `popgrobvp(x$vp)`，
+  弹的是 gTree 自己的 `vp`。
 
 ## 6. 导航语义
 

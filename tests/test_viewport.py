@@ -260,6 +260,26 @@ def test_temporary_gpar_restores_after_an_exception() -> None:
     assert tree.gpar.fontsize == pytest.approx(12.0)
 
 
+def test_temporary_gpar_exception_leaves_the_child_viewport_on_the_stack() -> None:
+    """块内 push 了子视口再抛异常：gpar 复原，视口栈**不**替调用方 pop。
+
+    `finally` 只管 gpar。R 里 `childrenvp` 的 `upViewport(depth(childrenvp))`
+    是 `preDraw.gTree()` 自己的责任，不在这条恢复路径上；异常退出后当前视口
+    仍停在 push 进去的子视口，调用方（M0-6 的绘制循环）必须先自己 up 回来。
+    """
+    tree = ViewportTree(DEVICE)
+    gtree = tree.push(viewport("gtree"))
+    before = tree.gpar
+    with pytest.raises(RuntimeError, match="boom"):
+        with tree.temporary_gpar(gpar(cex=0.5)):
+            child = tree.push(viewport("children"))
+            raise RuntimeError("boom")
+    assert tree.gpar == before
+    assert tree.gpar.cex == pytest.approx(1.0)
+    assert tree.current is child
+    assert tree.depth() == gtree.depth + 1
+
+
 # ---------------------------------------------------------------------------
 # 旋转：数值断言（接受判据：与手算差 < 1e-9）
 # ---------------------------------------------------------------------------
