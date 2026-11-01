@@ -5,6 +5,8 @@
     pixi run cases:matrix --check    # 只校验 docs/cases/matrix.md 是否最新：不写任何文件、
                                      # 也不跑 render / diff（隐含 --no-run）
     pixi run cases:matrix --no-run   # 只做静态契约校验，不调用 render / diff
+    pixi run cases:matrix --summary  # 额外把报告的短版本（≤60 行）打到 stdout，
+                                     # 供 GHA step summary 使用（报告文件仍是完整版）
 
 一个 case = `docs/cases/<case-name>/` 下三个文件：
 
@@ -939,18 +941,6 @@ def _gha_error(message: str) -> None:
         print(f"::error title=案例矩阵::{message}")
 
 
-def _write_step_summary(summary: str) -> None:
-    """把短版本附到 GHA step summary；本地运行（没有该环境变量）就跳过。"""
-    path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not path:
-        return
-    try:
-        with open(path, "a", encoding="utf-8") as handle:
-            handle.write(summary + "\n")
-    except OSError as exc:  # 贴 summary 失败不该让整轮矩阵判红
-        print(f"cases:matrix: 写 GHA step summary 失败：{exc}", file=sys.stderr)
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cases:matrix",
@@ -973,6 +963,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--print", action="store_true", dest="print_matrix", help="把矩阵打到 stdout"
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="把报告的短版本（结论 + 红名单，≤60 行）打到 stdout；"
+        "GHA 贴 summary 时用它，报告文件本身始终完整",
     )
     return parser
 
@@ -1032,7 +1028,8 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
         (report_dir / "report.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        _write_step_summary(render_summary(verdicts, cases, taxonomy, now=now))
+        if args.summary:
+            print(render_summary(verdicts, cases, taxonomy, now=now))
 
     for verdict in verdicts:
         if verdict.status in RED_STATES:

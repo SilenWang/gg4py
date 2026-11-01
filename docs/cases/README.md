@@ -101,6 +101,7 @@ pixi run cases:matrix --check    # 只校验 matrix.md 是否最新（CI 用）�
                                  # 不写矩阵 / 报告，也不跑 render/diff（隐含 --no-run）
 pixi run cases:matrix --no-run   # 只做静态契约校验，不调 render / diff
 pixi run cases:matrix --strict   # 把 pending（render/diff 未落地）也当失败
+pixi run cases:matrix --summary  # 额外把短版本（≤60 行）打到 stdout，给 GHA step summary 用
 pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 ```
 
@@ -110,7 +111,7 @@ pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 | --- | --- | --- |
 | `docs/cases/matrix.md` | 是（生成物，`--check` 守新鲜度） | **静态**覆盖视图：族 × 特性、缺口、清单、来源 |
 | `.cases-matrix/report.md` / `.json` | 否（`.gitignore`） | **运行时**结论：哪个 case 红、差多少、按族汇总、为什么待落地。**永远完整，不截断** |
-| GHA step summary | —（CI 贴到 PR 页） | 上面报告的**短版本**：结论 + 红名单；超长时只截名单尾部并指向完整报告 |
+| GHA step summary | —（CI 贴到 PR 页） | 报告（CI 目前直接贴 `report.md`）；想要 ≤60 行的短版本就用 `--summary` |
 
 矩阵是静态的，只由仓库内容决定，所以能 `--check` 逐字节比对；红绿随渲染能力变化，
 写进报告，由 CI 贴到 PR 的 step summary（失败 case 名同时以 `::error` 注解出现）。
@@ -118,8 +119,10 @@ pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 红绿与「按族汇总」的 case 数 / 红数，并在开头直接指向 `matrix.md`。
 
 `report.md` 不受行数限制：上游验收资产是 314 份 SVG，案例库必然超过几十个，按行数
-截断会把逐 case 表和「需要修的 case」整节切掉，红名单就没人看得到。只有 step summary
-的短版本（`render_summary()`）有 60 行上限，被截掉的只是名单尾部。
+截断会把逐 case 表和「需要修的 case」整节切掉，红名单就没人看得到。CI 的 publish
+summary 步骤目前直接贴完整 `report.md`；需要 ≤60 行的短版本时用
+`pixi run cases:matrix --summary`（`render_summary()`：结论 + 红名单，只截名单尾部并
+指向完整报告）。
 
 ### 状态
 

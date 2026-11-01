@@ -10,7 +10,7 @@
    否则 M0-8 / M0-9 落地之前 CI 永远是红的。
 4. **矩阵是静态产物**：同一份仓库内容 → 同一份字节，`--check` 能守住新鲜度。
 5. **报告不被行数截断**：60+ case（含大量 fail）时 `report.md` 仍是完整报告，
-   逐 case 表与「需要修的 case」整节都在；只有 GHA step summary 的短版本可截断。
+   逐 case 表与「需要修的 case」整节都在；只有 `--summary` 的短版本可截断。
 """
 
 from __future__ import annotations
@@ -432,27 +432,36 @@ def test_report_keeps_full_list_and_red_section_beyond_line_limit(tmp_path: Path
 
 
 def test_step_summary_is_truncated_but_points_at_full_report(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """GHA step summary 是唯一可截断的地方：保住结论 + 指向完整报告。"""
+    """`--summary` 是唯一可截断的地方：保住结论 + 指向完整报告。"""
     root = make_root(tmp_path)
     names = [f"geom-point-case-{index:02d}" for index in range(70)]
     for name in names:
         write_case(root, name)
-    summary_file = tmp_path / "step_summary.md"
-    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary_file))
     backend = FakeBackend(render=TOOL.PASS, diff=TOOL.FAIL, diff_text="像素差 1.7%")
-    code, _, report_dir = run(root, tmp_path, backend=backend)
+    code = TOOL.main(
+        [
+            "--root",
+            str(root),
+            "--report-dir",
+            str(tmp_path / "report"),
+            "--summary",
+        ],
+        backend=backend,
+    )
     assert code == 1
 
-    summary = summary_file.read_text(encoding="utf-8")
+    out = capsys.readouterr().out
+    start = out.index("# 案例矩阵：")
+    summary = out[start : out.index("cases:matrix: ", start)]
     assert len(summary.splitlines()) <= TOOL.SUMMARY_MAX_LINES
     assert "案例矩阵：**红**" in summary
     assert "## 需要修的 case" in summary
     assert "…还有" in summary
     assert ".cases-matrix/report.md" in summary
     # 报告文件本身没有被 summary 的截断影响。
-    full = (report_dir / "report.md").read_text(encoding="utf-8")
+    full = (tmp_path / "report" / "report.md").read_text(encoding="utf-8")
     for name in names:
         assert f"- `{name}`：diff" in full
 
