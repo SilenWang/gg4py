@@ -116,6 +116,8 @@ warm 4G 只剩 HTML 一个请求（3.5 KB），其余全是 CPU：Pyodide init 1
 - **缩载荷**：去掉 numpy（−2.96 MB）、裁 stdlib（−2.5 MB 里挑）、wasm 上 brotli（未实测，gzip 已 −63%）、把首图渲染与数值计算拆开。目标 ≲1 MB，等于换一个运行时（MicroPython 级别），而不是省一省 Pyodide。
 - **接受首访慢、优化回访**：Service Worker + 持久缓存让二次访问达标（已实测 2.2 s / 2.6 s），首访用低分辨率占位图或静态首图兜底。
 
+**已定（2026-11-01，产品负责人）**：选第三条——浏览器定位为「能画图」，接受首访 ~11 s（给加载进度），回访 ~2.2 s（Service Worker 预缓存）。M3-9 的验收相应改为「首访 4G ≤ 12 s 且 warm ≤ 3 s」。口径记录见 `docs/spike/README.md` 的「决定与验收口径」。
+
 ## 复现
 
 ```bash
