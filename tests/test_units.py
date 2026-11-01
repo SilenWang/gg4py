@@ -14,11 +14,13 @@ from ggcore.units import (
     FixedMetrics,
     Unit,
     UnitContext,
+    UnitElement,
     UnitError,
     convert_height,
     convert_unit,
     convert_width,
     convert_x,
+    is_pure_null,
     is_simple_unit,
     is_unit,
     null_value,
@@ -151,11 +153,73 @@ def test_fixed_metrics_is_used_verbatim() -> None:
     assert convert_x(str_width("abc"), "mm", ctx=ctx).tolist() == pytest.approx([12.7])
 
 
-def test_null_value_reads_the_layout_count_without_converting() -> None:
-    assert null_value(unit(3, "null")) == 3.0
-    assert null_value(unit_c(unit(1, "null"), unit(2, "null"))) == 3.0
-    assert null_value(unit(2, "cm")) == 0.0
+def test_null_value_is_per_element_like_r_s_layout_count() -> None:
+    # R 的 pureNullUnitValue(unit, index) 是逐元素取值：gtable 逐列/逐行调用，
+    # 不能把整个 unit 加起来（unit.c(1null, 2null) 应该是 1 和 2，不是 3）。
+    widths = unit_c(unit(1, "null"), unit(2, "null"), unit(2, "cm"))
+    assert [null_value(widths, index) for index in range(len(widths))] == [1.0, 2.0, 0.0]
+    assert [is_pure_null(widths, index) for index in range(len(widths))] == [
+        True,
+        True,
+        False,
+    ]
     assert convert_x(unit(3, "null"), "cm", ctx=CTX).tolist() == [0.0]
+
+    # 与 null 混合的复合元素不是纯 null：R 的 pureNullUnit 判 false，layout 给 0。
+    mixed = unit(1, "null") + unit(2, "cm")
+    assert not is_pure_null(mixed, 0)
+    assert null_value(mixed, 0) == 0.0
+
+    # 纯 null 的复合元素按 R 的递归走：sum 展开累加，min / max 取子项最值，
+    # 最后乘外层 amount。
+    def compound(op: str, *amounts: float, outer: float = 1.0) -> Unit:
+        children = tuple(UnitElement(amount, "null") for amount in amounts)
+        return Unit((UnitElement(outer, op, children),))
+
+    assert null_value(compound("sum", 1, 3, outer=2), 0) == 8.0
+    assert null_value(compound("min", 1, 3), 0) == 1.0
+    assert null_value(compound("max", 1, 3), 0) == 3.0
+    assert is_pure_null(compound("sum", 1, 3), 0)
+
+
+def test_unit_recycles_amount_and_kind_like_r_construct_units() -> None:
+    # R constructUnits(): n = max(length(x), length(units))，两者都按模回收。
+    amount_recycled = unit(1, ["cm", "mm", "inches"])
+    assert unit_type(amount_recycled) == ["cm", "mm", "inches"]
+    assert [element.amount for element in amount_recycled] == [1.0, 1.0, 1.0]
+
+    kind_recycled = unit([1, 2, 3], ["cm", "mm"])
+    assert unit_type(kind_recycled) == ["cm", "mm", "cm"]
+    assert [element.amount for element in kind_recycled] == [1.0, 2.0, 3.0]
+
+    both = unit([1, 2, 3], ["cm", "mm", "npc", "lines"])
+    assert unit_type(both) == ["cm", "mm", "npc", "lines"]
+    assert [element.amount for element in both] == [1.0, 2.0, 3.0, 1.0]
+
+    # data 长于单位数：取前 N 个（R 的 validData() 只拒绝比单位向量短的）。
+    longer_data = unit([1, 2], "strwidth", data=["a", "b", "c"])
+    assert [element.data for element in longer_data] == ["a", "b"]
+
+    with pytest.raises(UnitError):
+        unit([1, 2, 3], "strwidth", data=["a", "b"])
+
+
+def test_summary_flattens_non_matching_units_before_nested_children() -> None:
+    # R 的 Summary.unit 在 nMatches != 0 时写 c(x[-matchUnits], matchData)：
+    # 非匹配单位在前、摊平的子项在后。普通量级等价，大数相消时才有差别。
+    nested = unit(1e16, "cm") + unit(1, "mm")
+    summed = unit_sum(nested, unit(-1e16, "cm"))
+    assert [(child.kind, child.amount) for child in summed.elements[0].children] == [
+        ("cm", -1e16),
+        ("cm", 1e16),
+        ("mm", 1.0),
+    ]
+    # R: 0.1 cm；保持原序的写法会得 0。
+    assert convert_x(summed, "cm", ctx=CTX).tolist() == pytest.approx([0.1])
+
+    # unit.psum 走另一条 C 路径（summaryUnits()），保持交错顺序，结果仍是 0。
+    p_summed = unit_psum(nested, unit(-1e16, "cm"))
+    assert convert_x(p_summed, "cm", ctx=CTX).tolist() == [0.0]
 
 
 def test_value_only_false_returns_a_unit_in_the_target_unit() -> None:

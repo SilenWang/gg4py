@@ -19,6 +19,31 @@
 `max(sum(...), ...)` 这样的复合元素，嵌套的 `sum` 会被摊进 `psum`。
 R 的 `sum()` / `min()` / `max()`（`Summary.unit`）不同：它们塌成**一个**元素。
 
+## 构造：`unit()` 的长度回收
+
+`unit(amount, kind)` 按 R `constructUnits()`（`grid/src/unit.c`）的规则把两个参数
+**按模回收**到 `max(len(amount), len(kind))`：
+
+| 调用 | 结果 |
+| --- | --- |
+| `unit(1, ["cm", "mm", "inches"])` | `1cm 1mm 1inches`（amount 回收） |
+| `unit([1, 2, 3], ["cm", "mm"])` | `1cm 2mm 3cm`（kind 回收） |
+| `unit([1, 2, 3], ["cm", "mm", "npc", "lines"])` | `1cm 2mm 3npc 1lines`（两边都收） |
+
+R 不在这里做整除检查，也不发 R 惯常的 recycling warning——`constructUnits()`
+直接对两个下标取模，ggcore 照抄。
+
+`data`（`strwidth` / `strheight` 的文本）按 R `validData()`：长度为 1 时复用，
+**长于**单位数时取前 N 个，短于单位数且不为 1 时报
+`data must be NULL, have length 1, or match the final unit vector`。
+
+主动窄化的两点（ggplot2 4.0.3 与 gtable 0.3.6 的调用面都没有命中）：
+
+- 一次 `unit()` 里不能同时出现字符串单位与普通单位（R 允许按元素混搭）；
+- `data` 只接受一个字符串或「一个元素一段文字」的列表。R 允许把多个字符串塞进
+  **单个**元素（`unit(1, "strwidth", data = c("a", "b"))` 在 R 里是长度 1、
+  data 为长度 2 的字符向量），ggcore 的「一元素一 data」模型表达不了。
+
 ## 换算链：一律经英寸
 
 R `transform()` 先把源单位换算成**英寸**，再由 `transformFromINCHES()` 换算到目标
@@ -74,9 +99,35 @@ R 在设备上用当前 `gpar` 的字体测得宽度/高度（`GEStrWidth`），
 - 取 min 时 R `evaluateNullUnit()` 返回 `thisCM`（视口宽/高的厘米**数值**，
   未换算成英寸），比任何正常尺寸都大，因此 null 永远不会赢 min。这个数被当作
   英寸继续参与运算，是 R 的既有行为；我们照抄以保证对拍一致。
-- 布局阶段（gtable 分配剩余空间）要的是 null 的**计数**，不走换算：
-  `null_value(unit)` 对应 R 的 `pureNullUnitValue()`，只累加 `null`（含嵌套
-  `sum`），其它单位计 0。
+- 布局阶段（gtable 分配剩余空间）要的是 null 的**逐元素计数**，不走换算：
+  `is_pure_null(unit, index)` / `null_value(unit, index)` 对应 R 的
+  `pureNullUnit(unit, index)` / `pureNullUnitValue(unit, index)`
+  （`grid/src/unit.c`，前者是后者的前置门，两者都按索引取值）。
+
+  **不是**对整个 unit 求和：一整列宽可以是一个长度 N 的 unit 向量，
+  `unit_c(unit(1, "null"), unit(2, "null"))` 的第 0 / 1 元素分别是 `1` / `2`。
+
+  | unit | `is_pure_null(u, 0)` | `null_value(u, 0)` | `null_value(u, 1)` |
+  | --- | --- | --- | --- |
+  | `unit_c(unit(1, "null"), unit(2, "null"))` | `True` | `1` | `2` |
+  | `unit(1, "null") + unit(2, "cm")` | `False` | `0` | 越界 |
+
+  嵌套的 `sum` 按 R 递归：展开累加子项、`min` / `max` 取子项最值，最后乘外层
+  `amount`。
+
+  gtable（M0-5）逐列/逐行取权重，写法与 `grid/src/layout.c` 的
+  `findRelWidths()` 一致：
+
+  ```python
+  widths = ...  # 每列一个元素的 unit 向量
+  relative = [is_pure_null(widths, i) for i in range(len(widths))]
+  weights = [null_value(widths, i) for i in range(len(widths))]
+  # relative[i] 为真的列按 weights 归一化分剩余空间，其余列走固定尺寸。
+  ```
+
+  `null_value` 对非纯 null 元素直接给 0（R 的 layout 用 `pureNullUnit` 门挡住
+  这类元素），所以即使不写 `relative` 一层，`unit(1, "null") + unit(2, "cm")`
+  也不会被当成 1 份权重。`unit(0, "null")` 是纯 null 但权重为 0：两个判断不重复。
 
 ### 浮点边界：不提前取整
 
@@ -88,6 +139,13 @@ R 在设备上用当前 `gpar` 的字体测得宽度/高度（`GEStrWidth`），
 
 除法按 R `Ops.unit` 的写法先取 `1 / x` 再乘，和直接除的浮点结果不一定相同。
 这三条在对拍里用 `tolerance = 0`（逐位相等）守着。
+
+`sum()` / `min()` / `max()` 的子项顺序也照抄 R `Summary.unit`：只要有一个顶层
+元素是 `sum`/`min`/`max`，非匹配单位就排在前面、被摊平的子项排在后面
+（`c(x[-matchUnits], matchData)`）。普通量级两种顺序等价，大数相消时才分叉：
+`unit_sum(unit(1e16, "cm") + unit(1, "mm"), unit(-1e16, "cm"))` 在对拍里是
+`0.1` cm（保持交错顺序会得 `0`）。`unit.psum` 走另一条 C 路径
+（`summaryUnits()`），保持交错顺序，同一输入得 `0`——两条路径的差别也有用例守着。
 
 ### 空单位列表
 
@@ -110,11 +168,23 @@ R 侧的报错信息，避免以后误以为这是 R 的行为。
 | --- | --- | --- |
 | 换算目标为 `strwidth` / `strheight` / `null` | 报 `invalid unit or not yet implemented` | 同样报 `UnitError` |
 | 换算目标为 `snpc` | R 4.5.3 报错（`transformFromINCHES` 里没有该分支） | 同样报错；`snpc` 只作源单位 |
-| `unit.pmax` 的 `all_type` 累积 bug | `summaryUnits()` 的 `all_type` 不按位置重置，前面出现混合类型后，后面同类型的位置也不会塌成简单单位 | 按位置判定，不受前面位置影响 |
+| `unit.pmax` 的 `all_type` 累积 bug | `summaryUnits()` 的 `all_type` 不按位置重置：`unit.pmax(unit(c(1, 2), c("cm", "cm")), unit(c(3, 4), c("mm", "cm")))` 的结构是 `max, max` | 按位置判定，同例结构是 `max, cm`（见下） |
 | `unit.psum` 对非 simpleUnit 参数的重复计数 | `summaryUnits()` 先把 `amount` 初始化为第一项，循环里又加一遍，所以 `unit.psum(a, a)`（`a` 是 `1strwidth`）返回 `3strwidth` | 返回 `2strwidth`（`tests/test_units.py` 守着） |
 | 复合 `max` 全负值 | 初值是 `DBL_MIN`（正的 2.2e-308），`max(-1cm, -20mm)` 求值得到 `5.65e-308` cm | 用 `-inf` 起步，得到 `-1` cm（`min` 的 `DBL_MAX` 初值与语义一致） |
 | 空单位 | 无法构造 | 允许（见上） |
 | `strascent` / `strdescent` / `grob*` 单位 | 支持 | 未实现（M0-6 之后按需补） |
+
+### 三处未复制的差异：为什么，以及为何没有影响
+
+三处都是 R 实现里的 bug，不是语义（前两处在 `summaryUnits()`，第三处在复合
+`max` 的求值初值）；复刻它们只会把位置相关的行为带进布局。审核给了调用面
+证据，这里记下来，便于以后复核：
+
+| 差异 | 为什么不复制 | 对 ggplot2 / gtable 调用面 |
+| --- | --- | --- |
+| `unit.pmax` 的 `all_type` 累积 | `all_type` 声明在位置循环**外**且从不重置，等于「前面出现过混合类型，后面同类型的位置也不再归约」。这是 C 的作用域失误，复刻等于让第 N 列受第 N-1 列影响 | `unit.pmax` 在 ggplot2 4.0.3 只有 `geom-label.R:164-165`（`padding` 与 `descent`），gtable 0.3.6 只有 `compare_unit()` 的 `rbind`/`cbind` 宽高匹配（`rbind-cbind.R:93-94`、`142-143`）。两处每个位置都是同类型非负量，R 里 `all_type` 也恒为真，bug 不显形 |
+| `unit.psum` 的重复计数 | 同一个函数先把 `amount` 初始化成第一项、循环里又加一遍，是笔误 | `unit.psum` 在 ggplot2 4.0.3 与 gtable 0.3.6 中**均无调用** |
+| 复合 `max` 从 `DBL_MIN` 起步 | `DBL_MIN` 是**正**的最小规格化数，`max(-1cm, -20mm)` 得 `5.65e-308` cm，结果符号都不对；`min` 用 `DBL_MAX` 才是自洽的 | 布局里没有负长度；`unit.pmax` 的调用点传的是非负 padding/descent，复合 `max` 不会出现全负子项 |
 
 ### 零尺寸视口
 
@@ -137,15 +207,17 @@ pixi run -e refs refs:units     # Rscript tools/refs/units_ref.R
   `tests/fixtures/units_r_reference.json`。
 - 每条用例都带 R 表达式（`r`）、Python 构造 spec、上下文和期望值；夹具里
   `r_error` 非空表示 R 侧本来就报错，Python 侧也会报错（空单位那条除外）。
-- 现在 93 条用例，覆盖任务要求的全部单位类型、`±*/`、`pmax`/`pmin`/`psum`、
-  `unit.c` 摊平、`null` 不进总和、空列表与三条逐位舍入边界。
+- 现在 99 条用例，覆盖任务要求的全部单位类型、`±*/`、`pmax`/`pmin`/`psum`、
+  `unit.c` 摊平、`unit()` 长度回收（amount / kind / data 三个方向）、`sum` 与
+  `psum` 的子项顺序、`null` 不进总和、空列表与三条逐位舍入边界。
 
 ## 与后续模块的接口
 
 - **viewport（M0-4）**：`UnitContext(width_cm, height_cm, xscale, yscale)` 就是
   viewport 需要提供的那部分；换算用 `convert_x` / `convert_y` /
   `convert_width` / `convert_height`，或带轴参数的 `convert_unit`。
-- **gtable（M0-5）**：列/行宽用 `unit_pmax` / `unit_psum` 组合，剩余空间用
-  `null_value()`。
+- **gtable（M0-5）**：列/行宽用 `unit_pmax` / `unit_psum` 组合；剩余空间用
+  `null_value(widths, i)` 逐列/逐行取权重，`is_pure_null(widths, i)` 判该列
+  是否参与分配（见「`null`」一节）。
 - **grob / 设备（M0-6 / M0-8）**：`lines` / `char` 依赖 `fontsize * cex`；
   `strwidth` / `strheight` 等 M0-7 的 `Metrics` 实现，单位系统只负责乘。
