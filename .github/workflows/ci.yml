@@ -37,13 +37,43 @@ jobs:
           cache: true
       # prod 只留运行期依赖：测试与 lint 工具泄漏进来会让“浏览器/服务端只装运行期”
       # 这条前提悄悄失效。
+      #
+      # 判据必须区分「工具不存在」和「环境求解/启动失败」：前两次实现把任何非 0
+      # 都当成不存在，pixi 求解失败时断言会静默通过。所以只在退出码 127（pixi
+      # 找不到命令）或输出明确是 ModuleNotFoundError / command not found 时才算
+      # 通过；其余非 0 一律判 CI 失败。
       - name: pytest and ruff are absent
         run: |
-          if pixi run -e prod pytest --version; then
-            echo "::error::pytest leaked into the prod environment"; exit 1
-          fi
-          if pixi run -e prod ruff --version; then
-            echo "::error::ruff leaked into the prod environment"; exit 1
-          fi
+          set +e
+          set -uo pipefail
+          failed=0
+          for tool in pytest ruff; do
+            output=$(pixi run -e prod "$tool" --version 2>&1)
+            status=$?
+            if [ "$status" -eq 0 ]; then
+              echo "::error::$tool leaked into the prod environment (exit 0: $output)"
+              failed=1
+              continue
+            fi
+            if [ "$status" -ne 127 ] \
+              && ! grep -qE "No module named|command not found" <<<"$output"; then
+              echo "::error::could not prove $tool is absent — exit $status: $output"
+              failed=1
+            fi
+          done
+          exit "$failed"
+      # 模块层面的同一断言：prod 里 import 不到 pytest / ruff，等价于工具没装进来，
+      # 且不依赖 shell 对退出码的解读。
+      - name: dev-only modules are not importable
+        run: |
+          pixi run -e prod python - <<'EOF'
+          import importlib.util
+          import sys
+
+          leaked = [name for name in ("pytest", "ruff") if importlib.util.find_spec(name)]
+          for name in leaked:
+              print(f"::error::{name} is importable in the prod environment")
+          sys.exit(1 if leaked else 0)
+          EOF
       - name: runtime imports work
         run: PYTHONPATH=src pixi run -e prod python -c "import ggcore, numpy, skia; print('ggcore', ggcore.__version__)"
