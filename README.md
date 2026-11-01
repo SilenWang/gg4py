@@ -53,7 +53,7 @@ src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条
   units.py           # grid::unit 对等单位系统（M0-3）
   gtable.py          # 表格布局 + null 分配（M0-5）
   viewport.py        # grid 视口栈：push/pop、变换、裁剪、gpar 继承（M0-4）
-  grobs.py           # grob 模型：15 种原语 + gTree/zeroGrob + 场景遍历（M0-6）
+  grobs.py           # grob 模型：18 个构造器 + 场景遍历 → IR（M0-6）
   metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   cli/               # render / diff 命令行入口
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz

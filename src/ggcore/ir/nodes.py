@@ -80,8 +80,13 @@ def buffer_equal(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]) -> bool:
 
 
 class NodeKind(StrEnum):
-    """节点种类，共 18 种：3 个容器（`viewport` / `gtree` / `clip`）+ 14 个原语
-    （M0-6 名单，含 `nullGrob`）+ `zeroGrob`。"""
+    """节点种类，共 18 种：3 个容器（`viewport` / `gtree` / `clip`）+ 15 个叶子
+    （13 种可绘制原语 + `null` + `zero`）。
+
+    `ggcore.grobs.Scene.to_ir_scene()` 只产出其中 14 种（13 种可绘制原语 +
+    `viewport`）：`null` / `zero` 只有布局语义，`gtree` / `clip` 是遍历容器，
+    都不从 grob 路径来（`docs/notes/grobs.md` §1）。
+    """
 
     # 容器
     VIEWPORT = "viewport"

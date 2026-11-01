@@ -38,10 +38,14 @@ pixi run cases:viewport --check  # 只和仓库里的 baseline 比对
 ```
 
 **grob 快照**（M0-6）：规格字段 `"kind": "grob"`，一种原语一张，由
-`tools/cases/grob_cases.py` 走 `grob → 场景遍历 → 临时 skia 设备` 画图
-（15 张：`grob-rect` / `-circle` / `-lines` / `-segments` / `-polyline` /
-`-polygon` / `-path` / `-points` / `-text` / `-raster` / `-xspline` / `-bezier` /
-`-curve` / `-clip` / `-null`）。口径见 `docs/notes/grobs.md` §10。
+`tools/cases/grob_cases.py` 走 `grob → 场景遍历 → IR → 临时 skia 设备` 画图
+（16 张：13 种可绘制原语各一张 `grob-rect` / `-circle` / `-lines` / `-segments` /
+`-polyline` / `-polygon` / `-path` / `-points` / `-text` / `-raster` / `-xspline` /
+`-bezier` / `-curve`，加 `-clip`（`clipPath`）、`-null`（`nullGrob` + gtable）与
+`-text-rot`（视口旋转 + `rot` 的合成）。口径见 `docs/notes/grobs.md` §10。
+
+`grob-text-rot` 是 SIL-634 的回归资产：`A`（视口 20° + `rot = 0`）与 `A'`
+（无旋转视口 + `rot = 20`）必须同向，`B`（`rot = 40`）比它们再转 20°。
 
 ```bash
 pixi run cases:grob               # 重画 docs/cases/grob-*/baseline/*.png

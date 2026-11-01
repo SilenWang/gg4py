@@ -2,7 +2,8 @@
 
 分三块：
 
-1. **原语**：15 种原语各自的几何、单位参数、IR 种类；
+1. **原语**：13 种可绘制原语各自的几何、单位参数、IR 种类（`clipPath` /
+   `nullGrob` / `zeroGrob` 的容器与布局语义在 §5）；
 2. **遍历语义**：深度优先顺序、gpar 继承（含 `NA` 与 `None` 的区别）、
    `clip` 的消解、向量 gp 的展开、`gTree` + `childrenvp` + 临时 gpar；
 3. **下游契约**：`zeroGrob` 参与布局、gtable 单元格视口、`to_ir_scene()` 可编码。
@@ -45,7 +46,7 @@ from ggcore.grobs import (
 )
 from ggcore.gtable import gtable, gtable_add_grob
 from ggcore.ir import Anchor, Baseline, NodeKind, decode, encode
-from ggcore.units import FixedMetrics, convert_width, unit
+from ggcore.units import FixedMetrics, convert_height, convert_width, unit
 from ggcore.viewport import NA, Device, ViewportTree, gpar, viewport
 
 # 6×4 in：页面 432×288 pt，根视口铺满且 transform 是单位阵，所以局部坐标 = 页面坐标。
@@ -549,11 +550,52 @@ def test_text_just_is_folded_into_pos() -> None:
     assert bottom.params["baseline"] == Baseline.BOTTOM.value
 
 
-def test_text_angle_is_viewport_rotation_plus_rot() -> None:
+def test_text_angle_is_the_local_rotation_only() -> None:
+    """`params["angle"]` 只放 `rot`；视口旋转在 `transform` 里（SIL-634）。"""
     tree = make_tree(metrics=texts(ab=0.2))
     tree.push(viewport("rot", angle=30))
     instruction = only(scene(text_grob("ab", rot=15), tree))
-    assert instruction.params["angle"] == pytest.approx(45.0)
+    assert instruction.params["angle"] == pytest.approx(15.0)
+    # 视口 30° 在仿射的线性部分（y 向下：a=cos, b=-sin, c=sin, d=cos）
+    a, b, c, d, _, _ = instruction.transform
+    radius = math.radians(30.0)
+    assert (a, b, c, d) == pytest.approx(
+        (math.cos(radius), -math.sin(radius), math.sin(radius), math.cos(radius))
+    )
+
+
+def _page_text_direction(instruction) -> float:
+    """文字基线在页面里的方向（度，逆时针）= 视口旋转 ∘ 局部 `rot`。"""
+    a, b, c, d, _, _ = instruction.transform
+    angle = math.radians(float(instruction.params["angle"]))
+    # 局部坐标 y 向下，IR 的 `angle` 是逆时针：局部 x 轴转 `angle` 后是 (cos, -sin)
+    vx, vy = math.cos(angle), -math.sin(angle)
+    px, py = a * vx + c * vy, b * vx + d * vy
+    return math.degrees(math.atan2(-py, px))
+
+
+def test_text_rotation_is_not_applied_twice() -> None:
+    """SIL-634 的阻塞：A 视口 20° + `rot=0` 画成 20°，B 无旋转视口 + `rot=40` 画成 40°。
+
+    修之前 A 与 B 都是 40°（`angle` 里已经含了一份视口旋转，`transform` 里又一份）。
+    A/B 两份的 `params["angle"]` 与页面方向都钉在这里；渲染结果由 `grob-text`
+    与 `grob-text-rot` 两张快照兜住。
+    """
+    tree_a = make_tree(metrics=texts(ab=0.2))
+    tree_a.push(viewport("rot20", angle=20))
+    a = only(scene(text_grob("ab", rot=0), tree_a))
+    b = only(scene(text_grob("ab", rot=40), make_tree(metrics=texts(ab=0.2))))
+    assert a.params["angle"] == pytest.approx(0.0)
+    assert b.params["angle"] == pytest.approx(40.0)
+    assert _page_text_direction(a) == pytest.approx(20.0)
+    assert _page_text_direction(b) == pytest.approx(40.0)
+
+    # 两个都写：视口 20° + rot 20 → 页面 40°，与 B 同向
+    tree_ab = make_tree(metrics=texts(ab=0.2))
+    tree_ab.push(viewport("rot20", angle=20))
+    both = only(scene(text_grob("ab", rot=20), tree_ab))
+    assert both.params["angle"] == pytest.approx(20.0)
+    assert _page_text_direction(both) == pytest.approx(40.0)
 
 
 def test_text_without_metrics_is_an_error() -> None:
@@ -664,6 +706,63 @@ def test_text_extent_uses_the_metric_provider() -> None:
     assert width == pytest.approx(1.27)
 
 
+def test_width_details_follows_the_inherited_gp() -> None:
+    """`widthDetails` 的 `lines` / `char` 按**继承后**的 gp 换算（SIL-634）。
+
+    `gTree(gp = gpar(fontsize = 20))` 里的 `rect_grob(width = unit(2, "lines"))`
+    是 2 × 20pt × 1.2 = 48pt = 1.693 cm；用视口的 ps=12 会得 28.8pt（1.016 cm）。
+    """
+    tree = make_tree()
+    node = tree.current
+    tree_grob = g_tree(
+        rect_grob(width=unit(2, "lines"), height=unit(1, "lines")),
+        g_tree(rect_grob(width=unit(1, "lines"), height=unit(4, "lines")), gp=gpar(fontsize=24)),
+        gp=gpar(fontsize=20),
+    )
+    width = convert_width(width_details(tree_grob, node), "cm", ctx=node.unit_context())[0]
+    height = convert_height(height_details(tree_grob, node), "cm", ctx=node.unit_context())[0]
+    # 子节点的 gp 叠在外层之上：内层 gTree fontsize=24 → 4 × 24 × 1.2 = 115.2pt
+    assert height == pytest.approx(115.2 / 72.0 * 2.54)
+    # 宽度取 unit_max：外层 48pt，内层 1 × 24 × 1.2 = 28.8pt
+    assert width == pytest.approx(48.0 / 72.0 * 2.54)
+
+    # 同一份结果换一个上下文求值不变：单位在这一层已经折成绝对 pt
+    absolute = convert_width(width_details(tree_grob, node), "bigpts", ctx=node.unit_context())[0]
+    assert absolute == pytest.approx(48.0)
+
+
+def test_text_extent_follows_the_inherited_gp() -> None:
+    """`text_grob` 子节点的 `gp.fontsize = 20` 在量宽高时生效（不是视口的 12）。"""
+    seen: list[float] = []
+
+    class SpyMetrics:
+        def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
+            seen.append(float(fontsize))
+            return 0.5
+
+        def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
+            return 0.1
+
+    tree = ViewportTree(Device(6.0, 4.0), metrics=SpyMetrics())
+    node = tree.current
+    tree_grob = g_tree(text_grob("hello", gp=gpar(fontsize=20)), gp=gpar(fontsize=20))
+    height = convert_height(height_details(tree_grob, node), "bigpts", ctx=node.unit_context())[0]
+    assert height == pytest.approx(20.0 * 1.2)
+    assert seen == [20.0]
+
+
+def test_points_extent_in_char_units_follows_the_inherited_gp() -> None:
+    tree = make_tree()
+    node = tree.current
+    inside = g_tree(points_grob([0.5], [0.5], size=unit(1, "char")), gp=gpar(fontsize=20))
+    outside = points_grob([0.5], [0.5], size=unit(1, "char"))
+    context = node.unit_context()
+    inside_width = convert_width(width_details(inside, node), "bigpts", ctx=context)[0]
+    outside_width = convert_width(width_details(outside, node), "bigpts", ctx=context)[0]
+    assert inside_width == pytest.approx(20.0)  # gTree 的 fontsize=20 → 1 char = 20pt
+    assert outside_width == pytest.approx(12.0)  # 视口缺省 ps=12
+
+
 # ---------------------------------------------------------------------------
 # 6. gtable：单元格视口、clip 三态、嵌套与 z 序
 # ---------------------------------------------------------------------------
@@ -744,7 +843,8 @@ def test_scene_converts_to_an_ir_scene_that_round_trips() -> None:
     data = encode(ir_scene)
     assert decode(data) == ir_scene
     kinds = {node.kind for node in _walk(ir_scene.root)}
-    assert kinds >= {
+    # 恰好 14 种：13 种可绘制原语 + `viewport`（`docs/notes/grobs.md` §1 的计数口径）
+    assert kinds == {
         NodeKind.VIEWPORT,
         NodeKind.RECT,
         NodeKind.CIRCLE,
@@ -770,6 +870,24 @@ def _walk(node):
         yield from _walk(child)
 
 
+def test_null_zero_and_containers_never_reach_ir_from_the_grob_path() -> None:
+    """`null` / `zero` / `gtree` / `clip` 不从 grob 路径进 IR（SIL-634 的口径）。
+
+    `null` / `zero` 只有布局语义，`gTree` / `clipPath` 是遍历期容器：摊平之后
+    设备只看得到可绘制原语与 `viewport`。
+    """
+    tree = make_tree()
+    grobs = [
+        null_grob(),
+        zero_grob(),
+        g_tree(rect_grob(), gp=gpar(col="#ff0000")),
+        clip_path(rect_grob(), width=0.5, height=0.5),
+    ]
+    ir_scene = scene(grobs, tree).to_ir_scene()
+    kinds = {node.kind for node in _walk(ir_scene.root)}
+    assert kinds == {NodeKind.VIEWPORT, NodeKind.RECT}
+
+
 def test_instructions_share_a_viewport_when_transform_and_clip_agree() -> None:
     tree = make_tree()
     result = scene([rect_grob(), circle_grob()], tree)
@@ -789,7 +907,8 @@ def test_ir_text_node_carries_width_anchor_and_angle() -> None:
     assert node.texts == ("hello",)
     assert node.params["anchor"] == "left"
     assert node.params["baseline"] == "top"
-    assert node.params["angle"] == pytest.approx(30.0)
+    # 视口旋转在 viewport 节点的 transform 里，text 的 angle 只是局部 rot（SIL-634）
+    assert node.params["angle"] == pytest.approx(10.0)
     assert float(node.bufs["width"][0]) == pytest.approx(36.0)
 
 

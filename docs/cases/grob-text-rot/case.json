@@ -1,0 +1,70 @@
+{
+  "id": "grob-text-rot",
+  "kind": "grob",
+  "title": "grob · text 的旋转合成（SIL-634：视口旋转 + rot 只各算一次）",
+  "caption": "A = 视口 20° + rot 0 → 页面 20°；A' = 无旋转视口 + rot 20 → 页面 20°（与 A 同向）；B = 无旋转视口 + rot 40 → 页面 40°",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 3.0,
+    "pixels_per_inch": 150
+  },
+  "viewports": [
+    {
+      "name": "rot20",
+      "x": 0.35,
+      "y": 0.74,
+      "width": 0.62,
+      "height": 0.16,
+      "angle": 20,
+      "clip": "off"
+    }
+  ],
+  "grobs": [
+    {
+      "type": "gTree",
+      "vp": 0,
+      "children": [
+        {
+          "type": "text",
+          "label": "A 视口20 rot0",
+          "x": 0.5,
+          "y": 0.5,
+          "gp": {
+            "col": "#4C78A8",
+            "fontsize": 11
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "label": "A' rot20",
+      "x": 0.14,
+      "y": 0.46,
+      "rot": 20,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#72B7B2",
+        "fontsize": 11
+      }
+    },
+    {
+      "type": "text",
+      "label": "B rot40",
+      "x": 0.14,
+      "y": 0.2,
+      "rot": 40,
+      "just": [
+        "left",
+        "centre"
+      ],
+      "gp": {
+        "col": "#E45756",
+        "fontsize": 11
+      }
+    }
+  ]
+}

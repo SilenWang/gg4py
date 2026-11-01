@@ -1,17 +1,37 @@
 # grob 账本（grob 模型与场景遍历）
 
-`ggcore.grobs` 是 R **grid** grob 系统的 Python 对等物：15 种原语 + `gTree` +
-`zeroGrob`，以及把 grob 树摊平成绘制指令的场景遍历。它是 M0-6 的交付物，
+`ggcore.grobs` 是 R **grid** grob 系统的 Python 对等物：18 个构造器（13 种可绘制
+原语 + `clipPath` + `nullGrob` + `zeroGrob` + `gTree` + `gtable` 的 grob 视图，
+§1），以及把 grob 树摊平成绘制指令、再写成 IR 的场景遍历。它是 M0-6 的交付物，
 上游是 `src/library/grid/src/grobs.c` / `grob-*.c`、`R/grid.R`（`gTree`、
 `drawDetails`、`preDraw.gTree`）与 `R/gpar.R`（`set.gpar`）。
 
 - 代码：`src/ggcore/grobs.py`
 - 用例：`tests/test_grobs.py`（构造 / 遍历 / 契约）、`tests/test_grob_cases.py`
-  （15 张快照）
+  （16 张快照）
 - 快照：`docs/cases/grob-*/`，`pixi run cases:grob` 重生成
 - 下游：IR（`docs/notes/ir.md` 的 18 种节点）与 M0-8 的 Device
 
-## 1. 名单：一层 grob，一层 IR 节点
+## 1. 名单与计数：三个数，一个口径
+
+先给三个**互不替代**的数（`SIL-634` 把之前漂着的「15 / 14 种」钉死在这里）：
+
+| 数 | 是什么 | 名单 |
+| --- | --- | --- |
+| **18** | grob **构造器** | 13 种可绘制原语 + `clipPath` + `nullGrob` + `zeroGrob` + `gTree` + `gtable` 的 grob 视图 |
+| **18** | **IR 节点种类** | 3 个容器（`viewport` / `gtree` / `clip`）+ 15 个叶子 kind（13 种原语 + `null` + `zero`） |
+| **14** | `Scene.to_ir_scene()` **实际产出** | 13 种可绘制原语 + `viewport` |
+
+三个数的共同部分是 **13 种可绘制原语**（表格里 IR 列为真实 kind 的那些行）。
+**`null` / `zero` / `gtree` / `clip` 不会从 grob 路径进 IR，是有意为之**：
+
+- `nullGrob` / `zeroGrob` 的区别只在**布局**（≤ 0 尺寸、参与 `unit_max`），而布局
+  在写 IR 之前就消费完了——IR 是给设备画图用的，没有布局阶段；
+- `gTree` / `clipPath` 是**遍历期的容器**，摊平后各自的语义已经落到子节点上
+  （顺序与 `Instructions` 一致、裁剪折成 `clip` 矩形），再写一个空容器只会让
+  设备多走一层；
+- IR 仍保留这四种 kind（`NODE_SPECS` 里有），因为 IR 是独立格式：别的写方
+  （例如以后直接把 gtable 的布局结果写成 `gtree`）可能需要它们。
 
 | grob 构造器 | 类 | IR `NodeKind` | 说明 |
 | --- | --- | --- | --- |
@@ -34,9 +54,7 @@
 | `g_tree` | `GTreeGrob` | —（容器） | 子节点 + `childrenvp` + gp |
 | `g_table_grob` | `GTableGrob` | —（容器） | gtable 当 grob 画，建单元格视口 |
 
-IR 侧一共 18 种节点（3 个容器 + 14 个叶子原语 + `zero`），见 `docs/notes/ir.md`
-§4。`clipPath` / `gTree` / gtable 是**遍历期的容器**，不进 IR；`nullGrob` 与
-`zeroGrob` 在 IR 里各有节点但遍历不产出（布局信息在写 IR 前就消费掉了）。
+节点表本身见 `docs/notes/ir.md` §4。
 
 ## 2. `UNSET` / `None` / `NA`：三个都不能混
 
@@ -87,6 +105,16 @@ assert cleared.resolved.col == "black"  # 清空 → 缺省色
 3. **退出时先 pop 回 gTree 层、再恢复 gpar**（`temporary_gpar()` 的顺序），
    否则会出现“当前视口与 gpar 短暂不一致”的状态。遍历结束视口树与 gpar 都回到
    进来时的样子（`::test_traversal_leaves_the_viewport_tree_untouched`）。
+4. **`widthDetails()` / `heightDetails()` 用同一条链**（SIL-634）：量的不是图纸，
+   而是“这份 gp 下会画多大”。`width_details(grob, node)` 从 `node.gpar` 起叠
+   本 grob 与外层 `gTree` / `clipPath` 的 `gp`，再把 `lines` / `char` /
+   `strwidth` / `npc` 这些要上下文的单位折成绝对 pt；所以
+   `gTree(gp = gpar(fontsize = 20))` 里的 `rect_grob(width = unit(2, "lines"))`
+   量出 48pt（1.693 cm），不是视口 ps=12 的 28.8pt（1.016 cm）。
+   `text_grob` 的子节点同理：宽度按**合并后**的 `fontsize * cex` 问度量提供者，
+   高度是合并后的 `fontsize * cex * lineheight`。
+   （`width_details` / `height_details` 的返回值已经没有上下文依赖，
+   下游用任何 `UnitContext` 求值都是同一个数。）
 
 `cex` / `alpha` / `lex` 与父值**相乘**（R `set.gpar()`），所以视口 `cex = 2` 加
 gTree `cex = 0.5` 得 1.0，不是 0.5。
@@ -158,9 +186,9 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 | 字段 | 口径 |
 | --- | --- |
 | `kind` | IR 节点种类 |
-| `bufs` | 局部坐标（本视口 pt、**y 向下**、原点视口左上）的 float64 缓冲 |
-| `transform` | 局部坐标 → **页面坐标**（pt、y 向下、原点页面左上）的 2×3 仿射，父视口链已乘完 |
-| `clip` | 页面绝对坐标的裁剪矩形 |
+| `bufs` | 局部坐标（本视口 pt、**y 向下**、原点视口左上）的 **float64** 缓冲 |
+| `transform` | 局部坐标 → **页面坐标**（pt、y 向下、原点页面左上）的 2×3 仿射，父视口链已乘完（**含视口旋转**） |
+| `clip` | 页面绝对坐标的裁剪矩形，**必填** |
 | `gpar` | 折好的 IR gpar（RGBA / pt 段长 / alpha） |
 | `resolved` | 解析后的 gpar 原值（`NA` vs `None` 在这里还分得清） |
 | `params` / `texts` | IR 的参数与文本 |
@@ -170,25 +198,67 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 被压成页面坐标就会被绑死成多边形或多边形近似。一个仿射既保留原语语义，又让设备
 不需要走视口树——正好是 IR `viewport.transform` 的扁平版。
 
+### 7.1 `text` 的 `angle` 是**局部**旋转（SIL-634 的阻塞）
+
+`params["angle"]` 只放 grob 的 `rot`，**不含视口旋转**：视口旋转已经在
+`transform` 的线性部分里。设备按「先 `transform`，再绕锚点转 `angle`」合成：
+
+```
+页面方向 = transform 的旋转 ∘ rot
+```
+
+- 视口 `angle = 20` + `rot = 0` → 画成 **20°**；
+- 无旋转视口 + `rot = 40` → 画成 **40°**；
+- 视口 `angle = 20` + `rot = 20` → 画成 **40°**（两段各算一次）。
+
+修之前 `angle` 是 `viewport.rotation + grob.rot`，视口旋转被算了两次：上面第一行
+画成了 40°（与第二行像素一致），`docs/cases/grob-text` 的基线也跟着错。
+现在由 `::test_text_angle_is_the_local_rotation_only`（断言 `params["angle"] == rot`
+与 `transform` 的旋转）与两张快照 `grob-text` / `grob-text-rot` 一起钉住——
+`::test_viewport_rotation_and_rot_are_not_applied_twice` 还直接比像素：
+「视口 20° + `rot = 0`」与「无旋转视口 + `rot = 20`」必须是同一张图。
+
+### 7.2 设备输入是 IR，不是 `Scene`（float64 的那一份）
+
+`Instruction.bufs` 是 float64，IR 的缓冲是 float32；`Scene` 到 `to_ir_scene()`
+时**一次性**舍入（`:meth:`Instruction.to_node`，round-trip 逐位相同）。为了让
+「设备会不会多背一份 float64 几何」有明确答案，这里定死：
+
+> **设备只吃 `ir.Scene`。** `ggcore.grobs.Scene` 是遍历期的中间形态，不进设备
+> 接口；要出图就 `scene(...).to_ir_scene()`，别一边拿着 `Scene` 一边再建一份 IR。
+
+临时 skia 设备（`tools/cases/grob_cases.py`）就是照这条实现的，所以 grob 快照
+现在连「写 IR」这一步一起兜住；M0-8 的 raster 设备直接接手同一份 `ir.Scene`。
+
+### 7.3 `clip` 没有“空值”：零面积就是裁掉一切
+
+`Instruction.clip` 是**必填**字段（没有 `(0, 0, 0, 0)` 这种占位默认值）。设备只按
+它裁，**不要**把零面积理解成 `inherit` / “不裁剪”：那两种语义在遍历期就已经
+消解成具体矩形了（§6），到指令这一层只剩数值。写 IR 时它也是
+`viewport.clip_rect`（`clip=true` 必填，见 `docs/notes/ir.md` §4）——同样不存在
+“猜一个单位框”的默认。
+
 于是 `Scene.to_ir_scene()` 只是一次重排：根视口（`identity` + 页面裁剪框）下按
 **连续的 (transform, clip) 相同**合并出 `viewport` 节点，每个节点带自己的
 `clip_rect`（页面坐标，`docs/notes/ir.md` §4）。`::test_scene_converts_to_an_ir_scene_that_round_trips`
-把 14 种原语一次性编码 / 解码，顺带证明它们都在 IR 的节点表里。
+把 13 种可绘制原语一次性编码 / 解码，加上 `viewport` 共 14 种 kind，
+顺带证明它们都在 IR 的节点表里。
 
 ## 8. 布局：`widthDetails` / `heightDetails`
 
-`width_details(grob, node)` / `height_details(grob, node)` 是 R 的同名泛型：
+`width_details(grob, node)` / `height_details(grob, node)` 是 R 的同名泛型。单位按
+**继承后的 gp**（§3 第 4 条）折算，返回值已经没有上下文依赖：
 
 | grob | 宽 / 高 |
 | --- | --- |
-| `rect` / `raster` | 自己的 `width` / `height` 单位 |
+| `rect` / `raster` | 自己的 `width` / `height` 单位（按继承后的 gp 折成 pt） |
 | `circle` | `2 * r` |
-| `points` | `size` |
-| `text` | 度量给的宽度（英寸）/ `fontsize * cex * lineheight` |
+| `points` | `size`（缺省 `unit(1, "char")`，随 gp 字号变化） |
+| `text` | 度量给的宽度（英寸，字号取继承后的 `fontsize * cex`）/ `fontsize * cex * lineheight` |
 | 路径型 / 曲线型 | 控制点外包框 |
 | `null` / `zero` | `unit(0, "cm")` |
-| `gTree` / `clipPath` | 子节点的 `unit_max` |
-| gtable grob | 表的总宽 / 总高 |
+| `gTree` / `clipPath` | 子节点的 `unit_max`（自己的 gp 先叠上再往下传） |
+| gtable grob | 表的总宽 / 总高（按继承后的 gp 折算） |
 
 **`zeroGrob` 参与布局但不产出指令**：它的宽高都是 0，放回 gtable 里不占空间，
 但它是合法子节点、能进 `gTree` 的 `unit_max`。`::test_zero_and_null_grobs_have_zero_size_and_no_instructions`
@@ -196,6 +266,11 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 
 `points.size` 的缺省单位照 R 是 `unit(1, "char")`（与字号联动），要绝对尺寸就显式给
 `size_units="bigpts"`。
+
+**gp 继承的回归**：`::test_width_details_follows_the_inherited_gp`（48pt / 115.2pt）、
+`::test_text_extent_follows_the_inherited_gp`（子节点 `gp.fontsize = 20` 送达度量
+提供者）、`::test_points_extent_in_char_units_follows_the_inherited_gp`
+（`char` 从 12pt 变 20pt）。
 
 ## 9. gtable 的 `vp` 决策点：`g_table_grob`
 
@@ -214,18 +289,20 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
   `外层格::子表名::子表格` 在 gg4py 里是 `外层格::子表格`（少一层）——量尺寸不依赖
   这一层，只是路径名少一段。
 
-## 10. 快照：15 张，和一台临时设备
+## 10. 快照：16 张，和一台临时设备
 
 `docs/cases/grob-<name>/case.json` + `baseline/<case>.png`，`pixi run cases:grob`
-重生成、`--check` 只比对。链路与正式渲染**一致到 `Scene` 为止**：
+重生成、`--check` 只比对。链路与正式渲染**一致到 IR 为止**：
 
 ```
-case.json → grob 树 → scene()（场景遍历）→ Scene → 临时 skia 设备 → PNG
+case.json → grob 树 → scene()（场景遍历）→ Scene（float64）→ to_ir_scene()（float32）
+          → 临时 skia 设备（只吃 ir.Scene）→ PNG
 ```
 
-也就是说快照验证的是遍历结果（坐标、gpar、裁剪、顺序），不是另一套几何计算。
-临时设备在 `tools/cases/grob_cases.py` 的 `SkiaDevice` 里，M0-8 的 raster 设备
-落地后接班。它刻意只实现 IR 已经钉死的那层，剩下的按下面近似：
+也就是说快照验证的是遍历结果**加写 IR 这一步**（坐标、gpar、裁剪、顺序、节点分组），
+不是另一套几何计算。临时设备在 `tools/cases/grob_cases.py` 的 `SkiaDevice` 里，
+M0-8 的 raster 设备落地后接班，输入同一份 `ir.Scene`（§7.2）。它刻意只实现 IR
+已经钉死的那层，剩下的按下面近似：
 
 | 原语 | 临时设备的做法 | 什么时候换真实现 |
 | --- | --- | --- |
@@ -233,17 +310,18 @@ case.json → grob 树 → scene()（场景遍历）→ Scene → 临时 skia �
 | `bezier` | 每 4 个控制点 `cubicTo` 一段（IR 的语义） | M0-8 |
 | `curve` | 两端点 + 直角拐点的二次曲线（`square=True`） | M0-8 |
 | `points.pch` | 0/1/2/3/4/5/15..20/21..25 一个子集；15..20 用 `col` 实心、21..25 用 `fill` | M0-8 补全表 |
-| `text` | 一律 Noto Sans CJK SC 单一字面；`anchor` / `baseline` / `angle` 按 IR 参数落字 | M0-7 字体目录 + M0-8 |
+| `text` | 一律 Noto Sans CJK SC 单一字面；`anchor` / `baseline` 按 IR 参数落字，`angle` 只叠**局部**旋转（§7.1） | M0-7 字体目录 + M0-8 |
 
 **解码 PNG 的坑**（写快照工具时踩到的，留个记号）：`skia.Image.MakeFromEncoded`
 是懒解码，它引用的是那份 `bytes`；字节对象先死掉再 `toarray()` 会安静地读出一片
 0。所以 `decode()` 必须让 bytes 与 image 在拷贝时都活着（见 `grob_cases.decode`）。
 
-案例清单（一种原语一张）：`rect` / `circle` / `lines` / `segments` / `polyline` /
-`polygon` / `path` / `points` / `text` / `raster` / `xspline` / `bezier` / `curve` /
-`clip` / `null`。最后一张同时演示 `nullGrob`、`zeroGrob`、gtable 单元格与
-`gTree + childrenvp`（`fontsize = 20` 下的 48pt 子视口）。`tests/test_grob_cases.py`
-的 `EXPECTED_KINDS` 把名单钉死：加原语必须加案例。
+案例清单（16 张）：13 种可绘制原语各一张——`rect` / `circle` / `lines` /
+`segments` / `polyline` / `polygon` / `path` / `points` / `text` / `raster` /
+`xspline` / `bezier` / `curve`——加 `clip`（`clipPath`）、`null`
+（`nullGrob` + `zeroGrob` + gtable + `gTree + childrenvp`），以及 `text-rot`
+（文本旋转合成，§7.1 的 A / A' / B）。`tests/test_grob_cases.py` 的
+`EXPECTED_KINDS` 把名单钉死：加原语必须加案例。
 
 ## 11. 刻意不复制 / 不支持
 
@@ -254,7 +332,7 @@ case.json → grob 树 → scene()（场景遍历）→ Scene → 临时 skia �
 | 向量 gp 逐顶点上色 | `polylineGrob` 支持 | 路径型原语只收标量 gp（§4） |
 | `pch` 的完整符号表 / `fontface` 字符串 | `validGP()` 折 `fontface`，设备解 `pch` | `font` 整数 → `<family>:<bold\|italic>` key（M0-7 换真 key）；`pch` 由设备解 |
 | `check.overlap` / `text` 的断行 | `grid.text` 支持 | 未实现 |
-| `grobWidth` / `grobHeight` 的完整泛型 | 全部 grob 类 | 只实现本模块的 17 种（§8） |
+| `grobWidth` / `grobHeight` 的完整泛型 | 全部 grob 类 | 只实现本模块的 18 个构造器（§8） |
 | 全部 657 个 R 颜色名 | `colors()` | 常用子集 + hex + 灰阶（§5），其余报错 |
 | `grey<k>` 的精确舍入 | `colors()` 表 | `round(255k/100)`，个别 k 差 1 灰阶（§5） |
 
@@ -263,7 +341,9 @@ case.json → grob 树 → scene()（场景遍历）→ Scene → 临时 skia �
 - **M0-7 度量**：`text` 的宽度只能来自度量提供者（`ViewportTree(metrics=...)`，
   `ggcore.units.Metrics` 协议，返回英寸）；没有就报错不猜。`font` key 现在是
   `fontfamily` + `font` 折出来的，M0-7 的字体目录接管后换成真实 key。
-- **M0-8 设备**：只认 `Scene`：逐条 `Instruction` 拼 `transform`、按 `clip` 在页面
-  空间裁剪、按 `gpar` 上色。`pch` 表、曲线求值、文本 shaping 都在设备侧。
+- **M0-8 设备**：只认 `ir.Scene`（`scene(...).to_ir_scene()` 的产物，§7.2）：
+  逐层合成 `viewport.transform`、按 `viewport.clip_rect` 在**页面空间**裁剪、
+  按 `gpar` 上色；`text.angle` 只叠局部旋转（§7.1）。`pch` 表、曲线求值、
+  文本 shaping 都在设备侧。
 - **M1 语法层**：ggplot2 的 `geom_*` 落到这里就是 `points_grob` / `path_grob` /
   `text_grob` + `g_table_grob`；面板/轴/图例的组版走 gtable（§9）。

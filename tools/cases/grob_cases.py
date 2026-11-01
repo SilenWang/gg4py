@@ -4,14 +4,16 @@
     pixi run cases:grob            # 重新生成 baseline/<case id>.png
     pixi run cases:grob --check    # 只和仓库里的 baseline 比对，不写文件
 
-链路与正式渲染一致**到场景为止**：`case.json` → grob 树（`ggcore.grobs`）→
-`ggcore.grobs.scene()`（场景遍历）→ 扁平的 :class:`~ggcore.grobs.Scene` →
-本文件的临时 skia 设备。也就是说快照验证的是遍历结果（坐标、gpar、裁剪、
-绘制顺序），不是另一套几何计算。
+链路与正式渲染一致**到 IR 为止**：`case.json` → grob 树（`ggcore.grobs`）→
+`ggcore.grobs.scene()`（场景遍历）→ 扁平 `Scene` → `Scene.to_ir_scene()`（float32
+舍入）→ 本文件的临时 skia 设备。也就是说快照验证的是遍历结果**加写 IR 这一步**
+（坐标、gpar、裁剪、绘制顺序、节点分组），不是另一套几何计算。
 
 **这是一台临时设备**：M0-8 的 raster 设备落地后由它接班，本文件只保留到那时。
-它刻意只实现 IR 那一层已经钉死的东西（局部坐标 + 页面仿射 + 页面裁剪矩形 +
-解析后的 gpar），曲线 / 符号 / 文字的细节按下面「近似」一节的规则画。
+它**只吃 IR**（`ggcore.ir.Scene`）——设备契约就是 IR，`Scene` 的 float64 几何只是
+遍历的中间产物，不构成第二份设备输入（见 `docs/notes/grobs.md` §7）。它刻意只实现
+IR 那一层已经钉死的东西（局部坐标 + 页面仿射 + 页面裁剪矩形 + 解析后的 gpar），
+曲线 / 符号 / 文字的细节按下面「近似」一节的规则画。
 
 case.json 的四个部分：
 
@@ -94,7 +96,7 @@ from ggcore.grobs import (  # noqa: E402  （src 布局，先补 path 再导入�
     zero_grob,
 )
 from ggcore.gtable import gtable, gtable_add_grob  # noqa: E402
-from ggcore.ir import LineEnd, LineJoin  # noqa: E402
+from ggcore.ir import LineEnd, LineJoin, NodeKind  # noqa: E402
 from ggcore.units import unit  # noqa: E402
 from ggcore.viewport import (  # noqa: E402
     NA,
@@ -392,12 +394,17 @@ class SkiaMetrics:
 
 
 # ---------------------------------------------------------------------------
-# 临时 skia 设备：只认 Scene
+# 临时 skia 设备：只认 IR
 # ---------------------------------------------------------------------------
 
 
 class SkiaDevice:
-    """把扁平指令画到 skia 画布上（M0-8 raster 设备的临时替身）。"""
+    """把 **IR `Scene`** 画到 skia 画布上（M0-8 raster 设备的临时替身）。
+
+    输入是 `ggcore.grobs.Scene.to_ir_scene()` 的结果，不是遍历出来的 `Scene`
+    本身：设备契约是 IR（`docs/notes/grobs.md` §7），几何已经是 float32 之后
+    的样子，所以快照连「写 IR」这一步一起兜住，不存在第二份 float64 几何。
+    """
 
     def __init__(self, scene: Any, pixels_per_inch: float) -> None:
         self.scene = scene
@@ -405,8 +412,9 @@ class SkiaDevice:
         self.typeface = skia.Typeface.MakeFromFile(str(font_file()))
         if self.typeface is None:  # pragma: no cover - 字体损坏才会发生
             raise SystemExit(f"无法加载字体 {font_file()}")
-        width_px = round(scene.device.width_in * self.ppi)
-        height_px = round(scene.device.height_in * self.ppi)
+        width_pt, height_pt = scene.size
+        width_px = round(width_pt / 72.0 * self.ppi)
+        height_px = round(height_pt / 72.0 * self.ppi)
         self.surface = skia.Surface.MakeRasterN32Premul(width_px, height_px)
         self.canvas = self.surface.getCanvas()
         self.canvas.clear(skia.ColorWHITE)
@@ -447,8 +455,7 @@ class SkiaDevice:
     # -- 主循环 -------------------------------------------------------------
 
     def paint_instructions(self) -> None:
-        for instruction in self.scene.instructions:
-            self._draw(instruction)
+        self._paint_node(self.scene.root)
 
     def snapshot(self) -> bytes:
         image = self.surface.makeImageSnapshot()
@@ -457,60 +464,68 @@ class SkiaDevice:
             raise SystemExit("PNG encoding failed")
         return bytes(data.bytes())
 
-    def _draw(self, instruction: Any) -> None:
-        self.canvas.save()
-        x0, y0, x1, y1 = instruction.clip
-        self.canvas.clipRect(skia.Rect.MakeLTRB(x0, y0, x1, y1))
-        a, b, c, d, e, f = instruction.transform
-        # 行向量仿射（x' = ax + cy + e）→ skia 的行主序矩阵
-        self.canvas.concat(skia.Matrix.MakeAll(a, c, e, b, d, f, 0, 0, 1))
-        handler = getattr(self, f"_draw_{instruction.kind.value}", None)
+    def _paint_node(self, node: Any) -> None:
+        if node.kind is NodeKind.VIEWPORT:
+            # 视口：裁剪框是**页面坐标**，所以在 concat 之前裁。
+            self.canvas.save()
+            clip = node.bufs.get("clip_rect")
+            if clip is not None:
+                x0, y0, x1, y1 = (float(value) for value in clip[0])
+                self.canvas.clipRect(skia.Rect.MakeLTRB(x0, y0, x1, y1))
+            a, b, c, d, e, f = node.params["transform"]
+            # 行向量仿射（x' = ax + cy + e）→ skia 的行主序矩阵
+            self.canvas.concat(skia.Matrix.MakeAll(a, c, e, b, d, f, 0, 0, 1))
+            for child in node.children:
+                self._paint_node(child)
+            self.canvas.restore()
+            return
+        handler = getattr(self, f"_draw_{node.kind.value}", None)
         if handler is None:  # pragma: no cover - 新增原语忘了画
-            raise SystemExit(f"no painter for {instruction.kind}")
-        handler(instruction)
-        self.canvas.restore()
+            raise SystemExit(f"no painter for {node.kind}")
+        handler(node)
 
-    # -- 各原语 -------------------------------------------------------------
+    # -- 各原语：收的是 IR 节点（字段 `bufs` / `params` / `texts` / `gpar` 与
+    #    `Instruction` 一一对应） ---------------------------------------------
 
-    def _draw_rect(self, instruction: Any) -> None:
-        for x0, y0, x1, y1 in instruction.bufs["rect"]:
+    def _draw_rect(self, node: Any) -> None:
+        for x0, y0, x1, y1 in node.bufs["rect"]:
             rect = skia.Rect.MakeLTRB(float(x0), float(y0), float(x1), float(y1))
-            fill = self._paint(instruction.gpar, stroke=False)
+            fill = self._paint(node.gpar, stroke=False)
             if fill is not None:
                 self.canvas.drawRect(rect, fill)
-            stroke = self._paint(instruction.gpar, stroke=True)
+            stroke = self._paint(node.gpar, stroke=True)
             if stroke is not None:
                 self.canvas.drawRect(rect, stroke)
 
-    def _draw_circle(self, instruction: Any) -> None:
-        for cx, cy, radius in instruction.bufs["circle"]:
-            fill = self._paint(instruction.gpar, stroke=False)
+    def _draw_circle(self, node: Any) -> None:
+        for cx, cy, radius in node.bufs["circle"]:
+            fill = self._paint(node.gpar, stroke=False)
             if fill is not None:
                 self.canvas.drawCircle(float(cx), float(cy), float(radius), fill)
-            stroke = self._paint(instruction.gpar, stroke=True)
+            stroke = self._paint(node.gpar, stroke=True)
             if stroke is not None:
                 self.canvas.drawCircle(float(cx), float(cy), float(radius), stroke)
 
-    def _draw_lines(self, instruction: Any) -> None:
-        points = instruction.bufs["points"]
+    def _draw_lines(self, node: Any) -> None:
+        points = node.bufs["points"]
         path = skia.Path()
         path.moveTo(float(points[0, 0]), float(points[0, 1]))
         for x, y in points[1:]:
             path.lineTo(float(x), float(y))
-        stroke = self._paint(instruction.gpar, stroke=True)
+        stroke = self._paint(node.gpar, stroke=True)
         if stroke is not None:
             self.canvas.drawPath(path, stroke)
 
-    def _draw_segments(self, instruction: Any) -> None:
-        stroke = self._paint(instruction.gpar, stroke=True)
+    def _draw_segments(self, node: Any) -> None:
+        stroke = self._paint(node.gpar, stroke=True)
         if stroke is None:
             return
-        for x0, y0, x1, y1 in instruction.bufs["segments"]:
+        for x0, y0, x1, y1 in node.bufs["segments"]:
             self.canvas.drawLine(float(x0), float(y0), float(x1), float(y1), stroke)
 
-    def _grouped_path(self, instruction: Any, *, closed: bool) -> skia.Path:
-        points = instruction.bufs["points"]
-        ids = instruction.bufs.get("id")
+    def _grouped_path(self, node: Any, *, closed: bool) -> skia.Path:
+        points = node.bufs["points"]
+        ids = node.bufs.get("id")
         path = skia.Path()
         if ids is None:
             codes = np.zeros(len(points), dtype=np.int64)
@@ -527,38 +542,38 @@ class SkiaDevice:
             path.close()
         return path
 
-    def _stroke_and_fill(self, instruction: Any, path: skia.Path) -> None:
-        fill = self._paint(instruction.gpar, stroke=False)
+    def _stroke_and_fill(self, node: Any, path: skia.Path) -> None:
+        fill = self._paint(node.gpar, stroke=False)
         if fill is not None:
             self.canvas.drawPath(path, fill)
-        stroke = self._paint(instruction.gpar, stroke=True)
+        stroke = self._paint(node.gpar, stroke=True)
         if stroke is not None:
             self.canvas.drawPath(path, stroke)
 
-    def _draw_polyline(self, instruction: Any) -> None:
-        self._stroke_and_fill(instruction, self._grouped_path(instruction, closed=False))
+    def _draw_polyline(self, node: Any) -> None:
+        self._stroke_and_fill(node, self._grouped_path(node, closed=False))
 
-    def _draw_polygon(self, instruction: Any) -> None:
-        self._stroke_and_fill(instruction, self._grouped_path(instruction, closed=True))
+    def _draw_polygon(self, node: Any) -> None:
+        self._stroke_and_fill(node, self._grouped_path(node, closed=True))
 
-    def _draw_path(self, instruction: Any) -> None:
-        path = self._grouped_path(instruction, closed=True)
+    def _draw_path(self, node: Any) -> None:
+        path = self._grouped_path(node, closed=True)
         path.setFillType(
             skia.PathFillType.kEvenOdd
-            if instruction.params["rule"] == "evenodd"
+            if node.params["rule"] == "evenodd"
             else skia.PathFillType.kWinding
         )
-        self._stroke_and_fill(instruction, path)
+        self._stroke_and_fill(node, path)
 
-    def _draw_points(self, instruction: Any) -> None:
-        pch = int(instruction.params["pch"])
-        size = float(instruction.params["size"])
+    def _draw_points(self, node: Any) -> None:
+        pch = int(node.params["pch"])
+        size = float(node.params["size"])
         radius = max(size / 2.0, 0.1)
-        stroke = self._paint(instruction.gpar, stroke=True)
-        fill = self._paint(instruction.gpar, stroke=False)
+        stroke = self._paint(node.gpar, stroke=True)
+        fill = self._paint(node.gpar, stroke=False)
         if stroke is None and fill is None:
             return
-        for cx, cy in instruction.bufs["points"]:
+        for cx, cy in node.bufs["points"]:
             self._symbol(pch, float(cx), float(cy), radius, stroke, fill)
 
     def _symbol(
@@ -613,15 +628,15 @@ class SkiaDevice:
             if stroke is not None and not filled_with_col:
                 self.canvas.drawPath(path, stroke)
 
-    def _draw_text(self, instruction: Any) -> None:
+    def _draw_text(self, node: Any) -> None:
         # IR 的 text 用 `col` 着色（与 grid 一致），不是 `fill`。
-        paint = self._paint(instruction.gpar, stroke=False, use_col=True)
+        paint = self._paint(node.gpar, stroke=False, use_col=True)
         if paint is None:
             return
-        font = self._font(float(instruction.params["size"]))
-        anchor = instruction.params["anchor"]
-        baseline = instruction.params["baseline"]
-        angle = float(instruction.params["angle"])
+        font = self._font(float(node.params["size"]))
+        anchor = node.params["anchor"]
+        baseline = node.params["baseline"]
+        angle = float(node.params["angle"])
         metrics = font.getMetrics()
         ascent = float(-metrics.fAscent)
         descent = float(metrics.fDescent)
@@ -631,29 +646,31 @@ class SkiaDevice:
             "middle": (ascent - descent) / 2.0,
             "bottom": -descent,
         }[baseline]
-        positions = instruction.bufs["pos"]
-        widths = instruction.bufs["width"]
-        for index, label in enumerate(instruction.texts):
+        positions = node.bufs["pos"]
+        widths = node.bufs["width"]
+        for index, label in enumerate(node.texts):
             x, y = float(positions[index, 0]), float(positions[index, 1])
             width = float(widths[index])
             dx = {"left": 0.0, "center": -width / 2.0, "right": -width}[anchor]
             self.canvas.save()
             self.canvas.translate(x, y)
             if angle:
-                # 页面坐标 y 向下，IR 的角度按逆时针记：skia 的正角是顺时针。
+                # 局部旋转：视口旋转已经在 `transform` 里（`concat` 过了），
+                # 这里只叠 `text.angle`（即 grob 的 `rot`）。页面坐标 y 向下，
+                # IR 的角度按逆时针记：skia 的正角是顺时针。
                 self.canvas.rotate(-angle, 0.0, 0.0)
             self.canvas.drawString(label, dx, shift, font, paint)
             self.canvas.restore()
 
-    def _draw_raster(self, instruction: Any) -> None:
-        blob = self.scene.blobs[instruction.params["blob"]]
+    def _draw_raster(self, node: Any) -> None:
+        blob = self.scene.blobs[node.params["blob"]]
         image = skia.Image.MakeFromEncoded(blob.data)
         if image is None:  # pragma: no cover - 坏位图才会发生
             raise SystemExit("cannot decode raster blob")
-        x0, y0, x1, y1 = (float(value) for value in instruction.bufs["rect"][0])
+        x0, y0, x1, y1 = (float(value) for value in node.bufs["rect"][0])
         sampling = (
             skia.SamplingOptions(skia.FilterMode.kLinear)
-            if instruction.params["interpolate"]
+            if node.params["interpolate"]
             else skia.SamplingOptions(skia.FilterMode.kNearest)
         )
         self.canvas.drawImageRect(
@@ -663,12 +680,12 @@ class SkiaDevice:
             skia.Paint(AntiAlias=True),
         )
 
-    def _draw_xspline(self, instruction: Any) -> None:
-        points = instruction.bufs["points"]
-        ids = instruction.bufs.get("id")
+    def _draw_xspline(self, node: Any) -> None:
+        points = node.bufs["points"]
+        ids = node.bufs.get("id")
         path = skia.Path()
-        shape = float(instruction.params["shape"])
-        open_curve = bool(instruction.params["open"])
+        shape = float(node.params["shape"])
+        open_curve = bool(node.params["open"])
         codes = np.zeros(len(points), dtype=np.int64) if ids is None else np.asarray(ids)
         groups: dict[int, list[tuple[float, float]]] = {}
         order: list[int] = []
@@ -686,7 +703,7 @@ class SkiaDevice:
                 path.moveTo(*group[0])
                 for point in group[1:]:
                     path.lineTo(*point)
-        self._stroke_and_fill(instruction, path)
+        self._stroke_and_fill(node, path)
 
     @staticmethod
     def _catmull_rom(path: skia.Path, points: list[tuple[float, float]], *, closed: bool) -> None:
@@ -718,8 +735,8 @@ class SkiaDevice:
         if closed:
             path.close()
 
-    def _draw_bezier(self, instruction: Any) -> None:
-        control = instruction.bufs["control"]
+    def _draw_bezier(self, node: Any) -> None:
+        control = node.bufs["control"]
         path = skia.Path()
         path.moveTo(float(control[0, 0]), float(control[0, 1]))
         for index in range(0, len(control), 4):
@@ -732,12 +749,12 @@ class SkiaDevice:
                 float(segment[3, 0]),
                 float(segment[3, 1]),
             )
-        self._stroke_and_fill(instruction, path)
+        self._stroke_and_fill(node, path)
 
-    def _draw_curve(self, instruction: Any) -> None:
-        ends = instruction.bufs["ends"]
-        square = bool(instruction.params["square"])
-        stroke = self._paint(instruction.gpar, stroke=True)
+    def _draw_curve(self, node: Any) -> None:
+        ends = node.bufs["ends"]
+        square = bool(node.params["square"])
+        stroke = self._paint(node.gpar, stroke=True)
         if stroke is None:
             return
         for x1, y1, x2, y2 in ends:
@@ -785,13 +802,15 @@ def build(case: dict[str, Any]) -> tuple[Any, float]:
 
 
 def render(case: dict[str, Any]) -> bytes:
+    """case.json → grob 树 → 场景遍历 → **IR** → 临时设备 → PNG。"""
     resolved, ppi = build(case)
-    painter = SkiaDevice(resolved, ppi)
+    ir_scene = resolved.to_ir_scene()
+    painter = SkiaDevice(ir_scene, ppi)
     painter.paint_instructions()
     if case.get("title"):
         painter.label(case["title"], 12.0, 20.0, 10.0, "#222222")
     if case.get("caption"):
-        painter.label(case["caption"], 12.0, resolved.size_pt[1] - 10.0, 7.0, "#555555")
+        painter.label(case["caption"], 12.0, ir_scene.size[1] - 10.0, 7.0, "#555555")
     return painter.snapshot()
 
 

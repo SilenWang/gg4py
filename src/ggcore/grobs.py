@@ -1,9 +1,14 @@
 """grob 模型与场景遍历（SIL-594 / M0-6）。
 
-`ggcore.grobs` 是 R `grid` grob 系统的对等物：15 种原语（`rect` / `circle` /
-`lines` / `segments` / `polyline` / `polygon` / `path` / `points` / `text` /
-`raster` / `xspline` / `bezier` / `curve` / `clipPath` / `null`）+ `gTree` +
-`zeroGrob`，以及把 grob 树**摊平成绘制指令**的场景遍历。
+`ggcore.grobs` 是 R `grid` grob 系统的 Python 对等物。计数只有一个口径
+（`docs/notes/grobs.md` §1）：
+
+- **grob 构造器 18 个** = 13 种可绘制原语（`rect` / `circle` / `lines` /
+  `segments` / `polyline` / `polygon` / `path` / `points` / `text` / `raster` /
+  `xspline` / `bezier` / `curve`）+ `clipPath` + `nullGrob` + `zeroGrob` +
+  `gTree` + `gtable` 的 grob 视图；
+- **IR 节点 18 种**（3 个容器 + 15 个叶子 kind，含 `null` / `zero`）；
+- **`Scene.to_ir_scene()` 实际产出 14 种 kind**：13 种可绘制原语 + `viewport`。
 
 三层结构，与 grid 一一对应：
 
@@ -12,7 +17,10 @@
 2. **场景遍历**（:func:`scene`）：在 :class:`~ggcore.viewport.ViewportTree` 里
    深度优先走一遍，逐指令产出 :class:`Instruction`。到这一步，单位已换算、
    gpar 已解析、视口变换已累积成**一个**仿射、`clip` 已消解成页面坐标的矩形。
-3. **设备**（M0-8）：只认 :class:`Scene`，不再做继承、查表或视口导航。
+3. **IR**（:meth:`Scene.to_ir_scene`）：扁平指令重排成 `viewport` + 叶子的
+   `ir.Scene`，float32 的舍入就在这里一次做完。
+4. **设备**（M0-8）：只认 `ir.Scene`（不是本模块的 :class:`Scene`），不再做继承、
+   查表或视口导航。
 
 坐标口径（与 IR 一致，见 `docs/notes/ir.md`）：
 
@@ -1466,19 +1474,25 @@ class Instruction:
     - `bufs` 是局部坐标（本视口 pt、y 向下）的 float64 缓冲，行数与 `resolved` 的
       元素数一致；
     - `transform` 把它映射到页面坐标（pt、y 向下）；
-    - `clip` 是页面绝对坐标的裁剪矩形（已把视口 clip 与 grob 级裁剪合起来）；
+    - `clip` 是页面绝对坐标的裁剪矩形（已把视口 clip 与 grob 级裁剪合起来）。
+      **必填**：没有“空 / 未设置”这一态，零面积就是真的裁掉一切，设备不需要
+      猜“这是 inherit 还是不裁”（SIL-634 收口掉的 `(0, 0, 0, 0)` 占位）；
     - `resolved` 保留解析后的 gpar（`NA` 与 `None` 的区别在这里还看得见），
       `gpar` 是折好的 IR gpar。
+
+    `bufs` 是 float64（遍历期的几何精度），写 IR 时才一次性舍入到 float32
+    （:meth:`to_node`）。设备只吃 `ir.Scene`，所以不存在第二份 float64 几何——
+    见 `docs/notes/grobs.md` §7。
     """
 
     kind: NodeKind
     gpar: ir.Gpar
     resolved: ResolvedGpar
+    clip: tuple[float, float, float, float]
     params: Mapping[str, Any] = field(default_factory=dict)
     bufs: Mapping[str, np.ndarray] = field(default_factory=dict)
     texts: tuple[str, ...] = ()
     transform: tuple[float, float, float, float, float, float] = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-    clip: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
     vp: str = ""
     source: str = ""
 
@@ -1504,7 +1518,11 @@ class Instruction:
 
 @dataclass(frozen=True, slots=True)
 class Scene:
-    """场景：设备 + 扁平指令序列 + blob 表（M0-8 的唯一输入）。"""
+    """遍历结果：设备 + 扁平指令序列 + blob 表。
+
+    **不是设备输入**：设备吃的是 :meth:`to_ir_scene` 产出的 `ir.Scene`。这里是
+    遍历期的 float64 中间形态，写 IR 时一次舍入到 float32（`docs/notes/grobs.md` §7）。
+    """
 
     device: Device
     instructions: tuple[Instruction, ...] = ()
@@ -1894,7 +1912,9 @@ class _Traverser:
         # pos 是锚点：把任意 (hjust, vjust) 折进 pos，枚举只表达“锚点指哪一边”。
         pos[:, 0] += (_ANCHOR_FRACTIONS[anchor_index] - hjust) * widths
         pos[:, 1] += (_BASELINE_FRACTIONS[baseline_index] - (1.0 - vjust)) * height
-        angle = float(self.tree.current.rotation) + grob.rot
+        # 文字角度只放**局部**旋转：视口旋转已经在 `transform` 里（SIL-634）。
+        # 视口 20° + `rot = 0` 画成 20°，不是 40°——见 `docs/notes/grobs.md` §7。
+        angle = float(grob.rot)
 
         def params(gp: ResolvedGpar, *, label_angle: float = angle) -> dict[str, Any]:
             return {
@@ -2029,46 +2049,59 @@ def scene(grob: GrobLike | Iterable[GrobLike], tree: ViewportTree) -> Scene:
 # ---------------------------------------------------------------------------
 
 
-def _extent_inches(grob: GrobLike, node: VpNode, axis: str) -> Unit:
-    """一种 grob 在 `node` 视口里的自然宽/高（`widthDetails` / `heightDetails`）。"""
+def _extent_unit(grob: GrobLike, node: VpNode, axis: str, gp: ResolvedGpar) -> Unit:
+    """一种 grob 在 `node` 视口里的自然宽/高（`widthDetails` / `heightDetails`）。
+
+    `gp` 是**进这个 grob 之前**已经生效的 gpar；本 grob 自己的 `gp` 在这里叠上去，
+    再往下传给子节点（R 的 `set.gpar()` 口径，与场景遍历同一条链）。所以
+    `lines` / `char` / `strwidth` 这类依赖字号的单位用的是**继承后**的 gp，不是
+    视口自己的——`gTree(gp = gpar(fontsize = 20))` 里的 `unit(2, "lines")` 是
+    48pt（SIL-634）。
+    """
     item = _as_grob(grob)
     if isinstance(item, (NullGrob, ZeroGrob)):
         return unit(0.0, "cm")
-    if isinstance(item, GTreeGrob):
-        sizes = [_extent_inches(child, node, axis) for child in item.children]
-        return unit_max(*sizes) if sizes else unit(0.0, "cm")
-    if isinstance(item, ClipPathGrob):
-        sizes = [_extent_inches(child, node, axis) for child in item.children]
+    inherited = gp.merge(item.gp)
+    frame = _Frame(node, inherited)
+    if isinstance(item, (GTreeGrob, ClipPathGrob)):
+        sizes = [_extent_unit(child, node, axis, inherited) for child in item.children]
         return unit_max(*sizes) if sizes else unit(0.0, "cm")
     if isinstance(item, GTableGrob):
-        return gtable_width(item.table) if axis == "x" else gtable_height(item.table)
+        table = gtable_width(item.table) if axis == "x" else gtable_height(item.table)
+        return _to_absolute_pt(table, frame, axis)
     if isinstance(item, RectGrob):
-        return item.width if axis == "x" else item.height
+        return _to_absolute_pt(item.width if axis == "x" else item.height, frame, axis)
     if isinstance(item, CircleGrob):
-        return item.r * 2.0
+        return _to_absolute_pt(item.r * 2.0, frame, axis)
     if isinstance(item, PointsGrob):
-        return item.size
+        return _to_absolute_pt(item.size, frame, axis)
     if isinstance(item, RasterGrob):
-        return item.width if axis == "x" else item.height
+        return _to_absolute_pt(item.width if axis == "x" else item.height, frame, axis)
     if isinstance(item, TextGrob):
-        if node.unit_context().metrics is None:
-            raise GrobError("text 的宽高需要度量（ViewportTree(metrics=...)）")
-        frame = _Frame(node)
-        labels = item.label
         ctx = frame.ctx
+        if ctx.metrics is None:
+            raise GrobError("text 的宽高需要度量（ViewportTree(metrics=...)）")
+        labels = item.label
         widths = [
-            ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex)  # type: ignore[union-attr]
-            for label in labels
+            ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex) for label in labels
         ]
         if axis == "x":
             return unit(max(widths) if widths else 0.0, "inches")
         return unit(ctx.fontsize * ctx.cex * ctx.lineheight, "bigpts")
 
-    frame = _Frame(node)
     xs, ys = _bbox_points(item, frame)
     if axis == "x":
         return unit(float(xs), "bigpts")
     return unit(float(ys), "bigpts")
+
+
+def _to_absolute_pt(value: Unit, frame: _Frame, axis: str) -> Unit:
+    """把依赖上下文的单位按 `frame` 的 gpar 立刻折成绝对 pt（bigpts）。
+
+    返回的仍然是单位对象（调用方照旧 `convert_width(...)`），只是已经没有
+    `lines` / `char` / `npc` 这类要上下文才能解的元素——gp 继承不会被下游覆盖。
+    """
+    return unit(np.asarray(frame.dim(value, axis), dtype=np.float64), "bigpts")
 
 
 def _bbox_points(grob: Grob, frame: _Frame) -> tuple[float, float]:
@@ -2095,14 +2128,19 @@ def _bbox_points(grob: Grob, frame: _Frame) -> tuple[float, float]:
 
 
 def width_details(grob: GrobLike, node: VpNode) -> Unit:
-    """`widthDetails()`：grob 的自然宽度（单位对象，用 `node` 的上下文求值）。
+    """`widthDetails()`：grob 的自然宽度（单位对象，绝对 pt）。
 
     `zeroGrob` / `nullGrob` 给 0——这就是「参与布局但不产出指令」的那一半：
     gtable / gTree 排版时量得到它，遍历时画不出任何东西。
+
+    单位在这一层就用**继承后的 gp**（视口 gpar + 外层 gTree 的 gp + 本 grob 的
+    gp）折成 bigpts，所以返回的单位已经没有上下文依赖；调用方照旧
+    `convert_width(width_details(grob, node), "cm", ctx=node.unit_context())` 即可，
+    不需要自己再叠 gpar。
     """
-    return _extent_inches(grob, node, "x")
+    return _extent_unit(grob, node, "x", node.gpar)
 
 
 def height_details(grob: GrobLike, node: VpNode) -> Unit:
     """`heightDetails()`，见 :func:`width_details`。"""
-    return _extent_inches(grob, node, "y")
+    return _extent_unit(grob, node, "y", node.gpar)
