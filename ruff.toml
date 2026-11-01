@@ -5,7 +5,8 @@ extend-exclude = [".pixi", "node_modules"]
 [lint]
 select = ["E", "F", "W", "I", "UP", "B", "RUF"]
 # The corpus is real-world text: fullwidth parens, minus signs and emoji are data.
-ignore = ["RUF001"]
+# Comments and docstrings are Simplified Chinese: fullwidth punctuation is correct there.
+ignore = ["RUF001", "RUF002", "RUF003"]
 
 [lint.per-file-ignores]
 # spike scripts deliberately mutate sys.path before importing local helpers
