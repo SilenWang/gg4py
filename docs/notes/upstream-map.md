@@ -47,7 +47,10 @@ Python 模块，反之亦然。
 | `ggcore.scale.continuous` | `R/scale-.R:106` | `continuous_scale()` | 未实现 |
 | `ggcore.coord`（`CartesianCoord`） | `R/coord-cartesian-.R:78` | `coord_cartesian()` | 已实现（M1-5：范围 / expand / clip / 越界计数，见 `docs/notes/coord.md`） |
 | `ggcore.coord`（`FixedCoord`） | `R/coord-fixed.R` | `coord_fixed()` | 已实现（M1-5：`aspect = ratio × yrange/xrange` + `panel_sizes()`） |
-| `ggcore.facet.base` | `R/facet-.R:66` | `Facet` | 未实现 |
+| `ggcore.facet.base` | `R/facet-.R:66` | `Facet` | 已实现（M1-6：布局 / 面板标度 / map_data，见 `docs/notes/facet.md`） |
+| `ggcore.facet`（`FacetNull`） | `R/facet-null.R` | `facet_null()` | 已实现（M1-6：1×1 面板，输出与 M1-5 逐字节相同） |
+| `ggcore.facet`（`FacetWrap`） | `R/facet-wrap.R` | `facet_wrap()` | 已实现（M1-6：ncol/nrow/dir/as.table/drop/labeller/scales） |
+| `ggcore.facet`（`FacetGrid`） | `R/facet-grid-.R` | `facet_grid()` | 已实现（M1-6：rows/cols/as.table/scales；margins / space=free 待补） |
 | `ggcore.guide` | `R/guides-.R:69` | `guides()` | 未实现 |
 | `ggcore.theme` | `R/theme.R` / `R/theme-elements.R` / `R/theme-defaults.R` | `theme()` / `element_*()` / `calc_element()` / 三套完整主题 | 已实现（M1-10：元素树 + 继承 + rel 解析，见 `docs/notes/theme.md`） |
 
