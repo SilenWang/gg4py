@@ -43,7 +43,7 @@ from __future__ import annotations
 import ast
 import warnings as _warnings
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
@@ -113,8 +113,10 @@ _EMPTY = ColumnTable()
 
 #: stat 自己补的缺省映射（上游 `Stat$default_aes`）：aesthetic → stat 输出列。
 #: `stat_count` 的 `x = after_stat(count)` 不在此列：图层的 x 已经映射过了。
+#: stat 的缺省美学映射（上游 `StatCount$default_aes` 同时给了 `x` 与 `y`：
+#: 竖向柱补 `y`，横向柱（`flipped_aes`）补 `x`；缺哪个补哪个，顺序不变）。
 _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
-    {"count": (("y", "count"),)}
+    {"count": (("x", "count"), ("y", "count"))}
 )
 
 #: `geom_*` 里需要在 finish 阶段派生坐标列的几何（上游 `setup_data()`）。
@@ -578,7 +580,12 @@ def _put(columns: list[tuple[str, Column]], name: str, column: Column) -> list[t
 # ---------------------------------------------------------------------------
 
 
-def compute_position(layer: Layer, mapped: ColumnTable, index: int = 0) -> ColumnTable:
+def compute_position(
+    layer: Layer,
+    mapped: ColumnTable,
+    index: int = 0,
+    raw: ColumnTable | None = None,
+) -> ColumnTable:
     """阶段 4：geom 派生的坐标列 + 位置调整。
 
     顺序照上游：`required_aes` 校验 → `Geom$setup_data()` → `Position$compute_layer()`。
@@ -597,7 +604,7 @@ def compute_position(layer: Layer, mapped: ColumnTable, index: int = 0) -> Colum
     if mapped.nrows == 0:
         return _EMPTY
     _check_required_aes(layer, mapped, index)
-    table = ColumnTable(_geom_setup(layer, mapped), nrows=mapped.nrows)
+    table = ColumnTable(_geom_setup(layer, mapped, raw), nrows=mapped.nrows)
     position = _resolve_position(layer.position)
     return position.compute_layer(table)
 
@@ -679,6 +686,7 @@ def _geom_aesthetics(geom: Any) -> tuple[str, ...]:
     for alternatives in required_aes_groups(geom.required_aes):
         names.extend(alternatives)
     names.extend(geom.default_aes)
+    names.extend(getattr(geom, "optional_aes", ()))
     names.append("group")
     return tuple(dict.fromkeys(names))
 
@@ -723,8 +731,22 @@ def _check_required_aes(layer: Layer, table: ColumnTable, index: int) -> None:
         )
 
 
-def _geom_setup(layer: Layer, table: ColumnTable) -> list[tuple[str, Column]]:
-    """上游 `Geom$setup_data()` 里对最终数据有影响的部分。"""
+def _geom_setup(
+    layer: Layer, table: ColumnTable, raw: ColumnTable | None = None
+) -> list[tuple[str, Column]]:
+    """上游 `Geom$setup_data()`：按 geom 名查 `ggcore.geom` 的实现（M1-7）。
+
+    `raw` 是位置标度映射**之前**的美学表：离散位置那时的 kind 还是 str /
+    categorical，geom 的 `setup_params()` 用它复现 R 的 `is_mapped_discrete()`
+    判断（横向 bar / boxplot 的 `flipped_aes`）。
+    """
+    geom_params = layer.geom.setup_params(table, layer.params, raw=raw)
+    data = layer.geom.setup_data(table, geom_params)
+    return list(_items(data))
+
+
+def _legacy_geom_setup(layer: Layer, table: ColumnTable) -> list[tuple[str, Column]]:
+    """M1-3 的旧实现（保留给对照测试；生产路径走 :func:`_geom_setup`）。"""
     columns = list(_items(table))
     name = layer.geom.name
     nrows = table.nrows
@@ -824,6 +846,10 @@ class LayerBuild:
     dropped_missing: Mapping[str, int]
     empty: bool
     notes: tuple[str, ...]
+    #: 图层的几何参数（`geom_point(size = 3)` 的 `size`）；绘制期读它（M1-7）。
+    params: Mapping[str, Any] = field(default_factory=dict)
+    #: 产生这一层的 `Geom` 对象（`handle_na()` / `draw()` 的入口）；可缺省。
+    geom_object: Any = None
 
     @property
     def stages(self) -> Mapping[str, ColumnTable]:
@@ -889,13 +915,16 @@ class PlotBuild:
         """`{PANEL: PanelParams}`（每面板一份）。"""
         return MappingProxyType({panel.panel: panel.panel_params for panel in self.panels})
 
-    def facet_table(self) -> Any:
-        """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。"""
+    def facet_table(self, metrics: Any = None) -> Any:
+        """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。
+
+        `metrics` 给出时 strip 尺寸走真实字体度量（M1-7 的场景装配）。
+        """
         from ggcore.facet import facet_table
 
         if self.layout is None or self.facet is None:
             raise BuildError("这张图没有分面布局；请先用 build_plot() 构建")
-        return facet_table(self.layout, self.facet, self.theme)
+        return facet_table(self.layout, self.facet, self.theme, metrics=metrics)
 
 
 @dataclass(frozen=True, slots=True)
@@ -908,11 +937,19 @@ class _Stages:
     positioned: ColumnTable
 
 
-def _compute_stages(aesthetics: Aesthetics, layer: Layer, index: int) -> _Stages:
-    """阶段 2–4：输入是已经过位置标度第一次编码的 `Aesthetics`。"""
+def _compute_stages(
+    aesthetics: Aesthetics,
+    layer: Layer,
+    index: int,
+    raw: ColumnTable | None = None,
+) -> _Stages:
+    """阶段 2–4：输入是已经过位置标度第一次编码的 `Aesthetics`。
+
+    `raw` 是映射前的美学表（同 :func:`compute_position` 的 `raw`）。
+    """
     statistic = compute_stat(layer, aesthetics)
     mapped = map_statistic(layer, statistic, aesthetics)
-    positioned = compute_position(layer, mapped, index)
+    positioned = compute_position(layer, mapped, index, raw)
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
 
 
@@ -934,6 +971,8 @@ def _assemble(stages: _Stages, scales: ScaleSet) -> LayerBuild:
         dropped_missing=stages.aesthetics.dropped,
         empty=stages.aesthetics.empty,
         notes=stages.aesthetics.notes,
+        params=stages.layer.params,
+        geom_object=stages.layer.geom,
     )
 
 
@@ -1031,6 +1070,7 @@ def _compute_panel_stages(
     layer: Layer,
     index: int,
     panels: np.ndarray,
+    raw: ColumnTable | None = None,
 ) -> _Stages:
     """阶段 2–4：identity stat / position 保持原行序，其余按 PANEL 分组。"""
     if aesthetics.empty:
@@ -1049,12 +1089,12 @@ def _compute_panel_stages(
         )
     mapped = map_statistic(layer, statistic, aesthetics)
     if layer.position.name == "identity":
-        positioned = compute_position(layer, mapped, index)
+        positioned = compute_position(layer, mapped, index, raw)
     else:
         panel_ids = _panel_ids_of(mapped)
         positioned = _concat_tables(
             [
-                compute_position(layer, _slice_table(mapped, rows), index)
+                compute_position(layer, _slice_table(mapped, rows), index, raw)
                 for _, rows in _panel_slices(panel_ids)
             ]
         )
@@ -1102,10 +1142,11 @@ def build_layer(
     if scales is None:
         scales = ScaleSet(plot.scales)
     aesthetics = compute_aesthetics(plot, layer, index)
+    raw_table = aesthetics.table
     aesthetics = transform_scales(scales, aesthetics)
     _train(scales, aesthetics.table)
     aesthetics = map_position(scales, aesthetics)
-    stages = _compute_stages(aesthetics, layer, index)
+    stages = _compute_stages(aesthetics, layer, index, raw_table)
     # 上游 compute_position 之后再 train 一次：这一次的数据已经包含 geom setup
     # 派生的坐标列（xmin/xmax/ymin/ymax），连续标度要靠它才能把柱子的锚点收进
     # 范围（否则 stage 5 的 oob 会把锚点 censor 成 NA）。
@@ -1130,12 +1171,15 @@ def build_plot(plot: ggplot) -> PlotBuild:
     layout = facet.compute_layout([])
     scales = ScaleSet(plot.scales)
     raw = [compute_aesthetics(plot, layer, index) for index, layer in enumerate(plot.layers)]
+    # 位置标度映射前的美学表：geom 的 `setup_params()` 用它判断离散位置
+    # （R 的 `is_mapped_discrete()`，M1-7 的横向 geom）。
+    raw_tables = [aesthetics.table for aesthetics in raw]
     raw = [transform_scales(scales, aesthetics) for aesthetics in raw]
     for aesthetics in raw:
         _train(scales, aesthetics.table)
     mapped = [map_position(scales, aesthetics) for aesthetics in raw]
     stages = [
-        _compute_stages(aesthetics, layer, index)
+        _compute_stages(aesthetics, layer, index, raw_tables[index])
         for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax），见 build_layer。
@@ -1205,6 +1249,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         )
         for index, layer in enumerate(layers)
     ]
+    raw_tables = [aesthetics.table for aesthetics in raw]
     raw = [
         _transform_panels(scales, aesthetics, maps[index].panels)
         for index, aesthetics in enumerate(raw)
@@ -1218,7 +1263,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         for index, aesthetics in enumerate(raw)
     ]
     stages = [
-        _compute_panel_stages(aesthetics, layer, index, maps[index].panels)
+        _compute_panel_stages(aesthetics, layer, index, maps[index].panels, raw_tables[index])
         for index, (aesthetics, layer) in enumerate(zip(mapped, layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax）。
@@ -1247,6 +1292,8 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
                 dropped_missing=staged.aesthetics.dropped,
                 empty=staged.aesthetics.empty,
                 notes=staged.aesthetics.notes,
+                params=staged.layer.params,
+                geom_object=staged.layer.geom,
             )
         )
         scaled_by_panel.append(per_panel)

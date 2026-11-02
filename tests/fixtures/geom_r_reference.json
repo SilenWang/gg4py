@@ -1,0 +1,3603 @@
+{
+  "r_version": "4.5.3",
+  "ggplot2_version": "4.0.3",
+  "scale": "9 geom / 14 case；data[[1]] 的列名+列序+kind+逐值；panel_params 的 continuous_range；handle_na 的 warning",
+  "cases": {
+    "point_shapes": {
+      "description": "point：shape + colour 双离散映射",
+      "stat": "identity",
+      "data": {
+        "rows": 8,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.65000000000000002,
+              0.10000000000000001,
+              0.65000000000000002,
+              0.10000000000000001,
+              0.65000000000000002,
+              0.10000000000000001,
+              0.65000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.14999999999999999,
+              0.14999999999999999,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.59999999999999998,
+              0.59999999999999998,
+              0.84999999999999998,
+              0.84999999999999998
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#F8766D",
+              "#F8766D",
+              "#F8766D",
+              "#F8766D",
+              "#F8766D",
+              "#F8766D",
+              "#F8766D",
+              "#F8766D"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19,
+              19,
+              19,
+              19,
+              19,
+              19,
+              19
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821,
+              3.1631382316313821
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "stroke",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "point_na": {
+      "description": "point：y 有两处 NA（build 保留，draw 期删）",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.29999999999999999,
+              0.5,
+              0.69999999999999996,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              null,
+              0.59999999999999998,
+              0.80000000000000004,
+              null
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#F8766D",
+              "#F8766D",
+              "#00BA38",
+              "#00BA38",
+              "#F8766D"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              2,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19,
+              19,
+              19,
+              19
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              2.8116784281167839,
+              2.8116784281167839,
+              2.8116784281167839,
+              2.8116784281167839,
+              2.8116784281167839
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "stroke",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": "Removed 2 rows containing missing values or values outside the scale range\n(`geom_point()`)."
+    },
+    "line_groups": {
+      "description": "line：两个 group 各自成线",
+      "stat": "identity",
+      "data": {
+        "rows": 10,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.29999999999999999,
+              0.5,
+              0.69999999999999996,
+              0.90000000000000002,
+              0.10000000000000001,
+              0.29999999999999999,
+              0.5,
+              0.69999999999999996,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.5,
+              0.40000000000000002,
+              0.69999999999999996,
+              0.59999999999999998,
+              0.80000000000000004,
+              0.59999999999999998,
+              0.69999999999999996,
+              0.29999999999999999,
+              0.40000000000000002
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#E45756",
+              "#E45756",
+              "#E45756",
+              "#E45756",
+              "#E45756"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              2,
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "path_basic": {
+      "description": "path：给定行序连接（不排序）",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.14999999999999999,
+              0.84999999999999998,
+              0.25,
+              0.90000000000000002,
+              0.10000000000000001
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.55000000000000004,
+              0.80000000000000004,
+              0.25,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "bar_stacked": {
+      "description": "bar：stat_count + stack(fill)",
+      "stat": "count",
+      "data": {
+        "rows": 6,
+        "columns": [
+          {
+            "name": "count",
+            "kind": "float",
+            "values": [
+              2,
+              1,
+              1,
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "prop",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              2,
+              2,
+              3,
+              3
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#F58518",
+              "#4C78A8",
+              "#F58518",
+              "#4C78A8",
+              "#F58518"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              3,
+              1,
+              2,
+              1,
+              3,
+              1
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              1,
+              0,
+              1,
+              0,
+              1,
+              0
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              3,
+              1,
+              2,
+              1,
+              3,
+              1
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.55000000000000004,
+              0.55000000000000004,
+              1.55,
+              1.55,
+              2.5499999999999998,
+              2.5499999999999998
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1.45,
+              1.45,
+              2.4500000000000002,
+              2.4500000000000002,
+              3.4500000000000002,
+              3.4500000000000002
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0.40000000000000002,
+          3.6000000000000001
+        ],
+        "y_range": [
+          0,
+          4
+        ],
+        "discrete_x": true,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "col_identity": {
+      "description": "col：identity stat + 分组 fill",
+      "stat": "identity",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.5,
+              1.5,
+              2.5,
+              3.5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.34999999999999998,
+              0.75,
+              0.55000000000000004,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#F58518",
+              "#4C78A8",
+              "#F58518"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              1,
+              2
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.34999999999999998,
+              0.75,
+              0.55000000000000004,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.15000000000000002,
+              1.1499999999999999,
+              2.1499999999999999,
+              3.1499999999999999
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.84999999999999998,
+              1.8500000000000001,
+              2.8500000000000001,
+              3.8500000000000001
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              0.69999999999999996,
+              0.69999999999999996,
+              0.69999999999999996
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          4
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "col_horizontal": {
+      "description": "横向 col：flipped_aes = TRUE",
+      "stat": "identity",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996,
+              0.5,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996,
+              0.5,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.65000000000000002,
+              1.6499999999999999,
+              2.6499999999999999,
+              3.6499999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              1.3500000000000001,
+              2.3500000000000001,
+              3.3500000000000001,
+              4.3499999999999996
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#000000A6",
+              "#000000A6",
+              "#000000A6",
+              "#000000A6"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              0.69999999999999996,
+              0.69999999999999996,
+              0.69999999999999996
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          -1.3999999999999999,
+          6.4000000000000004
+        ],
+        "discrete_x": false,
+        "discrete_y": true
+      },
+      "warnings": []
+    },
+    "area_identity": {
+      "description": "area：identity stat（ymin = 0）",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              3,
+              2,
+              4,
+              3
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              1,
+              3,
+              2,
+              4,
+              3
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          6
+        ],
+        "y_range": [
+          0,
+          5
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "histogram_stat": {
+      "description": "histogram：stat_bin 输出（M1-8）",
+      "stat": "bin",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "count",
+            "kind": "float",
+            "values": [
+              2,
+              3,
+              1,
+              4
+            ]
+          },
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.5,
+              1.5,
+              2.5,
+              3.5
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1.5,
+              2.5,
+              3.5,
+              4.5
+            ]
+          },
+          {
+            "name": "density",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999,
+              0.10000000000000001,
+              0.40000000000000002
+            ]
+          },
+          {
+            "name": "ncount",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.75,
+              0.25,
+              1
+            ]
+          },
+          {
+            "name": "ndensity",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.74999999999999989,
+              0.25,
+              1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              2,
+              3,
+              1,
+              4
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              2,
+              3,
+              1,
+              4
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0.29999999999999999,
+          4.7000000000000002
+        ],
+        "y_range": [
+          -0.20000000000000001,
+          4.2000000000000002
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "histogram_identity": {
+      "description": "histogram：identity stat + width 列",
+      "stat": "identity",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.5,
+              1.5,
+              2.5,
+              3.5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.5,
+              0.75,
+              0.40000000000000002
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.5,
+              0.75,
+              0.40000000000000002
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002,
+              0.90000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          4
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "boxplot_stat": {
+      "description": "boxplot：stat_boxplot 输出（含 outliers）",
+      "stat": "boxplot",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "lower",
+            "kind": "float",
+            "values": [
+              3,
+              4
+            ]
+          },
+          {
+            "name": "middle",
+            "kind": "float",
+            "values": [
+              5,
+              6
+            ]
+          },
+          {
+            "name": "upper",
+            "kind": "float",
+            "values": [
+              7,
+              8
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              8,
+              9
+            ]
+          },
+          {
+            "name": "outliers",
+            "kind": "list",
+            "values": [
+              [
+                20
+              ],
+              [
+                25
+              ]
+            ]
+          },
+          {
+            "name": "notchupper",
+            "kind": "float",
+            "values": [
+              7.1066666666666674,
+              8.1066666666666674
+            ]
+          },
+          {
+            "name": "notchlower",
+            "kind": "float",
+            "values": [
+              2.8933333333333331,
+              3.8933333333333331
+            ]
+          },
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "ymin_final",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "ymax_final",
+            "kind": "float",
+            "values": [
+              20,
+              25
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.625,
+              1.625
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1.375,
+              2.375
+            ]
+          },
+          {
+            "name": "order",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "xid",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "newx",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "new_width",
+            "kind": "float",
+            "values": [
+              0.75,
+              0.75
+            ]
+          },
+          {
+            "name": "weight",
+            "kind": "float",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333FF",
+              "#333333FF"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              1.5,
+              1.5
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.90000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0.40000000000000002,
+          2.6000000000000001
+        ],
+        "y_range": [
+          -0.20000000000000018,
+          26.199999999999999
+        ],
+        "discrete_x": true,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "boxplot_identity": {
+      "description": "boxplot：五数预计算",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.20000000000000001
+            ]
+          },
+          {
+            "name": "lower",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.34999999999999998
+            ]
+          },
+          {
+            "name": "middle",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "upper",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              0.65000000000000002
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.80000000000000004
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              1.7000000000000002
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1.3,
+              2.2999999999999998
+            ]
+          },
+          {
+            "name": "order",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "xid",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "newx",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "new_width",
+            "kind": "float",
+            "values": [
+              0.60000000000000009,
+              0.59999999999999987
+            ]
+          },
+          {
+            "name": "weight",
+            "kind": "float",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#000000CC",
+              "#000000CC"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              1.5,
+              1.5
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.59999999999999998,
+              0.59999999999999998
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0.40000000000000002,
+          2.6000000000000001
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": true,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "smooth_stat": {
+      "description": "smooth：stat_smooth(lm) 输出（含 ymin/ymax）",
+      "stat": "smooth",
+      "data": {
+        "rows": 80,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0,
+              0.012658227848101266,
+              0.025316455696202531,
+              0.037974683544303799,
+              0.050632911392405063,
+              0.063291139240506333,
+              0.075949367088607597,
+              0.088607594936708861,
+              0.10126582278481013,
+              0.11392405063291139,
+              0.12658227848101267,
+              0.13924050632911392,
+              0.15189873417721519,
+              0.16455696202531644,
+              0.17721518987341772,
+              0.18987341772151897,
+              0.20253164556962025,
+              0.21518987341772153,
+              0.22784810126582278,
+              0.24050632911392406,
+              0.25316455696202533,
+              0.26582278481012656,
+              0.27848101265822783,
+              0.29113924050632911,
+              0.30379746835443039,
+              0.31645569620253167,
+              0.32911392405063289,
+              0.34177215189873417,
+              0.35443037974683544,
+              0.36708860759493672,
+              0.37974683544303794,
+              0.39240506329113922,
+              0.4050632911392405,
+              0.41772151898734178,
+              0.43037974683544306,
+              0.44303797468354428,
+              0.45569620253164556,
+              0.46835443037974683,
+              0.48101265822784811,
+              0.49367088607594933,
+              0.50632911392405067,
+              0.51898734177215189,
+              0.53164556962025311,
+              0.54430379746835444,
+              0.55696202531645567,
+              0.569620253164557,
+              0.58227848101265822,
+              0.59493670886075944,
+              0.60759493670886078,
+              0.620253164556962,
+              0.63291139240506333,
+              0.64556962025316456,
+              0.65822784810126578,
+              0.67088607594936711,
+              0.68354430379746833,
+              0.69620253164556956,
+              0.70886075949367089,
+              0.72151898734177211,
+              0.73417721518987344,
+              0.74683544303797467,
+              0.75949367088607589,
+              0.77215189873417722,
+              0.78481012658227844,
+              0.79746835443037978,
+              0.810126582278481,
+              0.82278481012658222,
+              0.83544303797468356,
+              0.84810126582278478,
+              0.86075949367088611,
+              0.87341772151898733,
+              0.88607594936708856,
+              0.89873417721518989,
+              0.91139240506329111,
+              0.92405063291139244,
+              0.93670886075949367,
+              0.94936708860759489,
+              0.96202531645569622,
+              0.97468354430379744,
+              0.98734177215189867,
+              1
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.2022727272727273,
+              0.21275604142692753,
+              0.22323935558112776,
+              0.23372266973532799,
+              0.24420598388952822,
+              0.25468929804372847,
+              0.26517261219792865,
+              0.27565592635212888,
+              0.28613924050632911,
+              0.29662255466052934,
+              0.30710586881472962,
+              0.3175891829689298,
+              0.32807249712313002,
+              0.33855581127733025,
+              0.34903912543153048,
+              0.35952243958573071,
+              0.37000575373993094,
+              0.38048906789413117,
+              0.3909723820483314,
+              0.40145569620253163,
+              0.41193901035673192,
+              0.42242232451093209,
+              0.43290563866513232,
+              0.44338895281933255,
+              0.45387226697353278,
+              0.46435558112773301,
+              0.47483889528193324,
+              0.48532220943613347,
+              0.4958055235903337,
+              0.50628883774453393,
+              0.51677215189873416,
+              0.52725546605293439,
+              0.53773878020713461,
+              0.54822209436133484,
+              0.55870540851553507,
+              0.5691887226697353,
+              0.57967203682393553,
+              0.59015535097813576,
+              0.60063866513233599,
+              0.61112197928653622,
+              0.62160529344073656,
+              0.63208860759493668,
+              0.64257192174913691,
+              0.65305523590333714,
+              0.66353855005753737,
+              0.67402186421173771,
+              0.68450517836593783,
+              0.69498849252013806,
+              0.70547180667433829,
+              0.71595512082853852,
+              0.72643843498273875,
+              0.73692174913693897,
+              0.7474050632911392,
+              0.75788837744533943,
+              0.76837169159953966,
+              0.77885500575373989,
+              0.78933831990794012,
+              0.79982163406214035,
+              0.81030494821634058,
+              0.82078826237054081,
+              0.83127157652474104,
+              0.84175489067894127,
+              0.8522382048331415,
+              0.86272151898734173,
+              0.87320483314154196,
+              0.88368814729574219,
+              0.89417146144994242,
+              0.90465477560414265,
+              0.91513808975834288,
+              0.92562140391254311,
+              0.93610471806674334,
+              0.94658803222094356,
+              0.95707134637514379,
+              0.96755466052934402,
+              0.97803797468354425,
+              0.98852128883774448,
+              0.99900460299194471,
+              1.0094879171461451,
+              1.0199712313003451,
+              1.0304545454545455
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.11658865774629487,
+              0.12861570580880938,
+              0.14063091454018573,
+              0.1526336129491857,
+              0.16462308449723542,
+              0.17659856385030726,
+              0.18855923344449216,
+              0.20050421987028222,
+              0.21243259008578741,
+              0.22434334747572121,
+              0.23623542778125589,
+              0.24810769493607376,
+              0.25995893685641858,
+              0.27178786124799265,
+              0.28359309151044787,
+              0.29537316284121051,
+              0.3071265186646156,
+              0.31885150753979302,
+              0.33054638073119347,
+              0.34220929065849026,
+              0.35383829047680737,
+              0.3654313350721789,
+              0.37698628378851673,
+              0.38850090522796848,
+              0.39997288448232982,
+              0.4113998331541624,
+              0.42277930250678919,
+              0.43410880003631402,
+              0.44538580968040176,
+              0.45660781576298226,
+              0.46777233061875761,
+              0.47887692564735745,
+              0.48991926531996105,
+              0.50089714341279856,
+              0.51180852048994963,
+              0.52265156142569924,
+              0.53342467157153761,
+              0.54412653006242939,
+              0.55475611874530761,
+              0.56531274531573472,
+              0.57579605946993506,
+              0.5862060612079083,
+              0.59654310083343054,
+              0.60680787065093922,
+              0.61700138881350131,
+              0.62712497618615226,
+              0.63718022741740155,
+              0.64716897763296444,
+              0.6570932662687613,
+              0.66695529954856192,
+              0.67675741300118708,
+              0.68650203522700703,
+              0.69619165389131976,
+              0.70582878467019539,
+              0.71541594362596905,
+              0.72495562326253693,
+              0.73445027231657611,
+              0.74390227918552476,
+              0.75331395877758744,
+              0.76268754249061632,
+              0.77202517098069967,
+              0.78132888936180334,
+              0.7906006444788034,
+              0.79984228391202639,
+              0.80905555639702176,
+              0.81824211337465957,
+              0.82740351142060486,
+              0.8365412153374312,
+              0.84565660172548685,
+              0.85475096287906938,
+              0.86382551088193527,
+              0.87288138180040187,
+              0.88191963989329714,
+              0.89094128177590748,
+              0.89994724049012309,
+              0.90893838944545169,
+              0.9179155462058024,
+              0.92687947610520305,
+              0.93583089568222688,
+              0.94477047592811303
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.28795679679915975,
+              0.29689637704504568,
+              0.30584779662206979,
+              0.31481172652147027,
+              0.32378888328182098,
+              0.33278003223714969,
+              0.34178599095136514,
+              0.35080763283397554,
+              0.3598458909268708,
+              0.36890176184533746,
+              0.37797630984820335,
+              0.38707067100178583,
+              0.39618605738984147,
+              0.40532376130666786,
+              0.4144851593526131,
+              0.42367171633025091,
+              0.43288498881524629,
+              0.44212662824846932,
+              0.45139838336546934,
+              0.460702101746573,
+              0.47003973023665646,
+              0.47941331394968528,
+              0.48882499354174791,
+              0.49827700041069661,
+              0.50777164946473574,
+              0.51731132910130362,
+              0.52689848805707729,
+              0.53653561883595291,
+              0.54622523750026564,
+              0.55596985972608559,
+              0.56577197317871075,
+              0.57563400645851137,
+              0.58555829509430823,
+              0.59554704530987113,
+              0.60560229654112052,
+              0.61572588391377137,
+              0.62591940207633345,
+              0.63618417189384213,
+              0.64652121151936437,
+              0.65693121325733772,
+              0.66741452741153806,
+              0.67797115398196506,
+              0.68860074266484328,
+              0.69930260115573506,
+              0.71007571130157343,
+              0.72091875223732316,
+              0.73183012931447411,
+              0.74280800740731168,
+              0.75385034707991527,
+              0.76495494210851511,
+              0.77611945696429041,
+              0.78734146304687092,
+              0.79861847269095865,
+              0.80994797022048348,
+              0.82132743957311027,
+              0.83275438824494286,
+              0.84422636749930413,
+              0.85574098893875594,
+              0.86729593765509372,
+              0.8788889822504653,
+              0.89051798206878241,
+              0.9021808919960792,
+              0.91387576518747959,
+              0.92560075406265707,
+              0.93735410988606216,
+              0.9491341812168248,
+              0.96093941147927997,
+              0.9727683358708541,
+              0.98461957779119891,
+              0.99649184494601684,
+              1.0083839252515514,
+              1.0202946826414854,
+              1.0322230528569905,
+              1.0441680392827806,
+              1.0561287088769655,
+              1.0681041882300373,
+              1.080093659778087,
+              1.0920963581870871,
+              1.1041115669184631,
+              1.116138614980978
+            ]
+          },
+          {
+            "name": "se",
+            "kind": "float",
+            "values": [
+              0.03787715147980452,
+              0.037194734743380801,
+              0.036517551653554622,
+              0.03584589882598524,
+              0.035180093010801994,
+              0.034520472528454145,
+              0.03386739878792,
+              0.0332212578850564,
+              0.032582462276568483,
+              0.031951452522158731,
+              0.031328699083758453,
+              0.030714704166226008,
+              0.030110003578379795,
+              0.029515168586584019,
+              0.028930807725192829,
+              0.028357568518877767,
+              0.027796139061149965,
+              0.027247249381247562,
+              0.026711672518099153,
+              0.026190225205553704,
+              0.025683768057943462,
+              0.02519320513003501,
+              0.024719482711557231,
+              0.024263587205174356,
+              0.023826541929797402,
+              0.023409402690689394,
+              0.02301325196643202,
+              0.022639191583165855,
+              0.022288333781179281,
+              0.021961790630010032,
+              0.021660661816867568,
+              0.021386020918959702,
+              0.021138900370663287,
+              0.020920275446289997,
+              0.0207310476905927,
+              0.020572028331785445,
+              0.020443922293706417,
+              0.020347313472584009,
+              0.020282651949024327,
+              0.02025024376031289,
+              0.02025024376031289,
+              0.020282651949024327,
+              0.020347313472584009,
+              0.020443922293706417,
+              0.020572028331785445,
+              0.020731047690592704,
+              0.020920275446289997,
+              0.021138900370663287,
+              0.021386020918959702,
+              0.021660661816867568,
+              0.021961790630010032,
+              0.022288333781179281,
+              0.022639191583165855,
+              0.02301325196643202,
+              0.023409402690689394,
+              0.023826541929797398,
+              0.024263587205174356,
+              0.024719482711557231,
+              0.02519320513003501,
+              0.025683768057943462,
+              0.0261902252055537,
+              0.026711672518099153,
+              0.027247249381247559,
+              0.027796139061149968,
+              0.028357568518877767,
+              0.028930807725192825,
+              0.029515168586584019,
+              0.030110003578379795,
+              0.030714704166226011,
+              0.031328699083758453,
+              0.031951452522158724,
+              0.032582462276568483,
+              0.0332212578850564,
+              0.033867398787920007,
+              0.034520472528454145,
+              0.035180093010801994,
+              0.03584589882598524,
+              0.036517551653554622,
+              0.037194734743380801,
+              0.03787715147980452
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF",
+              "#999999FF"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "weight",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          -0.050000000000000003,
+          1.05
+        ],
+        "y_range": [
+          0.066611159884560706,
+          1.1661161128427122
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "smooth_identity": {
+      "description": "smooth：identity stat + se 带",
+      "stat": "identity",
+      "data": {
+        "rows": 6,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              1.6000000000000001,
+              2.1000000000000001,
+              2.7000000000000002,
+              3.1000000000000001,
+              3.7999999999999998
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.59999999999999998,
+              1.2,
+              1.7,
+              2.2999999999999998,
+              2.7000000000000002,
+              3.3999999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              1.3999999999999999,
+              2,
+              2.5,
+              3.1000000000000001,
+              3.5,
+              4.2000000000000002
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF",
+              "#3366FF"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "grey60",
+              "grey60",
+              "grey60",
+              "grey60",
+              "grey60",
+              "grey60"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "weight",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002,
+              0.40000000000000002
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          7
+        ],
+        "y_range": [
+          0,
+          5
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    }
+  }
+}

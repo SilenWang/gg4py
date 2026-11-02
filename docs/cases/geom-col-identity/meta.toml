@@ -1,0 +1,7 @@
+family = "geom-col"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "scale-limits"]
+ci = true
+title = "col：identity stat + 分组 fill"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "geom_col 的 width 是数据单位；x / y 都 expand = c(0, 0)。"

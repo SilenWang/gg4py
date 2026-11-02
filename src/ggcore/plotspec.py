@@ -425,7 +425,22 @@ def _gp_colour(colour: str, **extra: Any) -> Any:
 
 
 def build_scene(spec: Mapping[str, Any], *, metrics: Metrics | None = None) -> ir.Scene:
-    """plot 规格 → `ggcore.ir.Scene`（float32、y 向下、单位 pt）。"""
+    """plot 规格 → `ggcore.ir.Scene`（float32、y 向下、单位 pt）。
+
+    两种规格形态：
+
+    - `{"plot": ggplot(...), "size": [...]}`：走 M1-7 的真管线
+      （`build_plot()` + `ggcore.geom.scene.scene_from_build()`），语法层与绘制
+      契约都是生产路径；
+    - `{"data": ..., "layers": [...]}`：M0-9 的最小适配层（仍服务老 case）。
+    """
+    if "plot" in spec:
+        from ggcore.geom.scene import scene_from_plot
+
+        width_in, height_in = _size_in(spec)
+        return scene_from_plot(
+            spec["plot"], width_in=width_in, height_in=height_in, metrics=metrics
+        )
     width_in, height_in = _size_in(spec)
     data = _data(spec)
     layers = _layers(spec)

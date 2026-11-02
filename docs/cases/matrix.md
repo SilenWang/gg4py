@@ -4,23 +4,23 @@
 
 矩阵是**静态**覆盖视图（只由仓库内容决定）：行 = 族，列 = 特性标签，`—` = 该组合没有 case。运行时红绿与「差多少」在 `.cases-matrix/report.md`（`pixi run cases:matrix` 生成，不入库）。
 
-- 三文件 case：**7** 个（`plot.py` + `expected.svg|png` + `meta.toml`）
+- 三文件 case：**16** 个（`plot.py` + `expected.svg|png` + `meta.toml`）
 - 历史快照目录：**18** 个（`case.json`，M0-4 / M0-6，不进矩阵）
 
 ## 覆盖矩阵
 
 | 族 \ 特性 | `aes-mapping` | `aes-grouping` | `aes-inherit` | `colour-aes` | `size-aes` | `alpha-aes` | `shape-aes` | `line-type` | `na-removal` | `sort-order` | `scale-log10` | `scale-discrete` | `scale-limits` | `coord-flip` | `facet-wrap` | `stat-count` | `stat-bin` | `position-dodge` | `position-stack` | `position-jitter` | `theme-text` | `guide-legend` | `annotation-text` | `lab-title` | `rotation` | `cjk-text` | `font-face` | `multiline` | `emoji-text` | 合计 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `geom-point` | `geom-point-basic` | `geom-point-basic` | — | `geom-point-basic` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
-| `geom-line` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-path` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-bar` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-col` | `geom-col-basic` | — | — | `geom-col-basic` | — | — | — | — | — | — | — | — | `geom-col-basic` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
-| `geom-area` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-histogram` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-boxplot` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `geom-point` | `geom-point-basic`<br>`geom-point-shapes` | `geom-point-basic`<br>`geom-point-shapes` | — | `geom-point-basic`<br>`geom-point-shapes` | — | — | `geom-point-shapes` | — | — | — | — | `geom-point-shapes` | `geom-point-shapes` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
+| `geom-line` | `geom-line-groups` | `geom-line-groups` | — | `geom-line-groups` | — | — | — | — | — | `geom-line-groups` | — | — | `geom-line-groups` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
+| `geom-path` | `geom-path-order` | — | — | — | — | — | — | `geom-path-order` | — | — | — | — | `geom-path-order` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
+| `geom-bar` | `geom-bar-stacked` | `geom-bar-stacked` | — | — | — | — | — | — | — | — | — | `geom-bar-stacked` | — | — | — | `geom-bar-stacked` | — | — | `geom-bar-stacked` | — | — | — | — | — | — | — | — | — | — | 1 |
+| `geom-col` | `geom-col-basic`<br>`geom-col-identity` | `geom-col-identity` | — | `geom-col-basic`<br>`geom-col-identity` | — | — | — | — | — | — | — | — | `geom-col-basic`<br>`geom-col-identity` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
+| `geom-area` | `geom-area-identity` | — | — | — | — | — | — | — | — | — | — | — | `geom-area-identity` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
+| `geom-histogram` | `geom-histogram-identity` | — | — | — | — | — | — | — | — | — | — | — | `geom-histogram-identity` | — | — | — | `geom-histogram-identity` | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
+| `geom-boxplot` | `geom-boxplot-precomputed` | — | — | — | — | — | — | — | — | — | — | — | `geom-boxplot-precomputed` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
 | `geom-violin` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `geom-smooth` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| `geom-smooth` | `geom-smooth-se` | — | — | — | — | `geom-smooth-se` | — | — | — | — | — | — | `geom-smooth-se` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 1 |
 | `geom-text` | `geom-text-cjk` | — | — | `geom-text-cjk` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | `geom-text-cjk` | `text-bold-italic` | `text-multiline` | `text-emoji` | 4 |
 | `geom-tile` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `geom-raster` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
@@ -37,24 +37,24 @@
 | `annotation` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `guide` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `lab` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| **合计** | 4 | 1 | — | 4 | — | — | — | — | — | — | — | — | 1 | — | — | — | — | — | — | — | — | — | — | — | — | 1 | 1 | 1 | 1 | 7 |
+| **合计** | 13 | 5 | — | 7 | — | 1 | 1 | 1 | — | 1 | — | 2 | 9 | — | — | 1 | 1 | — | 1 | — | — | — | — | — | — | 1 | 1 | 1 | 1 | 16 |
 
-## 覆盖缺口（740 个空位）
+## 覆盖缺口（713 个空位）
 
 按族列出没有 case 的特性（要补哪个格子就看这一节）：
 
 | 族 | 未覆盖的特性 |
 | --- | --- |
-| `geom-point` | `aes-inherit`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-line` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-path` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-bar` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-col` | `aes-grouping`、`aes-inherit`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-area` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-histogram` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-boxplot` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-point` | `aes-inherit`、`size-aes`、`alpha-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-line` | `aes-inherit`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-path` | `aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-bar` | `aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-bin`、`position-dodge`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-col` | `aes-inherit`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-area` | `aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-histogram` | `aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-boxplot` | `aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
 | `geom-violin` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
-| `geom-smooth` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
+| `geom-smooth` | `aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
 | `geom-text` | `aes-grouping`、`aes-inherit`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation` |
 | `geom-tile` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
 | `geom-raster` | `aes-mapping`、`aes-grouping`、`aes-inherit`、`colour-aes`、`size-aes`、`alpha-aes`、`shape-aes`、`line-type`、`na-removal`、`sort-order`、`scale-log10`、`scale-discrete`、`scale-limits`、`coord-flip`、`facet-wrap`、`stat-count`、`stat-bin`、`position-dodge`、`position-stack`、`position-jitter`、`theme-text`、`guide-legend`、`annotation-text`、`lab-title`、`rotation`、`cjk-text`、`font-face`、`multiline`、`emoji-text` |
@@ -76,9 +76,18 @@
 
 | case | 族 | 特性 | 容差 | ci | 参考 | 来源 | 契约 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `geom-area-identity` | `geom-area` | `aes-mapping`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-bar-stacked` | `geom-bar` | `aes-mapping`<br>`aes-grouping`<br>`stat-count`<br>`position-stack`<br>`scale-discrete` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-boxplot-precomputed` | `geom-boxplot` | `aes-mapping`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-col-basic` | `geom-col` | `aes-mapping`<br>`colour-aes`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-col-identity` | `geom-col` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-curve-basic` | `geom-curve` | `aes-mapping`<br>`colour-aes` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-histogram-identity` | `geom-histogram` | `aes-mapping`<br>`stat-bin`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-line-groups` | `geom-line` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes`<br>`sort-order`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-path-order` | `geom-path` | `aes-mapping`<br>`line-type`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-point-basic` | `geom-point` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-point-shapes` | `geom-point` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes`<br>`shape-aes`<br>`scale-discrete`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `geom-smooth-se` | `geom-smooth` | `aes-mapping`<br>`alpha-aes`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-text-cjk` | `geom-text` | `aes-mapping`<br>`colour-aes`<br>`cjk-text` | png 0.014 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-bold-italic` | `geom-text` | `font-face` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-emoji` | `geom-text` | `emoji-text` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |

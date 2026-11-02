@@ -1,0 +1,7 @@
+family = "geom-line"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "sort-order", "scale-limits"]
+ci = true
+title = "line：两个 group 各自成线（按 x 排序）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "line 的 setup_data 按 (PANEL, group, x) 排序；linewidth 1.2pt = 1.2/.pt mm。"

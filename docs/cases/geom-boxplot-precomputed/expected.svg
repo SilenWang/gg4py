@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='288.00pt' height='216.00pt' viewBox='0 0 288.00 216.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA='>
+    <rect x='0.00' y='0.00' width='288.00' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<rect x='0.00' y='0.00' width='288.00' height='216.00' style='stroke-width: 0.00; stroke: none;' />
+<line x1='78.55' y1='64.80' x2='78.55' y2='21.60' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt;' />
+<line x1='78.55' y1='151.20' x2='78.55' y2='194.40' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt;' />
+<polygon points='39.27,64.80 39.27,151.20 117.82,151.20 117.82,64.80 39.27,64.80 ' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt; stroke-linejoin: miter; fill: #4C78A8;' />
+<line x1='39.27' y1='108.00' x2='117.82' y2='108.00' style='stroke-width: 2.13; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt; stroke-linejoin: miter;' />
+<line x1='209.45' y1='75.60' x2='209.45' y2='43.20' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt;' />
+<line x1='209.45' y1='140.40' x2='209.45' y2='172.80' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt;' />
+<polygon points='170.18,75.60 170.18,140.40 248.73,140.40 248.73,75.60 170.18,75.60 ' style='stroke-width: 1.07; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt; stroke-linejoin: miter; fill: #4C78A8;' />
+<line x1='170.18' y1='108.00' x2='248.73' y2='108.00' style='stroke-width: 2.13; stroke: #000000; stroke-opacity: 0.80; stroke-linecap: butt; stroke-linejoin: miter;' />
+</g>
+</g>
+</svg>

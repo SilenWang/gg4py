@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "scale-limits"]
+ci = true
+title = "boxplot：五数预计算"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "stat_boxplot 归 M1-8；这里用五数预计算的 identity 路径做端到端。"

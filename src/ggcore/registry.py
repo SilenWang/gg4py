@@ -130,6 +130,10 @@ class GeomSpec:
     default_aes: dict[str, Any]
     stat: str = "identity"
     position: str = "identity"
+    #: `Geom$non_missing_aes`：`handle_na()` 也按这些列删缺失行（M1-7）。
+    non_missing_aes: tuple[str, ...] = ()
+    #: `Geom$optional_aes`：可以映射但不必需的美学（M1-7）。
+    optional_aes: tuple[str, ...] = ()
 
 
 def required_aes_groups(required_aes: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
@@ -303,16 +307,32 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "alpha": None,
                 "stroke": 0.5,
             },
+            non_missing_aes=("size", "shape", "colour"),
         ),
-        "line": GeomSpec(("x", "y"), _LINE_DEFAULTS),
-        "path": GeomSpec(("x", "y"), _LINE_DEFAULTS),
-        "bar": GeomSpec(("x", "y"), _BAR_DEFAULTS, "count", "stack"),
-        "col": GeomSpec(("x", "y"), _BAR_DEFAULTS, position="stack"),
+        "line": GeomSpec(
+            ("x", "y"), _LINE_DEFAULTS, non_missing_aes=("linewidth", "colour", "linetype")
+        ),
+        "path": GeomSpec(
+            ("x", "y"), _LINE_DEFAULTS, non_missing_aes=("linewidth", "colour", "linetype")
+        ),
+        "bar": GeomSpec(
+            ("x", "y"),
+            _BAR_DEFAULTS,
+            "count",
+            "stack",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "col": GeomSpec(
+            ("x", "y"),
+            _BAR_DEFAULTS,
+            position="stack",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
         "area": GeomSpec(
             ("x", "y"),
             {
-                "fill": "grey20",
                 "colour": None,
+                "fill": "grey20",
                 "linewidth": 0.5,
                 "linetype": 1,
                 "alpha": None,
@@ -320,7 +340,13 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "align",
             "stack",
         ),
-        "histogram": GeomSpec(("x", "y"), _BAR_DEFAULTS, "bin", "stack"),
+        "histogram": GeomSpec(
+            ("x", "y"),
+            _BAR_DEFAULTS,
+            "bin",
+            "stack",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
         "boxplot": GeomSpec(
             (
                 "x|y",
@@ -349,13 +375,14 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             {
                 "colour": "#3366FF",
                 "fill": "grey60",
-                "linewidth": 1,
+                "linewidth": 1.0,
                 "linetype": 1,
-                "alpha": 0.4,
                 "weight": 1.0,
+                "alpha": 0.4,
             },
             "smooth",
             "identity",
+            optional_aes=("ymin", "ymax"),
         ),
     }
 )
@@ -415,7 +442,13 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
         **params: Any,
     ) -> Layer:
         return Layer(
-            geom=Geom(name=name, required_aes=spec.required_aes, default_aes=spec.default_aes),
+            geom=Geom(
+                name=name,
+                required_aes=spec.required_aes,
+                default_aes=spec.default_aes,
+                non_missing_aes=spec.non_missing_aes,
+                optional_aes=spec.optional_aes,
+            ),
             stat=as_stat(stat, spec.stat),
             position=as_position(position, spec.position),
             mapping=as_aes(mapping),
@@ -449,7 +482,14 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
         **params: Any,
     ) -> Layer:
         return Layer(
-            geom=as_geom(geom, geom_name, spec.required_aes, spec.default_aes),
+            geom=as_geom(
+                geom,
+                geom_name,
+                spec.required_aes,
+                spec.default_aes,
+                spec.non_missing_aes,
+                spec.optional_aes,
+            ),
             stat=Stat(name, params),
             position=as_position(position, spec.position),
             mapping=as_aes(mapping),
