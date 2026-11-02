@@ -141,8 +141,9 @@ aes 表达式 `mpg / zzz` 第 1 行第 7 列：数据里没有列 'zzz'；可用
 2. 否则用**所有离散的 aes**（求值结果是字符 / 分类 / 逻辑值，对齐上游
    `is_discrete()` 的 factor / character / logical）做 interaction，`label` /
    `PANEL` 不参与；
-3. 组合 id 按**首次出现**编号（0, 1, 2 …）；只出现过的组合占 id，未出现的组合
-   不占（上游 `id(..., drop = TRUE)`）；
+3. 组合 id 按**组合码升序**编号（0, 1, 2 …），对齐上游 `id()`：第一个 aes
+   变化最慢、最后一个最快，再把用到的组合按 `sort(unique(...))` 排序后编号；
+   只出现过的组合占 id，未出现的组合不占（上游 `id(..., drop = TRUE)`）；
 4. 没有任何离散 aes（也没有显式 `group`）时全部是 `NO_GROUP = -1`，
    `has_groups(ids)` 为 `False`；显式/自动分组从 0 开始；
 5. 分组列里有 NA 的行给 `NO_GROUP`，留给 M1-3 的 `remove_missing`；

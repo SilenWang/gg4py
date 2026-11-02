@@ -11,8 +11,9 @@
 2. :func:`eval_aes` 用自己写的解释器求值——**不调用 `eval` / `exec` / `compile`**，
    只认识下面 `_BINOPS` / `_UNARY` / `_CMP` / `CALLABLES` 里的东西；
 3. :func:`compute_groups` 按 ggplot2 4.x 的 `add_group()` 口径推分组：显式
-   `group` 优先，否则用所有离散（字符/分类）aes 做 interaction，id 按首次出现
-   编号；NA 行给 :data:`NO_GROUP`（-1），留给 M1-3 的 `remove_missing`。
+   `group` 优先，否则用所有离散（字符/分类）aes 做 interaction，组合按值域排序
+   编号（上游 `id()` 的 `sort(unique())` 口径）；NA 行给 :data:`NO_GROUP`（-1），
+   留给 M1-3 的 `remove_missing`。
 
 安全口径（本任务的核心验收）：
 
@@ -848,19 +849,24 @@ def _is_discrete(values: np.ndarray) -> bool:
     return all(item is None or isinstance(item, str) for item in values.tolist())
 
 
+def _is_missing_item(item: Any) -> bool:
+    """单个取值是否缺失（`None` / NaN）。"""
+    return item is None or (isinstance(item, (float, np.floating)) and bool(np.isnan(item)))
+
+
 def _object_codes(values: np.ndarray) -> np.ndarray:
-    """object / 字符串数组 → 每个不同值一个 int 码；`None` / NaN 给 -1。"""
+    """object / 字符串数组 → 每个不同值一个 int 码；`None` / NaN 给 -1。
+
+    码是**排序后**的位置（不是首次出现的位置）：上游 `id_var()` 走
+    `levels <- sort(unique0(x)); match(x, levels)`，所以 group id 跟值域顺序
+    走。首次出现顺序会让同一份数据在不同行序下给出不同 group id，无法与 R 对拍。
+    """
+    items = values.tolist()
+    present = sorted({item for item in items if not _is_missing_item(item)})
+    index = {item: position for position, item in enumerate(present)}
     codes = np.empty(values.shape[0], dtype=np.int64)
-    seen: dict[Any, int] = {}
-    for i, item in enumerate(values.tolist()):
-        if item is None or (isinstance(item, (float, np.floating)) and bool(np.isnan(item))):
-            codes[i] = -1
-            continue
-        code = seen.get(item)
-        if code is None:
-            code = len(seen)
-            seen[item] = code
-        codes[i] = code
+    for i, item in enumerate(items):
+        codes[i] = -1 if _is_missing_item(item) else index[item]
     return codes
 
 
@@ -883,7 +889,12 @@ def _value_codes(values: np.ndarray) -> np.ndarray:
 
 
 def _ids_from_keys(keys: list[np.ndarray]) -> np.ndarray:
-    """多列 interaction → 分组 id：按组合首次出现编号，缺失行给 `NO_GROUP`。"""
+    """多列 interaction → 分组 id；缺失行给 `NO_GROUP`。
+
+    编码与编号都照上游 `id()`：第一个 key 变化最慢、最后一个最快（R 的实现把
+    `.variables` 反过来做混合进制），再把用到的组合按**组合码升序**编号
+    （`id_var(res, drop = TRUE)` 同样是 `match(x, sort(unique(x)))`）。
+    """
     n = keys[0].shape[0]
     ids = np.full(n, NO_GROUP, dtype=np.int32)
     if n == 0:
@@ -900,10 +911,8 @@ def _ids_from_keys(keys: list[np.ndarray]) -> np.ndarray:
 
     keep = ~missing
     if keep.any():
-        uniq, first, inverse = np.unique(combined[keep], return_index=True, return_inverse=True)
-        rank = np.empty(uniq.size, dtype=np.int32)
-        rank[np.argsort(first, kind="stable")] = np.arange(uniq.size, dtype=np.int32)
-        ids[keep] = rank[inverse]
+        uniq = np.unique(combined[keep])
+        ids[keep] = np.searchsorted(uniq, combined[keep]).astype(np.int32, copy=False)
     return ids
 
 
@@ -912,7 +921,8 @@ def compute_groups(mapping: Aes | Mapping[str, Any], data: ColumnTable) -> np.nd
 
     - 显式 `aes(group=...)` 优先（`group` 里每个不同值一组）；
     - 否则用**所有离散的 aes**（`str` / `categorical` / 逻辑值，对齐上游
-      `is_discrete()`；排除 `label` / `PANEL`）做 interaction，组合按首次出现编号；
+      `is_discrete()`；排除 `label` / `PANEL`）做 interaction，组合按组合码升序
+      编号（对齐上游 `id()`：第一个 aes 变化最慢、最后一个最快）；
     - 没有任何离散 aes 时全部是 :data:`NO_GROUP`（-1），`has_groups()` 为 False；
     - 分组列里有 NA 的行给 :data:`NO_GROUP`，留给 M1-3 的 `remove_missing`。
 

@@ -260,9 +260,13 @@ def bind_plot(cls: type[Any]) -> type[Any]:
 # ---------------------------------------------------------------------------
 
 #: 9 个 geom。`default_aes` 照 ggplot2 4.0.3 的静态默认值，后续任务按需精修。
+#:
+#: **键顺序是契约**：上游 `Geom$use_defaults()` 按 `default_aes` 的顺序把缺失的
+#: 列追加到图层数据末尾，所以这里保持与 4.0.3 的 `aes(...)` 书写顺序一致，
+#: M1-3 的 `finish` 阶段才能与 R 的 `ggplot_build()$data` 逐列（含列序）对拍。
 _BAR_DEFAULTS = {
-    "fill": "grey35",
     "colour": None,
+    "fill": "grey35",
     "linewidth": 0.5,
     "linetype": 1,
     "alpha": None,
@@ -275,11 +279,11 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
         "point": GeomSpec(
             ("x", "y"),
             {
+                "shape": 19,
                 "colour": "black",
+                "fill": None,
                 "size": 1.5,
                 "alpha": None,
-                "fill": None,
-                "shape": 19,
                 "stroke": 0.5,
             },
         ),
@@ -310,14 +314,14 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "ymax|xmax",
             ),
             {
-                "fill": "white",
+                "weight": 1,
                 "colour": "grey20",
-                "linewidth": 0.5,
-                "linetype": 1,
+                "fill": "white",
+                "size": 1.5,
                 "alpha": None,
                 "shape": 19,
-                "size": 1.5,
-                "weight": 1,
+                "linetype": 1,
+                "linewidth": 0.5,
                 "width": 0.9,
             },
             "boxplot",

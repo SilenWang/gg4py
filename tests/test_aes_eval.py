@@ -344,7 +344,7 @@ def test_two_discrete_aes_are_cartesian_interaction() -> None:
         ]
     )
     ids = compute_groups(aes(colour="a", shape="b"), t)
-    # 2×2 = 4 个观测到的组合，按首次出现编号。
+    # 2×2 = 4 个观测到的组合；第一个 aes 变化最慢、按组合码升序编号。
     assert ids.tolist() == [0, 1, 2, 3]
 
     # 只出现 3 个组合时，未出现的组合不占 id（drop=TRUE）。
@@ -357,9 +357,23 @@ def test_two_discrete_aes_are_cartesian_interaction() -> None:
     assert compute_groups(aes(colour="a", shape="b"), partial).tolist() == [0, 1, 2]
 
 
-def test_group_ids_are_numbered_by_first_appearance() -> None:
+def test_group_ids_follow_sorted_levels() -> None:
+    # 上游 id() 是 match(x, sort(unique(x)))，不是首次出现顺序。
     t = ColumnTable([("g", Column("str", np.array(["b", "a", "b", "c", "a"])))])
-    assert compute_groups(aes(group="g"), t).tolist() == [0, 1, 0, 2, 1]
+    assert compute_groups(aes(group="g"), t).tolist() == [1, 0, 1, 2, 0]
+
+
+def test_two_discrete_aes_ids_are_ordered_by_the_first_aesthetic() -> None:
+    # R 的 id() 把第一个变量当慢速位：colour 先分组，shape 在组内变化。
+    t = ColumnTable(
+        [
+            ("colour", Column("str", np.array(["b", "a", "b", "c", "a"]))),
+            ("shape", Column("str", np.array(["y", "y", "x", "x", "y"]))),
+        ]
+    )
+    # R: ggplot2:::id(data.frame(c("b","a","b","c","a"), c("y","y","x","x","y")))
+    #    == 3 1 2 4 1（1 起）；这里减 1。
+    assert compute_groups(aes(colour="colour", shape="shape"), t).tolist() == [2, 0, 1, 3, 0]
 
 
 def test_explicit_group_overrides_automatic_grouping() -> None:
@@ -405,7 +419,8 @@ def test_grouping_uses_standardised_aes_names() -> None:
 
 def test_logical_aes_participates_in_grouping() -> None:
     # 上游 is_discrete() 是 factor / character / logical：bool 列也是离散。
+    # 逻辑值按 FALSE < TRUE 排序编号（id() 的 sort(unique())）。
     t = ColumnTable([("flag", Column("bool", np.array([True, True, False, True])))])
-    assert compute_groups(aes(colour="flag"), t).tolist() == [0, 0, 1, 0]
+    assert compute_groups(aes(colour="flag"), t).tolist() == [1, 1, 0, 1]
     # 算出来的逻辑值同样参与分组（mpg > 20 → [True, True, False, True, True]）。
-    assert compute_groups(aes(colour="mpg > 20"), table()).tolist() == [0, 0, 1, 0, 0]
+    assert compute_groups(aes(colour="mpg > 20"), table()).tolist() == [1, 1, 0, 1, 1]
