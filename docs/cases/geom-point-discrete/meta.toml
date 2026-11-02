@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "scale-discrete"]
+ci = true
+title = "point：离散 x + 分组着色"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "离散位置标度（0.6 扩张）+ 两层分组在同一 x 上叠点；size 3.2mm。"

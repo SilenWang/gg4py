@@ -174,12 +174,30 @@ class BoxplotRenderer(GeomRenderer):
         fatten = float(params.get("fatten", 2.0))
 
         indices = np.arange(data.nrows)
+
+        def axes(
+            across_values: np.ndarray, length_values: np.ndarray
+        ) -> tuple[np.ndarray, np.ndarray]:
+            """（粗细轴, 长度轴）→ 页面的（x, y）：纵向粗细沿 x，横向反过来。
+
+            `flip_data()` 之后横向下 x 是长度轴、y 是粗细轴；须线 / 箱体 / 中位线
+            都在这一对坐标上拼，所以只在这一处对换（R 的 `GeomBoxplot$draw_group()`
+            同样先把两组值算好再按 `flipped_aes` 摆位置）。
+            """
+            if flip:
+                return length_values, across_values
+            return across_values, length_values
+
         # 须线：每行两段（upper→ymax、lower→ymin）。
+        wx1, wy1 = axes(across, hinge_high)
+        wx2, wy2 = axes(across, hinge_low)
+        wx3, wy3 = axes(across, whisker_high)
+        wx4, wy4 = axes(across, whisker_low)
         whiskers = segments_grob(
-            unit(np.concatenate([across, across]).tolist(), "native"),
-            unit(np.concatenate([hinge_high, hinge_low]).tolist(), "native"),
-            unit(np.concatenate([across, across]).tolist(), "native"),
-            unit(np.concatenate([whisker_high, whisker_low]).tolist(), "native"),
+            unit(np.concatenate([wx1, wx2]).tolist(), "native"),
+            unit(np.concatenate([wy1, wy2]).tolist(), "native"),
+            unit(np.concatenate([wx3, wx4]).tolist(), "native"),
+            unit(np.concatenate([wy3, wy4]).tolist(), "native"),
             default_units="native",
             gp={
                 "col": [
@@ -199,10 +217,14 @@ class BoxplotRenderer(GeomRenderer):
         for index in range(data.nrows):
             low, high = float(box_low[index]), float(box_high[index])
             top, bottom = float(hinge_high[index]), float(hinge_low[index])
+            xs, ys = axes(
+                np.array([low, low, high, high, low]),
+                np.array([top, bottom, bottom, top, top]),
+            )
             boxes.append(
                 polygon_grob(
-                    unit([low, low, high, high, low], "native"),
-                    unit([top, bottom, bottom, top, top], "native"),
+                    unit(xs.tolist(), "native"),
+                    unit(ys.tolist(), "native"),
                     default_units="native",
                     gp=gpar(
                         col=alpha_colour(colours[index], alpha[index]),
@@ -215,11 +237,13 @@ class BoxplotRenderer(GeomRenderer):
                 )
             )
 
+        mx1, my1 = axes(box_low, middle)
+        mx2, my2 = axes(box_high, middle)
         median = segments_grob(
-            unit(box_low.tolist(), "native"),
-            unit(middle.tolist(), "native"),
-            unit(box_high.tolist(), "native"),
-            unit(middle.tolist(), "native"),
+            unit(mx1.tolist(), "native"),
+            unit(my1.tolist(), "native"),
+            unit(mx2.tolist(), "native"),
+            unit(my2.tolist(), "native"),
             default_units="native",
             gp={
                 "col": colours,

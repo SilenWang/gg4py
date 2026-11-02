@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "shape-aes", "guide-legend", "guide-merged", "scale-limits"]
+ci = true
+title = "guide：colour + shape 合并图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "两个美学的标题 / 标签 / guide 类型都相同 → 合并成一张（键里同时有颜色和形状）。"

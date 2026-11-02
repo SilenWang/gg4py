@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "stat-boxplot", "orientation-horizontal", "scale-limits"]
+ci = true
+title = "boxplot：横向"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "b 组 5.0 是离群点；横向走 flip_data（先纵向算五数，再把位置列对换）。"

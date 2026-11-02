@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-wrap", "facet-free", "scale-limits"]
+ci = true
+title = "facet：free_y"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "a 组 y ≈ 1..2、b 组 ≈ 10..18：free_y 下每个面板各自 5% 扩张。"

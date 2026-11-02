@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "na-removal"]
+ci = true
+title = "point：NA 行删除"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "两行各缺一个坐标（R 侧 data.frame 的 NA）；两边都应删行后画 7 个点。"

@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "theme-complete", "scale-limits"]
+ci = true
+title = "theme：theme_void 完整主题"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "与 theme-grey/minimal 同一份数据，只换主题：void 没有背景 / 轴 / 网格，面板即整页。"

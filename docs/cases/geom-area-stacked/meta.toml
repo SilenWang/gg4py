@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "aes-grouping", "stat-align", "position-stack", "scale-limits"]
+ci = true
+title = "area：堆叠面积"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "两组 x 完全对齐（stat_align 原样通过），堆叠后上沿 = a + b。"

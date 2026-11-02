@@ -148,9 +148,11 @@ r-svglite = ">=2.2,<3"
 "refs:device" = "Rscript tools/refs/device_ref.R"
 # 设备级渲染对拍（SIL-636）：同一页面上 R 真画一遍，PNG 比墨迹、折线比设备坐标
 "refs:device-render" = "Rscript tools/refs/device_render_ref.R"
-# M0-9 参考图产线：ggplot2 4.0.3 + svglite 出 docs/cases/<case>/expected.svg。
+# 参考图产线：ggplot2 4.0.3 + svglite 出 docs/cases/<case>/expected.svg。
+# 两个脚本分工：`cases_ref.R` 是 M0-9 的 plot 规格适配层（7 张），
+# `cases_battery_ref.R` 是 M1-15 的语法层首批 40 张（与各 case 的 plot.py 一一对应）。
 # 只在换 pin 或有意改口径时重跑；产物入库，CI 不装 R。
-"refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R"
+"refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_battery_ref.R"
 # 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
 "refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
 # M1-3 图层流水线夹具：16+ 张图的内置数据（列名 / 列序 / 类型 / 逐行值）。
