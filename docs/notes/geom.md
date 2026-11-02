@@ -88,9 +88,10 @@ page viewport（整页）
   ascent + descent），否则退回 M1-6 的 `_STRIP_TEXT_EM` 近似。`facet_table()`
   因此多了一个可选 `metrics=`。
 - 图层按层序绘进各自面板；空层（0 行）与空面板不产生 grob。
-- 单面板（`facet_null`）走同一条路径：1×1 表、面板就是整页（theme_void 的
-  轴 / 图例留白为 0 时与 M0-9 的整页场景一致）。
-- **轴、图例、标题是 M1-11**：本任务只画面板 + strip。
+- 单面板（`facet_null`）走同一条路径：1×1 表、面板就是整页。
+- 轴、图例、标题由 M1-11 接上（`ggcore.axis` / `ggcore.guide`，
+  见 `docs/notes/guide.md`）：M1-7 的面板 + strip 装配仍是同一条路径，
+  `plot_layout()` 只是把面板区从整页里扣出来。
 
 ## 5. 与 R 的已知差异 / 未实现清单
 
@@ -103,7 +104,7 @@ page viewport（整页）
 | 一条线内部变化的 `linetype` | gpar 的 `lty` 不支持向量 → 取首值（R 会拆 `segmentsGrob`） | 后续 |
 | 渐变填充（`fill` 沿 ribbon 变化） | 不支持；R 在非网格设备上同样 abort | 后续 |
 | 直线坐标以外的 coord | 未注册（M1-5 的范围） | 后续 coord 任务 |
-| 坐标轴 / 图例 / 标题 / `check.overlap` | 不画 | M1-11 |
+| 轴标签的 `check.overlap`（重叠时删标签） | 不删 | 后续（`axis.text` 的 `check.overlap`） |
 | boxplot 的 `outliers` 列表列 | `ColumnTable` 没有 list kind；`stat_boxplot` 产 `str` 文本（`c(20)` / `c()`），绘制层解析它 | 加 list kind 时再改（见 `stat.md` §4） |
 
 主题色（`fill = "grey35"` 等语义名）在 `build.data` 里仍是语义名，绘制期的

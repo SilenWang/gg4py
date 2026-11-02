@@ -760,6 +760,8 @@ class LayerBuild:
     params: Mapping[str, Any] = field(default_factory=dict)
     #: 产生这一层的 `Geom` 对象（`handle_na()` / `draw()` 的入口）；可缺省。
     geom_object: Any = None
+    #: `geom_*(show_legend=)`：`None` 是自动（ggplot2 的 `NA`），`False` 不进图例。
+    show_legend: bool | None = None
 
     @property
     def stages(self) -> Mapping[str, ColumnTable]:
@@ -814,6 +816,14 @@ class PlotBuild:
     panels: tuple[PanelBuild, ...] = ()
     #: 构建时的主题（`facet_table()` 取 strip / spacing 的元素值）。
     theme: Any = None
+    #: `labs()` 的标签集合（`title` / `x` / `y` / 各美学）；图例标题与轴标题用它。
+    labels: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    #: `guides()` 的 component（按键 = 美学名或 guide 名）。
+    guides: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    #: 每层合并后的原始映射（`aes()` 的原文）：图例标题与「哪些图层映射了这个美学」。
+    raw_mappings: tuple[Mapping[str, Any], ...] = ()
+    #: 文本度量（`ggcore.units.Metrics`）；`scene_from_build()` 注入，布局/图例用。
+    metrics: Any = None
 
     @property
     def empty_layers(self) -> tuple[int, ...]:
@@ -885,6 +895,7 @@ def _assemble(stages: _Stages, scales: ScaleSet) -> LayerBuild:
         notes=stages.aesthetics.notes,
         params=stages.layer.params,
         geom_object=stages.layer.geom,
+        show_legend=stages.layer.show_legend,
     )
 
 
@@ -1118,6 +1129,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         rows_dropped=count_rows_dropped(scaled),
     )
     notes = tuple(note for build in builds for note in build.notes) + panel_params.warnings()
+    raw_mappings = tuple(dict(_resolve_mapping(plot, layer)) for layer in plot.layers)
     return PlotBuild(
         layers=builds,
         scales=scales,
@@ -1139,7 +1151,20 @@ def build_plot(plot: ggplot) -> PlotBuild:
             ),
         ),
         theme=plot.theme,
+        labels=_plot_labels(plot),
+        guides=_plot_guides(plot),
+        raw_mappings=raw_mappings,
     )
+
+
+def _plot_labels(plot: Any) -> Mapping[str, Any]:
+    labels = getattr(plot, "labels", None) or {}
+    return MappingProxyType(dict(labels))
+
+
+def _plot_guides(plot: Any) -> Mapping[str, Any]:
+    guides = getattr(plot, "guides", None) or {}
+    return MappingProxyType(dict(guides))
 
 
 def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
@@ -1219,6 +1244,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
                 notes=staged.aesthetics.notes,
                 params=staged.layer.params,
                 geom_object=staged.layer.geom,
+                show_legend=staged.layer.show_legend,
             )
         )
         scaled_by_panel.append(per_panel)
@@ -1251,6 +1277,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     notes = tuple(note for build in builds for note in build.notes) + tuple(
         note for panel in panels for note in panel.panel_params.warnings()
     )
+    raw_mappings = tuple(dict(_resolve_mapping(plot, layer)) for layer in layers)
     return PlotBuild(
         layers=tuple(builds),
         scales=scales.shared,
@@ -1261,4 +1288,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         layout=layout,
         panels=tuple(panels),
         theme=plot.theme,
+        labels=_plot_labels(plot),
+        guides=_plot_guides(plot),
+        raw_mappings=raw_mappings,
     )

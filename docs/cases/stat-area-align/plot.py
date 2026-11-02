@@ -17,6 +17,7 @@ from ggcore.plot import (
     scale_y_continuous,
     theme_void,
 )
+from ggcore.theme import theme
 from ggio.frame import to_column_table
 
 DATA = {
@@ -36,5 +37,6 @@ def build():
         + scale_x_continuous(limits=(0.5, 5.5), expand=(0, 0))
         + scale_y_continuous(limits=(0, 4), expand=(0, 0))
         + theme_void()
+        + theme(**{"legend.position": "none"})
     )
     return {"plot": p, "size": SIZE}

@@ -154,6 +154,9 @@ r-svglite = ">=2.2,<3"
 # geom 绘制（M1-7）：9 个 geom 的 ggplot_build(p)$data[[1]] 逐列值 + panel ranges +
 # handle_na 警告，以及 9 个 theme_void 用例的 expected.svg（ggplot2 4.0.3 + svglite）。
 "refs:geom" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/geom_ref.R"
+# guide / 主轴（M1-11）：8 个 case 的断点 / 标签 / 图例键（get_guide_data）+
+# ggplotGrob() 的 axis / ylab / xlab / title / guide-box 行列尺寸（cm）。
+"refs:guide" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_ref.R"
 # stat（M1-8）：bin / count / boxplot / smooth(loess) / align 共 30 个 case 的
 # ggplot_build(p)$data[[1]] 逐列值 + build/draw 两段 warning。
 # loess 覆盖两种面：显式 case 用 surface = "direct" + statistics/trace.hat = "exact"

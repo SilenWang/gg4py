@@ -307,11 +307,15 @@ def extended_breaks(dmin: float, dmax: float, m: int = 5) -> tuple[float, ...]:
 
 
 def _decimals_needed(value: float) -> int:
-    """表示一个数至少需要几位小数（按 7 位有效数字的容差）。"""
-    if value == 0 or float(value).is_integer():
+    """表示一个数至少需要几位小数（按 7 位有效数字的容差）。
+
+    `log10` 的逆变换会带回浮点尾数（`2.0000000000000004`）：R 的 `format()` 按
+    7 位有效数字印成 "2"，所以 0 位小数也要参与容差比较，不能只看 `is_integer()`。
+    """
+    if value == 0:
         return 0
     tolerance = abs(value) * 1e-7
-    for decimals in range(1, 11):
+    for decimals in range(0, 11):
         if abs(round(value, decimals) - value) <= tolerance:
             return decimals
     return 10
