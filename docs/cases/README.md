@@ -27,18 +27,35 @@ docs/cases/
 
 ### `plot.py`：定义
 
-模块级定义数据与映射，`build()` 返回一份 **plot 规格 dict**：
+模块级定义数据与映射，`build()` 返回一份 **plot 规格 dict**。M1-7 起有两种形态，
+新 case 一律用第一种（走语法层与生产管线）：
 
 ```python
-"""geom-point / basic：两列数值 + 一列分组。"""
+"""geom-point / discrete：离散 x + 分组着色。"""
 
-DATA = {
-    "x": [1, 2, 3, 4, 5],
-    "y": [2.3, 4.1, 3.7, 5.2, 6.0],
-    "g": ["a", "a", "b", "b", "b"],
-}
+from ggcore.plot import aes, geom_point, ggplot, scale_colour_discrete, theme_void
+from ggio.frame import to_column_table
+
+DATA = {"cls": ["a", "b", "c"], "y": [1.2, 2.4, 1.8], "g": ["p", "q", "p"]}
 
 
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="y", colour="g"))
+        + geom_point(size=3.2, shape=19)
+        + scale_colour_discrete(values={"p": "#F8766D", "q": "#00BA38"})
+        + theme_void()
+    )
+    return {"plot": p, "size": [4, 3]}
+```
+
+`{"plot": ggplot(...), "size": [...]}`：`plot` 必须是带非空 `layers` 的 ggplot 对象；
+`build_scene()` 走 `build_plot()` + `ggcore.geom.scene.scene_from_plot()`，与
+`pixi run render` 的生产路径完全相同。
+
+M0-9 的最小适配层（只有老 case 用，`ggcore.plotspec` 直接画，不过语法层）：
+
+```python
 def build():
     return {
         "data": DATA,  # 必填：列名 → 数组
@@ -52,19 +69,21 @@ def build():
 
 | 键 | 必填 | 检查 |
 | --- | --- | --- |
-| `data` | 是 | 非空映射（DataFrame-like 也行）；不要在这里读文件 |
-| `layers` | 是 | 非空数组，每项是 dict 且 `geom` 是非空字符串 |
+| `plot` | 二选一 | 带非空 `layers` 的 ggplot 对象（语法层形态） |
+| `data` | 二选一 | 非空映射（DataFrame-like 也行）；不要在这里读文件 |
+| `layers` | 二选一 | 非空数组，每项是 dict 且 `geom` 是非空字符串 |
 | `mapping` | 否 | 若给，必须是 dict |
 | `size` | 否 | `[宽 in, 高 in]`，缺省 `[4, 3]`（与 R 侧 `svglite(width=4, height=3)` 同纸） |
 | `limits` | 否 | `{x = [lo, hi], y = [lo, hi]}`；缺省按数据范围加 ggplot2 的 5% 扩张 |
 | `palette` | 否 | `{类别: "#RRGGBB"}`；`colour` / `fill` 映射到离散列时必须覆盖每个取值 |
 
-`build()` 抛异常、返回非 dict、缺 `data` / `layers` 都会让该 case 在矩阵里标 `⛔
-invalid` 并让 CI 红。`size` / `limits` / `palette` 由渲染期的适配层
-（`ggcore.plotspec`）校验；不合规时该 case 以 `render 退出 2` 判红，消息里带具体
-原因。
+`build()` 抛异常、返回非 dict、既没有 `plot` 也没有 `data` + `layers`，都会让该 case
+在矩阵里标 `⛔ invalid` 并让 CI 红。适配层形态的 `size` / `limits` / `palette` 由
+渲染期的 `ggcore.plotspec` 校验（语法层形态没有这三个键：尺寸写 `size`、标度写
+`scale_*()`）；不合规时该 case 以 `render 退出 2` 判红，消息里带具体原因。
 
-当前支持的 `geom`（与 `tools/refs/cases_ref.R` 一一对应）：
+**适配层形态**当前支持的 `geom`（与 `tools/refs/cases_ref.R` 一一对应；语法层形态
+支持注册表里的全部 9 个 geom）：
 
 | geom | 参数 | R 侧等价物 |
 | --- | --- | --- |
@@ -205,6 +224,51 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 `pixi run cases:matrix` 对它们真跑 render + diff；`pixi run -e refs refs:cases`
 重生成参考 SVG。正确实现全绿，人为平移 (2, 2) 像素则四张全红——数字与负向验证记录
 见 `docs/notes/diff.md` §6。
+
+### M1-15 首轮案例库（40 条）
+
+M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) + ...}`），
+参考图由 `pixi run -e refs refs:cases` 里的第二个脚本
+`tools/refs/cases_battery_ref.R` 生成（与 `plot.py` 一一对应，改一边必须改另一边）。
+按族：
+
+| 族 | case |
+| --- | --- |
+| `geom-point` | `-discrete` / `-size` / `-alpha` / `-na` |
+| `geom-line` | `-na` / `-width`（虚线） |
+| `geom-path` | `-groups`（分组 + 保持行序） |
+| `geom-bar` | `-dodge` / `-fill` / `-horizontal` |
+| `geom-col` | `-horizontal` / `-dodge` / `-stack` |
+| `geom-area` | `-stacked` / `-align`（x 不齐）/ `-single` |
+| `geom-histogram` | `-bins` / `-binwidth` / `-horizontal` |
+| `geom-boxplot` | `-outliers` / `-varwidth` / `-horizontal` |
+| `geom-smooth` | `-default`（loess 默认口径）/ `-groups` / `-span` |
+| `scale` | `x-log10` / `y-log10` / `-colour-default`（hue）/ `-colour-gradient` / `-limits-drop` |
+| `facet` | `wrap-2x2` / `grid-ab` / `wrap-free-y` / `wrap-free-x` |
+| `theme` | `grey-basic` / `minimal-basic` / `void-basic`（同一份数据，只换主题） |
+| `guide` | `legend-single` / `legend-merged`（colour + shape）/ `colourbar` |
+
+`ci = false` 的三条是**已知实现缺口**，参考图照常入库，接上能力后把 `ci` 翻成
+`true` 即可（matrix 的“跳过”不是绿，只是不跑）。缺口统一登记在
+**SIL-715（M2 缺口池）**，下表「缺口池」列是池里的第几条：
+
+| case | 缺口 | 缺口池 |
+| --- | --- | --- |
+| `theme-grey-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 | SIL-715 #1 |
+| `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-715 #2 |
+| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） | SIL-715 #3 |
+
+另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考），同样归在
+SIL-715（M2 缺口池）：
+
+- **横向 `geom_area`**：ggplot2 4.0.3 的 `stat_align` 在 y 离散时输出 0 行，
+  R 侧只能用 `coord_flip()` 表达同一张图，而 `coord_flip` 不在 gg4py 的
+  coord 注册表（只有 `cartesian` / `fixed`）。缺的能力是「无 explicit
+  `orientation` 时按列类型推断方向」，对应 **SIL-715 #4**。见
+  `tools/refs/cases_battery_ref.R` 的注释。
+- `geom_boxplot()` 的横向**自动探测**在 gg4py 侧还没接上（stat_boxplot 产出的
+  `flipped_aes` 恒为 False）；`geom-boxplot-horizontal` 显式写了
+  `orientation = "y"`，两边同值。对应 **SIL-715 #5**。
 
 历史快照（不计入 geom 矩阵）：
 

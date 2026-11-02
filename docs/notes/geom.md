@@ -61,7 +61,7 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 | `bar` / `col` | 直接用 M1-9 的 `xmin/xmax/ymin/ymax`，画矩形（`just = c("left","top")`）；`fill` 吃 alpha、`col` 不吃（R 的 `fill_alpha()` 只包 fill） |
 | `histogram` | 与柱相同（`stat_bin` 见 `docs/notes/stat.md`；绘制只消费 `x/xmin/xmax/y/ymin/ymax`，`xmin/xmax`/`width` 由 stat 给） |
 | `area` | `ymin = 0`、`ymax = y`；上沿正向 + 下沿反向拼一个多边形（`fill` 吃 alpha，按 NA 断段），再按 `outline.type = "both"` 画上下两条轮廓线；横向（`flipped_aes`）在纵向语义拼完再 `flip_data(positions)`，多边形沿长度轴 x 从 `xmin` 铺到 `xmax` |
-| `boxplot` | 须线 `(x, upper)→(x, ymax)` / `(x, lower)→(x, ymin)`；箱体 `xmin..xmax × lower..upper`；中位线线宽 `linewidth * fatten`（2）；离群点走 point 的口径（`size * .pt + stroke * .stroke/2`）；`varwidth` 用 `relvarwidth` 缩放箱宽 |
+| `boxplot` | 须线 `(x, upper)→(x, ymax)` / `(x, lower)→(x, ymin)`；箱体 `xmin..xmax × lower..upper`；中位线线宽 `linewidth * fatten`（2）；离群点走 point 的口径（`size * .pt + stroke * .stroke/2`）；`varwidth` 用 `relvarwidth` 缩放箱宽。横向（`flipped_aes`）把（粗细轴, 长度轴）在**一处**对换成页面 (x, y)——须线 / 箱体 / 中位线共用同一个 `axes()` 闭包，纵向的字节序不变（SIL-709 修的：之前只有离群点对换，箱体与中位线仍是竖向坐标） |
 | `smooth` | `se != FALSE` 且有 `ymin/ymax` 时画 ribbon（填充、无边），再画拟合线（线不吃 alpha）；行序同 `line` |
 
 `flipped_aes`（横向 bar / boxplot）照 R 的 `flip_data()`：先把 x/y 族列名对换，
@@ -140,3 +140,9 @@ stat 未实现的 4 个（histogram / boxplot / smooth）把 R 的 `$data` 当�
 | `geom-smooth-se` | 0.019% | 0.001% |
 
 （点与箱线图的残余差异来自符号边缘的抗锯齿；两者都在 2% / 1% 阈值内。）
+
+## 7. 变更记录
+
+| 日期 | 任务 | 改动 | 原因 |
+| --- | --- | --- | --- |
+| 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |

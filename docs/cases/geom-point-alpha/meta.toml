@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "alpha-aes", "scale-limits"]
+ci = true
+title = "point：连续 alpha 映射"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "alpha 走 scale_alpha_continuous 的缺省 range (0.1, 1)；点色不吃 alpha 以外的影响。"

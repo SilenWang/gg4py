@@ -1,0 +1,7 @@
+family = "geom-path"
+features = ["aes-mapping", "aes-grouping", "colour-aes"]
+ci = true
+title = "path：分组 + 保持行序"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "行序 a,b,a,b…：path 不打乱，两条折线交叉；与 line 的 sort-order 用例互补。"

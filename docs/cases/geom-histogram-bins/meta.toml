@@ -1,0 +1,7 @@
+family = "geom-histogram"
+features = ["aes-mapping", "stat-bin", "scale-limits"]
+ci = true
+title = "histogram：bins = 8"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "bins 走 extended_breaks 的区间口径（不是简单等分），与 R 的 bin_breaks_bins 同值。"

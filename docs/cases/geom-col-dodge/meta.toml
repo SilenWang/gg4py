@@ -1,0 +1,7 @@
+family = "geom-col"
+features = ["aes-mapping", "aes-grouping", "position-dodge", "scale-discrete", "scale-limits"]
+ci = true
+title = "col：dodge + 显式柱宽"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "width 0.6、dodge 的 padding 由 M1-9 的 position_dodge 实现；R 侧同参数。"

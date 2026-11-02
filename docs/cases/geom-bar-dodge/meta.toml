@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "aes-grouping", "stat-count", "position-dodge", "scale-discrete"]
+ci = true
+title = "bar：count + dodge"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "三组计数 2/1/1/1/1，dodge width 0.9（与缺省柱宽 0.9 同值）。"
