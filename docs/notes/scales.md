@@ -171,11 +171,12 @@ R 侧取的是 `scale$get_limits()` / `default_expansion()` / `scale$dimension()
 之后**的范围算（`view_scales_from_scale()` 的口径），colour / size / alpha / shape
 按 `limits` 算（guide 的口径）。
 
-22 个 case：连续默认 expand / `expand = c(0, 0)` / 显式 limits / 手动 breaks +
-labels / `n.breaks` / log10（x 与 y）/ 离散水平 / 显式 limits / `drop = FALSE` /
+23 个 case：连续默认 expand / `expand = c(0, 0)` / 显式 limits / 手动 breaks +
+labels / `n.breaks` / log10（x 与 y，外加「log10 + 显式 limits」——limits 会被变换
+到 log 空间再参与 censor / expand / breaks）/ 离散水平 / 显式 limits / `drop = FALSE` /
 NA 水平 / limits 反序 / hue（含 na.value 与 limits）/ manual values / fill / gradient
 （含 limits）/ size / alpha / shape。规模钉死在
-`tests/test_scales_r_parity.py::test_compared_cell_count`（82 个断点、70 个映射值）。
+`tests/test_scales_r_parity.py::test_compared_cell_count`（87 个断点、75 个映射值）。
 
 对拍口径：数值 `abs <= 1e-12`，十六进制逐字节，`null` = NA，`"Inf"` / `"-Inf"` =
 R 的 ±Inf（见 §7）。

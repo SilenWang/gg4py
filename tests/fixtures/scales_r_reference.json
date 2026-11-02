@@ -448,6 +448,66 @@
       ]
     },
     {
+      "id": "x_log10_limits",
+      "title": "log10 x：显式 limits 先过变换（limits 1..100 → 0..2，越界 → NA）",
+      "scale": "x_log10",
+      "aesthetic": "x",
+      "trans": "log-10",
+      "params": {
+        "limits": [
+          1,
+          100
+        ]
+      },
+      "train": [
+        1,
+        10,
+        100
+      ],
+      "map": [
+        0.5,
+        1,
+        10,
+        100,
+        200
+      ],
+      "limits": [
+        0,
+        2
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -0.10000000000000001,
+        2.1000000000000001
+      ],
+      "breaks": [
+        null,
+        0,
+        1,
+        2,
+        null
+      ],
+      "labels": [
+        null,
+        "1",
+        "10",
+        "100",
+        null
+      ],
+      "mapped": [
+        null,
+        0,
+        1,
+        2,
+        null
+      ]
+    },
+    {
       "id": "discrete_levels",
       "title": "离散 x：水平升序，未在 limits 里的值 → NA",
       "scale": "x_discrete",

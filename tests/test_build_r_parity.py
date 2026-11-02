@@ -1,4 +1,4 @@
-"""M1-3 与 ggplot2 4.0.3 的对拍：五张图的图层数据逐列比。
+"""M1-3 与 ggplot2 4.0.3 的对拍：17 张图的图层数据逐列比。
 
 夹具由 `pixi run -e refs refs:build`（`tools/refs/build_ref.R`）生成：R 侧
 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与每一行的值原样写进
@@ -165,7 +165,7 @@ def test_fixture_comes_from_pinned_ggplot2(reference: dict) -> None:
 
 @pytest.mark.parametrize("case_id", list(EXPECTED))
 def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
-    """五张图：列名 / 列序 / 行数 / 逐列值。"""
+    """17 张图：列名 / 列序 / 行数 / 逐列值。"""
     case = next(item for item in reference["cases"] if item["id"] == case_id)
     layer = _built(reference, case_id)
     skip = SKIP_VALUES.get(case_id, frozenset())

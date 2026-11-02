@@ -610,6 +610,34 @@ def test_logical_position_uses_false_before_true() -> None:
     assert layer.scaled.column("x").kind == "float"
 
 
+@pytest.mark.parametrize(
+    ("values", "levels"),
+    [
+        ([True, True], ("True",)),
+        ([False, False], ("False",)),
+    ],
+)
+def test_logical_position_single_level_maps_to_code_one(
+    values: list[bool], levels: tuple[str, ...]
+) -> None:
+    """单水平 bool：水平只有它自己，map 全是 1（R: `scale_x_discrete()` train
+    `c(TRUE, TRUE)` → limits `TRUE`、map `1, 1`；`c(FALSE, FALSE)` 同理）。
+
+    区别只在**没有**把 `("False", "True")` 无条件 seed 进离散标度：一旦 seed，
+    单水平 bool 也会变成两个水平、code 落在 2 上。
+    """
+    table_bool = ColumnTable(
+        [
+            ("x", Column("bool", np.array(values))),
+            ("y", Column("float", np.arange(1.0, len(values) + 1))),
+        ]
+    )
+    build = build_plot(ggplot(table_bool, aes(x="x", y="y")) + geom_point())
+    assert build.scales.trained["x"] == levels
+    assert build.scales.limits("x") == levels
+    assert values_of(build.layers[0].scaled, "x") == [1.0] * len(values)
+
+
 def test_constant_aes_params_materialize_required_columns() -> None:
     plot = ggplot(table()) + geom_point(x=1, y=2)
     data = layer_of(plot).data

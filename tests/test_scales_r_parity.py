@@ -41,6 +41,7 @@ EXPECTED_CASES = {
     "continuous_nbreaks",
     "x_log10",
     "y_log10",
+    "x_log10_limits",
     "discrete_levels",
     "discrete_limits",
     "discrete_drop_false",
@@ -193,13 +194,13 @@ def test_scale_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """规模钉死：22 个 case、82 个断点 / 标签、70 个映射值、12 个 expand 向量。"""
-    assert len(reference["cases"]) == 22
-    assert sum(len(case["breaks"]) for case in reference["cases"]) == 82
-    assert sum(len(case["labels"]) for case in reference["cases"]) == 82
-    assert sum(len(case["mapped"]) for case in reference["cases"]) == 70
-    assert sum(len(case["limits"]) for case in reference["cases"]) == 52
-    assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 12
+    """规模钉死：23 个 case、87 个断点 / 标签、75 个映射值、13 个 expand 向量。"""
+    assert len(reference["cases"]) == 23
+    assert sum(len(case["breaks"]) for case in reference["cases"]) == 87
+    assert sum(len(case["labels"]) for case in reference["cases"]) == 87
+    assert sum(len(case["mapped"]) for case in reference["cases"]) == 75
+    assert sum(len(case["limits"]) for case in reference["cases"]) == 54
+    assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 13
 
 
 def test_parity_has_teeth(reference: dict) -> None:

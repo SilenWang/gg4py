@@ -918,12 +918,21 @@ class ContinuousScale(ScaleBase):
             if len(pairs) != 2:
                 raise ScaleError(f"limits 必须是 2 元序列，收到 {explicit!r}")
             base = self._range if self._range is not None else (0.0, 1.0)
-            low = base[0] if pairs[0] is None else float(pairs[0])
-            high = base[1] if pairs[1] is None else float(pairs[1])
+            # 显式 limits 给的是**数据空间**的值，上游 `get_limits()` 返回变换后的
+            # 值（`scale_x_log10(limits = c(1, 100))$get_limits()` → `0 2`），后面
+            # 的 censor / expand / breaks 全在变换后的空间里消费。单侧 `None` 取
+            # 已变换的训练范围那一侧。
+            low = base[0] if pairs[0] is None else self._transform_limit(float(pairs[0]))
+            high = base[1] if pairs[1] is None else self._transform_limit(float(pairs[1]))
             return (low, high)
         if self._range is None:
             return (0.0, 1.0)
         return self._range
+
+    def _transform_limit(self, value: float) -> float:
+        """单个显式 limit → 变换后的空间（`log10(0)` 按约定落成 NA）。"""
+        transformed, _ = self.transform_.transform(np.asarray([value], dtype=np.float64))
+        return float(transformed[0])
 
     def expanded_limits(self) -> tuple[float, float] | None:
         if not self.is_position:
