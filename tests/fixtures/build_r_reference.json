@@ -1478,6 +1478,53 @@
           ]
         }
       ]
+    },
+    "neg_data": {
+      "rows": 8,
+      "columns": [
+        {
+          "name": "g",
+          "kind": "str",
+          "values": [
+            "p",
+            "p",
+            "p",
+            "p",
+            "q",
+            "q",
+            "q",
+            "q"
+          ]
+        },
+        {
+          "name": "x",
+          "kind": "str",
+          "values": [
+            "one",
+            "two",
+            "one",
+            "two",
+            "one",
+            "two",
+            "one",
+            "two"
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            3,
+            -2,
+            1,
+            4,
+            -1,
+            2,
+            5,
+            -3
+          ]
+        }
+      ]
     }
   },
   "cases": [
@@ -12189,6 +12236,233 @@
         "midsize",
         "r",
         "suv"
+      ]
+    },
+    {
+      "id": "col_negative_stack",
+      "title": "负值 stack：ymin/ymax 是相邻累计高度的 min/max（正负分开堆）",
+      "dataset": "neg_data",
+      "code": "ggplot(neg_data, aes(x, y, fill = g)) + geom_col()",
+      "layer": 1,
+      "rows": 8,
+      "columns": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            8,
+            -3,
+            9,
+            6,
+            0,
+            2,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "fill",
+          "kind": "str",
+          "values": [
+            "#F8766D",
+            "#F8766D",
+            "#F8766D",
+            "#F8766D",
+            "#00BFC4",
+            "#00BFC4",
+            "#00BFC4",
+            "#00BFC4"
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ],
+          "levels": [
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            3,
+            1,
+            3,
+            2,
+            4,
+            2,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            5,
+            -5,
+            8,
+            2,
+            -1,
+            0,
+            0,
+            -3
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            8,
+            -3,
+            9,
+            6,
+            0,
+            2,
+            5,
+            0
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            1.55,
+            0.55000000000000004,
+            1.55,
+            0.55000000000000004,
+            1.55,
+            0.55000000000000004,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            2.4500000000000002,
+            1.45,
+            2.4500000000000002,
+            1.45,
+            2.4500000000000002,
+            1.45,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "colour",
+          "kind": "bool",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "linewidth",
+          "kind": "float",
+          "values": [
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "name": "linetype",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "alpha",
+          "kind": "bool",
+          "values": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "name": "width",
+          "kind": "float",
+          "values": [
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002,
+            0.90000000000000002
+          ]
+        }
+      ],
+      "x_labels": [
+        "one",
+        "two"
       ]
     }
   ]

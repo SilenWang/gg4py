@@ -132,7 +132,7 @@ r-svglite = ">=2.2,<3"
 "refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R"
 # 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
 "refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
-# M1-3 图层流水线夹具：五张图的内置数据（列名 / 列序 / 类型 / 逐行值）。
+# M1-3 图层流水线夹具：16+ 张图的内置数据（列名 / 列序 / 类型 / 逐行值）。
 # 只在换 pin 或有意改口径时重跑；产物入库，CI 不装 R。
 "refs:build" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/build_ref.R"
 # theme 元素解析（M1-10）：三套完整主题逐元素 calc_element() 的结果。

@@ -41,6 +41,7 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
     "col_width_param": frozenset({"fill"}),
     "categorical_group": frozenset({"colour"}),
     "multi_layer_levels": frozenset({"fill"}),
+    "col_negative_stack": frozenset({"fill"}),
 }
 
 #: 每个 case 的（列数, 行数, 参与比值的列数）——钉住，防止「悄悄少比一列」。
@@ -61,6 +62,7 @@ EXPECTED: dict[str, tuple[int, int, int]] = {
     "categorical_group": (10, 3, 9),
     "bool_discrete_x": (10, 3, 10),
     "multi_layer_levels": (17, 3, 16),
+    "col_negative_stack": (15, 8, 14),
 }
 
 TOLERANCE = 1e-9
@@ -122,6 +124,7 @@ def _plots(reference: dict) -> dict[str, ggplot]:
     categorical_data = datasets["categorical_data"]
     bool_data = datasets["bool_data"]
     multi_data = datasets["multi_data"]
+    neg_data = datasets["neg_data"]
     cyl4 = _row_subset(mpg, mpg.column("cyl").values == 4.0)
     return {
         "point_computed": ggplot(mpg, aes(x="displ", y="hwy / cyl")) + geom_point(),
@@ -147,6 +150,7 @@ def _plots(reference: dict) -> dict[str, ggplot]:
         "multi_layer_levels": ggplot(multi_data, aes(x="cls"))
         + geom_bar()
         + geom_bar(aes(x="drv")),
+        "col_negative_stack": ggplot(neg_data, aes(x="x", y="y", fill="g")) + geom_col(),
     }
 
 
@@ -212,7 +216,7 @@ def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """对拍规模：214 列里 205 列参与比值、8747 个值（钉住，不许悄悄缩水）。"""
+    """对拍规模：229 列里 219 列参与比值、8859 个值（钉住，不许悄悄缩水）。"""
     total_columns = 0
     total_values = 0
     for case in reference["cases"]:
@@ -221,8 +225,8 @@ def test_compared_cell_count(reference: dict) -> None:
         assert rows == case["rows"]
         total_columns += compared
         total_values += compared * rows
-    assert total_columns == 205
-    assert total_values == 8747
+    assert total_columns == 219
+    assert total_values == 8859
 
 
 def test_skipped_columns_only_carry_scale_or_theme_values(reference: dict) -> None:

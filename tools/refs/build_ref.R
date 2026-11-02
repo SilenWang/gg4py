@@ -178,6 +178,12 @@ multi_data <- data.frame(
   drv = c("f", "f", "f", "f", "r"),
   stringsAsFactors = FALSE
 )
+neg_data <- data.frame(
+  g = rep(c("p", "q"), each = 4),
+  x = rep(c("one", "two"), 4),
+  y = c(3, -2, 1, 4, -1, 2, 5, -3),
+  stringsAsFactors = FALSE
+)
 
 datasets <- list(
   mpg = dataframe_json(mpg_data),
@@ -188,7 +194,8 @@ datasets <- list(
   line_data = dataframe_json(line_data),
   categorical_data = dataframe_json(categorical_data),
   bool_data = dataframe_json(bool_data),
-  multi_data = dataframe_json(multi_data)
+  multi_data = dataframe_json(multi_data),
+  neg_data = dataframe_json(neg_data)
 )
 
 # ---------------------------------------------------------------------------
@@ -320,6 +327,13 @@ plots <- list(
     dataset = "multi_data",
     code = 'ggplot(multi_data, aes(x = cls)) + geom_bar() + geom_bar(aes(x = drv))',
     plot = ggplot(multi_data, aes(x = cls)) + geom_bar() + geom_bar(aes(x = drv))
+  ),
+  list(
+    id = "col_negative_stack",
+    title = "负值 stack：ymin/ymax 是相邻累计高度的 min/max（正负分开堆）",
+    dataset = "neg_data",
+    code = 'ggplot(neg_data, aes(x, y, fill = g)) + geom_col()',
+    plot = ggplot(neg_data, aes(x, y, fill = g)) + geom_col()
   )
 )
 

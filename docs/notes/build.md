@@ -117,9 +117,14 @@ stat 拿到的 x/y 已经是位置值。`build` 用 `ggcore.build.map_position()
 位置调整：
 
 - `identity`：不做任何事；
-- `stack`：按 x 分组，组内按 group **降序**累加（上游 `collide(reverse =
-  FALSE)`：第一个 group 在最上面），覆盖 `ymin` / `ymax` 并把 `y` 设为 `ymax`；
-  正负值分开堆。x 没有重复值时退化为 identity（上游 `var = NULL` 分支）。
+- `stack`：按 x 分组，组内按 group **降序**（上游 `collide(reverse = FALSE)`：
+  第一个 group 在最上面）；区间用上游 `pos_stack()` 的口径——
+  `heights = c(0, cumsum(y))`，`ymin/ymax = pmin/pmax(heights[-n], heights[-1])`，
+  再 `y = (1-vjust)*ymin + vjust*ymax`（不要用 `height - y`，负值段会反）。
+  正负值分开堆；x 没有重复值时退化为 identity（上游 `var = NULL` 分支）。
+- `stack` 下 **y = NA** 的行：我们保留有效坐标（x / xmin / xmax 不抹掉），把
+  该行当零高度参与累计（`ymin == ymax`，绘制效果与 R 一致）；不复刻上游
+  `collide` 按 `xmin` 走 `dapply` 时把整行坐标抹成 `NA` 的副作用。
 - `dodge` / `dodge2` / `jitter` / `fill` → `BuildError`（boxplot 的缺省 `dodge2`
   目前需要显式 `position="identity"`）。
 
@@ -165,7 +170,8 @@ stat 拿到的 x/y 已经是位置值。`build` 用 `ggcore.build.map_position()
 R。R 侧记录 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与逐行值，数据集也一起
 落盘，所以 Python 测试不需要 mpg / R。
 
-16 张图（覆盖 5 类夹具外形态 + SIL-667 的 multi-layer / categorical / bool）：
+17 张图（覆盖 5 类夹具外形态 + SIL-667 的 multi-layer / categorical / bool +
+负值 stack）：
 
 | id | 图 | 覆盖 |
 | --- | --- | --- |
@@ -185,12 +191,13 @@ R。R 侧记录 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与逐行
 | `categorical_group` | factor levels 反序（`c("b","a")`）的 colour | group 按 levels，不按字母序 |
 | `bool_discrete_x` | `x = c(TRUE, FALSE, TRUE)` | 逻辑位置 → `mapped_discrete`（FALSE=1） |
 | `multi_layer_levels` | 两层 `x = cls` / `x = drv` | 跨层水平全局排序；两层 x 各自编码 |
+| `col_negative_stack` | 8 行正负混合的 `geom_col()` | 负值 stack 的 `ymin/ymax`（相邻累计 min/max） |
 
 比较口径：列名与列序必须完全一致；数值 `allclose(rtol=0, atol=1e-9)`；字符串
 精确相等；缺失逐行一致；`column.kind` 与夹具的 `kind` 相等（`float` / `int` /
 `bool` / `str`）——跳过值的列也比 kind，唯一例外是 `categorical_group.colour`
-（我们保留 categorical code，R 的 `$data` 是 character）。规模钉死为 **214 列 / 205 列比值 /
-8747 个值**；`multi_layer_levels` 的第二层另比 17 列 × 3 行。
+（我们保留 categorical code，R 的 `$data` 是 character）。规模钉死为 **229 列 / 219 列比值 /
+8859 个值**；`multi_layer_levels` 的第二层另比 17 列 × 3 行。
 
 九列只比列名与位置、不比值的列，原因都在本任务边界之外：
 
@@ -202,6 +209,7 @@ R。R 侧记录 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与逐行
 | `point_na_colour.colour` | 离散 `colour` 的调色板 + NA 的 `na.value = "grey50"`（M1-4） |
 | `categorical_group.colour` | 离散 `colour` 的调色板（M1-4）；我们的列保留 categorical code |
 | `multi_layer_levels.fill` | 同上（theme_grey 的默认 fill） |
+| `col_negative_stack.fill` | 同上（theme_grey 的默认 fill） |
 
 ## 10. 不做 / 后续
 
@@ -214,6 +222,6 @@ R。R 侧记录 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与逐行
 - `geom_*(x = 1, y = 2)` 这种常量美学参数会在 `finish` 里 materialize 成列
   （required 校验也把它们算通过）；空数据框的常量参数不保证与 R 的
   `empty(data)` 分支一致。
-- `y` 上的 NA 在 `stack` 下的精确列值（R 会把 `y` 归 0、`ymin/ymax` 留 NA）
-  没有对拍；`na_mask` 与行数保留，绘制期口径留给 M1-7 的 `handle_na()`。
+- `y` 上的 NA 在 `stack` 下按「保留坐标 + 零高度」处理（§5），不与 R 的
+  `x → NA` artifact 对拍；绘制期口径留给 M1-7 的 `handle_na()`。
 - 不碰 IR 版本；产物留到 M1-7 再进 IR。

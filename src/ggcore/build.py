@@ -707,12 +707,18 @@ def _position_stack(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTabl
     for key in dict.fromkeys(x_keys):
         rows = np.array([i for i, item in enumerate(x_keys) if item == key], dtype=np.int64)
         rows = rows[np.argsort(-group[rows], kind="stable")]
-        for subset in (rows[y_values[rows] >= 0], rows[y_values[rows] < 0]):
+        # 上游 `pos_stack()`：heights = c(0, cumsum(y))，相邻两段取 min/max。
+        # 正负分开堆；NA y 当 0 高度（保留有效坐标，不复刻 R 把 x 也抹成 NA 的
+        # `collide` 副作用）。
+        values = y_values[rows]
+        positive = rows[(values >= 0) | np.isnan(values)]
+        negative = rows[values < 0]
+        for subset in (positive, negative):
             if subset.size == 0:
                 continue
-            heights = np.cumsum(y_values[subset])
-            ymin[subset] = heights - y_values[subset]
-            ymax[subset] = heights
+            heights = np.concatenate(([0.0], np.cumsum(np.nan_to_num(y_values[subset]))))
+            ymin[subset] = np.minimum(heights[:-1], heights[1:])
+            ymax[subset] = np.maximum(heights[:-1], heights[1:])
     y = (1.0 - vjust) * ymin + vjust * ymax
     columns = list(_items(table))
     columns = _put(columns, "ymin", Column("float", ymin))

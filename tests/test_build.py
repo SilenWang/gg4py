@@ -607,6 +607,45 @@ def test_constant_aes_params_materialize_required_columns() -> None:
     assert values_of(data, "y") == [2.0] * 5
 
 
+def test_stack_negative_values_use_adjacent_cumulative_heights() -> None:
+    """负值 stack：ymin/ymax 是相邻累计高度的 min/max（R pos_stack 口径）。"""
+    table_neg = ColumnTable(
+        [
+            ("g", Column("str", np.array(["p", "p", "p", "p", "q", "q", "q", "q"]))),
+            (
+                "x",
+                Column("str", np.array(["one", "two", "one", "two", "one", "two", "one", "two"])),
+            ),
+            ("y", Column("float", np.array([3.0, -2.0, 1.0, 4.0, -1.0, 2.0, 5.0, -3.0]))),
+        ]
+    )
+    plot = ggplot(table_neg, aes(x="x", y="y", fill="g")) + geom_col()
+    data = layer_of(plot).data
+    assert values_of(data, "y") == [8.0, -3.0, 9.0, 6.0, 0.0, 2.0, 5.0, 0.0]
+    assert values_of(data, "ymin") == [5.0, -5.0, 8.0, 2.0, -1.0, 0.0, 0.0, -3.0]
+    assert values_of(data, "ymax") == [8.0, -3.0, 9.0, 6.0, 0.0, 2.0, 5.0, 0.0]
+    assert values_of(data, "group") == [1.0, 3.0, 1.0, 3.0, 2.0, 4.0, 2.0, 4.0]
+
+
+def test_stack_na_y_keeps_coordinates_and_zero_height() -> None:
+    """NA y 行：保留 x / 坐标，ymin == ymax（零高度），不复制 R 的 x→NA artifact。"""
+    table_na = ColumnTable(
+        [
+            ("xs", Column("str", np.array(["a", "b", "a"]))),
+            (
+                "ys",
+                Column("float", np.array([1.0, 0.0, 3.0]), na_mask=np.array([False, True, False])),
+            ),
+        ]
+    )
+    plot = ggplot(table_na, aes(x="xs", y="ys")) + geom_col()
+    data = layer_of(plot).data
+    assert values_of(data, "x") == [1.0, 2.0, 1.0]
+    assert values_of(data, "y") == [1.0, 0.0, 4.0]
+    assert values_of(data, "ymin") == [0.0, 0.0, 1.0]
+    assert values_of(data, "ymax") == [1.0, 0.0, 4.0]
+
+
 def test_every_stage_is_separately_addressable() -> None:
     plot = ggplot(table(), aes(x="class")) + geom_bar()
     layer = layer_of(plot)
