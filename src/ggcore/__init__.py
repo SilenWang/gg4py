@@ -13,7 +13,9 @@ CBOR 编码库；pandas / Arrow / 任何绘图库都必须留在包外（见
 
 IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/notes/ir.md`。
 坐标底座在 `ggcore.units` / `ggcore.viewport`，口径见 `docs/notes/units.md` /
-`docs/notes/viewport.md`。
+`docs/notes/viewport.md`。落盘（M1-12）在 `ggcore.io`：`ggsave()` 按后缀选设备、
+`save_ir()` 写 `.ggir.cbor`、`export_ir_json()` 写调试视图，口径见
+`docs/notes/io.md`。
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ import ggcore.data as data
 import ggcore.eval as eval
 import ggcore.grobs as grobs
 import ggcore.gtable as gtable
+import ggcore.io as io
 import ggcore.layer as layer
 import ggcore.plot as plot
 import ggcore.plotspec as plotspec
@@ -41,6 +44,7 @@ __all__ = [
     "eval",
     "grobs",
     "gtable",
+    "io",
     "layer",
     "plot",
     "plotspec",

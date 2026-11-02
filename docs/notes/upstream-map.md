@@ -66,7 +66,7 @@ Python 模块，反之亦然。
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
-| `ggcore.io.save` | `R/save.R:92` | `ggsave()` | 未实现 |
+| `ggcore.io`（`ggsave` / `save_ir` / `export_ir_json`） | `R/save.R:92` | `ggsave()` | 已实现（M1-12）：按后缀选设备、四单位、`.ggir.cbor` / `.ir.json`，见 `docs/notes/io.md` |
 | `ggskia`（协议 `ggcore.device`） | `src/library/grid/src/grid.c`（`L_points` / `L_xspline`）、`src/main/engine.c`（`GESymbol` / `GEXspline`） | 桌面/服务端渲染（skia-python，PNG / SVG / PDF） | 已实现（M0-8）：三路出图 + pch 全表 + xspline/curve 对拍 |
 | `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 未实现 |
 | `ggdiff`（包外） | — | 差分：resvg 统一栅格 + 像素判据 + 报告（上游无对应） | 已实现（M0-9，`docs/notes/diff.md`） |
