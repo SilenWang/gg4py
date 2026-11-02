@@ -50,6 +50,14 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from ggcore.aes import Aes, AesSpec, as_aes
+from ggcore.coord import (
+    CoordBase,
+    PanelParams,
+    coord_from_component,
+    count_dropped,
+    count_out_of_bounds,
+    count_rows_dropped,
+)
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import NO_GROUP, compute_groups, eval_aes, eval_after_stat, parse_aes
 from ggcore.layer import Layer
@@ -833,11 +841,15 @@ class LayerBuild:
 
 @dataclass(frozen=True, slots=True)
 class PlotBuild:
-    """整张图的构建结果：按层顺序，外加训练好的标度与提示。"""
+    """整张图的构建结果：按层顺序，外加训练好的标度、坐标面板参数与提示。"""
 
     layers: tuple[LayerBuild, ...]
     scales: ScaleSet
     warnings: tuple[str, ...]
+    #: 解析后的坐标系（`plot.coordinates`，默认 `coord_cartesian()`）。
+    coord: CoordBase | None = None
+    #: 面板范围 / limits / clip / 等比例（M1-5）。直接构造 `PlotBuild` 时可为空。
+    panel_params: PanelParams | None = None
 
     @property
     def empty_layers(self) -> tuple[int, ...]:
@@ -931,5 +943,19 @@ def build_plot(plot: ggplot) -> PlotBuild:
     for staged in stages:
         _train(scales, staged.positioned)
     builds = tuple(_assemble(staged, scales) for staged in stages)
-    notes = tuple(note for build in builds for note in build.notes)
-    return PlotBuild(layers=builds, scales=scales, warnings=notes)
+    coord = coord_from_component(plot.coordinates)
+    panel_params = coord.panel_params(scales)
+    scaled = tuple(build.scaled for build in builds)
+    panel_params = panel_params.with_counts(
+        out_of_bounds=count_out_of_bounds(panel_params, scaled),
+        dropped=count_dropped(scaled),
+        rows_dropped=count_rows_dropped(scaled),
+    )
+    notes = tuple(note for build in builds for note in build.notes) + panel_params.warnings()
+    return PlotBuild(
+        layers=builds,
+        scales=scales,
+        warnings=notes,
+        coord=coord,
+        panel_params=panel_params,
+    )

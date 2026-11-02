@@ -29,6 +29,9 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 `ggcore.build` 逐条对应：
 
 - `transform_scales(scales, aesthetics)`（M1-4 新增）= `scales$transform_df()`；
+- `ScaleBase.transform_limits(limits)` = 上游
+  `transformation$transform(coord_limits)`：只给 coord 的 `xlim` / `ylim` 用
+  （连续标度变换到标度空间，离散原样返回；见 `docs/notes/coord.md` §1）；
 - 第一段 `train`：aesthetics 之后；
 - `map_position()` 只映射**位置美学**（上游 `layout$map_position()` 也只碰 x / y）；
 - 第二段 `train`：`compute_position()` 之后，用 **positioned** 数据（含

@@ -32,7 +32,9 @@ viewport.c` 的 `calcViewportTransform()`）。写 IR 前的 y 翻转由
 - gpar 里的显式 `None` 表示“清空该字段，回到 grid 缺省值”；R 的
   `gpar(col = NULL)` 是把该字段从增量里删掉（等价于“不覆盖”），见
   :meth:`ResolvedGpar.merge`。
-- 根视口的 `xscale`/`yscale` 是设备英寸，不是设备原生单位（R 的 pdf 是点）。
+- 根视口的 `xscale`/`yscale` 就是 **设备原生单位**：本模块的 `Device` 以英寸
+  计量，所以根级 `unit(1, "native")` = 1 英寸（R 的 pdf 设备原生单位是点，
+  同一条规则、不同的设备单位；见 `docs/notes/viewport.md` §9 / §12）。
 - 路径匹配按**段**精确比较；R 的 `pathMatch()` 把路径当正则、只锚定末尾
   （所以 `down("a::b")` 在 `xxa/b` 树里 R 命中、这里不命中）。
 - 裁剪路径（`clip = grob`）、mask、viewport layout（`layout.pos.row/col`，
@@ -990,8 +992,11 @@ class VpNode:
 def _root_viewport(device: Device) -> Viewport:
     """R 的 `grid.top.level.vp()`：铺满设备、左下对齐、`clip="on"`。
 
-    与 R 的差异：`xscale`/`yscale` 用设备英寸（R 用设备原生单位，pdf 下是点），
-    见 `docs/notes/viewport.md`。
+    `xscale` / `yscale` 定成**设备原生单位**。R 的原生单位是设备的设备坐标
+    （pdf 下是点：7in × 72 = 504），本模块的 :class:`Device` 以英寸计量，所以
+    这里就是 `0 .. width_in`——根级 `unit(1, "native")` 恰好是 1 英寸，与
+    M0 交接点名的口径一致。子视口仍按自己的 `xscale` / `yscale` 换算
+    （`tests/test_viewport.py::test_root_native_units_are_device_inches`）。
     """
     return Viewport(
         x=unit(0.0, "npc"),

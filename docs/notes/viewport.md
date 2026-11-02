@@ -225,7 +225,7 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
 | gpar 的向量值（一个 gpar 对应多个 grob） | 支持 | 未实现：一视口一标量，M0-6 按“一组 gp 一个 IR 节点”展开（见 §12） |
 | `fontface` 字符串 → `font` 整数 | `validGP()` 里折好 | 只收 `font` 整数 |
 | 路径名的正则匹配 | `pathMatch()` 用 `grepl(paste0(path, "$"))` | 按段精确比较（更严，不跨段） |
-| 根视口的 `xscale`/`yscale` | 设备原生单位（pdf 下是点，0..432） | 设备英寸（0..6）；显式给 `xscale`/`yscale` 的视口两边一致。`tests/test_viewport.py::test_root_scale_is_device_inches` 钉住 |
+| 根视口的 `xscale`/`yscale` | 设备原生单位（pdf 下是点，0..432） | 同一规则，设备单位是英寸（0..6）：根级 `unit(1, "native")` = 1in。`tests/test_viewport.py::test_root_scale_is_device_inches` / `::test_root_native_units_are_device_inches` 钉住 |
 | 视口树的序列化 / `grid.grab` | 有 | 未实现（IR 只带解析后的结果，M0-2） |
 
 ## 10. 可视化快照
@@ -270,5 +270,7 @@ pixi run -e refs refs:viewport   # Rscript tools/refs/viewport_ref.R
   R 的编号 `0..6`。
 - **`xscale` / `yscale` 的输入类型**：已放宽到「任意非字符串可迭代对象」，
   `np.ndarray`（panel 的数据范围）直接可用，不必先转 `tuple`。
-- **根级 native**：不支持。根视口的 `xscale`/`yscale` 是设备英寸（§9 已钉），
-  根视口自己用 `native` 单位没有意义；需要 native 的视口显式给 `xscale`/`yscale`。
+- **根级 native**：已支持（M1-5）。根视口的 `xscale`/`yscale` 是设备原生单位，
+  而本模块的 `Device` 以英寸计量，所以根级 `unit(1, "native")` = 1 英寸
+  （位置与尺寸都是；见 `docs/notes/coord.md` §5）。显式给 `xscale`/`yscale` 的
+  子视口仍按自己的范围换算。

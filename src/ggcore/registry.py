@@ -519,7 +519,8 @@ def _register_defaults() -> None:
     for name, aesthetic, defaults in SCALE_SPECS:
         register_scale(name, _scale_factory(name, aesthetic, defaults))
     for name in COORD_NAMES:
-        register_coord(name, _coord_factory(name, {"default": True} if name == "cartesian" else {}))
+        # M1-5 起 coord 的参数就是用户传入的那份；不再塞 `default` 占位。
+        register_coord(name, _coord_factory(name))
     for name in FACET_NAMES:
         register_facet(name, _facet_factory(name))
     for name in GUIDE_NAMES:
