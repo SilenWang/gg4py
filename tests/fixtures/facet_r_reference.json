@@ -1,0 +1,1222 @@
+{
+  "ggplot2": "4.0.3",
+  "data": {
+    "x": [1, 2, 3, 4, 10, 20, 30, 40],
+    "y": [10, 20, 30, 40, 100, 200, 300, 400],
+    "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+    "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+    "c": ["d", "d", "c", "c", "b", "b", "a", "a"],
+    "a_levels": ["q", "p"],
+    "b_levels": ["v", "u"],
+    "c_levels": ["d", "c", "b", "a"]
+  },
+  "cases": [
+    {
+      "name": "wrap_ncol2",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "a": "q"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "panel_names": ["panel-1-1", "panel-2-1"],
+        "strip_names": ["strip-t-1-1", "strip-t-2-1"],
+        "strip_sizes": [
+          {
+            "name": "strip-t-1-1",
+            "width": "1null",
+            "height": "0.607099627092846cm"
+          },
+          {
+            "name": "strip-t-2-1",
+            "width": "1null",
+            "height": "0.607099627092846cm"
+          }
+        ],
+        "strip_positions": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "b": 9,
+            "r": 7
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "b": 9,
+            "r": 11
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_as_table_false",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 2,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "c": "d"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 2,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "c": "c"
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "c": "b"
+        },
+        {
+          "PANEL": 4,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "c": "a"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ]
+    },
+    {
+      "name": "grid_2x2",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "panel_names": ["panel-1-1", "panel-1-2", "panel-2-1", "panel-2-2"],
+        "strip_names": ["strip-r-1", "strip-r-2", "strip-t-1", "strip-t-2"],
+        "strip_sizes": [
+          {
+            "name": "strip-t-1",
+            "width": "1null",
+            "height": "0.607099627092846cm"
+          },
+          {
+            "name": "strip-t-2",
+            "width": "1null",
+            "height": "0.607099627092846cm"
+          },
+          {
+            "name": "strip-r-1",
+            "width": "0.607099627092846cm",
+            "height": "1null"
+          },
+          {
+            "name": "strip-r-2",
+            "width": "0.607099627092846cm",
+            "height": "1null"
+          }
+        ],
+        "strip_positions": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "b": 9,
+            "r": 7
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "b": 9,
+            "r": 9
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 10,
+            "b": 10,
+            "r": 10
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 10,
+            "b": 12,
+            "r": 10
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_as_table_false",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "u",
+          "a": "p"
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ]
+    },
+    {
+      "name": "grid_free",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 2,
+          "SCALE_Y": 1,
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 2,
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "SCALE_X": 2,
+          "SCALE_Y": 2,
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [1.15, 41.85],
+          "y_range": [85, 415]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [85, 415]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [1.15, 41.85],
+          "y_range": [8.5, 41.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [8.5, 41.5]
+        }
+      ]
+    },
+    {
+      "name": "wrap_free",
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1,
+          "a": "q"
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "SCALE_X": 2,
+          "SCALE_Y": 2,
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [1.15, 41.85],
+          "y_range": [11.5, 418.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [0.5, 209.5]
+        }
+      ]
+    }
+  ],
+  "extra": [
+    {
+      "name": "wrap_numeric",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4],
+          "y": [1, 2, 3, 4],
+          "g": [2, 2, 1, 1]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "g": "numeric"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "g": null
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": 2,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "g": "numeric"
+      },
+      "labels": [
+        {
+          "g": "1"
+        },
+        {
+          "g": "2"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        }
+      ]
+    },
+    {
+      "name": "wrap_logical",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4],
+          "y": [1, 2, 3, 4],
+          "g": [true, true, false, false]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "g": "logical"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "g": null
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": false,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": true,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "g": "logical"
+      },
+      "labels": [
+        {
+          "g": "FALSE"
+        },
+        {
+          "g": "TRUE"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        }
+      ]
+    },
+    {
+      "name": "wrap_na_numeric",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4],
+          "y": [1, 2, 3, 4],
+          "g": [1, 1, null, null]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "g": "numeric"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "g": null
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": 1,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": null,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "g": "numeric"
+      },
+      "labels": [
+        {
+          "g": "1"
+        },
+        {
+          "g": "NA"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        }
+      ]
+    },
+    {
+      "name": "wrap_na_str",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4],
+          "y": [1, 2, 3, 4],
+          "g": ["a", "a", null, null]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "g": "character"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "g": null
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": "a",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": null,
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "g": "character"
+      },
+      "labels": [
+        {
+          "g": "a"
+        },
+        {
+          "g": "NA"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.85, 4.15],
+          "y_range": [0.85, 4.15]
+        }
+      ]
+    },
+    {
+      "name": "grid_sparse",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3],
+          "y": [1, 2, 3],
+          "a": ["p", "p", "q"],
+          "b": ["u", "v", "u"]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "a": "factor",
+          "b": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "b": "factor",
+        "a": "factor"
+      },
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        }
+      ]
+    },
+    {
+      "name": "wrap_drop_false_unused",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3],
+          "y": [1, 2, 3],
+          "a": ["a", "a", "b"]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "a": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["a", "b", "c"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "a",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "b",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "a": "c",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "a": "factor"
+      },
+      "labels": [
+        {
+          "a": "a"
+        },
+        {
+          "a": "b"
+        },
+        {
+          "a": "c"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        }
+      ]
+    },
+    {
+      "name": "grid_drop_false_unused",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3],
+          "y": [1, 2, 3],
+          "a": ["a", "a", "b"]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "a": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["a", "b", "c"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "a",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "b",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "a": "c",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "a": "factor"
+      },
+      "labels": [
+        {
+          "a": "a"
+        },
+        {
+          "a": "b"
+        },
+        {
+          "a": "c"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        }
+      ]
+    },
+    {
+      "name": "wrap_multirow",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+          "g": ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "g": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "g": ["a", "b", "c", "d", "e", "f", "g", "h", "i"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": "a",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": "b",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "g": "c",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "g": "d",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "g": "e",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "g": "f",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 7,
+          "ROW": 3,
+          "COL": 1,
+          "g": "g",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 8,
+          "ROW": 3,
+          "COL": 2,
+          "g": "h",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 9,
+          "ROW": 3,
+          "COL": 3,
+          "g": "i",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "g": "factor"
+      },
+      "labels": [
+        {
+          "g": "a"
+        },
+        {
+          "g": "b"
+        },
+        {
+          "g": "c"
+        },
+        {
+          "g": "d"
+        },
+        {
+          "g": "e"
+        },
+        {
+          "g": "f"
+        },
+        {
+          "g": "g"
+        },
+        {
+          "g": "h"
+        },
+        {
+          "g": "i"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 7,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 8,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 9,
+          "x_range": [0.6, 9.4],
+          "y_range": [0.6, 9.4]
+        }
+      ],
+      "structure": {
+        "panel_row_count": 3,
+        "panel_rows": ["1null", "1null", "1null"],
+        "top_strip_count": 9,
+        "top_strip_rows_above_panels": true,
+        "strip_heights": ["0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm"],
+        "panel_spacing_rows": 2,
+        "strip_widths": ["1null", "1null", "1null", "1null", "1null", "1null", "1null", "1null", "1null"]
+      }
+    },
+    {
+      "name": "grid_strip_text_y_20",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3],
+          "y": [1, 2, 3],
+          "a": ["p", "p", "q"],
+          "b": ["u", "v", "u"]
+        },
+        "types": {
+          "x": "integer",
+          "y": "integer",
+          "a": "factor",
+          "b": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "layout_types": {
+        "b": "factor",
+        "a": "factor"
+      },
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.9, 3.1],
+          "y_range": [0.9, 3.1]
+        }
+      ],
+      "structure": {
+        "panel_row_count": 2,
+        "panel_rows": ["1null", "1null"],
+        "top_strip_count": 2,
+        "top_strip_rows_above_panels": true,
+        "strip_heights": ["0.607099627092846cm", "0.607099627092846cm"],
+        "panel_spacing_rows": 1,
+        "strip_widths": ["1null", "1null", "0.971095738203958cm", "0.971095738203958cm"]
+      }
+    }
+  ]
+}

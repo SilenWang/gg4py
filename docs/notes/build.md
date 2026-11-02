@@ -211,11 +211,11 @@ M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_in
 
 ## 10. 不做 / 后续
 
-- coord（M1-5）、gtable / 主题装配（M1-10）、geom 绘制（M1-7）、其余 stat
-  （M1-8）、facet（M1-6）都不在这里；标度本身见 `docs/notes/scales.md`
-  （M1-4 已接上）。
-- `position` 的七种调整见 `docs/notes/position.md`（M1-9）；横向
-  （`orientation = "y"`）的 `flipped_aes` 检测仍归 geom `setup_data()`，M1-7 补。
+- geom 绘制（M1-7）与其余 stat（M1-8）都不在这里；标度见
+  `docs/notes/scales.md`（M1-4 已接上），分面布局 / 逐面板流水线见
+  `docs/notes/facet.md`（M1-6：`build_plot()` 已接线，单面板路径保持逐字节不变），
+  position 的七种调整见 `docs/notes/position.md`（M1-9）。
+- 横向（`orientation = "y"`）的 `flipped_aes` 检测仍归 geom `setup_data()`，M1-7 补。
 - `GeomBoxplot` 的 `outliers` / `varwidth` 分支未实现（预计算路径不需要）。
 - 横向柱状图（只映射 `y`、由 `orientation` 推断）不在本任务范围：`stat_count`
   与 bar 的 `setup_data` 都假定有 `x`；M1-7 接 orientation 时再补。

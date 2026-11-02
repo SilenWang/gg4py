@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import ast
 import warnings as _warnings
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -60,6 +60,13 @@ from ggcore.coord import (
 )
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import NO_GROUP, compute_groups, eval_aes, eval_after_stat, parse_aes
+from ggcore.facet import (
+    FacetBase,
+    FacetLayout,
+    PanelScales,
+    PanelScaleSet,
+    facet_from_component,
+)
 from ggcore.layer import Layer, Position
 from ggcore.registry import construct, registered, required_aes_groups
 from ggcore.scales import ScaleSet
@@ -74,6 +81,8 @@ __all__ = [
     "BuildWarning",
     "LayerBuild",
     "MissingAesError",
+    "PanelBuild",
+    "PanelScaleSet",
     "PlotBuild",
     "ScaleSet",
     "build_layer",
@@ -284,15 +293,25 @@ def _resolve_mapping(plot: ggplot, layer: Layer) -> Aes:
     return as_aes(merged)
 
 
-def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics:
+def compute_aesthetics(
+    plot: ggplot,
+    layer: Layer,
+    index: int = 0,
+    *,
+    panels: Any = None,
+    data_table: ColumnTable | None = None,
+) -> Aesthetics:
     """阶段 1：合并 mapping、求值数据美学、补 PANEL / group、统计缺失。
 
     返回的 `table` 列序 = 层/plot mapping 顺序（after_stat 的不进表）→ `PANEL` →
     `group`（显式 group 留在 mapping 原位，与上游 `add_group()` 一致）。
     缺失行**不删除**，只记进 `dropped_missing`；`build` 会在这一步之后调用
     :func:`map_position` 做位置标度的第一次编码。
+
+    `panels` 是每行的 PANEL（1 起；分面时由 `FacetBase.map_data` 给出）。
+    不给时与 M1-3 完全一致：整层写 `"1"`（单面板的字节不变）。
     """
-    table = _resolve_data(plot, layer)
+    table = _resolve_data(plot, layer) if data_table is None else data_table
     mapping = _resolve_mapping(plot, layer)
     nrows = table.nrows
 
@@ -313,13 +332,20 @@ def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics
     # 所以只有「没有任何离散 aes」时才是 NO_GROUP。
     ids = compute_groups(mapping, table)
     group = Column("int", np.where(ids >= 0, ids + 1, NO_GROUP).astype(np.int64))
+    if panels is None:
+        panel_column = Column("str", np.full(nrows, "1", dtype=str))
+    else:
+        values = np.asarray(panels, dtype=np.int64)
+        if values.shape != (nrows,):
+            raise BuildError(f"panels 长度 {values.shape} 与数据行数 {nrows} 不符")
+        panel_column = Column("str", np.array([str(int(value)) for value in values], dtype=str))
     group_position = next((i for i, (name, _) in enumerate(columns) if name == "group"), None)
     if group_position is None:
-        columns.append(("PANEL", Column("str", np.full(nrows, "1", dtype=str))))
+        columns.append(("PANEL", panel_column))
         columns.append(("group", group))
     else:
         columns[group_position] = ("group", group)
-        columns.append(("PANEL", Column("str", np.full(nrows, "1", dtype=str))))
+        columns.append(("PANEL", panel_column))
 
     # 缺失值：**只统计、不删行**。ggplot2 4.0.3 的 `$data` 保留 NA 行，删除
     # 发生在绘制期 `Geom$handle_na()`（只看 required_aes + non_missing_aes），
@@ -819,6 +845,20 @@ class LayerBuild:
 
 
 @dataclass(frozen=True, slots=True)
+class PanelBuild:
+    """一个面板的可断言部分：位置、分面值、面板参数与训练好的 x/y 标度。"""
+
+    panel: int
+    row: int
+    col: int
+    scale_x: int
+    scale_y: int
+    facet_values: Mapping[str, str]
+    panel_params: PanelParams
+    scales: PanelScaleSet
+
+
+@dataclass(frozen=True, slots=True)
 class PlotBuild:
     """整张图的构建结果：按层顺序，外加训练好的标度、坐标面板参数与提示。"""
 
@@ -828,12 +868,34 @@ class PlotBuild:
     #: 解析后的坐标系（`plot.coordinates`，默认 `coord_cartesian()`）。
     coord: CoordBase | None = None
     #: 面板范围 / limits / clip / 等比例（M1-5）。直接构造 `PlotBuild` 时可为空。
+    #: 分面时是**第一个**面板的参数（后向兼容）；每面板一份见 :attr:`panels`。
     panel_params: PanelParams | None = None
+    #: 可执行的分面对象（null / wrap / grid）。
+    facet: FacetBase | None = None
+    #: 分面布局表（`PANEL / ROW / COL / <facet vars> / SCALE_X / SCALE_Y`）。
+    layout: FacetLayout | None = None
+    #: 每面板一份参数与标度（单面板时也有一条）。
+    panels: tuple[PanelBuild, ...] = ()
+    #: 构建时的主题（`facet_table()` 取 strip / spacing 的元素值）。
+    theme: Any = None
 
     @property
     def empty_layers(self) -> tuple[int, ...]:
         """0 行、被跳过但留下记录了的图层下标。"""
         return tuple(layer.index for layer in self.layers if layer.empty)
+
+    @property
+    def panel_params_by_panel(self) -> Mapping[int, PanelParams]:
+        """`{PANEL: PanelParams}`（每面板一份）。"""
+        return MappingProxyType({panel.panel: panel.panel_params for panel in self.panels})
+
+    def facet_table(self) -> Any:
+        """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。"""
+        from ggcore.facet import facet_table
+
+        if self.layout is None or self.facet is None:
+            raise BuildError("这张图没有分面布局；请先用 build_plot() 构建")
+        return facet_table(self.layout, self.facet, self.theme)
 
 
 @dataclass(frozen=True, slots=True)
@@ -875,6 +937,150 @@ def _assemble(stages: _Stages, scales: ScaleSet) -> LayerBuild:
     )
 
 
+# ---------------------------------------------------------------------------
+# 分面：面板切片 / 每面板标度
+# ---------------------------------------------------------------------------
+
+
+def _slice_table(table: ColumnTable, rows: np.ndarray) -> ColumnTable:
+    """按行号取子表（保留 kind / levels / na_mask）。"""
+    return ColumnTable([(name, _gather_column(column, rows)) for name, column in _items(table)])
+
+
+def _concat_tables(tables: Sequence[ColumnTable]) -> ColumnTable:
+    """竖向拼接；列名与列序必须一致（同层各面板的同一阶段输出）。"""
+    pieces = [table for table in tables if table.nrows]
+    if not pieces:
+        return _EMPTY
+    names = pieces[0].names
+    columns: list[tuple[str, Column]] = []
+    for name in names:
+        columns_in = [table.column(name) for table in pieces]
+        kinds = {column.kind for column in columns_in}
+        if len(kinds) > 1:
+            raise BuildError(f"面板拼接时列 {name!r} 的类型不一致：{sorted(kinds)}")
+        first = columns_in[0]
+        values = np.concatenate([np.asarray(column.values) for column in columns_in])
+        masks = np.concatenate([np.asarray(column.na_mask) for column in columns_in])
+        columns.append((name, Column(first.kind, values, levels=first.levels, na_mask=masks)))
+    return ColumnTable(columns, nrows=sum(table.nrows for table in pieces))
+
+
+def _panel_ids_of(table: ColumnTable) -> np.ndarray:
+    """表里的 PANEL 列 → 1 起的 int 数组（空表给空数组）。"""
+    if table.nrows == 0 or "PANEL" not in table:
+        return np.zeros(table.nrows, dtype=np.int64)
+    return np.array([int(value) for value in table.column("PANEL").values], dtype=np.int64)
+
+
+def _panel_slices(panels: np.ndarray) -> list[tuple[int, np.ndarray]]:
+    """`(PANEL, 行号)` 列表，按 PANEL 升序（上游 `dapply()` 的分组顺序）。"""
+    out: list[tuple[int, np.ndarray]] = []
+    for panel in sorted({int(value) for value in panels.tolist() if int(value) > 0}):
+        out.append((panel, np.flatnonzero(panels == panel)))
+    return out
+
+
+def _restore_order(table: ColumnTable, order: np.ndarray) -> ColumnTable:
+    """拼接后的表按原行序还原（`order` 是拼接顺序里的源行号）。"""
+    if order.size == 0 or bool(np.array_equal(order, np.arange(order.size))):
+        return table
+    return _slice_table(table, np.argsort(order))
+
+
+def _transform_panels(
+    scales: PanelScales,
+    aesthetics: Aesthetics,
+    panels: np.ndarray,
+) -> Aesthetics:
+    if aesthetics.table.nrows == 0:
+        return aesthetics
+    pieces: list[ColumnTable] = []
+    order: list[np.ndarray] = []
+    for panel, rows in _panel_slices(panels):
+        subset = replace(aesthetics, table=_slice_table(aesthetics.table, rows))
+        pieces.append(transform_scales(scales.for_panel(panel), subset).table)
+        order.append(rows)
+    return replace(
+        aesthetics,
+        table=_restore_order(_concat_tables(pieces), np.concatenate(order)),
+    )
+
+
+def _map_position_panels(
+    scales: PanelScales,
+    aesthetics: Aesthetics,
+    panels: np.ndarray,
+) -> Aesthetics:
+    if aesthetics.table.nrows == 0:
+        return aesthetics
+    pieces: list[ColumnTable] = []
+    order: list[np.ndarray] = []
+    for panel, rows in _panel_slices(panels):
+        subset = replace(aesthetics, table=_slice_table(aesthetics.table, rows))
+        pieces.append(map_position(scales.for_panel(panel), subset).table)
+        order.append(rows)
+    return replace(
+        aesthetics,
+        table=_restore_order(_concat_tables(pieces), np.concatenate(order)),
+    )
+
+
+def _compute_panel_stages(
+    aesthetics: Aesthetics,
+    layer: Layer,
+    index: int,
+    panels: np.ndarray,
+) -> _Stages:
+    """阶段 2–4：identity stat / position 保持原行序，其余按 PANEL 分组。"""
+    if aesthetics.empty:
+        return _Stages(index, layer, aesthetics, _EMPTY, _EMPTY, _EMPTY)
+    if layer.stat.name == "identity":
+        statistic = compute_stat(layer, aesthetics)
+    else:
+        statistic = _concat_tables(
+            [
+                compute_stat(
+                    layer,
+                    replace(aesthetics, table=_slice_table(aesthetics.table, rows), empty=False),
+                )
+                for _, rows in _panel_slices(panels)
+            ]
+        )
+    mapped = map_statistic(layer, statistic, aesthetics)
+    if layer.position.name == "identity":
+        positioned = compute_position(layer, mapped, index)
+    else:
+        panel_ids = _panel_ids_of(mapped)
+        positioned = _concat_tables(
+            [
+                compute_position(layer, _slice_table(mapped, rows), index)
+                for _, rows in _panel_slices(panel_ids)
+            ]
+        )
+    return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
+
+
+def _map_scales_panels(
+    scales: PanelScales,
+    positioned: ColumnTable,
+) -> tuple[ColumnTable, dict[int, ColumnTable]]:
+    """阶段 5 按面板映射，再按原行序拼回；同时留下每面板的 scaled 表。"""
+    if positioned.nrows == 0:
+        return _EMPTY, {}
+    panel_ids = _panel_ids_of(positioned)
+    pieces: list[ColumnTable] = []
+    order: list[np.ndarray] = []
+    per_panel: dict[int, ColumnTable] = {}
+    for panel, rows in _panel_slices(panel_ids):
+        subset = _slice_table(positioned, rows)
+        mapped = map_scales(scales.for_panel(panel), subset)
+        pieces.append(mapped)
+        order.append(rows)
+        per_panel[panel] = mapped
+    return _restore_order(_concat_tables(pieces), np.concatenate(order)), per_panel
+
+
 def build_layer(
     plot: ggplot,
     layer: Layer,
@@ -886,7 +1092,13 @@ def build_layer(
     `scales` 给出时复用调用方的标度（本函数仍会用这一层的列训练它）；不给就
     新建一个。位置标度按上游口径训练两次（`compute_aesthetics` 之后、
     `compute_position` 之后各一次）。跨层联合训练请用 :func:`build_plot`。
+
+    分面图请直接用 :func:`build_plot`：面板标度池与布局是整张图的，单层函数
+    拿不到其它层的数据。
     """
+    facet = facet_from_component(plot.facet)
+    if not facet.is_null:
+        raise BuildError("分面图请用 build_plot()（build_layer 只服务单面板）")
     if scales is None:
         scales = ScaleSet(plot.scales)
     aesthetics = compute_aesthetics(plot, layer, index)
@@ -902,12 +1114,20 @@ def build_layer(
 
 
 def build_plot(plot: ggplot) -> PlotBuild:
-    """按层顺序构建整张图；**本任务不产出 gtable / 不出图**。
+    """按层顺序构建整张图；**本任务不产出 grob / 不出图**。
 
     标度先在所有层上训练，再统一映射（上游 `scales$train_df(data)` 的口径），
     所以同一离散 x 在不同层里得到同一套 1..n 编码；位置标度同样保留上游的
     两段训练（aesthetics 之后、position 之后各一次）。
+
+    `facet_null` 走与 M1-5 完全相同的单面板路径（输出逐字节不变）；wrap / grid
+    先 `compute_layout()`，再按 PANEL 切数据跑同一套六阶段，位置标度按
+    `free_x` / `free_y` 分配给面板（wrap）或行/列（grid）。
     """
+    facet = facet_from_component(plot.facet)
+    if not facet.is_null:
+        return _build_plot_facets(plot, facet)
+    layout = facet.compute_layout([])
     scales = ScaleSet(plot.scales)
     raw = [compute_aesthetics(plot, layer, index) for index, layer in enumerate(plot.layers)]
     raw = [transform_scales(scales, aesthetics) for aesthetics in raw]
@@ -937,4 +1157,136 @@ def build_plot(plot: ggplot) -> PlotBuild:
         warnings=notes,
         coord=coord,
         panel_params=panel_params,
+        facet=facet,
+        layout=layout,
+        panels=(
+            PanelBuild(
+                panel=1,
+                row=1,
+                col=1,
+                scale_x=1,
+                scale_y=1,
+                facet_values={},
+                panel_params=panel_params,
+                scales=PanelScaleSet(scales),
+            ),
+        ),
+        theme=plot.theme,
+    )
+
+
+def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
+    """wrap / grid 的整图构建：布局 → 每面板标度 → 按 PANEL 切数据。"""
+    coord = coord_from_component(plot.coordinates)
+    if (facet.free_x or facet.free_y) and getattr(coord, "ratio", None) is not None:
+        raise BuildError(
+            "自由刻度不能和 coord_fixed(ratio=…) 一起用"
+            "（上游同样报错：每个面板的范围不同，无法共用一个物理比例）"
+        )
+    layers = list(plot.layers)
+    tables = [_resolve_data(plot, layer) for layer in layers]
+    layout = facet.compute_layout(tables)
+    maps = [facet.map_data(table, layout) for table in tables]
+    data_tables = [
+        table
+        if bool(np.array_equal(mapping.rows, np.arange(table.nrows)))
+        else _slice_table(table, mapping.rows)
+        for table, mapping in zip(tables, maps, strict=True)
+    ]
+    scales = facet.init_scales(layout, plot.scales)
+
+    raw = [
+        compute_aesthetics(
+            plot,
+            layer,
+            index,
+            panels=maps[index].panels,
+            data_table=data_tables[index],
+        )
+        for index, layer in enumerate(layers)
+    ]
+    raw = [
+        _transform_panels(scales, aesthetics, maps[index].panels)
+        for index, aesthetics in enumerate(raw)
+    ]
+    # 第一段训练：所有层、所有面板都先训练，再统一 map_position。
+    for index, aesthetics in enumerate(raw):
+        for panel, rows in _panel_slices(maps[index].panels):
+            _train(scales.for_panel(panel), _slice_table(aesthetics.table, rows))
+    mapped = [
+        _map_position_panels(scales, aesthetics, maps[index].panels)
+        for index, aesthetics in enumerate(raw)
+    ]
+    stages = [
+        _compute_panel_stages(aesthetics, layer, index, maps[index].panels)
+        for index, (aesthetics, layer) in enumerate(zip(mapped, layers, strict=True))
+    ]
+    # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax）。
+    for staged in stages:
+        panel_ids = _panel_ids_of(staged.positioned)
+        for panel, rows in _panel_slices(panel_ids):
+            _train(scales.for_panel(panel), _slice_table(staged.positioned, rows))
+
+    builds: list[LayerBuild] = []
+    scaled_by_panel: list[dict[int, ColumnTable]] = []
+    for staged in stages:
+        scaled, per_panel = _map_scales_panels(scales, staged.positioned)
+        data = finish(staged.layer, scaled, staged.index)
+        builds.append(
+            LayerBuild(
+                index=staged.index,
+                geom=staged.layer.geom.name,
+                stat=staged.layer.stat.name,
+                position=staged.layer.position.name,
+                aesthetics=staged.aesthetics.table,
+                statistic=staged.statistic,
+                mapped=staged.mapped,
+                positioned=staged.positioned,
+                scaled=scaled,
+                data=data,
+                dropped_missing=staged.aesthetics.dropped,
+                empty=staged.aesthetics.empty,
+                notes=staged.aesthetics.notes,
+            )
+        )
+        scaled_by_panel.append(per_panel)
+
+    panels: list[PanelBuild] = []
+    for panel in layout.panel_ids:
+        panel_scales = scales.for_panel(panel)
+        panel_params = coord.panel_params(panel_scales)
+        panel_tables = tuple(
+            per_panel[panel] for per_panel in scaled_by_panel if panel in per_panel
+        )
+        panel_params = panel_params.with_counts(
+            out_of_bounds=count_out_of_bounds(panel_params, panel_tables),
+            dropped=count_dropped(panel_tables),
+            rows_dropped=count_rows_dropped(panel_tables),
+        )
+        panels.append(
+            PanelBuild(
+                panel=panel,
+                row=layout.row_of(panel),
+                col=layout.col_of(panel),
+                scale_x=layout.scale_x_of(panel),
+                scale_y=layout.scale_y_of(panel),
+                facet_values=MappingProxyType(layout.facet_values(panel)),
+                panel_params=panel_params,
+                scales=panel_scales,
+            )
+        )
+
+    notes = tuple(note for build in builds for note in build.notes) + tuple(
+        note for panel in panels for note in panel.panel_params.warnings()
+    )
+    return PlotBuild(
+        layers=tuple(builds),
+        scales=scales.shared,
+        warnings=notes,
+        coord=coord,
+        panel_params=panels[0].panel_params,
+        facet=facet,
+        layout=layout,
+        panels=tuple(panels),
+        theme=plot.theme,
     )

@@ -476,12 +476,34 @@ def _coord_factory(name: str, defaults: Mapping[str, Any] | None = None) -> Call
 
 
 def _facet_factory(name: str) -> Callable[..., Facet]:
-    def factory(facets: Any = None, **params: Any) -> Facet:
-        if facets is not None:
-            params = {"facets": facets, **params}
+    """`facet_null()` / `facet_wrap(facets, ...)` / `facet_grid(rows, cols, ...)`。
+
+    只做参数收集（M1-6 起语义在 `ggcore.facet`）；签名照上游，`facet_wrap`
+    的第一个位置参数是分面变量，`facet_grid` 前两个是行 / 列变量。
+    """
+
+    if name == "grid":
+
+        def grid_factory(
+            rows: Any = None,
+            cols: Any = None,
+            **params: Any,
+        ) -> Facet:
+            return Facet(name=name, params={"rows": rows, "cols": cols, **params})
+
+        return grid_factory
+
+    if name == "wrap":
+
+        def wrap_factory(facets: Any = None, **params: Any) -> Facet:
+            return Facet(name=name, params={"facets": facets, **params})
+
+        return wrap_factory
+
+    def null_factory(**params: Any) -> Facet:
         return Facet(name=name, params=params)
 
-    return factory
+    return null_factory
 
 
 def _guide_factory(name: str) -> Callable[..., Guide]:
