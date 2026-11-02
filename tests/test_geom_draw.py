@@ -23,7 +23,7 @@ from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import GeomError, registered_renderers, renderer_for
-from ggcore.geom.scene import scene_from_plot
+from ggcore.geom.scene import scene_from_build, scene_from_plot
 from ggcore.plot import aes, ggplot
 
 SIZE = dict(width_in=4.0, height_in=3.0)
@@ -345,6 +345,70 @@ def test_boxplot_segments_polygons_and_median() -> None:
     box = np.asarray(polygons[0].bufs["points"])
     assert box.shape[0] == 5  # 闭合五边形
     assert box[:, 1].max() - box[:, 1].min() == pytest.approx(0.4 / 1.0 * 216.0, abs=1e-2)
+
+
+def test_horizontal_boxplot_puts_length_on_x_and_category_on_y() -> None:
+    """SIL-709 修的横向箱线图方向：flip 时 x 是长度轴、y 是类别轴。
+
+    修前须线 / 箱体 / 中位线都用（类别, 长度）拼坐标，横向时整只箱被摆成竖向
+    （只有离群点已经对换）。这里把两侧的**实际绘制坐标**换算回数据值断言，
+    而不是只看 `geom-boxplot-horizontal` 的图级 diff。
+    """
+    data = _table(
+        cls=["a"] * 6 + ["b"] * 6,
+        v=[1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 0.5, 1.0, 1.5, 2.0, 2.5, 5.0],
+    )
+    width = 0.6
+
+    def drawn(plot) -> tuple[np.ndarray, np.ndarray, np.ndarray, float, float]:
+        build = build_plot(plot)
+        params = build.panels[0].panel_params
+        x_unit = SIZE["width_in"] * 72.0 / (params.x_range[1] - params.x_range[0])
+        y_unit = SIZE["height_in"] * 72.0 / (params.y_range[1] - params.y_range[0])
+        scene = scene_from_build(build, **SIZE)
+        polygon = next(node for node in _nodes(scene) if node.kind.value == "polygon")
+        segments = [node for node in _nodes(scene) if node.kind.value == "segments"]
+        median = next(node for node in segments if np.asarray(node.bufs["segments"]).shape[0] == 2)
+        return (
+            np.asarray(polygon.bufs["points"]),
+            np.asarray(median.bufs["segments"]),
+            build.layers[0].data,
+            x_unit,
+            y_unit,
+        )
+
+    # 横向：x 是长度（lower..upper），y 是类别轴上 0.6 宽的箱体。
+    horizontal_plot = (
+        ggplot(data, aes(y="cls", x="v"))
+        + registry.geom_boxplot(width=width, orientation="y")
+        + registry.scale_x_continuous(limits=(0, 6), expand=(0, 0))
+        + registry.theme_void()
+    )
+    box, median, layer, x_unit, y_unit = drawn(horizontal_plot)
+    length_span = float(layer.column("xupper").values[0] - layer.column("xlower").values[0])
+    assert box[:, 0].max() - box[:, 0].min() == pytest.approx(length_span * x_unit, abs=1e-2)
+    assert box[:, 1].max() - box[:, 1].min() == pytest.approx(width * y_unit, abs=1e-2)
+    # 横向的中位线是竖线：每只箱的 x 两端相同（中位数），y 跨过箱体厚度。
+    assert np.allclose(median[:, 0], median[:, 2])
+    assert np.abs(median[:, 3] - median[:, 1]) == pytest.approx(
+        np.full(median.shape[0], width * y_unit), abs=1e-2
+    )
+
+    # 纵向保持原样：x 是箱体厚度（类别轴），y 是长度。
+    vertical_plot = (
+        ggplot(data, aes(x="cls", y="v"))
+        + registry.geom_boxplot(width=width, orientation="x")
+        + registry.scale_y_continuous(limits=(0, 6), expand=(0, 0))
+        + registry.theme_void()
+    )
+    box, median, layer, x_unit, y_unit = drawn(vertical_plot)
+    length_span = float(layer.column("upper").values[0] - layer.column("lower").values[0])
+    assert box[:, 1].max() - box[:, 1].min() == pytest.approx(length_span * y_unit, abs=1e-2)
+    assert box[:, 0].max() - box[:, 0].min() == pytest.approx(width * x_unit, abs=1e-2)
+    assert np.allclose(median[:, 1], median[:, 3])
+    assert np.abs(median[:, 2] - median[:, 0]) == pytest.approx(
+        np.full(median.shape[0], width * x_unit), abs=1e-2
+    )
 
 
 def test_area_draws_fill_polygon_and_outline() -> None:

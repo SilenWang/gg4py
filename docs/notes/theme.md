@@ -329,7 +329,9 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
   但没画。后果是 `theme_grey()` / `theme_minimal()` 的网格线整片缺失（M1-15 的
   `theme-grey-basic` / `theme-minimal-basic` 因此标 `ci = false`），参考图已入库，
   接上网格线后把 `ci` 翻成 `true` 即可。次要难点在 minor breaks：`ggcore.scales` /
-  `ggcore.axis` 目前没有 `minor_breaks` 的实现。
+  `ggcore.axis` 目前没有 `minor_breaks` 的实现。缺口能力与归口：**SIL-715（M2
+  缺口池）第 1 条（`theme_grey`）/ 第 2 条（`theme_minimal`）**——按 theme 解析值
+  绘制 `panel.grid.major` / `.minor`。
 
 - `resolve_theme()` 的结果是只读映射：`resolved["axis.text"]` 拿到具体元素，
   `resolved.size_pt("axis.text")` 直接拿字号（pt），`resolved.is_blank(name)`

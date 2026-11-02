@@ -140,3 +140,9 @@ stat 未实现的 4 个（histogram / boxplot / smooth）把 R 的 `$data` 当�
 | `geom-smooth-se` | 0.019% | 0.001% |
 
 （点与箱线图的残余差异来自符号边缘的抗锯齿；两者都在 2% / 1% 阈值内。）
+
+## 7. 变更记录
+
+| 日期 | 任务 | 改动 | 原因 |
+| --- | --- | --- | --- |
+| 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |

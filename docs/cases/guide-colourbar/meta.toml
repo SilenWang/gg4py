@@ -4,4 +4,4 @@ ci = false
 title = "guide：colourbar"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项：guide 的渐变条由 256 条细矩形拼成，resvg 下每像素覆盖率不足 → 整条偏白（实测图级差异 3.9%）；点本身与 R 逐色一致。"
+notes = "阻塞项：guide 的渐变条由 256 条细矩形拼成，resvg 下每像素覆盖率不足 → 整条偏白（实测图级差异 3.9%）；点本身与 R 逐色一致。缺口池 SIL-715 #3（IR 渐变 + guide）。"

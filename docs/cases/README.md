@@ -249,22 +249,26 @@ M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) +
 | `guide` | `legend-single` / `legend-merged`（colour + shape）/ `colourbar` |
 
 `ci = false` 的三条是**已知实现缺口**，参考图照常入库，接上能力后把 `ci` 翻成
-`true` 即可（matrix 的“跳过”不是绿，只是不跑）：
+`true` 即可（matrix 的“跳过”不是绿，只是不跑）。缺口统一登记在
+**SIL-715（M2 缺口池）**，下表「缺口池」列是池里的第几条：
 
-| case | 缺口 |
-| --- | --- |
-| `theme-grey-basic` / `theme-minimal-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 |
-| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） |
+| case | 缺口 | 缺口池 |
+| --- | --- | --- |
+| `theme-grey-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 | SIL-715 #1 |
+| `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-715 #2 |
+| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） | SIL-715 #3 |
 
-另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考）：
+另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考），同样归在
+SIL-715（M2 缺口池）：
 
 - **横向 `geom_area`**：ggplot2 4.0.3 的 `stat_align` 在 y 离散时输出 0 行，
   R 侧只能用 `coord_flip()` 表达同一张图，而 `coord_flip` 不在 gg4py 的
-  coord 注册表（只有 `cartesian` / `fixed`）。见 `tools/refs/cases_battery_ref.R`
-  的注释。
+  coord 注册表（只有 `cartesian` / `fixed`）。缺的能力是「无 explicit
+  `orientation` 时按列类型推断方向」，对应 **SIL-715 #4**。见
+  `tools/refs/cases_battery_ref.R` 的注释。
 - `geom_boxplot()` 的横向**自动探测**在 gg4py 侧还没接上（stat_boxplot 产出的
   `flipped_aes` 恒为 False）；`geom-boxplot-horizontal` 显式写了
-  `orientation = "y"`，两边同值。
+  `orientation = "y"`，两边同值。对应 **SIL-715 #5**。
 
 历史快照（不计入 geom 矩阵）：
 
