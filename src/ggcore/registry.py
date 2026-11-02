@@ -23,7 +23,8 @@ ggplot2 的 `geom_point()` / `theme_grey()` / `scale_x_log10()` 这类函数在�
   当前 `_stat_layer_factory` / `_geom_layer_factory` 的行为与这条一致，有
   `tests/test_registry.py` 的 `test_params_route_to_layer_or_stat_only` 守着。
 
-跨模块依赖只有 ggcore 自身（X1 白名单）：`aes` / `components` / `layer`。
+跨模块依赖只有 ggcore 自身（X1 白名单）：`aes` / `components` / `layer` /
+`position` / `theme`。
 """
 
 from __future__ import annotations
@@ -37,16 +38,29 @@ from typing import Any
 from ggcore.aes import as_aes, frozen_mapping
 from ggcore.components import Coord, Facet, Guide, Labels, Scale
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
+from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
 
-#: 组件种类，顺序即遍历顺序（不要改成 set）。
-KINDS: tuple[str, ...] = ("geom", "stat", "scale", "coord", "facet", "guide", "theme", "label")
+#: 组件种类，顺序即遍历顺序（不要改成 set）。`position` 紧跟 `stat`：
+#: 它作用在 stat 之后、标度映射之前（就是流水线第 4 阶段）。
+KINDS: tuple[str, ...] = (
+    "geom",
+    "stat",
+    "position",
+    "scale",
+    "coord",
+    "facet",
+    "guide",
+    "theme",
+    "label",
+)
 
 #: 每种组件生成入口函数 / 方法时用的前缀。label 是 `labs()`，没有前缀。
 PREFIXES: Mapping[str, str] = MappingProxyType(
     {
         "geom": "geom_",
         "stat": "stat_",
+        "position": "position_",
         "scale": "scale_",
         "coord": "coord_",
         "facet": "facet_",
@@ -62,6 +76,7 @@ PREFIXES: Mapping[str, str] = MappingProxyType(
 __all__: list[str] = [
     "GEOM_SPECS",
     "KINDS",
+    "POSITION_NAMES",
     "PREFIXES",
     "SCALE_SPECS",
     "STAT_GEOMS",
@@ -76,6 +91,7 @@ __all__: list[str] = [
     "register_geom",
     "register_guide",
     "register_label",
+    "register_position",
     "register_scale",
     "register_stat",
     "register_theme",
@@ -487,6 +503,10 @@ def register_stat(name: str, constructor: Callable[..., Any]) -> Callable[..., A
     return register("stat", name, constructor)
 
 
+def register_position(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
+    return register("position", name, constructor)
+
+
 def register_scale(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
     return register("scale", name, constructor)
 
@@ -516,6 +536,8 @@ def _register_defaults() -> None:
         register_geom(name, _geom_layer_factory(name, spec))
     for name in STAT_NAMES:
         register_stat(name, _stat_layer_factory(name))
+    for name in POSITION_NAMES:
+        register_position(name, POSITION_FACTORIES[name])
     for name, aesthetic, defaults in SCALE_SPECS:
         register_scale(name, _scale_factory(name, aesthetic, defaults))
     for name in COORD_NAMES:

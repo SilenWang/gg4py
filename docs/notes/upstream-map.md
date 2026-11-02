@@ -22,7 +22,8 @@ Python 模块，反之亦然。
 | `ggcore.components` | — | 非图层组件的占位类（scale / theme / coord / facet / guide / labels） | 已实现（M1-1：名字 + 参数；scale 语义在 `ggcore.scales`（M1-4），其余在 M1-5 / M1-6 / M1-10 / M1-11） |
 | `ggcore.eval` | `R/aes-evaluation.R:349` | `eval_aesthetics()` | 已实现（M1-2：`parse_aes` / `eval_aes` / `eval_after_stat`，白名单解释器） |
 | `ggcore.eval` | `R/grouping.R:11` | `add_group()` | 已实现（M1-2：`compute_groups` / `has_groups`，显式 group 与离散 aes interaction） |
-| `ggcore.build` | `R/layer.R` | `Layer$compute_aesthetics()` / `compute_statistic()` / `map_statistic()` / `compute_position()` / `finish_statistics()` | 已实现（M1-3：六阶段流水线；`identity` / `count` stat，`identity` / `stack` position） |
+| `ggcore.build` | `R/layer.R` | `Layer$compute_aesthetics()` / `compute_statistic()` / `map_statistic()` / `compute_position()` / `finish_statistics()` | 已实现（M1-3：六阶段流水线；`identity` / `count` stat） |
+| `ggcore.position` | `R/position-*.R` | `Position*$compute_panel()` / `collide()` / `pos_stack()` / `pos_dodge()` / `pos_dodge2()` / `compute_jitter()` / `PositionNudge` | 已实现（M1-9：identity / stack / fill / dodge / dodge2 / jitter / nudge；口径见 `docs/notes/position.md`） |
 | `ggcore.build` | `R/plot-build.R` | `build_ggplot()` | 已实现（M1-3：`build_plot()`，只算数据，不出 gtable） |
 | `ggcore.build` | `R/geom-bar.R` / `R/geom-boxplot.R` | `GeomBar$setup_data()` / `GeomBoxplot$setup_data()` | 部分实现（M1-3：`xmin` / `xmax` / `ymin` / `ymax` / `flipped_aes`） |
 | `ggcore.ir` | — | IR（本项目自造，上游无对应） | 已实现（v0：18 种节点 + CBOR，`docs/notes/ir.md`） |
