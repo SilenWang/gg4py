@@ -40,6 +40,7 @@ __all__ = [
     "clusters",
     "is_glue",
     "is_supported",
+    "script_segments",
     "split_runs",
     "stack_tuple",
 ]
@@ -73,6 +74,30 @@ def is_supported(text: str) -> bool:
     都在支持范围内。
     """
     return not any(_in(ord(ch), COMPLEX_SCRIPT_RANGES) for ch in text)
+
+
+def script_segments(text: str) -> tuple[str, ...]:
+    """按复杂书写系统的区间边界把一段文字切成 script 段。
+
+    HarfBuzz 的 `guess_segment_properties()` 每段只取一个 script：整串
+    `"n=각"` 按开头的拉丁字母判成 Latin，后面的 Hangul jamo 就不再合成
+    音节（CanvasKit 的 SkParagraph 自己按 script 切段，同一串只占 32.34px，
+    HarfBuzz 整段量出 61.78px）。所以 shape 前先按这里的边界切段，段内仍由
+    HarfBuzz 自己猜 script。拉丁 + emoji 等非复杂书写系统仍是一段。
+    """
+    out: list[str] = []
+    current: list[str] = []
+    complex_run: bool | None = None
+    for ch in text:
+        is_complex = _in(ord(ch), COMPLEX_SCRIPT_RANGES)
+        if current and is_complex != complex_run:
+            out.append("".join(current))
+            current = []
+        current.append(ch)
+        complex_run = is_complex
+    if current:
+        out.append("".join(current))
+    return tuple(out)
 
 
 @dataclass(frozen=True)

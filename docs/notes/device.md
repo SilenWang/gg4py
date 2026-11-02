@@ -90,7 +90,8 @@ IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle`
    `wght` 轴；缺字面报错并列可用字面，不静默回落常规）。三个后端共用这一条
    路径，口径与实测见 `metrics-ledger.md` · M1-a。
 2. **run 切分**：直接用 M0-7 的 `ggcore.metrics.runs.split_runs()`——两端同一份
-   规则（`docs/spike/e2_metrics/report.md` 的 132/200 条就是没切 run 造成的）。
+   规则（`docs/spike/e2_metrics/report.md` 里 51/200 条就是没切 run 造成的；
+   M0-7 的 DejaVu 主字族栈下是 132/200）。
    混排「中文 A」时中文与拉丁各走各的字面；粘着码点不单独起 run。
 3. **字形与笔位**：
    - 简单文字（拉丁/希腊/西里尔/CJK/emoji，即 `is_supported()` 为真）用 cmap

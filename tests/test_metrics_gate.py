@@ -91,6 +91,7 @@ def test_degraded_font_stack_is_detected_as_a_failure(provider) -> None:
     response = canvaskit_payload(provider, TEXTS)
     result = gate.check_sensitivity(provider, corpus, response, 16)
     assert result["detected"] is True
-    # 纯拉丁那条本来就用主字族，砍栈不影响它；CJK 与 emoji 两条必须被抓住。
-    assert result["failures"] == len(TEXTS) - 1
-    assert result["run_layout_mismatches"] == len(TEXTS) - 1
+    # 主字族是 Noto Sans CJK SC，已经覆盖拉丁与 CJK，砍栈只改变 emoji 那条；
+    # 门禁仍必须把它抓出来（这正是 fallback 存在的意义）。
+    assert result["failures"] == 1
+    assert result["run_layout_mismatches"] == 1

@@ -133,12 +133,19 @@ def faces_for_family(family: str) -> tuple[FontFace, ...]:
 
 
 def available_styles(family: str) -> tuple[str, ...]:
-    """该字族可用的字面名（去重、按声明顺序）。"""
+    """该字族可用的字面名（去重、按声明顺序）。
+
+    可变字重的字面额外列出 `wght` 轴能落到的 bold：CJK 只登记了一个常规文件，
+    但 `wght=700` 就是 bold，报错里不能只写「可用字面：regular」。
+    """
     out: list[str] = []
     for face in faces_for_family(family):
-        name = style_name(face.weight, face.italic)
-        if name not in out:
-            out.append(name)
+        names = [style_name(face.weight, face.italic)]
+        if face.weight_axis is not None and face.weight_axis[0] <= 700 <= face.weight_axis[1]:
+            names.append(f"{style_name(700, face.italic)}（wght=700）")
+        for name in names:
+            if name not in out:
+                out.append(name)
     return tuple(out)
 
 

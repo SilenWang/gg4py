@@ -32,6 +32,10 @@ CORPUS = SPIKE / "corpus" / "labels_200.json"
 RESULTS = HERE / "results"
 GATE = 0.005
 
+sys.path.insert(0, str(REPO / "src"))
+
+from ggcore.metrics.runs import script_segments
+
 # Code points that must never start a new font run: joiners and variation
 # selectors belong to whatever face shaped the character before them. The same
 # ranges are declared in measure_canvaskit.cjs; tests/test_run_split_rules.py
@@ -95,11 +99,16 @@ def measure(text: str, fonts, size: float) -> tuple[float, list[dict]]:
     runs_out: list[dict] = []
     for idx, run in split_runs(text, fonts):
         name, font, upem = fonts[idx]
-        buf = hb.Buffer()
-        buf.add_str(run)
-        buf.guess_segment_properties()
-        hb.shape(font, buf)
-        width = sum(pos.x_advance for pos in buf.glyph_positions) / upem * size
+        # 与 ggshape.HarfBuzzBackend 同一口径：HarfBuzz 的 script 猜测每段只取
+        # 一个 script，混排要按 script 段切开再拼（CanvasKit 的 SkParagraph
+        # 自己就是这么切的）。
+        width = 0.0
+        for segment in script_segments(run):
+            buf = hb.Buffer()
+            buf.add_str(segment)
+            buf.guess_segment_properties()
+            hb.shape(font, buf)
+            width += sum(pos.x_advance for pos in buf.glyph_positions) / upem * size
         total += width
         runs_out.append({"face": name, "text": run, "width": round(width, 6)})
     return total, runs_out

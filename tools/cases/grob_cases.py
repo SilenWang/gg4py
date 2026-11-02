@@ -356,20 +356,35 @@ def font_file() -> Path:
 
 
 class SkiaMetrics:
-    """`ggcore.units.Metrics` 的 skia 实现：返回英寸（单位系统要的口径）。"""
+    """`ggcore.units.Metrics` 的 skia 实现：返回英寸（单位系统要的口径）。
+
+    口径与设备端 `ggskia.text.ShaperMetrics` 相同：线性推进（R 的 cairo/svglite
+    同一套，`setLinearMetrics(True)`）与 cap height 的 `strheight`。IR 里的
+    `text.width` 因此和 SVG/PNG 里实际占的宽度、高度是同一套数，不再是 hinted
+    与 linear 的混合态（见 `docs/notes/metrics-ledger.md` · M1-e）。
+    """
 
     def __init__(self, typeface: skia.Typeface) -> None:
         self.typeface = typeface
 
     def _font(self, fontsize: float, cex: float) -> skia.Font:
-        return skia.Font(self.typeface, max(float(fontsize) * float(cex), 1e-3))
+        font = skia.Font(self.typeface, max(float(fontsize) * float(cex), 1e-3))
+        font.setLinearMetrics(True)
+        return font
 
     def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         return float(self._font(fontsize, cex).measureText(text)) / 72.0
 
     def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         metrics = self._font(fontsize, cex).getMetrics()
-        return float(-metrics.fAscent + metrics.fDescent) / 72.0
+        # R 的 `stringHeight` = cap height × 72.27/72（不是 ascent + descent）；
+        # 位图字体没有 cap height 时退回升降部。与设备端同一公式。
+        box = float(metrics.fCapHeight)
+        if box > 0:
+            box *= 72.27 / 72.0
+        else:
+            box = float(-metrics.fAscent + metrics.fDescent)
+        return box / 72.0
 
 
 # ---------------------------------------------------------------------------

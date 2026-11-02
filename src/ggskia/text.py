@@ -36,7 +36,7 @@ from dataclasses import dataclass
 import skia
 import uharfbuzz as hb
 
-from ggcore.metrics.catalog import FontCatalog
+from ggcore.metrics.catalog import DEFAULT_FONT_STACK, FontCatalog
 from ggcore.metrics.faces import (
     FACE_SUFFIXES,
     canonical_family,
@@ -125,14 +125,20 @@ def resolve_stack(
         Face(primary.family, primary.filename, primary.weight, primary.italic, primary.variation)
     ]
 
-    # 回退顺序：CJK 主字面之后先给 emoji 字面、再给 DejaVu。DejaVu 自带一些
-    # 单色 emoji（U+1F600 / U+2764）且推进只有 1.05×fontsize，放在 emoji 字面
-    # 前面会让 emoji 永远落不到 Noto Emoji/Color Emoji（R 的 1.25em 口径）。
-    fallbacks: list[tuple[str, int, bool]] = [
-        (SANS_FAMILY, weight, italic),
-        (EMOJI_COLOR_FAMILY, 400, False),
-        ("DejaVu Sans", weight, italic),
-    ]
+    # 回退顺序不是这里写的第二份事实：逐条读 rules.json 的 default_font_stack
+    # （`MetricProvider` / `TableBackend` / CanvasKit 读的是同一份）。CJK →
+    # emoji → DejaVu：DejaVu 自带一些单色 emoji（U+1F600 / U+2764）且推进只有
+    # 1.05×fontsize，排在 emoji 字面前面会让 emoji 永远落不到 Noto Emoji/Color
+    # Emoji（R 的 1.25em 口径）。
+    fallbacks: list[tuple[str, int, bool]] = []
+    for filename in DEFAULT_FONT_STACK:
+        name = owner.family(filename)
+        # emoji 只有常规字面；其它回退字族沿用请求的字重/斜体（缺档时
+        # `strict=False` 用常规字面继续找覆盖，与 R 的 fontconfig 一致）。
+        if name == EMOJI_COLOR_FAMILY:
+            fallbacks.append((name, 400, False))
+        else:
+            fallbacks.append((name, weight, italic))
     for name, want_weight, want_italic in fallbacks:
         name = _emoji_family(name, emoji)
         try:

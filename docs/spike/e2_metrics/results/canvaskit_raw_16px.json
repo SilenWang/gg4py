@@ -7,561 +7,546 @@
   {
    "id": "L000",
    "category": "latin",
-   "width": 46.47999954223633,
-   "implicit_width": 46.47999954223633,
+   "width": 41.459999084472656,
+   "implicit_width": 41.459999084472656,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Width",
-     "width": 46.47999954223633
+     "width": 41.459999084472656
     }
    ]
   },
   {
    "id": "L001",
    "category": "latin",
-   "width": 72.22000122070312,
-   "implicit_width": 72.22000122070312,
+   "width": 62.130001068115234,
+   "implicit_width": 62.130001068115234,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Petal [%]",
-     "width": 72.22000122070312
+     "width": 62.130001068115234
     }
    ]
   },
   {
    "id": "L002",
    "category": "latin",
-   "width": 103.33999633789062,
-   "implicit_width": 103.33999633789062,
+   "width": 90.80000305175781,
+   "implicit_width": 90.80000305175781,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Species / drv",
-     "width": 103.33999633789062
+     "width": 90.80000305175781
     }
    ]
   },
   {
    "id": "L003",
    "category": "latin",
-   "width": 89.30999755859375,
-   "implicit_width": 89.30999755859375,
+   "width": 75.45999908447266,
+   "implicit_width": 75.45999908447266,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "95% CI [%]",
-     "width": 89.30999755859375
+     "width": 75.45999908447266
     }
    ]
   },
   {
    "id": "L004",
    "category": "latin",
-   "width": 72.2699966430664,
-   "implicit_width": 72.2699966430664,
+   "width": 62.939998626708984,
+   "implicit_width": 62.939998626708984,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Intercept",
-     "width": 72.2699966430664
+     "width": 62.939998626708984
     }
    ]
   },
   {
    "id": "L005",
    "category": "latin",
-   "width": 155.99000549316406,
-   "implicit_width": 155.99000549316406,
+   "width": 136.63999938964844,
+   "implicit_width": 136.63999938964844,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Sepal setosa ±0.02",
-     "width": 155.99000549316406
+     "width": 136.63999938964844
     }
    ]
   },
   {
    "id": "L006",
    "category": "latin",
-   "width": 159.6300048828125,
-   "implicit_width": 159.6300048828125,
+   "width": 136.4600067138672,
+   "implicit_width": 136.4600067138672,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "naïve versicolor [%]",
-     "width": 159.6300048828125
+     "width": 136.4600067138672
     }
    ]
   },
   {
    "id": "L007",
    "category": "latin",
-   "width": 154.50999450683594,
-   "implicit_width": 154.50999450683594,
+   "width": 125.16999816894531,
+   "implicit_width": 125.16999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "3.14159 Sepal #12",
-     "width": 154.50999450683594
+     "width": 125.16999816894531
     }
    ]
   },
   {
    "id": "L008",
    "category": "latin",
-   "width": 65.47000122070312,
-   "implicit_width": 65.47000122070312,
+   "width": 55.72999954223633,
+   "implicit_width": 55.72999954223633,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "hwy [%]",
-     "width": 65.47000122070312
+     "width": 55.72999954223633
     }
    ]
   },
   {
    "id": "L009",
    "category": "latin",
-   "width": 61.02000045776367,
-   "implicit_width": 61.02000045776367,
+   "width": 53.900001525878906,
+   "implicit_width": 53.900001525878906,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "drv/day",
-     "width": 61.02000045776367
+     "width": 53.900001525878906
     }
    ]
   },
   {
    "id": "L010",
    "category": "latin",
-   "width": 119.30000305175781,
-   "implicit_width": 119.30000305175781,
+   "width": 101.38999938964844,
+   "implicit_width": 101.38999938964844,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "95% CI — total",
-     "width": 119.30000305175781
+     "width": 101.38999938964844
     }
    ]
   },
   {
    "id": "L011",
    "category": "latin",
-   "width": 142.6999969482422,
-   "implicit_width": 142.6999969482422,
+   "width": 119.62000274658203,
+   "implicit_width": 119.62000274658203,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "setosa / mpg #12",
-     "width": 142.6999969482422
+     "width": 119.62000274658203
     }
    ]
   },
   {
    "id": "L012",
    "category": "latin",
-   "width": 72.2699966430664,
-   "implicit_width": 72.2699966430664,
+   "width": 62.939998626708984,
+   "implicit_width": 62.939998626708984,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Intercept",
-     "width": 72.2699966430664
+     "width": 62.939998626708984
     }
    ]
   },
   {
    "id": "L013",
    "category": "latin",
-   "width": 183.60000610351562,
-   "implicit_width": 183.60000610351562,
+   "width": 158.47999572753906,
+   "implicit_width": 158.47999572753906,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "naïve / Species — total",
-     "width": 183.60000610351562
+     "width": 158.47999572753906
     }
    ]
   },
   {
    "id": "L014",
    "category": "latin",
-   "width": 259.32000732421875,
-   "implicit_width": 259.32000732421875,
+   "width": 211.33999633789062,
+   "implicit_width": 211.33999633789062,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n = 1,234 1 000 000 café ±0.02",
-     "width": 259.32000732421875
+     "width": 211.33999633789062
     }
    ]
   },
   {
    "id": "L015",
    "category": "latin",
-   "width": 103.5,
-   "implicit_width": 103.5,
+   "width": 79.36000061035156,
+   "implicit_width": 79.36000061035156,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "−1.5e-3 #12",
-     "width": 103.5
+     "width": 79.36000061035156
     }
    ]
   },
   {
    "id": "L016",
    "category": "latin",
-   "width": 202.67999267578125,
-   "implicit_width": 202.67999267578125,
+   "width": 176.05999755859375,
+   "implicit_width": 176.05999755859375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Species / naïve / R² (mm)",
-     "width": 202.67999267578125
+     "width": 176.05999755859375
     }
    ]
   },
   {
    "id": "L017",
    "category": "latin",
-   "width": 122.5199966430664,
-   "implicit_width": 122.5199966430664,
+   "width": 100.62000274658203,
+   "implicit_width": 100.62000274658203,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "drv setosa #12",
-     "width": 122.5199966430664
+     "width": 100.62000274658203
     }
    ]
   },
   {
    "id": "L018",
    "category": "latin",
-   "width": 264.6300048828125,
-   "implicit_width": 264.6300048828125,
+   "width": 241.3300018310547,
+   "implicit_width": 241.3300018310547,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Petal · setosa · n = 1,234 — total",
-     "width": 264.6300048828125
+     "width": 241.3300018310547
     }
    ]
   },
   {
    "id": "L019",
    "category": "latin",
-   "width": 187.39999389648438,
-   "implicit_width": 187.39999389648438,
+   "width": 172.16000366210938,
+   "implicit_width": 172.16000366210938,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "−40 °C · hwy · 3.14159",
-     "width": 187.39999389648438
+     "width": 172.16000366210938
     }
    ]
   },
   {
    "id": "L020",
    "category": "latin",
-   "width": 85.16000366210938,
-   "implicit_width": 85.16000366210938,
+   "width": 72.66000366210938,
+   "implicit_width": 72.66000366210938,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "setosa [%]",
-     "width": 85.16000366210938
+     "width": 72.66000366210938
     }
    ]
   },
   {
    "id": "L021",
    "category": "latin",
-   "width": 109.97000122070312,
-   "implicit_width": 109.97000122070312,
+   "width": 105.38999938964844,
+   "implicit_width": 105.38999938964844,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Sepal · R² [%]",
-     "width": 109.97000122070312
+     "width": 105.38999938964844
     }
    ]
   },
   {
    "id": "L022",
    "category": "latin",
-   "width": 180.27999877929688,
-   "implicit_width": 180.27999877929688,
+   "width": 155.52000427246094,
+   "implicit_width": 155.52000427246094,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Intercept / naïve (mm)",
-     "width": 180.27999877929688
+     "width": 155.52000427246094
     }
    ]
   },
   {
    "id": "L023",
    "category": "latin",
-   "width": 86.27999877929688,
-   "implicit_width": 86.27999877929688,
+   "width": 75.62000274658203,
+   "implicit_width": 75.62000274658203,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "displ (mm)",
-     "width": 86.27999877929688
+     "width": 75.62000274658203
     }
    ]
   },
   {
    "id": "L024",
    "category": "latin",
-   "width": 238.72000122070312,
-   "implicit_width": 238.72000122070312,
+   "width": 210.16000366210938,
+   "implicit_width": 210.16000366210938,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "p-value / hwy / Species ±0.02",
-     "width": 238.72000122070312
+     "width": 210.16000366210938
     }
    ]
   },
   {
    "id": "L025",
    "category": "latin",
-   "width": 91.30999755859375,
-   "implicit_width": 91.30999755859375,
+   "width": 79.9800033569336,
+   "implicit_width": 79.9800033569336,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "slope (mm)",
-     "width": 91.30999755859375
+     "width": 79.9800033569336
     }
    ]
   },
   {
    "id": "L026",
    "category": "latin",
-   "width": 282.5299987792969,
-   "implicit_width": 282.5299987792969,
+   "width": 242.33999633789062,
+   "implicit_width": 242.33999633789062,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Ångström / −1.5e-3 / Length ±0.02",
-     "width": 282.5299987792969
+     "width": 242.33999633789062
     }
    ]
   },
   {
    "id": "L027",
    "category": "latin",
-   "width": 250.3800048828125,
-   "implicit_width": 250.3800048828125,
+   "width": 229.1199951171875,
+   "implicit_width": 229.1199951171875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "setosa · n = 1,234 · Length [%]",
-     "width": 250.3800048828125
+     "width": 229.1199951171875
     }
    ]
   },
   {
    "id": "L028",
    "category": "latin",
-   "width": 158.66000366210938,
-   "implicit_width": 158.66000366210938,
+   "width": 139.4600067138672,
+   "implicit_width": 139.4600067138672,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Width Intercept/day",
-     "width": 158.66000366210938
+     "width": 139.4600067138672
     }
    ]
   },
   {
    "id": "L029",
    "category": "latin",
-   "width": 95.38999938964844,
-   "implicit_width": 95.38999938964844,
+   "width": 76.81999969482422,
+   "implicit_width": 76.81999969482422,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "95% CI #12",
-     "width": 95.38999938964844
+     "width": 76.81999969482422
     }
    ]
   },
   {
    "id": "L030",
    "category": "latin",
-   "width": 128.19000244140625,
-   "implicit_width": 128.19000244140625,
+   "width": 112.4000015258789,
+   "implicit_width": 112.4000015258789,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "mpg setosa/day",
-     "width": 128.19000244140625
+     "width": 112.4000015258789
     }
    ]
   },
   {
    "id": "L031",
    "category": "latin",
-   "width": 241.22000122070312,
-   "implicit_width": 241.22000122070312,
+   "width": 209.1199951171875,
+   "implicit_width": 209.1199951171875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "µg/L / 1 000 000 / p-value/day",
-     "width": 241.22000122070312
+     "width": 209.1199951171875
     }
    ]
   },
   {
    "id": "L032",
    "category": "latin",
-   "width": 157.5800018310547,
-   "implicit_width": 157.5800018310547,
+   "width": 126.52999877929688,
+   "implicit_width": 126.52999877929688,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "−40 °C / count #12",
-     "width": 157.5800018310547
+     "width": 126.52999877929688
     }
    ]
   },
   {
    "id": "L033",
    "category": "latin",
-   "width": 152.3000030517578,
-   "implicit_width": 152.3000030517578,
+   "width": 131.08999633789062,
+   "implicit_width": 131.08999633789062,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "drv Intercept (mm)",
-     "width": 152.3000030517578
+     "width": 131.08999633789062
     }
    ]
   },
   {
    "id": "L034",
    "category": "latin",
-   "width": 79.5199966430664,
-   "implicit_width": 79.5199966430664,
+   "width": 61.70000076293945,
+   "implicit_width": 61.70000076293945,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n = 1,234",
-     "width": 79.5199966430664
+     "width": 61.70000076293945
     }
    ]
   },
   {
    "id": "L035",
    "category": "latin",
-   "width": 123.01000213623047,
-   "implicit_width": 123.01000213623047,
+   "width": 106.83000183105469,
+   "implicit_width": 106.83000183105469,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "virginica / Petal",
-     "width": 123.01000213623047
+     "width": 106.83000183105469
     }
    ]
   },
   {
    "id": "L036",
    "category": "latin",
-   "width": 42.56999969482422,
-   "implicit_width": 42.56999969482422,
+   "width": 38.45000076293945,
+   "implicit_width": 38.45000076293945,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "slope",
-     "width": 42.56999969482422
+     "width": 38.45000076293945
     }
    ]
   },
   {
    "id": "L037",
    "category": "latin",
-   "width": 114.33999633789062,
-   "implicit_width": 114.33999633789062,
+   "width": 92.86000061035156,
+   "implicit_width": 92.86000061035156,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n = 1,234/day",
-     "width": 114.33999633789062
+     "width": 92.86000061035156
     }
    ]
   },
   {
    "id": "L038",
    "category": "latin",
-   "width": 128.86000061035156,
-   "implicit_width": 128.86000061035156,
+   "width": 113.7300033569336,
+   "implicit_width": 113.7300033569336,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n = 1,234 · café",
-     "width": 128.86000061035156
+     "width": 113.7300033569336
     }
    ]
   },
   {
    "id": "L039",
    "category": "latin",
-   "width": 175.6300048828125,
-   "implicit_width": 175.6300048828125,
+   "width": 147.97000122070312,
+   "implicit_width": 147.97000122070312,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Width 1 000 000 displ",
-     "width": 175.6300048828125
+     "width": 147.97000122070312
     }
    ]
   },
   {
    "id": "L040",
    "category": "cjk",
-   "width": 67.63000106811523,
-   "implicit_width": 54.83000183105469,
+   "width": 60.529998779296875,
+   "implicit_width": 60.529998779296875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "密度",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 219",
-     "width": 35.630001068115234
+     "text": "密度 219",
+     "width": 60.529998779296875
     }
    ]
   },
   {
    "id": "L041",
    "category": "cjk",
-   "width": 69.09000015258789,
-   "implicit_width": 43.4900016784668,
+   "width": 80,
+   "implicit_width": 80,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "华北",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "·",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "总计",
-     "width": 32
+     "text": "华北·总计",
+     "width": 80
     }
    ]
   },
@@ -569,7 +554,7 @@
    "id": "L042",
    "category": "cjk",
    "width": 176,
-   "implicit_width": 105.62000274658203,
+   "implicit_width": 176,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -582,7 +567,7 @@
    "id": "L043",
    "category": "cjk",
    "width": 173.44000244140625,
-   "implicit_width": 105.62000274658203,
+   "implicit_width": 173.44000244140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -595,7 +580,7 @@
    "id": "L044",
    "category": "cjk",
    "width": 32,
-   "implicit_width": 19.200000762939453,
+   "implicit_width": 32,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -607,41 +592,26 @@
   {
    "id": "L045",
    "category": "cjk",
-   "width": 69.61000061035156,
-   "implicit_width": 54.25,
+   "width": 64.3499984741211,
+   "implicit_width": 64.3499984741211,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "제주도",
-     "width": 44.15999984741211
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 59",
-     "width": 25.450000762939453
+     "text": "제주도 59",
+     "width": 64.3499984741211
     }
    ]
   },
   {
    "id": "L046",
    "category": "cjk",
-   "width": 95.19999980926514,
-   "implicit_width": 63.209999084472656,
+   "width": 94.08000183105469,
+   "implicit_width": 94.08000183105469,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "中位数（",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "中位数（%）",
+     "width": 94.08000183105469
     }
    ]
   },
@@ -649,7 +619,7 @@
    "id": "L047",
    "category": "cjk",
    "width": 236.16000366210938,
-   "implicit_width": 144.02000427246094,
+   "implicit_width": 236.16000366210938,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -661,23 +631,13 @@
   {
    "id": "L048",
    "category": "cjk",
-   "width": 152.79999828338623,
-   "implicit_width": 101.62000274658203,
+   "width": 151.67999267578125,
+   "implicit_width": 151.67999267578125,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "관측소기온华东（",
-     "width": 121.5999984741211
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "관측소기온华东（%）",
+     "width": 151.67999267578125
     }
    ]
   },
@@ -685,7 +645,7 @@
    "id": "L049",
    "category": "cjk",
    "width": 144,
-   "implicit_width": 86.41000366210938,
+   "implicit_width": 144,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -698,7 +658,7 @@
    "id": "L050",
    "category": "cjk",
    "width": 96,
-   "implicit_width": 57.61000061035156,
+   "implicit_width": 96,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -710,18 +670,13 @@
   {
    "id": "L051",
    "category": "cjk",
-   "width": 67.63000106811523,
-   "implicit_width": 54.83000183105469,
+   "width": 60.529998779296875,
+   "implicit_width": 60.529998779296875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "华南",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 323",
-     "width": 35.630001068115234
+     "text": "华南 323",
+     "width": 60.529998779296875
     }
    ]
   },
@@ -729,7 +684,7 @@
    "id": "L052",
    "category": "cjk",
    "width": 128,
-   "implicit_width": 76.80999755859375,
+   "implicit_width": 128,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -741,18 +696,13 @@
   {
    "id": "L053",
    "category": "cjk",
-   "width": 57.45000076293945,
-   "implicit_width": 44.650001525878906,
+   "width": 52.189998626708984,
+   "implicit_width": 52.189998626708984,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "华北",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 36",
-     "width": 25.450000762939453
+     "text": "华北 36",
+     "width": 52.189998626708984
     }
    ]
   },
@@ -760,7 +710,7 @@
    "id": "L054",
    "category": "cjk",
    "width": 112,
-   "implicit_width": 67.20999908447266,
+   "implicit_width": 112,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -772,64 +722,39 @@
   {
    "id": "L055",
    "category": "cjk",
-   "width": 175.19999980926514,
-   "implicit_width": 111.22000122070312,
+   "width": 174.0800018310547,
+   "implicit_width": 174.0800018310547,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "平均值直径売上高（",
-     "width": 144
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "平均值直径売上高（%）",
+     "width": 174.0800018310547
     }
    ]
   },
   {
    "id": "L056",
    "category": "cjk",
-   "width": 145.25000381469727,
-   "implicit_width": 91.5,
+   "width": 143.67999267578125,
+   "implicit_width": 143.67999267578125,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "刚度",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "제주도（含税）",
-     "width": 108.16000366210938
+     "text": "刚度 제주도（含税）",
+     "width": 143.67999267578125
     }
    ]
   },
   {
    "id": "L057",
    "category": "cjk",
-   "width": 54.89000129699707,
-   "implicit_width": 44.650001525878906,
+   "width": 49.630001068115234,
+   "implicit_width": 49.630001068115234,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "기온",
-     "width": 29.440000534057617
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 52",
-     "width": 25.450000762939453
+     "text": "기온 52",
+     "width": 49.630001068115234
     }
    ]
   },
@@ -837,7 +762,7 @@
    "id": "L058",
    "category": "cjk",
    "width": 80,
-   "implicit_width": 48.0099983215332,
+   "implicit_width": 80,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -849,18 +774,13 @@
   {
    "id": "L059",
    "category": "cjk",
-   "width": 131.63000106811523,
-   "implicit_width": 93.2300033569336,
+   "width": 124.52999877929688,
+   "implicit_width": 124.52999877929688,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "地区と处理后",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 564",
-     "width": 35.630001068115234
+     "text": "地区と处理后 564",
+     "width": 124.52999877929688
     }
    ]
   },
@@ -868,7 +788,7 @@
    "id": "L060",
    "category": "cjk",
    "width": 80,
-   "implicit_width": 48.0099983215332,
+   "implicit_width": 80,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -880,41 +800,26 @@
   {
    "id": "L061",
    "category": "cjk",
-   "width": 175.19999980926514,
-   "implicit_width": 111.22000122070312,
+   "width": 174.0800018310547,
+   "implicit_width": 174.0800018310547,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "平均值大阪府直径（",
-     "width": 144
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "平均值大阪府直径（%）",
+     "width": 174.0800018310547
     }
    ]
   },
   {
    "id": "L062",
    "category": "cjk",
-   "width": 67.63000106811523,
-   "implicit_width": 54.83000183105469,
+   "width": 60.529998779296875,
+   "implicit_width": 60.529998779296875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "总计",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 725",
-     "width": 35.630001068115234
+     "text": "总计 725",
+     "width": 60.529998779296875
     }
    ]
   },
@@ -922,7 +827,7 @@
    "id": "L063",
    "category": "cjk",
    "width": 64,
-   "implicit_width": 38.40999984741211,
+   "implicit_width": 64,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -935,7 +840,7 @@
    "id": "L064",
    "category": "cjk",
    "width": 208,
-   "implicit_width": 124.81999969482422,
+   "implicit_width": 208,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -948,7 +853,7 @@
    "id": "L065",
    "category": "cjk",
    "width": 176,
-   "implicit_width": 105.62000274658203,
+   "implicit_width": 176,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -961,7 +866,7 @@
    "id": "L066",
    "category": "cjk",
    "width": 32,
-   "implicit_width": 19.200000762939453,
+   "implicit_width": 32,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -973,18 +878,13 @@
   {
    "id": "L067",
    "category": "cjk",
-   "width": 83.63000106811523,
-   "implicit_width": 64.43000030517578,
+   "width": 76.52999877929688,
+   "implicit_width": 76.52999877929688,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "第一组",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 503",
-     "width": 35.630001068115234
+     "text": "第一组 503",
+     "width": 76.52999877929688
     }
    ]
   },
@@ -992,7 +892,7 @@
    "id": "L068",
    "category": "cjk",
    "width": 240,
-   "implicit_width": 144.02000427246094,
+   "implicit_width": 240,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -1004,36 +904,26 @@
   {
    "id": "L069",
    "category": "cjk",
-   "width": 195.63000106811523,
-   "implicit_width": 131.63999938964844,
+   "width": 188.52999877929688,
+   "implicit_width": 188.52999877929688,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "处理后、处理前、华北",
-     "width": 160
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 867",
-     "width": 35.630001068115234
+     "text": "处理后、处理前、华北 867",
+     "width": 188.52999877929688
     }
    ]
   },
   {
    "id": "L070",
    "category": "cjk",
-   "width": 65.07000160217285,
-   "implicit_width": 54.83000183105469,
+   "width": 57.970001220703125,
+   "implicit_width": 57.970001220703125,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "기온",
-     "width": 29.440000534057617
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 313",
-     "width": 35.630001068115234
+     "text": "기온 313",
+     "width": 57.970001220703125
     }
    ]
   },
@@ -1041,7 +931,7 @@
    "id": "L071",
    "category": "cjk",
    "width": 96,
-   "implicit_width": 57.61000061035156,
+   "implicit_width": 96,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -1054,7 +944,7 @@
    "id": "L072",
    "category": "cjk",
    "width": 192,
-   "implicit_width": 115.22000122070312,
+   "implicit_width": 192,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -1066,46 +956,26 @@
   {
    "id": "L073",
    "category": "cjk",
-   "width": 95.19999980926514,
-   "implicit_width": 63.209999084472656,
+   "width": 94.08000183105469,
+   "implicit_width": 94.08000183105469,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "前年比（",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "前年比（%）",
+     "width": 94.08000183105469
     }
    ]
   },
   {
    "id": "L074",
    "category": "cjk",
-   "width": 91.35999965667725,
-   "implicit_width": 63.209999084472656,
+   "width": 90.23999786376953,
+   "implicit_width": 90.23999786376953,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "제주도（",
-     "width": 60.15999984741211
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "%",
-     "width": 15.199999809265137
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "）",
-     "width": 16
+     "text": "제주도（%）",
+     "width": 90.23999786376953
     }
    ]
   },
@@ -1113,7 +983,7 @@
    "id": "L075",
    "category": "cjk",
    "width": 108.16000366210938,
-   "implicit_width": 67.20999908447266,
+   "implicit_width": 108.16000366210938,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -1125,100 +995,65 @@
   {
    "id": "L076",
    "category": "cjk",
-   "width": 79.79000091552734,
-   "implicit_width": 64.43000030517578,
+   "width": 72.69000244140625,
+   "implicit_width": 72.69000244140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "관측소",
-     "width": 44.15999984741211
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 972",
-     "width": 35.630001068115234
+     "text": "관측소 972",
+     "width": 72.69000244140625
     }
    ]
   },
   {
    "id": "L077",
    "category": "cjk",
-   "width": 73.45000076293945,
-   "implicit_width": 54.25,
+   "width": 68.19000244140625,
+   "implicit_width": 68.19000244140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "销售额",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " 31",
-     "width": 25.450000762939453
+     "text": "销售额 31",
+     "width": 68.19000244140625
     }
    ]
   },
   {
    "id": "L078",
    "category": "cjk",
-   "width": 69.09000015258789,
-   "implicit_width": 43.4900016784668,
+   "width": 80,
+   "implicit_width": 80,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "华南",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "·",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "总计",
-     "width": 32
+     "text": "华南·总计",
+     "width": 80
     }
    ]
   },
   {
    "id": "L079",
    "category": "cjk",
-   "width": 114.53000259399414,
-   "implicit_width": 72.30000305175781,
+   "width": 125.44000244140625,
+   "implicit_width": 125.44000244140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "总计と기온",
-     "width": 77.44000244140625
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "·",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "总计",
-     "width": 32
+     "text": "总计と기온·总计",
+     "width": 125.44000244140625
     }
    ]
   },
   {
    "id": "L080",
    "category": "emoji",
-   "width": 115.57999992370605,
-   "implicit_width": 92.41000366210938,
+   "width": 103.03000068664551,
+   "implicit_width": 99.05999755859375,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "样本",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ": ",
-     "width": 10.479999542236328
+     "text": "样本: ",
+     "width": 39.220001220703125
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1226,22 +1061,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " (48%)",
-     "width": 53.130001068115234
+     "width": 43.84000015258789
     }
    ]
   },
   {
    "id": "L081",
    "category": "emoji",
-   "width": 67.6399974822998,
-   "implicit_width": 57.27000045776367,
+   "width": 60.71999931335449,
+   "implicit_width": 56.75,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Sales ",
-     "width": 47.66999816894531
+     "width": 40.75
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1253,13 +1088,13 @@
   {
    "id": "L082",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield ",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1271,18 +1106,13 @@
   {
    "id": "L083",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 33.88999938964844,
+   "width": 55.489999771118164,
+   "implicit_width": 51.52000045776367,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "增长 ",
+     "width": 35.52000045776367
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1294,8 +1124,8 @@
   {
    "id": "L084",
    "category": "emoji",
-   "width": 83.11999893188477,
-   "implicit_width": 81.58999633789062,
+   "width": 77.1099967956543,
+   "implicit_width": 101.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1303,27 +1133,22 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L085",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 33.88999938964844,
+   "width": 55.489999771118164,
+   "implicit_width": 51.52000045776367,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "增长 ",
+     "width": 35.52000045776367
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1335,8 +1160,8 @@
   {
    "id": "L086",
    "category": "emoji",
-   "width": 83.11999893188477,
-   "implicit_width": 81.58999633789062,
+   "width": 77.1099967956543,
+   "implicit_width": 101.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1344,27 +1169,22 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L087",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 43.4900016784668,
+   "width": 55.489999771118164,
+   "implicit_width": 67.5199966430664,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "增长 ",
+     "width": 35.52000045776367
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1376,8 +1196,8 @@
   {
    "id": "L088",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 52.779998779296875,
+   "width": 57.139997482299805,
+   "implicit_width": 53.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1385,17 +1205,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L089",
    "category": "emoji",
-   "width": 67.6399974822998,
-   "implicit_width": 57.27000045776367,
+   "width": 60.71999931335449,
+   "implicit_width": 56.75,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1403,26 +1223,21 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L090",
    "category": "emoji",
-   "width": 33.3799991607666,
-   "implicit_width": 23.010000228881836,
+   "width": 19.969999313354492,
+   "implicit_width": 32,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "❤️‍",
-     "width": 13.40999984741211
-    },
-    {
      "face": "NotoColorEmoji.ttf",
-     "text": "🔥",
+     "text": "❤️‍🔥",
      "width": 19.969999313354492
     }
    ]
@@ -1430,8 +1245,8 @@
   {
    "id": "L091",
    "category": "emoji",
-   "width": 67.6399974822998,
-   "implicit_width": 86.08000183105469,
+   "width": 60.71999931335449,
+   "implicit_width": 104.75,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1439,17 +1254,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L092",
    "category": "emoji",
-   "width": 67.6399974822998,
-   "implicit_width": 86.08000183105469,
+   "width": 60.71999931335449,
+   "implicit_width": 104.75,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1457,45 +1272,35 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L093",
    "category": "emoji",
-   "width": 70.46999931335449,
-   "implicit_width": 47.29999923706055,
+   "width": 55.489999771118164,
+   "implicit_width": 67.5199966430664,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "❤️‍",
-     "width": 13.40999984741211
-    },
-    {
      "face": "NotoColorEmoji.ttf",
-     "text": "🔥",
+     "text": "❤️‍🔥",
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
+     "text": " 增长",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L094",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 33.88999938964844,
+   "width": 55.489999771118164,
+   "implicit_width": 51.52000045776367,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1503,27 +1308,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "样本",
-     "width": 32
+     "text": " 样本",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L095",
    "category": "emoji",
-   "width": 134.35000038146973,
-   "implicit_width": 123.9800033569336,
+   "width": 114.30999946594238,
+   "implicit_width": 110.33999633789062,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Total: #️",
-     "width": 61.25
+     "width": 50.5
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1531,9 +1331,9 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " (40%)",
-     "width": 53.130001068115234
+     "width": 43.84000015258789
     }
    ]
   },
@@ -1541,7 +1341,7 @@
    "id": "L096",
    "category": "emoji",
    "width": 19.969999313354492,
-   "implicit_width": 9.600000381469727,
+   "implicit_width": 16,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1553,18 +1353,13 @@
   {
    "id": "L097",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 33.88999938964844,
+   "width": 55.489999771118164,
+   "implicit_width": 51.52000045776367,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "增长 ",
+     "width": 35.52000045776367
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1577,7 +1372,7 @@
    "id": "L098",
    "category": "emoji",
    "width": 19.969999313354492,
-   "implicit_width": 9.600000381469727,
+   "implicit_width": 16,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1589,13 +1384,13 @@
   {
    "id": "L099",
    "category": "emoji",
-   "width": 70.46999931335449,
-   "implicit_width": 47.29999923706055,
+   "width": 63.829999923706055,
+   "implicit_width": 59.86000061035156,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "#️",
-     "width": 13.40999984741211
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1603,22 +1398,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
+     "text": " 增长",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L100",
    "category": "emoji",
-   "width": 82.38999938964844,
-   "implicit_width": 80.86000061035156,
+   "width": 78.39999771118164,
+   "implicit_width": 102.45999908447266,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1626,17 +1416,17 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Total",
-     "width": 42.45000076293945
+     "width": 38.459999084472656
     }
    ]
   },
   {
    "id": "L101",
    "category": "emoji",
-   "width": 77.02999877929688,
-   "implicit_width": 62.70000076293945,
+   "width": 75.45999908447266,
+   "implicit_width": 99.5199966430664,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1644,32 +1434,22 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "样本",
-     "width": 32
+     "text": " 样本",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L102",
    "category": "emoji",
-   "width": 57.05999946594238,
-   "implicit_width": 43.4900016784668,
+   "width": 55.489999771118164,
+   "implicit_width": 67.5199966430664,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "增长 ",
+     "width": 35.52000045776367
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1681,13 +1461,13 @@
   {
    "id": "L103",
    "category": "emoji",
-   "width": 77.81999778747559,
-   "implicit_width": 67.44999694824219,
+   "width": 69.05999946594238,
+   "implicit_width": 65.08999633789062,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "1️",
-     "width": 10.180000305175781
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1695,17 +1475,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L104",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1713,17 +1493,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L105",
    "category": "emoji",
-   "width": 77.02999877929688,
-   "implicit_width": 62.70000076293945,
+   "width": 75.45999908447266,
+   "implicit_width": 99.5199966430664,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1731,27 +1511,22 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
+     "text": " 增长",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L106",
    "category": "emoji",
-   "width": 107.96999740600586,
-   "implicit_width": 87.2300033569336,
+   "width": 97.36999893188477,
+   "implicit_width": 89.41999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "1️",
-     "width": 10.180000305175781
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1759,9 +1534,9 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "1️",
-     "width": 10.180000305175781
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1769,22 +1544,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L107",
    "category": "emoji",
-   "width": 121.67000007629395,
-   "implicit_width": 111.30000305175781,
+   "width": 104.67000007629395,
+   "implicit_width": 100.69999694824219,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield: ",
-     "width": 48.56999969482422
+     "width": 40.86000061035156
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1792,17 +1567,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " (81%)",
-     "width": 53.130001068115234
+     "width": 43.84000015258789
     }
    ]
   },
   {
    "id": "L108",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1810,17 +1585,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L109",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1828,22 +1603,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Yield",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     }
    ]
   },
   {
    "id": "L110",
    "category": "emoji",
-   "width": 75.82999992370605,
-   "implicit_width": 65.45999908447266,
+   "width": 66.76999855041504,
+   "implicit_width": 62.79999923706055,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "#️",
-     "width": 13.40999984741211
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1851,22 +1626,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Total",
-     "width": 42.45000076293945
+     "width": 38.459999084472656
     }
    ]
   },
   {
    "id": "L111",
    "category": "emoji",
-   "width": 121.67000007629395,
-   "implicit_width": 111.30000305175781,
+   "width": 104.67000007629395,
+   "implicit_width": 100.69999694824219,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield: ",
-     "width": 48.56999969482422
+     "width": 40.86000061035156
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1874,22 +1649,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " (62%)",
-     "width": 53.130001068115234
+     "width": 43.84000015258789
     }
    ]
   },
   {
    "id": "L112",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield ",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1901,13 +1676,13 @@
   {
    "id": "L113",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 62.380001068115234,
+   "width": 57.139997482299805,
+   "implicit_width": 69.16999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield ",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1919,13 +1694,13 @@
   {
    "id": "L114",
    "category": "emoji",
-   "width": 63.14999961853027,
-   "implicit_width": 52.779998779296875,
+   "width": 57.139997482299805,
+   "implicit_width": 53.16999816894531,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Yield ",
-     "width": 43.18000030517578
+     "width": 37.16999816894531
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1937,8 +1712,8 @@
   {
    "id": "L115",
    "category": "emoji",
-   "width": 67.6399974822998,
-   "implicit_width": 66.87999725341797,
+   "width": 60.71999931335449,
+   "implicit_width": 72.75,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1946,22 +1721,22 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L116",
    "category": "emoji",
-   "width": 70.46999931335449,
-   "implicit_width": 47.29999923706055,
+   "width": 63.829999923706055,
+   "implicit_width": 59.86000061035156,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "#️",
-     "width": 13.40999984741211
+     "width": 8.34000015258789
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -1969,22 +1744,17 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
+     "text": " 增长",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L117",
    "category": "emoji",
-   "width": 87.6099967956543,
-   "implicit_width": 86.08000183105469,
+   "width": 80.68999862670898,
+   "implicit_width": 104.75,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -1992,17 +1762,17 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " Sales",
-     "width": 47.66999816894531
+     "width": 40.75
     }
    ]
   },
   {
    "id": "L118",
    "category": "emoji",
-   "width": 77.02999877929688,
-   "implicit_width": 43.4900016784668,
+   "width": 75.45999908447266,
+   "implicit_width": 67.5199966430664,
    "runs": [
     {
      "face": "NotoColorEmoji.ttf",
@@ -2010,32 +1780,22 @@
      "width": 39.939998626708984
     },
     {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
+     "text": " 增长",
+     "width": 35.52000045776367
     }
    ]
   },
   {
    "id": "L119",
    "category": "emoji",
-   "width": 115.57999992370605,
-   "implicit_width": 102.0199966430664,
+   "width": 103.03000068664551,
+   "implicit_width": 115.05999755859375,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "增长",
-     "width": 32
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ": ",
-     "width": 10.479999542236328
+     "text": "增长: ",
+     "width": 39.220001220703125
     },
     {
      "face": "NotoColorEmoji.ttf",
@@ -2043,118 +1803,153 @@
      "width": 19.969999313354492
     },
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": " (20%)",
-     "width": 53.130001068115234
+     "width": 43.84000015258789
     }
    ]
   },
   {
    "id": "L120",
    "category": "combining",
-   "width": 100.68000030517578,
-   "implicit_width": 100.68000030517578,
+   "width": 88.81999969482422,
+   "implicit_width": 126.43000030517578,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
-     "text": "עברית (2026)",
-     "width": 100.68000030517578
+     "text": "עברית",
+     "width": 42.38999938964844
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " (2026)",
+     "width": 46.43000030517578
     }
    ]
   },
   {
    "id": "L121",
    "category": "combining",
-   "width": 81.16000366210938,
-   "implicit_width": 81.16000366210938,
+   "width": 113.62000274658203,
+   "implicit_width": 113.62000274658203,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n=हिन्दी",
-     "width": 81.16000366210938
+     "width": 113.62000274658203
     }
    ]
   },
   {
    "id": "L122",
    "category": "combining",
-   "width": 69.2300033569336,
-   "implicit_width": 69.2300033569336,
+   "width": 55.61000061035156,
+   "implicit_width": 55.619998931884766,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "A",
+     "width": 9.180000305175781
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "Å (2026)",
-     "width": 69.2300033569336
+     "text": "̊",
+     "width": 0
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " (2026)",
+     "width": 46.43000030517578
     }
    ]
   },
   {
    "id": "L123",
    "category": "combining",
-   "width": 161.2100067138672,
-   "implicit_width": 161.2100067138672,
+   "width": 164.77999877929688,
+   "implicit_width": 164.77999877929688,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "वर्ष 2026 — 12.5%",
-     "width": 161.2100067138672
+     "width": 164.77999877929688
     }
    ]
   },
   {
    "id": "L124",
    "category": "combining",
-   "width": 87.94999694824219,
-   "implicit_width": 87.94999694824219,
+   "width": 73.0999984741211,
+   "implicit_width": 73.0999984741211,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "A",
+     "width": 9.180000305175781
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "Å — 12.5%",
-     "width": 87.94999694824219
+     "text": "̊",
+     "width": 0
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " — 12.5%",
+     "width": 63.91999816894531
     }
    ]
   },
   {
    "id": "L125",
    "category": "combining",
-   "width": 33.349998474121094,
-   "implicit_width": 33.349998474121094,
+   "width": 26.190000534057617,
+   "implicit_width": 26.190000534057617,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "n=a",
+     "width": 26.190000534057617
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "n=ǟ",
-     "width": 33.349998474121094
+     "text": "̈",
+     "width": 0
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "̄",
+     "width": 0
     }
    ]
   },
   {
    "id": "L126",
    "category": "combining",
-   "width": 38.269999504089355,
-   "implicit_width": 52.349998474121094,
+   "width": 32.34000015258789,
+   "implicit_width": 32.34000015258789,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "n=",
-     "width": 23.549999237060547
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "각",
-     "width": 14.720000267028809
+     "text": "n=각",
+     "width": 32.34000015258789
     }
    ]
   },
   {
    "id": "L127",
    "category": "combining",
-   "width": 26.140000343322754,
-   "implicit_width": 19.739999771118164,
+   "width": 25.229999542236328,
+   "implicit_width": 25.229999542236328,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "u",
+     "width": 9.229999542236328
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "ü",
-     "width": 10.140000343322754
+     "text": "̈",
+     "width": 0
     },
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -2166,49 +1961,49 @@
   {
    "id": "L128",
    "category": "combining",
-   "width": 35.20000076293945,
-   "implicit_width": 28.799999237060547,
+   "width": 48,
+   "implicit_width": 48,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "གེ",
-     "width": 19.200000762939453
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "组",
-     "width": 16
+     "text": "གེ组",
+     "width": 48
     }
    ]
   },
   {
    "id": "L129",
    "category": "combining",
-   "width": 91.72000026702881,
-   "implicit_width": 105.80000305175781,
+   "width": 78.63999938964844,
+   "implicit_width": 78.63999938964844,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "각",
-     "width": 14.720000267028809
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — 12.5%",
-     "width": 77
+     "text": "각 — 12.5%",
+     "width": 78.63999938964844
     }
    ]
   },
   {
    "id": "L130",
    "category": "combining",
-   "width": 85.4000015258789,
-   "implicit_width": 85.4000015258789,
+   "width": 70.92999839782715,
+   "implicit_width": 86.93000030517578,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "z",
+     "width": 7.010000228881836
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "ź̧ — 12.5%",
-     "width": 85.4000015258789
+     "text": "̧",
+     "width": 0
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "́ — 12.5%",
+     "width": 63.91999816894531
     }
    ]
   },
@@ -2216,7 +2011,7 @@
    "id": "L131",
    "category": "combining",
    "width": 45.439998626708984,
-   "implicit_width": 28.799999237060547,
+   "implicit_width": 45.439998626708984,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -2229,7 +2024,7 @@
    "id": "L132",
    "category": "combining",
    "width": 43.72999954223633,
-   "implicit_width": 43.72999954223633,
+   "implicit_width": 112,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
@@ -2241,43 +2036,48 @@
   {
    "id": "L133",
    "category": "combining",
-   "width": 68.12999725341797,
-   "implicit_width": 68.12999725341797,
+   "width": 54.86000061035156,
+   "implicit_width": 54.86000061035156,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "é́́ (2026)",
-     "width": 68.12999725341797
+     "width": 54.86000061035156
     }
    ]
   },
   {
    "id": "L134",
    "category": "combining",
-   "width": 81.16000366210938,
-   "implicit_width": 81.16000366210938,
+   "width": 113.62000274658203,
+   "implicit_width": 113.62000274658203,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n=नमस्ते",
-     "width": 81.16000366210938
+     "width": 113.62000274658203
     }
    ]
   },
   {
    "id": "L135",
    "category": "combining",
-   "width": 24.399999618530273,
-   "implicit_width": 18,
+   "width": 23.010000228881836,
+   "implicit_width": 39.0099983215332,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "z",
+     "width": 7.010000228881836
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "ź̧",
-     "width": 8.399999618530273
+     "text": "̧",
+     "width": 0
     },
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "组",
+     "text": "́组",
      "width": 16
     }
    ]
@@ -2285,13 +2085,18 @@
   {
    "id": "L136",
    "category": "combining",
-   "width": 26.140000343322754,
-   "implicit_width": 19.739999771118164,
+   "width": 25.27999973297119,
+   "implicit_width": 25.280000686645508,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "n",
+     "width": 9.279999732971191
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "ñ",
-     "width": 10.140000343322754
+     "text": "̃",
+     "width": 0
     },
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -2303,26 +2108,26 @@
   {
    "id": "L137",
    "category": "combining",
-   "width": 33.38999938964844,
-   "implicit_width": 33.38999938964844,
+   "width": 26.049999237060547,
+   "implicit_width": 26.049999237060547,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n=é",
-     "width": 33.38999938964844
+     "width": 26.049999237060547
     }
    ]
   },
   {
    "id": "L138",
    "category": "combining",
-   "width": 86.83999633789062,
-   "implicit_width": 86.83999633789062,
+   "width": 72.3499984741211,
+   "implicit_width": 72.3499984741211,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "é́́ — 12.5%",
-     "width": 86.83999633789062
+     "width": 72.3499984741211
     }
    ]
   },
@@ -2330,7 +2135,7 @@
    "id": "L139",
    "category": "combining",
    "width": 36.9900016784668,
-   "implicit_width": 36.9900016784668,
+   "implicit_width": 144,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
@@ -2342,88 +2147,83 @@
   {
    "id": "L140",
    "category": "combining",
-   "width": 83.20999908447266,
-   "implicit_width": 76.80999755859375,
+   "width": 128,
+   "implicit_width": 128,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "ภาษาไทย",
-     "width": 67.20999908447266
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "组",
-     "width": 16
+     "text": "ภาษาไทย组",
+     "width": 128
     }
    ]
   },
   {
    "id": "L141",
    "category": "combining",
-   "width": 142.5,
-   "implicit_width": 142.5,
+   "width": 147.3000030517578,
+   "implicit_width": 147.3000030517578,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "वर्ष 2026 (2026)",
-     "width": 142.5
+     "width": 147.3000030517578
     }
    ]
   },
   {
    "id": "L142",
    "category": "combining",
-   "width": 64.0099983215332,
-   "implicit_width": 57.61000061035156,
+   "width": 96,
+   "implicit_width": 96,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "தமிழ்",
-     "width": 48.0099983215332
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "组",
-     "width": 16
+     "text": "தமிழ்组",
+     "width": 96
     }
    ]
   },
   {
    "id": "L143",
    "category": "combining",
-   "width": 33.689998626708984,
-   "implicit_width": 33.689998626708984,
+   "width": 26.850000381469727,
+   "implicit_width": 26.850000381469727,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "n=u",
+     "width": 26.850000381469727
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "n=ü",
-     "width": 33.689998626708984
+     "text": "̈",
+     "width": 0
     }
    ]
   },
   {
    "id": "L144",
    "category": "combining",
-   "width": 48.0099983215332,
-   "implicit_width": 48.0099983215332,
+   "width": 80,
+   "implicit_width": 80,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "தமிழ்",
-     "width": 48.0099983215332
+     "width": 80
     }
    ]
   },
   {
    "id": "L145",
    "category": "combining",
-   "width": 61.720001220703125,
-   "implicit_width": 61.720001220703125,
+   "width": 54.04999923706055,
+   "implicit_width": 54.04999923706055,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "Nguyễn",
-     "width": 61.720001220703125
+     "width": 54.04999923706055
     }
    ]
   },
@@ -2431,7 +2231,7 @@
    "id": "L146",
    "category": "combining",
    "width": 43.72999954223633,
-   "implicit_width": 43.72999954223633,
+   "implicit_width": 112,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
@@ -2443,52 +2243,62 @@
   {
    "id": "L147",
    "category": "combining",
-   "width": 77.48999786376953,
-   "implicit_width": 77.48999786376953,
+   "width": 78.43000030517578,
+   "implicit_width": 78.43000030517578,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "གེ (2026)",
-     "width": 77.48999786376953
+     "width": 78.43000030517578
     }
    ]
   },
   {
    "id": "L148",
    "category": "combining",
-   "width": 87.08999633789062,
-   "implicit_width": 87.08999633789062,
+   "width": 94.43000030517578,
+   "implicit_width": 94.43000030517578,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "กำ (2026)",
-     "width": 87.08999633789062
+     "width": 94.43000030517578
     }
    ]
   },
   {
    "id": "L149",
    "category": "combining",
-   "width": 120.7300033569336,
-   "implicit_width": 120.7300033569336,
+   "width": 107.64999771118164,
+   "implicit_width": 175.9199981689453,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
-     "text": "العربية — 12.5%",
-     "width": 120.7300033569336
+     "text": "العربية",
+     "width": 43.72999954223633
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " — 12.5%",
+     "width": 63.91999816894531
     }
    ]
   },
   {
    "id": "L150",
    "category": "combining",
-   "width": 113.98999786376953,
-   "implicit_width": 113.98999786376953,
+   "width": 100.90999984741211,
+   "implicit_width": 207.9199981689453,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
-     "text": "مُرحَّبًا — 12.5%",
-     "width": 113.98999786376953
+     "text": "مُرحَّبًا",
+     "width": 36.9900016784668
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " — 12.5%",
+     "width": 63.91999816894531
     }
    ]
   },
@@ -2496,7 +2306,7 @@
    "id": "L151",
    "category": "combining",
    "width": 58.38999938964844,
-   "implicit_width": 51.9900016784668,
+   "implicit_width": 96,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
@@ -2513,13 +2323,13 @@
   {
    "id": "L152",
    "category": "combining",
-   "width": 134.61000061035156,
-   "implicit_width": 134.61000061035156,
+   "width": 159.9199981689453,
+   "implicit_width": 159.9199981689453,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "हिन्दी — 12.5%",
-     "width": 134.61000061035156
+     "width": 159.9199981689453
     }
    ]
   },
@@ -2527,7 +2337,7 @@
    "id": "L153",
    "category": "combining",
    "width": 30.719999313354492,
-   "implicit_width": 38.40999984741211,
+   "implicit_width": 30.719999313354492,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
@@ -2539,3238 +2349,623 @@
   {
    "id": "L154",
    "category": "combining",
-   "width": 82.25,
-   "implicit_width": 82.25,
+   "width": 72.55999851226807,
+   "implicit_width": 79.12000274658203,
    "runs": [
     {
      "face": "DejaVuSans.ttf",
-     "text": "Ĳsselmeer",
-     "width": 82.25
+     "text": "Ĳ",
+     "width": 9.4399995803833
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "sselmeer",
+     "width": 63.119998931884766
     }
    ]
   },
   {
    "id": "L155",
    "category": "combining",
-   "width": 87.13999938964844,
-   "implicit_width": 87.13999938964844,
+   "width": 73.14999771118164,
+   "implicit_width": 73.1500015258789,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "u",
+     "width": 9.229999542236328
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "ü — 12.5%",
-     "width": 87.13999938964844
+     "text": "̈",
+     "width": 0
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": " — 12.5%",
+     "width": 63.91999816894531
     }
    ]
   },
   {
    "id": "L156",
    "category": "combining",
-   "width": 28.799999237060547,
-   "implicit_width": 28.799999237060547,
+   "width": 48,
+   "implicit_width": 48,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "กำ",
-     "width": 28.799999237060547
+     "width": 48
     }
    ]
   },
   {
    "id": "L157",
    "category": "combining",
-   "width": 100.05000305175781,
-   "implicit_width": 100.05000305175781,
+   "width": 82.4000015258789,
+   "implicit_width": 82.4000015258789,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
+     "face": "NotoSansCJKsc-VF.ttf",
      "text": "n=ﬁ ligature",
-     "width": 100.05000305175781
+     "width": 82.4000015258789
     }
    ]
   },
   {
    "id": "L158",
    "category": "combining",
-   "width": 105.80000305175781,
-   "implicit_width": 105.80000305175781,
+   "width": 90.17999935150146,
+   "implicit_width": 96.73999786376953,
    "runs": [
     {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "n=",
+     "width": 17.6200008392334
+    },
+    {
      "face": "DejaVuSans.ttf",
-     "text": "n=Ĳsselmeer",
-     "width": 105.80000305175781
+     "text": "Ĳ",
+     "width": 9.4399995803833
+    },
+    {
+     "face": "NotoSansCJKsc-VF.ttf",
+     "text": "sselmeer",
+     "width": 63.119998931884766
     }
    ]
   },
   {
    "id": "L159",
    "category": "combining",
-   "width": 87.73000144958496,
-   "implicit_width": 77.48999786376953,
+   "width": 75.87000274658203,
+   "implicit_width": 75.87000274658203,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "가백",
-     "width": 29.440000534057617
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " (2026)",
-     "width": 58.290000915527344
+     "text": "가백 (2026)",
+     "width": 75.87000274658203
     }
    ]
   },
   {
    "id": "L160",
    "category": "long",
-   "width": 454.68000411987305,
-   "implicit_width": 390.70001220703125,
+   "width": 412.1099853515625,
+   "implicit_width": 412.1099853515625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated, — ",
-     "width": 111.81999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— ",
-     "width": 21.09000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interva",
-     "width": 161.77000427246094
+     "text": "观察值estimated, — 分位数— 拟合曲线, Confidence interva",
+     "width": 412.1099853515625
     }
    ]
   },
   {
    "id": "L161",
    "category": "long",
-   "width": 1413.6800270080566,
-   "implicit_width": 1260.1099853515625,
+   "width": 1252.8699951171875,
+   "implicit_width": 1252.8699951171875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001, ",
-     "width": 94.80000305175781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数观察值拟合曲线",
-     "width": 160
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001, residual and , ",
-     "width": 208.63999938964844
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "  Confidence interval Confidence interval, Confidence interval — and  Confidence interval ",
-     "width": 721.1500244140625
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平",
-     "width": 48
+     "text": "残差平方和 标准误 p < 0.001, 分位数观察值拟合曲线 p < 0.001, residual and , 观察值  Confidence interval Confidence interval, Confidence interval — and  Confidence interval 残差平",
+     "width": 1252.8699951171875
     }
    ]
   },
   {
    "id": "L162",
    "category": "long",
-   "width": 1791.3800067901611,
-   "implicit_width": 1541.8399658203125,
+   "width": 1588.27001953125,
+   "implicit_width": 1588.27001953125,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "—  — ",
-     "width": 47.2599983215332
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001, ",
-     "width": 89.70999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence interval, Confidence intervalp < 0.001",
-     "width": 406.8900146484375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interval , — ",
-     "width": 202.55999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误标准误标准误",
-     "width": 144
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimated ",
-     "width": 90.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和标准误",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  ",
-     "width": 15.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— — p < 0.001 —  p < 0.001 — ",
-     "width": 258.67999267578125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— , ",
-     "width": 31.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " an",
-     "width": 25.030000686645508
+     "text": "—  — 观察值p < 0.001, 观察值 Confidence interval, Confidence intervalp < 0.001残差平方和, Confidence interval , — 标准误标准误标准误 estimated 残差平方和标准误,  残差平方和— — p < 0.001 —  p < 0.001 — 标准误— , 分位数 an",
+     "width": 1588.27001953125
     }
    ]
   },
   {
    "id": "L163",
    "category": "long",
-   "width": 1912.21999168396,
-   "implicit_width": 1637.0899658203125,
+   "width": 1722.4200439453125,
+   "implicit_width": 1722.4200439453125,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and , ",
-     "width": 45.36000061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimated",
-     "width": 90.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and  ",
-     "width": 40.27000045776367
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — Confidence interval p < 0.001  ",
-     "width": 277.0199890136719
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and Confidence intervalresidual",
-     "width": 264.79998779296875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval Confidence interval, ",
-     "width": 327.3500061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and ",
-     "width": 45.36000061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001 ",
-     "width": 94.80000305175781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " es",
-     "width": 23.270000457763672
+     "text": "拟合曲线, 残差平方和and , 观察值, estimated标准误and  拟合曲线 — Confidence interval p < 0.001  拟合曲线, and Confidence intervalresidual观察值拟合曲线Confidence interval Confidence interval, 分位数 拟合曲线, and 分位数, p < 0.001 分位数 es",
+     "width": 1722.4200439453125
     }
    ]
   },
   {
    "id": "L164",
    "category": "long",
-   "width": 1120.4799976348877,
-   "implicit_width": 947.72998046875,
+   "width": 1008.1799926757812,
+   "implicit_width": 1008.1799926757812,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual ",
-     "width": 73.56999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and  and , — , ",
-     "width": 127.05999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  , ",
-     "width": 25.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数残差平方和分位数",
-     "width": 176
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001, Confidence interval and  Confidence interval",
-     "width": 452.25
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察",
-     "width": 32
+     "text": "观察值 residual 标准误, and  and , — , 残差平方和, 分位数,  , 分位数残差平方和分位数 p < 0.001, Confidence interval and  Confidence interval观察",
+     "width": 1008.1799926757812
     }
    ]
   },
   {
    "id": "L165",
    "category": "long",
-   "width": 981.1100063323975,
-   "implicit_width": 776.3599853515625,
+   "width": 894.1599731445312,
+   "implicit_width": 894.1599731445312,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": " , ",
-     "width": 15.260000228881836
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  , —  ",
-     "width": 51.599998474121094
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimated, residual ",
-     "width": 164.3000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "—  estimated",
-     "width": 106.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001re",
-     "width": 95.61000061035156
+     "text": " , 分位数, 拟合曲线,  , —  拟合曲线 分位数 残差平方和, 标准误 estimated, residual 观察值 观察值—  estimated拟合曲线p < 0.001re",
+     "width": 894.1599731445312
     }
    ]
   },
   {
    "id": "L166",
    "category": "long",
-   "width": 1265.2200012207031,
-   "implicit_width": 1098.8499755859375,
+   "width": 1132.449951171875,
+   "implicit_width": 1132.449951171875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "residual  , residual and  Confidence interval, ",
-     "width": 358.7200012207031
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimatedresidual — , ",
-     "width": 180.3000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimated,   ",
-     "width": 105.98999786376953
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001and  ",
-     "width": 124.9000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residua",
-     "width": 69.12999725341797
+     "text": "residual  , residual and  Confidence interval, 分位数estimatedresidual — , 观察值 分位数 观察值拟合曲线 estimated,   残差平方和 p < 0.001and  残差平方和, residua",
+     "width": 1132.449951171875
     }
    ]
   },
   {
    "id": "L167",
    "category": "long",
-   "width": 1060.2300033569336,
-   "implicit_width": 887.469970703125,
+   "width": 956.9500122070312,
+   "implicit_width": 956.9500122070312,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval Confidence interval, ",
-     "width": 327.3500061035156
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual— , p < 0.001 ",
-     "width": 184.3699951171875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",   ",
-     "width": 20.34000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimat",
-     "width": 60.560001373291016
+     "text": "Confidence interval Confidence interval, 标准误 residual— , p < 0.001 拟合曲线,   标准误 残差平方和 标准误, 观察值, 观察值 观察值estimat",
+     "width": 956.9500122070312
     }
    ]
   },
   {
    "id": "L168",
    "category": "long",
-   "width": 1309.1100177764893,
-   "implicit_width": 1040.3800048828125,
+   "width": 1208.18994140625,
+   "implicit_width": 1208.18994140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residual ",
-     "width": 78.66000366210938
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误标准误",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimated—  ",
-     "width": 116.91000366210938
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual, estimated ",
-     "width": 164.3000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和标准误",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  ,  estimated ",
-     "width": 116.16000366210938
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and  ",
-     "width": 50.45000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidenc",
-     "width": 80.12000274658203
+     "text": "拟合曲线, 拟合曲线, residual 标准误标准误, estimated—  观察值 residual, estimated 残差平方和标准误,  ,  estimated 拟合曲线, and  残差平方和, 残差平方和, 观察值Confidenc",
+     "width": 1208.18994140625
     }
    ]
   },
   {
    "id": "L169",
    "category": "long",
-   "width": 1946.9699974060059,
-   "implicit_width": 1550.239990234375,
+   "width": 1777.510009765625,
+   "implicit_width": 1777.510009765625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual ",
-     "width": 68.4800033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and  —  ",
-     "width": 66.44999694824219
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", — and , estimated",
-     "width": 157.17999267578125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "   —  ",
-     "width": 41.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and , ",
-     "width": 50.45000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval, residual and  and , ",
-     "width": 320.3399963378906
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001 ",
-     "width": 94.80000305175781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001 ",
-     "width": 94.80000305175781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数标准误",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值观察值",
-     "width": 96
+     "text": "观察值 观察值, 标准误, 观察值residual 观察值and  —  拟合曲线 分位数, 观察值, — and , estimated残差平方和 残差平方和   —  观察值 and , 分位数Confidence interval, residual and  and , 分位数, p < 0.001 分位数, 观察值, p < 0.001 分位数标准误 观察值观察值",
+     "width": 1777.510009765625
     }
    ]
   },
   {
    "id": "L170",
    "category": "long",
-   "width": 1541.4099960327148,
-   "implicit_width": 1272.6600341796875,
+   "width": 1402.27001953125,
+   "implicit_width": 1402.27001953125,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "and , and  ",
-     "width": 85.62999725341797
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", —  Confidence interval, estimated ",
-     "width": 288.2099914550781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence intervalConfidence interval, ",
-     "width": 327.3500061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — ",
-     "width": 26.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线观察值",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "—  — , ",
-     "width": 57.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0",
-     "width": 49
+     "text": "and , and  残差平方和, 分位数, —  Confidence interval, estimated 分位数 Confidence intervalConfidence interval, 观察值 分位数 — 拟合曲线观察值 分位数 分位数 观察值—  — , 拟合曲线 残差平方和 p < 0",
+     "width": 1402.27001953125
     }
    ]
   },
   {
    "id": "L171",
    "category": "long",
-   "width": 970.0299854278564,
-   "implicit_width": 784.469970703125,
+   "width": 878.3900146484375,
+   "implicit_width": 878.3900146484375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001, ",
-     "width": 89.70999908447266
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线分位数",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— , ",
-     "width": 31.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001",
-     "width": 89.70999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual, residual, residualestima",
-     "width": 264.8299865722656
+     "text": "p < 0.001, 拟合曲线分位数 观察值 标准误— , 拟合曲线, 标准误观察值, 标准误, p < 0.001标准误residual, residual, residualestima",
+     "width": 878.3900146484375
     }
    ]
   },
   {
    "id": "L172",
    "category": "long",
-   "width": 1736.2599964141846,
-   "implicit_width": 1537.9000244140625,
+   "width": 1540.0799560546875,
+   "implicit_width": 1540.0799560546875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated, — ",
-     "width": 111.81999969482422
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", — — Confidence interval, p < 0.001 and and ",
-     "width": 373.55999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— ",
-     "width": 21.09000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and  Confidence interval, estimated, ",
-     "width": 302.30999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", — , and  ",
-     "width": 81.69999694824219
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "  , and , residual, residual, estimated",
-     "width": 293.4100036621094
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — e",
-     "width": 36.02000045776367
+     "text": "estimated, — 残差平方和, 分位数 观察值, — — Confidence interval, p < 0.001 and and 分位数 分位数— 观察值 and  Confidence interval, estimated, 分位数, — , and  残差平方和  , and , residual, residual, estimated标准误 — e",
+     "width": 1540.0799560546875
     }
    ]
   },
   {
    "id": "L173",
    "category": "long",
-   "width": 830.689998626709,
-   "implicit_width": 664.3400268554688,
+   "width": 767.4400024414062,
+   "implicit_width": 767.4400024414062,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated",
-     "width": 80.55999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimated ",
-     "width": 90.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residualp < 0.001 ",
-     "width": 153.11000061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值观察值拟合曲线",
-     "width": 160
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidenc",
-     "width": 85.19999694824219
+     "text": "观察值estimated观察值 estimated 观察值 residualp < 0.001 观察值拟合曲线 观察值观察值拟合曲线 Confidenc",
+     "width": 767.4400024414062
     }
    ]
   },
   {
    "id": "L174",
    "category": "long",
-   "width": 1402.4900093078613,
-   "implicit_width": 1197.739990234375,
+   "width": 1274.050048828125,
+   "implicit_width": 1274.050048828125,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval ",
-     "width": 161.1300048828125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and , —  residualand , ",
-     "width": 185.3800048828125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— and —  residual, and ",
-     "width": 191.1999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线残差平方和",
-     "width": 144
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interval Confidence interval ",
-     "width": 332.44000244140625
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线观察值",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
+     "text": "残差平方和Confidence interval 观察值 and , —  residualand , 残差平方和— and —  residual, and 拟合曲线残差平方和, 标准误, Confidence interval Confidence interval 拟合曲线观察值, ",
+     "width": 1274.050048828125
     }
    ]
   },
   {
    "id": "L175",
    "category": "long",
-   "width": 520.6300086975098,
-   "implicit_width": 431.0400085449219,
+   "width": 476.239990234375,
+   "implicit_width": 476.239990234375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "  estimated, ",
-     "width": 100.91000366210938
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误残差平方和",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值分位数",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence intervalres",
-     "width": 190.6300048828125
+     "text": "  estimated, 标准误残差平方和 观察值分位数, Confidence intervalres",
+     "width": 476.239990234375
     }
    ]
   },
   {
    "id": "L176",
    "category": "long",
-   "width": 1740.3999996185303,
-   "implicit_width": 1471.6600341796875,
+   "width": 1538.260009765625,
+   "implicit_width": 1538.260009765625,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "— ",
-     "width": 21.09000015258789
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",   estimated, ",
-     "width": 111.08000183105469
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — ",
-     "width": 26.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  ",
-     "width": 15.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residualand ",
-     "width": 103.66999816894531
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "  , ",
-     "width": 20.34000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and  p < 0.001, Confidence intervalp < 0.001, — p < 0.001— ,   ",
-     "width": 522.8800048828125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和标准误",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual p < 0.001 ",
-     "width": 158.1999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.00",
-     "width": 74.44999694824219
+     "text": "— 分位数,   estimated, 残差平方和 — 拟合曲线,  残差平方和 residualand 观察值  , 标准误 and  p < 0.001, Confidence intervalp < 0.001, — p < 0.001— ,   拟合曲线, 标准误 残差平方和标准误 residual p < 0.001 拟合曲线 p < 0.00",
+     "width": 1538.260009765625
     }
    ]
   },
   {
    "id": "L177",
    "category": "long",
-   "width": 899.6300086975098,
-   "implicit_width": 733.27001953125,
+   "width": 821.6199951171875,
+   "implicit_width": 821.6199951171875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual",
-     "width": 63.400001525878906
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual,  , Confidence interval ",
-     "width": 249.9600067138672
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and ",
-     "width": 45.36000061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001 ",
-     "width": 89.70999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " an",
-     "width": 25.030000686645508
+     "text": "标准误residual残差平方和residual,  , Confidence interval 残差平方和, 残差平方和, and 残差平方和 p < 0.001 标准误 an",
+     "width": 821.6199951171875
     }
    ]
   },
   {
    "id": "L178",
    "category": "long",
-   "width": 390.9000053405762,
-   "implicit_width": 333.32000732421875,
+   "width": 343.94000244140625,
+   "implicit_width": 343.94000244140625,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001estimated, ",
-     "width": 170.27000427246094
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", —  ",
-     "width": 36.34000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", an",
-     "width": 30.1200008392334
+     "text": "p < 0.001estimated, 分位数, —  分位数, 分位数, an",
+     "width": 343.94000244140625
     }
    ]
   },
   {
    "id": "L179",
    "category": "long",
-   "width": 1051.8499965667725,
-   "implicit_width": 885.489990234375,
+   "width": 942.22998046875,
+   "implicit_width": 942.22998046875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值分位数",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual",
-     "width": 68.4800033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001",
-     "width": 79.54000091552734
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "   Confidence interval  — — , estimated, ",
-     "width": 324.54998779296875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和分位数",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "   residualp < 0.00",
-     "width": 148.02000427246094
+     "text": "观察值分位数 residual标准误p < 0.001分位数   Confidence interval  — — , estimated, 标准误, 残差平方和分位数 分位数   residualp < 0.00",
+     "width": 942.22998046875
     }
    ]
   },
   {
    "id": "L180",
    "category": "long",
-   "width": 1619.7300205230713,
-   "implicit_width": 1338.2099609375,
+   "width": 1468.4200439453125,
+   "implicit_width": 1468.4200439453125,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001, — , Confidence interval ",
-     "width": 282.1000061035156
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimatedConfidence interval, ",
-     "width": 256.95001220703125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "   ",
-     "width": 15.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimated, ",
-     "width": 95.81999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and   ,  ",
-     "width": 60.619998931884766
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimated",
-     "width": 90.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residual",
-     "width": 73.56999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
+     "text": "p < 0.001, — , Confidence interval 拟合曲线, 分位数, 残差平方和, estimatedConfidence interval, 拟合曲线, 残差平方和, 拟合曲线   拟合曲线 estimated, 标准误观察值and   ,  观察值, estimated标准误, residual观察值",
+     "width": 1468.4200439453125
     }
    ]
   },
   {
    "id": "L181",
    "category": "long",
-   "width": 1724.9799900054932,
-   "implicit_width": 1597,
+   "width": 1519.52001953125,
+   "implicit_width": 1519.52001953125,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "and , ",
-     "width": 45.36000061035156
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval, ",
-     "width": 166.22000122070312
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001Confidence intervaland  residual , —  ",
-     "width": 390.8599853515625
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence intervalp < 0.001residualand Confidence intervalConfidence intervalConfidence inte",
-     "width": 782.1900024414062
+     "text": "and , 分位数Confidence interval, 分位数, p < 0.001Confidence intervaland  residual , —  观察值, 残差平方和 观察值 分位数, Confidence intervalp < 0.001residualand Confidence intervalConfidence intervalConfidence inte",
+     "width": 1519.52001953125
     }
    ]
   },
   {
    "id": "L182",
    "category": "long",
-   "width": 534.8399925231934,
-   "implicit_width": 470.8500061035156,
+   "width": 476.6400146484375,
+   "implicit_width": 476.6400146484375,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001estimated, residual, ",
-     "width": 243.83999633789062
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimatedand  ",
-     "width": 120.83999633789062
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p",
-     "width": 10.15999984741211
+     "text": "观察值p < 0.001estimated, residual, 观察值estimatedand  拟合曲线p",
+     "width": 476.6400146484375
     }
    ]
   },
   {
    "id": "L183",
    "category": "long",
-   "width": 652.7300109863281,
-   "implicit_width": 563.1599731445312,
+   "width": 576.4000244140625,
+   "implicit_width": 576.4000244140625,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated, ",
-     "width": 90.7300033569336
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and  , p < 0.001— , and , ",
-     "width": 216.77000427246094
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimated",
-     "width": 90.7300033569336
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p",
-     "width": 20.329999923706055
+     "text": "estimated, 标准误, and  , p < 0.001— , and , 标准误, estimated残差平方和, 观察值, p",
+     "width": 576.4000244140625
     }
    ]
   },
   {
    "id": "L184",
    "category": "long",
-   "width": 415.62000274658203,
-   "implicit_width": 345.239990234375,
+   "width": 381.1700134277344,
+   "implicit_width": 381.1700134277344,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residualestimated — , ",
-     "width": 180.3000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residu",
-     "width": 59.31999969482422
+     "text": "残差平方和residualestimated — , 分位数观察值, residu",
+     "width": 381.1700134277344
     }
    ]
   },
   {
    "id": "L185",
    "category": "long",
-   "width": 801.8699989318848,
-   "implicit_width": 654.7100219726562,
+   "width": 721.6300048828125,
+   "implicit_width": 721.6300048828125,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "—  ",
-     "width": 26.170000076293945
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "—  —   , and , ",
-     "width": 112.95999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated",
-     "width": 80.55999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.001 ",
-     "width": 89.70999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数标准误分位数",
-     "width": 144
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " estimatedp <",
-     "width": 114.30000305175781
+     "text": "—  观察值—  —   , and , 拟合曲线estimated观察值, 拟合曲线 p < 0.001 分位数标准误分位数 estimatedp <",
+     "width": 721.6300048828125
     }
    ]
   },
   {
    "id": "L186",
    "category": "long",
-   "width": 1404.3399772644043,
-   "implicit_width": 1321.1600341796875,
+   "width": 1218.3900146484375,
+   "implicit_width": 1218.3900146484375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated   estimated, p < 0.001 estimated, Confidence interval, p < 0.001Confidence interval ",
-     "width": 768.7999877929688
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence intervalConfidence interval",
-     "width": 322.2699890136719
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " —  ",
-     "width": 31.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and p <",
-     "width": 63.84000015258789
+     "text": "estimated   estimated, p < 0.001 estimated, Confidence interval, p < 0.001Confidence interval 拟合曲线, 分位数, Confidence intervalConfidence interval标准误 —  观察值and p <",
+     "width": 1218.3900146484375
     }
    ]
   },
   {
    "id": "L187",
    "category": "long",
-   "width": 1102.2800025939941,
-   "implicit_width": 955.1300048828125,
+   "width": 974.9500122070312,
+   "implicit_width": 974.9500122070312,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001, residualand and    ",
-     "width": 238.74000549316406
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual,  estimated ",
-     "width": 169.38999938964844
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interval, ",
-     "width": 176.38999938964844
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",   ",
-     "width": 20.34000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值标准误",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001, ",
-     "width": 99.87999725341797
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "est",
-     "width": 24.450000762939453
+     "text": "p < 0.001, residualand and    观察值 residual,  estimated 分位数, Confidence interval, 拟合曲线,   观察值标准误, p < 0.001, 标准误 拟合曲线est",
+     "width": 974.9500122070312
     }
    ]
   },
   {
    "id": "L188",
    "category": "long",
-   "width": 1428.9400062561035,
-   "implicit_width": 1268.969970703125,
+   "width": 1285.7099609375,
+   "implicit_width": 1285.7099609375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval, Confidence interval — ",
-     "width": 348.44000244140625
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval",
-     "width": 156.0500030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interval",
-     "width": 166.22000122070312
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval, — , and , ",
-     "width": 242.83999633789062
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence ",
-     "width": 95.05000305175781
+     "text": "Confidence interval, Confidence interval — 标准误观察值Confidence interval残差平方和, 分位数, Confidence interval拟合曲线Confidence interval, — , and , 拟合曲线, 分位数Confidence ",
+     "width": 1285.7099609375
     }
    ]
   },
   {
    "id": "L189",
    "category": "long",
-   "width": 1311.3499813079834,
-   "implicit_width": 1004.2000122070312,
+   "width": 1204.9100341796875,
+   "implicit_width": 1204.9100341796875,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and , ",
-     "width": 55.529998779296875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "—  and  ",
-     "width": 66.44999694824219
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误残差平方和标准误",
-     "width": 176
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residual, p < 0.001, p < 0.001 ",
-     "width": 258.0799865722656
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual",
-     "width": 63.400001525878906
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线残差平方和分位数",
-     "width": 192
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " p < 0.00",
-     "width": 74.44999694824219
+     "text": "标准误, and , 残差平方和 分位数—  and  标准误残差平方和标准误, residual, p < 0.001, p < 0.001 分位数residual分位数 拟合曲线残差平方和分位数 残差平方和, 标准误 p < 0.00",
+     "width": 1204.9100341796875
     }
    ]
   },
   {
    "id": "L190",
    "category": "long",
-   "width": 1288.749984741211,
-   "implicit_width": 1039.199951171875,
+   "width": 1168.449951171875,
+   "implicit_width": 1168.449951171875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "— ",
-     "width": 21.09000015258789
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated",
-     "width": 80.55999755859375
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  , ",
-     "width": 25.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and p < 0.001",
-     "width": 124.9000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "     p < 0.001, ",
-     "width": 115.13999938964844
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值分位数",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和标准误",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimatedConfidence interval, p",
-     "width": 267.1099853515625
+     "text": "— 分位数estimated观察值,  , 拟合曲线 残差平方和 观察值, 分位数, and p < 0.001拟合曲线     p < 0.001, 观察值分位数, 残差平方和标准误, estimatedConfidence interval, p",
+     "width": 1168.449951171875
     }
    ]
   },
   {
    "id": "L191",
    "category": "long",
-   "width": 1420.1899967193604,
-   "implicit_width": 1273.02001953125,
+   "width": 1244.9599609375,
+   "implicit_width": 1244.9599609375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "  p < 0.001, residual ",
-     "width": 168.3699951171875
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", estimated, ",
-     "width": 100.91000366210938
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence intervalp < 0.001 p < 0.001 residual, ",
-     "width": 403.95001220703125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence interval, — , Confidence interval",
-     "width": 358.6099853515625
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
+     "text": "  p < 0.001, residual 观察值, estimated, 拟合曲线 Confidence intervalp < 0.001 p < 0.001 residual, 分位数 分位数, 拟合曲线 Confidence interval, — , Confidence interval标准误 观察值",
+     "width": 1244.9599609375
     }
    ]
   },
   {
    "id": "L192",
    "category": "long",
-   "width": 939.8500137329102,
-   "implicit_width": 837.47998046875,
+   "width": 829.1199951171875,
+   "implicit_width": 829.1199951171875,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "residual ",
-     "width": 68.4800033569336
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线拟合曲线",
-     "width": 128
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence interval  ",
-     "width": 171.3000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and —  p < 0.001 residual estimatedp < 0.001",
-     "width": 379.6600036621094
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "   residu",
-     "width": 64.41000366210938
+     "text": "residual 拟合曲线拟合曲线 Confidence interval  残差平方和 and —  p < 0.001 residual estimatedp < 0.001分位数   residu",
+     "width": 829.1199951171875
     }
    ]
   },
   {
    "id": "L193",
    "category": "long",
-   "width": 1034.7200107574463,
-   "implicit_width": 881.1599731445312,
+   "width": 931.8900146484375,
+   "implicit_width": 931.8900146484375,
    "runs": [
     {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated , Confidence interval, ",
-     "width": 262.0400085449219
-    },
-    {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "— ",
-     "width": 21.09000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residual",
-     "width": 73.56999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "p < 0.001 — ",
-     "width": 105.70999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " —  Confidence interv",
-     "width": 173.0500030517578
+     "text": "estimated , Confidence interval, 标准误 拟合曲线— 拟合曲线, 残差平方和, residual残差平方和p < 0.001 — 分位数 —  Confidence interv",
+     "width": 931.8900146484375
     }
    ]
   },
   {
    "id": "L194",
    "category": "long",
-   "width": 1869.6999950408936,
-   "implicit_width": 1575.3699951171875,
+   "width": 1664.9000244140625,
+   "implicit_width": 1664.9000244140625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", p < 0.001, p < 0.001 and ",
-     "width": 219.6999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence intervaland ",
-     "width": 191.22999572753906
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", — , ",
-     "width": 41.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "estimated, p < 0.001",
-     "width": 170.27000427246094
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "residual and  ",
-     "width": 108.76000213623047
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", — and , p < 0.001and  estimatedp < 0.001 ",
-     "width": 361.6199951171875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
+     "text": "拟合曲线 观察值, p < 0.001, p < 0.001 and 观察值Confidence intervaland 观察值拟合曲线 标准误拟合曲线, — , 拟合曲线, 标准误estimated, p < 0.001分位数residual and  分位数, — and , p < 0.001and  estimatedp < 0.001 观察值, 标准误观察值, ",
+     "width": 1664.9000244140625
     }
    ]
   },
   {
    "id": "L195",
    "category": "long",
-   "width": 929.9699897766113,
-   "implicit_width": 731.6300048828125,
+   "width": 852.510009765625,
+   "implicit_width": 852.510009765625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — ,  , and , ",
-     "width": 96.95999908447266
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", and   , ",
-     "width": 65.69999694824219
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", residual, Confidence interv",
-     "width": 225.5399932861328
+     "text": "残差平方和, 拟合曲线 — ,  , and , 残差平方和, 残差平方和, 分位数 标准误, and   , 标准误, 分位数, residual, Confidence interv",
+     "width": 852.510009765625
     }
    ]
   },
   {
    "id": "L196",
    "category": "long",
-   "width": 635.1199932098389,
-   "implicit_width": 494.3399963378906,
+   "width": 592.5900268554688,
+   "implicit_width": 592.5900268554688,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "—  and  Confidence intervaland ",
-     "width": 257.67999267578125
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线观察值",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
+     "text": "标准误 观察值 残差平方和—  and  Confidence intervaland 拟合曲线, 拟合曲线观察值 ",
+     "width": 592.5900268554688
     }
    ]
   },
   {
    "id": "L197",
    "category": "long",
-   "width": 1693.7299976348877,
-   "implicit_width": 1393.02001953125,
+   "width": 1542.6099853515625,
+   "implicit_width": 1542.6099853515625,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "  , ",
-     "width": 20.34000015258789
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", Confidence interval,   ,   residual, —  estimated",
-     "width": 387.2099914550781
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual ",
-     "width": 73.56999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值观察值",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " —  and and and  — , ",
-     "width": 173.16000366210938
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and  ",
-     "width": 40.27000045776367
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数分位数",
-     "width": 96
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " Confidence interval ",
-     "width": 166.22000122070312
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数拟合曲线",
-     "width": 112
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and ",
-     "width": 40.27000045776367
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ",  , ",
-     "width": 25.43000030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " , ",
-     "width": 15.260000228881836
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值残差平方和",
-     "width": 128
+     "text": "观察值  , 标准误, Confidence interval,   ,   residual, —  estimated分位数 residual 观察值观察值 —  and and and  — , 残差平方和and  分位数分位数 Confidence interval 分位数拟合曲线 and 标准误,  , 分位数 , 观察值残差平方和",
+     "width": 1542.6099853515625
     }
    ]
   },
   {
    "id": "L198",
    "category": "long",
-   "width": 1634.0499897003174,
-   "implicit_width": 1282.1400146484375,
+   "width": 1514.989990234375,
+   "implicit_width": 1514.989990234375,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " residual ",
-     "width": 73.56999969482422
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "Confidence interval",
-     "width": 156.0500030517578
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和标准误拟合曲线",
-     "width": 192
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " and  ",
-     "width": 45.36000061035156
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "标准误",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — ",
-     "width": 26.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": ", ",
-     "width": 10.170000076293945
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "残差平方和",
-     "width": 80
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " , Confidence interval —  — , residual ",
-     "width": 302.29998779296875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " — , residual",
-     "width": 99.73999786376953
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "拟合曲线",
-     "width": 64
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": " ",
-     "width": 5.090000152587891
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
+     "text": "分位数, 标准误 residual 观察值, 残差平方和, 拟合曲线Confidence interval残差平方和标准误拟合曲线 and  标准误 — 观察值, 残差平方和 拟合曲线 , Confidence interval —  — , residual 观察值 — , residual拟合曲线 观察值",
+     "width": 1514.989990234375
     }
    ]
   },
   {
    "id": "L199",
    "category": "long",
-   "width": 431.04998779296875,
-   "implicit_width": 373.4700012207031,
+   "width": 392.1400146484375,
+   "implicit_width": 392.1400146484375,
    "runs": [
     {
      "face": "NotoSansCJKsc-VF.ttf",
-     "text": "观察值",
-     "width": 48
-    },
-    {
-     "face": "DejaVuSans.ttf",
-     "text": "and , Confidence interval estimated",
-     "width": 287.04998779296875
-    },
-    {
-     "face": "NotoSansCJKsc-VF.ttf",
-     "text": "分位数残差平",
-     "width": 96
+     "text": "观察值and , Confidence interval estimated分位数残差平",
+     "width": 392.1400146484375
     }
    ]
   }

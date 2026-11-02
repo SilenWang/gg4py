@@ -137,7 +137,7 @@ shaping，整段比会把 kern 差算成实现差异（`Width` 的 `Wi` 能差 2
 # 1) 关掉字族回退：让 run 切分只看主字族（等价于「只把整串丢给主字族」）
 sed -i 's/for candidate in range(font_count):/for candidate in range(1):/' \
   src/ggcore/metrics/runs.py
-pixi run gate:metrics        # 期望 exit 1：每档 132 条超阈 + 132 条 run-mismatch，最差 51.9%
+pixi run gate:metrics        # 期望 exit 1：每档 51 条超阈 + 58 条 run-mismatch，最差 289%
 git checkout src/ggcore/metrics/runs.py
 
 # 2) 改一字节字体以外的数据，让兜底表过期（例如把 ascent +1），门禁应报 STALE

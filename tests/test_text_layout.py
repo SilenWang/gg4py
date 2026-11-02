@@ -7,16 +7,20 @@
 
 from __future__ import annotations
 
+import zlib
+
 import numpy as np
 import pytest
 import skia
 
 from ggcore.grobs import height_details, scene, text_grob, width_details
+from ggcore.metrics import MetricProvider, TableBackend
 from ggcore.metrics.catalog import FontCatalog
 from ggcore.metrics.faces import FontFaceError
 from ggcore.units import convert_height, convert_width, unit
 from ggcore.viewport import Device, ViewportTree, gpar, viewport
-from ggskia import SkiaRasterDevice, SkiaSvgDevice
+from ggshape.harfbuzz import HarfBuzzBackend
+from ggskia import SkiaPdfDevice, SkiaRasterDevice, SkiaSvgDevice
 from ggskia.text import LINE_PITCH, ShaperMetrics, TextShaper, resolve_stack
 
 WIDTH_PT = 200.0
@@ -90,6 +94,8 @@ def test_missing_face_raises_and_lists_available_styles() -> None:
         catalog.resolve("Noto Sans CJK SC", 400, True)
     assert "可用字面" in str(error.value)
     assert "regular" in str(error.value)
+    # CJK 的 bold 是同一个可变文件上的 wght=700，报错必须把它列出来。
+    assert "bold（wght=700）" in str(error.value)
     assert catalog.resolve("Noto Sans CJK SC", 700, False).variation == 700
 
 
@@ -213,6 +219,17 @@ def test_emoji_runs_switch_face_mid_string() -> None:
     assert outline[0].advance == pytest.approx(25.39, abs=0.02)
 
 
+def test_emoji_width_is_the_same_on_all_three_metric_paths() -> None:
+    """emoji 回退链只有 rules.json 一份：provider / 兜底表 / 设备三者同宽。"""
+    provider = MetricProvider(HarfBuzzBackend()).strwidth("\U0001f600", 20.0)
+    table = MetricProvider(TableBackend.from_file()).strwidth("\U0001f600", 20.0)
+    device = ShaperMetrics().strwidth("\U0001f600", fontsize=20.0, cex=1.0) * 72.0
+    assert provider == pytest.approx(table, rel=1e-6)
+    assert provider == pytest.approx(device, rel=0.01)
+    for width in (provider, table, device):
+        assert width == pytest.approx(25.00, rel=0.02)
+
+
 def test_emoji_outline_is_used_by_vector_backends_only() -> None:
     stack_color = [face.filename for face in resolve_stack("sans", emoji="color")]
     stack_outline = [face.filename for face in resolve_stack("sans", emoji="outline")]
@@ -229,6 +246,22 @@ def test_emoji_vector_backend_draws_outlines() -> None:
     svg = SkiaSvgDevice(*ir_scene.size).render(ir_scene)
     assert b"<text" not in svg
     assert b"<path" in svg
+
+
+def test_emoji_pdf_backend_draws_outlines() -> None:
+    """PDF 里 emoji 也必须是轮廓：没有位图、没有字体、有路径算子。"""
+    tree = _tree(40.0)
+    ir_scene = scene(
+        [text_grob("\U0001f600", x=unit(20, "bigpts"), y=unit(60, "bigpts"), hjust=0)], tree
+    ).to_ir_scene()
+    pdf = SkiaPdfDevice(*ir_scene.size).render(ir_scene)
+    assert b"/Subtype /Image" not in pdf
+    assert b"/Font" not in pdf
+    # 内容流是 Flate 压缩的，路径算子要在解压后看。
+    start = pdf.index(b"stream\n") + len(b"stream\n")
+    content = zlib.decompress(pdf[start : pdf.index(b"endstream", start)])
+    assert b" m\n" in content
+    assert b" c\n" in content or b" l\n" in content
 
 
 def test_emoji_raster_backend_keeps_colour() -> None:

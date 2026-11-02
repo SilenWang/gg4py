@@ -18,7 +18,9 @@
 
 ## L3 · 字体回退由我们自己切 run，不依赖 CanvasKit（E2）
 
-- 现象：CanvasKit `TypefaceFontProvider` 不跨字族回退，整串按主字族排版会得到 `.notdef`（132/200 条语料受影响）。
+- 现象：CanvasKit `TypefaceFontProvider` 不跨字族回退，整串按主字族排版会得到
+  `.notdef`。主字族是 `Noto Sans CJK SC` 时 51/200 条语料受影响；M0-7 的
+  DejaVu 主字族栈下是 132/200。
 - 口径：`font_stack` + 「第一个覆盖该码点的字族」这条规则是**规范**，Python 与 TS 两端各自实现。粘着码点固定为 `U+200C–200D`、`U+FE00–FE0F`、`U+E0100–E01EF` 三段，两端都按这份区间声明，`tests/test_run_split_rules.py` 校验两份声明逐字一致——早期两端的集合各缺一段，只因语料只含 `U+200D`/`U+FE0F` 才没暴露。
 - 复现：`pixi run spike:e2`，`run_layout_mismatches` 必须为 0。
 
@@ -126,10 +128,10 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 |---|---|
 | 双端（uharfbuzz × CanvasKit.Paragraph）最差相对差 | **0.241%** @16px（10/12/24px 为 0.151/0.191/0.191%），判据 0.5% |
 | run 切分布局不一致 | 0 / 200（四个字号都是 0） |
-| 「必须显式切 run」的标签数 | **132 / 200**（与 E2 完全吻合） |
+| 「必须显式切 run」的标签数 | **51 / 200**（CJK 主字族栈；M0-7 的 DejaVu 主字族栈下 132 / 200） |
 | 桌面端 skia-python 逐字形 advance 最大差 | 0.18%（emoji CBDT strike 推导差异，L1） |
 | 兜底表最大差 / 均值（178 条支持子集） | 3.59% / **0.1441%**（仅本语料；均值口径见 M0-7-d，绝对值恒定 +2.71875 px @16px，`To` 单对 16.14%） |
-| 灵敏度：字体栈砍成单字族 | 132 条判红 → 门禁确实量的是「两端」，不是同一侧 |
+| 灵敏度：字体栈砍成单字族 | 51 条判红 + 58 条 run-mismatch（最差 289%） → 门禁确实量的是「两端」，不是同一侧 |
 
 注意 **skia-python 腿比的是逐字形 advance**，不是整段宽度：`SkFont.getWidths` 不做
 kerning/ligature shaping（`Total` 的 `To` 对，`Width` 的 `Wi` 对都会被算宽 2–30%）。
@@ -188,11 +190,21 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
   一个字形也出不来；因此 `SkiaSvgDevice` / `SkiaPdfDevice` 的
   `TextShaper(emoji="outline")` 把 `Noto Color Emoji` 换成
   `NotoEmoji-Regular.ttf`（单色轮廓），`SkiaRasterDevice` 保持彩色位图。
-- run 切分仍是「第一个 cmap 覆盖该码点的字族」；emoji 字面在回退链里排在
-  DejaVu 之前——DejaVu 自带 U+1F600/U+2764 的单色字形（推进 1.05em），排在
-  前面会让 emoji 永远落不到 1.25em 的 emoji 字面（R 的口径）。
+- run 切分仍是「第一个 cmap 覆盖该码点的字族」。回退顺序只有一份声明：
+  `rules.json` 的 `default_font_stack`（CJK → Noto Color Emoji → DejaVu），
+  `MetricProvider` / `TableBackend` / 设备 `ggskia.text.resolve_stack` 与
+  CanvasKit 都读它。emoji 字面必须排在 DejaVu 之前——DejaVu 自带
+  U+1F600/U+2764 的单色字形（推进 1.05em），排在前面会让 emoji 永远落不到
+  1.25em 的 emoji 字面（R 的口径）；SIL-661 之前只有设备侧改了顺序，共享声明
+  仍是 DejaVu 在前，`U+1F600` @20pt 因此 provider 20.85 vs 设备 24.95。
+- 主字族变成 CJK 之后，一个 run 里可能混着拉丁与复杂书写系统：HarfBuzz 的
+  `guess_segment_properties()` 每段只取一个 script，`n=각` 会被整段当
+  Latin 排（61.78px vs CanvasKit 32.34px，+91%）。`runs.script_segments()`
+  按复杂书写系统区间切段后再 shape，200 条语料里只有这一条受影响，双端回到
+  0.012%。
 - 两端仍可对拍的理由：**宽度口径接近**。Noto Color Emoji（CBDT strike）在
-  20px 下 24.95px，Noto Emoji 轮廓 25.39px（+1.8%），R/cairo 是 25.00。
+  20px 下 provider / 兜底表 24.90px、设备 24.95px（R/cairo 25.00，最大偏差
+  0.4%），Noto Emoji 轮廓 25.39px（+1.8%）。
   参考图 svglite 写的是 `<text>` + `textLength`，diff 管线
   （`ggdiff.svgtext`）按同一套 run 规则转轮廓，所以像素比的是位置与字形，
   不是「彩色 vs 单色」的颜色差；`text-emoji` 实测图级 1.67% / 均值 0.52%。
@@ -242,9 +254,15 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
   | `grob-text-rot` | 重录：1490 px 不同（mean 0.260）——同上，**修正** |
   | 其余 14 张 `grob-*` | 逐字节不变 |
   | `viewport-*`（2 张） | 逐字节不变 |
-  | `device-smoke`（PNG/SVG/PDF） | 逐字节不变 |
+  | `device-smoke`（PNG/SVG/PDF） | PNG 1800 px 不同（mean 0.383）：linear 改变文字位置，SVG/PDF 同源变化 |
   | `geom-text-cjk` | 图级 **1.15% → 0.17%**（变好） |
   | `text-bold-italic` | hinted 4.17% → linear **1.25%**（hinted 下根本过不了 2%） |
+
+- SIL-661 复核时发现 `tools/cases/grob_cases.py` 的 `SkiaMetrics`（grob 案例
+  的 IR 宽度来源）还是 hinted，而且 `strheight` 用 ascent + descent：同一段
+  文字在 IR 与设备各量一套。改成线性 + cap height 后重录：`grob-text` 776 px
+  不同（mean 0.156），`grob-text-rot` 171 px（mean 0.032）；IR 宽度与
+  `strwidth()` 的线性计算值逐位相等。
 
 ### M1-f · 已知偏差：CJK 族里的拉丁字形
 
@@ -256,39 +274,3 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
 - 影响：CJK 族里的拉丁标签窄 6%；`text-multiline`（含一行中英混排）实测
   图级 1.33%，仍在 2% 内。`tests/test_text_parity.py` 把这一条钉成
   **已知偏差**（≤ 7%），其它组合仍按 0.5% 判。
-
-## M1 · 文字测量（SIL-655）
-
-M1-7 / M1-10 / M1-11 之前的四块短板：真实 bold/italic 字面、`\n` 多行、
-emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现。
-
-### M1-a · 字面解析：`(族, weight, italic)` → 受管文件
-
-- 声明在 `src/ggcore/metrics/faces.py`（`FAMILY_FACES`），文件仍只来自
-  `pixi.toml` 的 `font-ttf-*` 包；rules.json 登记「文件 → 字族名」，faces.py
-  补同族的字面与可变轴。`FontCatalog.resolve()` 是唯一入口，raster / SVG / PDF
-  共用（`ggskia.text.resolve_stack`）。
-- gpar 的 `font` 1..5 → weight 400/700 × italic：`2` bold、`3` italic、
-  `4` bold-italic。**可变字体用 `wght` 轴**（Noto Sans / Noto Sans CJK /
-  Noto Serif），静态字面直接选文件（DejaVu）。
-- 没有对应字面时 `strict=True` 报错并列出可用字面，不静默回落常规：
-  `Noto Sans CJK SC 没有 italic 字面；可用字面：regular`。回退字族
-  （DejaVu / CJK / emoji）用 `strict=False`：某档缺 italic 时用常规字面继续
-  找覆盖，与 R 的 fontconfig 回退一致。
-- 复现：`pixi run python -c "from ggcore.metrics.catalog import FontCatalog;
-  print(FontCatalog().resolve('Noto Sans', 700, True))"` → NotoSans-Italic-VF.ttf
-  + `variation=700`。
-- `shortcut:` skia-python 的 `setVariationDesignPosition` 只持有
-  `VariationPosition` 的引用；中间对象被回收时 `makeClone` **静默退回设计默认
-  字重**（Bold 与 Regular 推进完全相同）。`ggskia.text._variation_args()`
-  因此把三个中间对象一起保活到 `makeClone` 返回。
-
-### M1-b · `\n` 多行：R 的实测口径
-
-- 行距（draw 时）：**`1.2 × lineheight × fontsize`**，grid 的
-  `gpar(lineheight = 1.2)` 缺省 → **1.44 × fontsize**。R 4.5.3 实测：
-  30pt 三行的基线 39.12 / 82.32 / 125.52（间距 43.2 = 1.44 × 30）；
-  `lineheight = 1.0` 时 36.0、`2.0` 时 72.0。issue 里「行高 = 1.2 × fontsize」
-  是 grid 的 `heightDetails` 口径的一半事实：那一步用的行盒是
-  `fontsize × lineheight`，而**画出来的行距再多乘 1.2**。这里按实测对齐。
-- 整块高度 = `(n-1

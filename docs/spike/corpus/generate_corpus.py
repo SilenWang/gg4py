@@ -11,7 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import sys
 from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO / "src"))
+
+from ggcore.metrics.rules import DEFAULT_FONT_STACK
 
 SEED = 20261101
 PER_CATEGORY = 40
@@ -235,7 +241,8 @@ def build() -> dict:
         "schema": 1,
         "seed": SEED,
         "count": len(items),
-        "font_stack": ["DejaVuSans.ttf", "NotoSansCJKsc-VF.ttf", "NotoColorEmoji.ttf"],
+        # 回退顺序只有 rules.json 一份：语料不另写一份顺序（gate:metrics 逐项比对）。
+        "font_stack": list(DEFAULT_FONT_STACK),
         "font_size_px": 16.0,
         "labels": items,
     }

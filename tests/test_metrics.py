@@ -150,15 +150,22 @@ def test_advance_matches_run_split(hb: MetricProvider) -> None:
     assert hb.advance("月份（万元）", 16) == pytest.approx(runs[0].width)
 
 
-def test_advance_splits_latin_cjk_and_emoji_into_three_runs(hb: MetricProvider) -> None:
+def test_advance_splits_by_font_coverage_with_cjk_first(hb: MetricProvider) -> None:
+    """共享栈是 CJK → emoji → DejaVu：CJK 覆盖拉丁与空格，emoji 单独一段。"""
     runs = hb.runs("Sales 月份 🌱", 16)
-    assert [run.font for run in runs] == [
-        "DejaVuSans.ttf",
-        "NotoSansCJKsc-VF.ttf",
-        "DejaVuSans.ttf",
-        "NotoColorEmoji.ttf",
-    ]
-    assert [run.text for run in runs] == ["Sales ", "月份", " ", "🌱"]
+    assert [run.font for run in runs] == ["NotoSansCJKsc-VF.ttf", "NotoColorEmoji.ttf"]
+    assert [run.text for run in runs] == ["Sales 月份 ", "🌱"]
+
+
+def test_mixed_script_run_is_shaped_per_script(hb: MetricProvider) -> None:
+    """拉丁 + 朝鲜 jamo 同一个 run：jamo 必须按 Hangul 合成音节。
+
+    整段按 Latin 排会让 jamo 拆成三个字形（61.78px @16），CanvasKit 是
+    32.34px；按 script 段切开后两端一致。
+    """
+    mixed = "n=\u1100\u1161\u11a8"
+    assert hb.strwidth(mixed, 16) == pytest.approx(32.34, rel=0.005)
+    assert hb.strwidth("\u1100\u1161\u11a8", 16) == pytest.approx(14.72, rel=0.005)
 
 
 def test_advance_scales_linearly_with_font_size(hb: MetricProvider) -> None:

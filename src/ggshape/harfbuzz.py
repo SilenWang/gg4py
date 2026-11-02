@@ -13,6 +13,7 @@ import uharfbuzz as hb
 
 from ggcore.metrics.catalog import DEFAULT_FONT_STACK, FontCatalog
 from ggcore.metrics.provider import FontMetrics, MetricProvider, ShapedRun
+from ggcore.metrics.runs import script_segments
 
 __all__ = ["HarfBuzzBackend", "harfbuzz_provider"]
 
@@ -58,15 +59,23 @@ class HarfBuzzBackend:
         return covered
 
     def shape(self, filename: str, text: str) -> ShapedRun:
+        """逐 script 段 shaping，拼成同一个 run 的字形序列。
+
+        `guess_segment_properties()` 每段只取一个 script，整段混排会让后面的
+        复杂书写系统按前面的 script 排（例如 `"n=각"` 的 jamo 不再合成音节）。
+        CanvasKit 的 SkParagraph 本来就按 script 切段，这里对齐它的口径。
+        """
         font = self._font(filename)
-        buffer = hb.Buffer()
-        buffer.add_str(text)
-        buffer.guess_segment_properties()
-        hb.shape(font, buffer)
-        return ShapedRun(
-            gids=tuple(info.codepoint for info in buffer.glyph_infos),
-            advances=tuple(float(pos.x_advance) for pos in buffer.glyph_positions),
-        )
+        gids: list[int] = []
+        advances: list[float] = []
+        for segment in script_segments(text):
+            buffer = hb.Buffer()
+            buffer.add_str(segment)
+            buffer.guess_segment_properties()
+            hb.shape(font, buffer)
+            gids.extend(int(info.codepoint) for info in buffer.glyph_infos)
+            advances.extend(float(pos.x_advance) for pos in buffer.glyph_positions)
+        return ShapedRun(gids=tuple(gids), advances=tuple(advances))
 
     def supports(self, text: str) -> bool:
         # HarfBuzz 会做完整的上下文 shaping（连写/重排/合字），没有能力盲区。
