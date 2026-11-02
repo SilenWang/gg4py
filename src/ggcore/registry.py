@@ -35,8 +35,9 @@ from types import MappingProxyType
 from typing import Any
 
 from ggcore.aes import as_aes, frozen_mapping
-from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
+from ggcore.components import Coord, Facet, Guide, Labels, Scale
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
+from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。
 KINDS: tuple[str, ...] = ("geom", "stat", "scale", "coord", "facet", "guide", "theme", "label")
@@ -474,13 +475,6 @@ def _guide_factory(name: str) -> Callable[..., Guide]:
     return factory
 
 
-def _theme_factory(name: str) -> Callable[..., Theme]:
-    def factory(**elements: Any) -> Theme:
-        return Theme(name=name, elements=elements, complete=True)
-
-    return factory
-
-
 def _labels_factory(**values: Any) -> Labels:
     return Labels(frozen_mapping(values))
 
@@ -530,8 +524,10 @@ def _register_defaults() -> None:
         register_facet(name, _facet_factory(name))
     for name in GUIDE_NAMES:
         register_guide(name, _guide_factory(name))
-    for name in THEME_NAMES:
-        register_theme(name, _theme_factory(name))
+    register_theme("grey", theme_grey)
+    register_theme("bw", theme_bw)
+    register_theme("minimal", theme_minimal)
+    register_theme("void", theme_void)
     register_label("labs", _labels_factory)
 
 

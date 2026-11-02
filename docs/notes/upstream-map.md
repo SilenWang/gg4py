@@ -47,7 +47,7 @@ Python 模块，反之亦然。
 | `ggcore.coord.cartesian` | `R/coord-cartesian-.R:78` | `coord_cartesian()` | 未实现 |
 | `ggcore.facet.base` | `R/facet-.R:66` | `Facet` | 未实现 |
 | `ggcore.guide` | `R/guides-.R:69` | `guides()` | 未实现 |
-| `ggcore.theme` | `R/theme.R:341` | `theme()` | 未实现 |
+| `ggcore.theme` | `R/theme.R` / `R/theme-elements.R` / `R/theme-defaults.R` | `theme()` / `element_*()` / `calc_element()` / 三套完整主题 | 已实现（M1-10：元素树 + 继承 + rel 解析，见 `docs/notes/theme.md`） |
 
 ## 文本度量
 

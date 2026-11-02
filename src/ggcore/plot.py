@@ -32,6 +32,7 @@ from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
 from ggcore.layer import Layer, Position
+from ggcore.theme import merge_theme, theme_grey
 
 __all__: list[str] = []
 
@@ -68,7 +69,9 @@ class ggplot:
         self.layers: list[Layer] = list(layers) if layers is not None else []
         self.scales: dict[str, Scale] = dict(scales) if scales is not None else {}
         self.guides: dict[str, Guide] = dict(guides) if guides is not None else {}
-        self.theme: Theme = theme if theme is not None else Theme()
+        # ggplot2 的默认主题是 theme_grey()；`p + theme_void()` 这类完整主题
+        # 整份替换它（merge_theme 的语义），局部 theme() 只合并元素。
+        self.theme: Theme = theme if theme is not None else theme_grey()
         self.coordinates: Coord = coordinates if coordinates is not None else Coord("cartesian")
         self.facet: Facet = facet if facet is not None else Facet("null")
         self.labels: dict[str, Any] = dict(frozen_mapping(labels)) if labels is not None else {}
@@ -185,14 +188,7 @@ def _add_scale(component: Scale, plot: ggplot) -> ggplot:
 @_add_component.register(Theme)
 def _add_theme(component: Theme, plot: ggplot) -> ggplot:
     new = plot.clone()
-    if component.complete:
-        new.theme = component
-    else:
-        new.theme = Theme(
-            name=plot.theme.name,
-            elements={**plot.theme.elements, **component.elements},
-            complete=plot.theme.complete,
-        )
+    new.theme = merge_theme(plot.theme, component)
     return new
 
 

@@ -1,0 +1,4711 @@
+{
+  "r_version": "R version 4.5.3 (2026-03-11)",
+  "ggplot2_version": "4.0.3",
+  "generated_by": "tools/refs/theme_ref.R",
+  "themes": {
+    "grey": {
+      "line": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "rect": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "point": {
+        "class": "point",
+        "colour": "#000000",
+        "shape": 19,
+        "size": 1.5,
+        "fill": "#FFFFFF",
+        "stroke": 0.5,
+        "inherit.blank": true
+      },
+      "polygon": {
+        "class": "polygon",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "geom": {
+        "class": "geom",
+        "ink": "#000000",
+        "paper": "#FFFFFF",
+        "accent": "#3366FF",
+        "linewidth": 0.5,
+        "borderwidth": 0.5,
+        "linetype": 1,
+        "bordertype": 1,
+        "family": "",
+        "fontsize": 11,
+        "pointsize": 1.5,
+        "pointshape": 19,
+        "colour": null,
+        "fill": null
+      },
+      "title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "margins": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "axis.line": {
+        "class": "blank"
+      },
+      "axis.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.ticks": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "legend.key.size": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "panel.grid": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.grid.major": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.grid.minor": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "strip.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.line.x": {
+        "class": "blank"
+      },
+      "axis.line.x.top": {
+        "class": "blank"
+      },
+      "axis.line.x.bottom": {
+        "class": "blank"
+      },
+      "axis.line.y": {
+        "class": "blank"
+      },
+      "axis.line.y.left": {
+        "class": "blank"
+      },
+      "axis.line.y.right": {
+        "class": "blank"
+      },
+      "axis.line.theta": {
+        "class": "blank"
+      },
+      "axis.line.r": {
+        "class": "blank"
+      },
+      "axis.text.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.theta": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.r": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.ticks.length": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.theta": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.r": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.x": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.x.top": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.x.bottom": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.y": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.y.left": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.y.right": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.theta": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.ticks.r": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.title.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.x.top": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.x.bottom": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.y.left": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.y.right": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.theta": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.r": {
+        "class": "line",
+        "colour": "#333333",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#333333",
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.length": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.x": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.theta": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.r": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "legend.background": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "legend.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.spacing": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.spacing.x": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.spacing.y": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.key": {
+        "class": "rect",
+        "fill": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "legend.key.height": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.width": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.justification": null,
+      "legend.frame": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "legend.axis.line": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "legend.ticks": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "legend.ticks.length": {
+        "class": "unit",
+        "amount": [0.24],
+        "kind": ["lines"]
+      },
+      "legend.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.text.position": null,
+      "legend.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.title.position": null,
+      "legend.byrow": null,
+      "legend.position": {
+        "class": "value",
+        "value": "right"
+      },
+      "legend.position.inside": null,
+      "legend.direction": null,
+      "legend.justification": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.top": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.bottom": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.left": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.right": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.inside": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.location": null,
+      "legend.box": null,
+      "legend.box.just": null,
+      "legend.box.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.box.background": {
+        "class": "blank"
+      },
+      "legend.box.spacing": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "panel.background": {
+        "class": "rect",
+        "fill": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "panel.border": {
+        "class": "blank"
+      },
+      "panel.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.grid.major.x": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.grid.major.y": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.grid.minor.x": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.grid.minor.y": {
+        "class": "line",
+        "colour": "#FFFFFF",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#FFFFFF",
+        "inherit.blank": true
+      },
+      "panel.ontop": {
+        "class": "value",
+        "value": false
+      },
+      "panel.widths": null,
+      "panel.heights": null,
+      "strip.background": {
+        "class": "rect",
+        "fill": "#D9D9D9",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "strip.background.x": {
+        "class": "rect",
+        "fill": "#D9D9D9",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "strip.background.y": {
+        "class": "rect",
+        "fill": "#D9D9D9",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "strip.clip": {
+        "class": "value",
+        "value": "on"
+      },
+      "strip.text.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.placement": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.placement.x": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.placement.y": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.switch.pad.grid": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "strip.switch.pad.wrap": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "plot.background": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "colour": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "plot.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.title.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.subtitle": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.tag": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.tag.position": {
+        "class": "value",
+        "value": "topleft"
+      },
+      "plot.tag.location": null,
+      "plot.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "aspect.ratio": null
+    },
+    "minimal": {
+      "line": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "rect": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "point": {
+        "class": "point",
+        "colour": "#000000",
+        "shape": 19,
+        "size": 1.5,
+        "fill": "#FFFFFF",
+        "stroke": 0.5,
+        "inherit.blank": true
+      },
+      "polygon": {
+        "class": "polygon",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "geom": {
+        "class": "geom",
+        "ink": "#000000",
+        "paper": "#FFFFFF",
+        "accent": "#3366FF",
+        "linewidth": 0.5,
+        "borderwidth": 0.5,
+        "linetype": 1,
+        "bordertype": 1,
+        "family": "",
+        "fontsize": 11,
+        "pointsize": 1.5,
+        "pointshape": 19,
+        "colour": null,
+        "fill": null
+      },
+      "title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "margins": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "axis.line": {
+        "class": "blank"
+      },
+      "axis.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.ticks": {
+        "class": "blank"
+      },
+      "legend.key.size": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "panel.grid": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.grid.major": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.grid.minor": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "strip.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.line.x": {
+        "class": "blank"
+      },
+      "axis.line.x.top": {
+        "class": "blank"
+      },
+      "axis.line.x.bottom": {
+        "class": "blank"
+      },
+      "axis.line.y": {
+        "class": "blank"
+      },
+      "axis.line.y.left": {
+        "class": "blank"
+      },
+      "axis.line.y.right": {
+        "class": "blank"
+      },
+      "axis.line.theta": {
+        "class": "blank"
+      },
+      "axis.line.r": {
+        "class": "blank"
+      },
+      "axis.text.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 4.95,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.95,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 4.95,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 4.95,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.theta": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.text.r": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#4D4D4D",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.2,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.ticks.length": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.theta": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.r": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "axis.ticks.x": {
+        "class": "blank"
+      },
+      "axis.ticks.x.top": {
+        "class": "blank"
+      },
+      "axis.ticks.x.bottom": {
+        "class": "blank"
+      },
+      "axis.ticks.y": {
+        "class": "blank"
+      },
+      "axis.ticks.y.left": {
+        "class": "blank"
+      },
+      "axis.ticks.y.right": {
+        "class": "blank"
+      },
+      "axis.ticks.theta": {
+        "class": "blank"
+      },
+      "axis.ticks.r": {
+        "class": "blank"
+      },
+      "axis.title.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.title.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 1,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 2.75,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.minor.ticks.x.top": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.x.bottom": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.y.left": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.y.right": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.theta": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.r": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.length": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.x": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y": {
+        "class": "rel",
+        "mult": 0.75
+      },
+      "axis.minor.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.theta": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.r": {
+        "class": "unit",
+        "amount": [2.0625],
+        "kind": ["points"]
+      },
+      "legend.background": {
+        "class": "blank"
+      },
+      "legend.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.spacing": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.spacing.x": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.spacing.y": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "legend.key": {
+        "class": "blank"
+      },
+      "legend.key.height": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.width": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.justification": null,
+      "legend.frame": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "legend.axis.line": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "legend.ticks": {
+        "class": "line",
+        "colour": "#000000",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#000000",
+        "inherit.blank": true
+      },
+      "legend.ticks.length": {
+        "class": "unit",
+        "amount": [0.24],
+        "kind": ["lines"]
+      },
+      "legend.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.text.position": null,
+      "legend.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.title.position": null,
+      "legend.byrow": null,
+      "legend.position": {
+        "class": "value",
+        "value": "right"
+      },
+      "legend.position.inside": null,
+      "legend.direction": null,
+      "legend.justification": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.top": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.bottom": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.left": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.right": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.justification.inside": {
+        "class": "value",
+        "value": "center"
+      },
+      "legend.location": null,
+      "legend.box": null,
+      "legend.box.just": null,
+      "legend.box.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.box.background": {
+        "class": "blank"
+      },
+      "legend.box.spacing": {
+        "class": "unit",
+        "amount": [11],
+        "kind": ["points"]
+      },
+      "panel.background": {
+        "class": "blank"
+      },
+      "panel.border": {
+        "class": "blank"
+      },
+      "panel.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.grid.major.x": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.grid.major.y": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.grid.minor.x": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.grid.minor.y": {
+        "class": "line",
+        "colour": "#EBEBEB",
+        "linewidth": 0.25,
+        "linetype": 1,
+        "lineend": "butt",
+        "linejoin": "round",
+        "arrow": false,
+        "arrow.fill": "#EBEBEB",
+        "inherit.blank": true
+      },
+      "panel.ontop": {
+        "class": "value",
+        "value": false
+      },
+      "panel.widths": null,
+      "panel.heights": null,
+      "strip.background": {
+        "class": "blank"
+      },
+      "strip.background.x": {
+        "class": "blank"
+      },
+      "strip.background.y": {
+        "class": "blank"
+      },
+      "strip.clip": {
+        "class": "value",
+        "value": "on"
+      },
+      "strip.text.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#1A1A1A",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": -90,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            },
+            {
+              "amount": 4.4,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.placement": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.placement.x": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.placement.y": {
+        "class": "value",
+        "value": "inside"
+      },
+      "strip.switch.pad.grid": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "strip.switch.pad.wrap": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "plot.background": {
+        "class": "rect",
+        "fill": "#FFFFFF",
+        "linewidth": 0.5,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "plot.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.title.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.subtitle": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.tag": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.tag.position": {
+        "class": "value",
+        "value": "topleft"
+      },
+      "plot.tag.location": null,
+      "plot.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "aspect.ratio": null
+    },
+    "void": {
+      "line": {
+        "class": "blank"
+      },
+      "rect": {
+        "class": "rect",
+        "fill": "#00000000",
+        "linewidth": 0,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "point": {
+        "class": "blank"
+      },
+      "polygon": {
+        "class": "blank"
+      },
+      "geom": {
+        "class": "geom",
+        "ink": "#000000",
+        "paper": "#00000000",
+        "accent": "#3366FF",
+        "linewidth": 0.5,
+        "borderwidth": 0.5,
+        "linetype": 1,
+        "bordertype": 1,
+        "family": "",
+        "fontsize": 11,
+        "pointsize": 1.5,
+        "pointshape": 19,
+        "colour": null,
+        "fill": null
+      },
+      "title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "margins": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          },
+          {
+            "amount": 5.5,
+            "kind": "points"
+          }
+        ]
+      },
+      "axis.line": {
+        "class": "blank"
+      },
+      "axis.text": {
+        "class": "blank"
+      },
+      "axis.title": {
+        "class": "blank"
+      },
+      "axis.ticks": {
+        "class": "blank"
+      },
+      "legend.key.size": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "panel.grid": {
+        "class": "blank"
+      },
+      "panel.grid.major": {
+        "class": "blank"
+      },
+      "panel.grid.minor": {
+        "class": "blank"
+      },
+      "strip.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "axis.line.x": {
+        "class": "blank"
+      },
+      "axis.line.x.top": {
+        "class": "blank"
+      },
+      "axis.line.x.bottom": {
+        "class": "blank"
+      },
+      "axis.line.y": {
+        "class": "blank"
+      },
+      "axis.line.y.left": {
+        "class": "blank"
+      },
+      "axis.line.y.right": {
+        "class": "blank"
+      },
+      "axis.line.theta": {
+        "class": "blank"
+      },
+      "axis.line.r": {
+        "class": "blank"
+      },
+      "axis.text.x": {
+        "class": "blank"
+      },
+      "axis.text.x.top": {
+        "class": "blank"
+      },
+      "axis.text.x.bottom": {
+        "class": "blank"
+      },
+      "axis.text.y": {
+        "class": "blank"
+      },
+      "axis.text.y.left": {
+        "class": "blank"
+      },
+      "axis.text.y.right": {
+        "class": "blank"
+      },
+      "axis.text.theta": {
+        "class": "blank"
+      },
+      "axis.text.r": {
+        "class": "blank"
+      },
+      "axis.ticks.length": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.theta": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.length.r": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.ticks.x": {
+        "class": "blank"
+      },
+      "axis.ticks.x.top": {
+        "class": "blank"
+      },
+      "axis.ticks.x.bottom": {
+        "class": "blank"
+      },
+      "axis.ticks.y": {
+        "class": "blank"
+      },
+      "axis.ticks.y.left": {
+        "class": "blank"
+      },
+      "axis.ticks.y.right": {
+        "class": "blank"
+      },
+      "axis.ticks.theta": {
+        "class": "blank"
+      },
+      "axis.ticks.r": {
+        "class": "blank"
+      },
+      "axis.title.x": {
+        "class": "blank"
+      },
+      "axis.title.x.top": {
+        "class": "blank"
+      },
+      "axis.title.x.bottom": {
+        "class": "blank"
+      },
+      "axis.title.y": {
+        "class": "blank"
+      },
+      "axis.title.y.left": {
+        "class": "blank"
+      },
+      "axis.title.y.right": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.x.top": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.x.bottom": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.y.left": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.y.right": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.theta": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.r": {
+        "class": "blank"
+      },
+      "axis.minor.ticks.length": null,
+      "axis.minor.ticks.length.x": null,
+      "axis.minor.ticks.length.x.top": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.x.bottom": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y": null,
+      "axis.minor.ticks.length.y.left": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.y.right": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.theta": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "axis.minor.ticks.length.r": {
+        "class": "unit",
+        "amount": [0],
+        "kind": ["points"]
+      },
+      "legend.background": {
+        "class": "blank"
+      },
+      "legend.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key": {
+        "class": "blank"
+      },
+      "legend.key.height": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.width": {
+        "class": "unit",
+        "amount": [1.2],
+        "kind": ["lines"]
+      },
+      "legend.key.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "legend.key.justification": null,
+      "legend.frame": {
+        "class": "blank"
+      },
+      "legend.axis.line": {
+        "class": "blank"
+      },
+      "legend.ticks": {
+        "class": "blank"
+      },
+      "legend.ticks.length": {
+        "class": "unit",
+        "amount": [0.24],
+        "kind": ["lines"]
+      },
+      "legend.text": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.text.position": null,
+      "legend.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "legend.title.position": null,
+      "legend.byrow": null,
+      "legend.position": {
+        "class": "value",
+        "value": "right"
+      },
+      "legend.position.inside": null,
+      "legend.direction": null,
+      "legend.justification": null,
+      "legend.justification.top": null,
+      "legend.justification.bottom": null,
+      "legend.justification.left": null,
+      "legend.justification.right": null,
+      "legend.justification.inside": null,
+      "legend.location": null,
+      "legend.box": null,
+      "legend.box.just": null,
+      "legend.box.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          }
+        ]
+      },
+      "legend.box.background": {
+        "class": "blank"
+      },
+      "legend.box.spacing": {
+        "class": "unit",
+        "amount": [0.2],
+        "kind": ["cm"]
+      },
+      "panel.background": {
+        "class": "blank"
+      },
+      "panel.border": {
+        "class": "blank"
+      },
+      "panel.spacing": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.x": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.spacing.y": {
+        "class": "unit",
+        "amount": [5.5],
+        "kind": ["points"]
+      },
+      "panel.grid.major.x": {
+        "class": "blank"
+      },
+      "panel.grid.major.y": {
+        "class": "blank"
+      },
+      "panel.grid.minor.x": {
+        "class": "blank"
+      },
+      "panel.grid.minor.y": {
+        "class": "blank"
+      },
+      "panel.ontop": {
+        "class": "value",
+        "value": false
+      },
+      "panel.widths": null,
+      "panel.heights": null,
+      "strip.background": {
+        "class": "blank"
+      },
+      "strip.background.x": {
+        "class": "blank"
+      },
+      "strip.background.y": {
+        "class": "blank"
+      },
+      "strip.clip": {
+        "class": "value",
+        "value": "on"
+      },
+      "strip.text.x": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.top": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.x.bottom": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.left": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.text.y.right": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "strip.placement": null,
+      "strip.placement.x": null,
+      "strip.placement.y": null,
+      "strip.switch.pad.grid": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "strip.switch.pad.wrap": {
+        "class": "unit",
+        "amount": [2.75],
+        "kind": ["points"]
+      },
+      "plot.background": {
+        "class": "rect",
+        "fill": "#00000000",
+        "linewidth": 0,
+        "linetype": 1,
+        "linejoin": "round",
+        "inherit.blank": true
+      },
+      "plot.title": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.title.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.subtitle": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 11,
+        "hjust": 0,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 8.8,
+        "hjust": 1,
+        "vjust": 1,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 5.5,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.caption.position": {
+        "class": "value",
+        "value": "panel"
+      },
+      "plot.tag": {
+        "class": "text",
+        "family": "",
+        "face": "plain",
+        "italic": null,
+        "fontweight": null,
+        "fontwidth": null,
+        "colour": "#000000",
+        "size": 13.2,
+        "hjust": 0.5,
+        "vjust": 0.5,
+        "angle": 0,
+        "lineheight": 0.9,
+        "margin": {
+          "class": "margin",
+          "sides": [
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            },
+            {
+              "amount": 0,
+              "kind": "points"
+            }
+          ]
+        },
+        "debug": false,
+        "inherit.blank": true
+      },
+      "plot.tag.position": {
+        "class": "value",
+        "value": "topleft"
+      },
+      "plot.tag.location": null,
+      "plot.margin": {
+        "class": "margin",
+        "sides": [
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          },
+          {
+            "amount": 0,
+            "kind": "points"
+          }
+        ]
+      },
+      "aspect.ratio": null
+    }
+  }
+}
