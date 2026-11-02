@@ -22,10 +22,12 @@ import functools
 import http.server
 import sys
 import threading
+import time
 from collections import Counter
 from pathlib import Path
 
 import cbor2
+import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -59,9 +61,9 @@ TAG_BY_KIND = {
     "raster": "image",
 }
 
-#: 每行出一个元素的 kind：其余折线 / 曲线型原语一个节点一个 `<path>`
-#: （`id` 分组折在同一个 `d` 里，节点数就是元素数）。
-PER_ROW = frozenset({"rect", "circle", "points", "text", "raster"})
+#: 每行出一个元素的 kind：其余点 / 折线 / 曲线型原语一个节点一个元素
+#: （`points` 的 10k 个字符合成一条 `<path>`，`id` 分组折在同一个 `d` 里）。
+PER_ROW = frozenset({"rect", "circle", "text", "raster"})
 
 
 def node_rows(node: ir.Node) -> int:
@@ -225,6 +227,54 @@ def test_hover_shows_geom_layer_and_data_row(session, scene_file: Path) -> None:
     assert "panel-1" in text
     assert "point 层" in text  # geom 层名（IR v0 没层名字段，按图元推断）
     assert "数据行 1/" in text
+
+
+def ten_thousand_point_scene() -> ir.Scene:
+    """一个 `points` 节点、10000 行：验证 bulk 缓冲在 DOM 里仍是 1 个元素。"""
+    count = 10_000
+    x = np.linspace(10.0, 310.0, count)
+    y = 120.0 + 80.0 * np.sin(np.linspace(0.0, 20.0, count))
+    node = ir.Node(
+        ir.NodeKind.POINTS,
+        ir.Gpar(col=(30, 30, 30, 255)),
+        params={"pch": 19, "size": 2.0},
+        bufs={"points": ir.f32(np.column_stack([x, y]))},
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "panel-1", "clip": False},
+        children=(node,),
+    )
+    return ir.Scene(root=root, size=(320.0, 240.0))
+
+
+def test_10k_points_render_as_one_path(session, tmp_path: Path) -> None:
+    """10k 行 points → 1 个 `<path>`（不是 10000 个），DOM 总数保持两位数。"""
+    page, _ = session
+    path = tmp_path / "10k-points.ggir.cbor"
+    path.write_bytes(ir.encode(ten_thousand_point_scene()))
+
+    started = time.perf_counter()
+    load_scene(page, path)
+    elapsed_ms = (time.perf_counter() - started) * 1000
+
+    elements = page.locator('svg.gg-svg [data-kind="points"]').count()
+    assert elements == 1
+    dom = page.evaluate("() => document.querySelectorAll('svg.gg-svg *').length")
+    assert dom < 100
+
+    element = page.locator('svg.gg-svg path[data-kind="points"]')
+    assert element.get_attribute("data-row") == "0"
+    assert element.get_attribute("data-rows") == "0-9999"
+    subpaths = element.evaluate("el => (el.getAttribute('d').match(/M/g) || []).length")
+    assert subpaths == 10_000
+
+    # hover 跟着到节点粒度：显示整段行范围，而不是假装命中第 1 行。
+    element.dispatch_event("mouseover", {"bubbles": True, "clientX": 100, "clientY": 100})
+    tooltip = page.locator("#tooltip")
+    tooltip.wait_for(state="visible")
+    assert "数据行 1–10000" in tooltip.inner_text()
+    print(f"10k points: 图元={elements} DOM={dom} 子路径={subpaths} 加载={elapsed_ms:.0f}ms")
 
 
 def test_page_never_requests_wasm(session) -> None:

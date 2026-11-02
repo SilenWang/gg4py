@@ -41,7 +41,7 @@ pixi run viewer:browsers  # 装 Playwright 的 Chromium（$HOME 只读 → 装�
 | `polygon` | 一个 `<path>`（闭合、可填充） | 同上 |
 | `path` | 一个 `<path>` + `fill-rule` | `winding` → `nonzero`，`evenodd` → `evenodd` |
 | `segments` | 一个 `<path>`，每行一条 `M…L…` | 线段互不相连 |
-| `points` | **每行一个** `<path>`（pch 字形） | 见 §5 |
+| `points` | 一个 `<path>`：所有行的 pch 子路径拼进同一个 `d` | 节点级元素，见 §5 |
 | `text` | 每行一个 `<text>`（多行用 `<tspan>`） | 见 §4 |
 | `raster` | 每行一个 `<image>`，`href` 是 blob 的 data URL | `interpolate=false` → `image-rendering:pixelated` |
 | `xspline` / `bezier` / `curve` | 一个 `<path>` | 曲线公式是近似，见 §6 |
@@ -95,6 +95,11 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 `pch` 在 IR 里是 grid 的编号，字号是 `size`（pt，直径）。查看器把每个点画成
 单位空间（半径 0.5）的字形，再乘 `size` 与页面变换。覆盖：
 
+**一个 `points` 节点只出一个 `<path>`**：每行一条 `M…Z` 子路径，样式统一写在
+节点元素上（同一节点的 gpar 相同）。`data-kind` / `data-row` 是节点级，
+`data-rows="0-9999"` 给出缓冲行范围——10k 行也只占 1 个 DOM 元素，与 IR 的
+bulk 口径一致。hover 因此只到节点粒度（见 §9）。
+
 | pch | 字形 | 画法 |
 | --- | --- | --- |
 | 0 / 1 / 2 / 5 / 6 | 方 / 圆 / 上三角 / 菱形 / 下三角 | 空心（`stroke`） |
@@ -120,7 +125,8 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 ## 7. 交互：hover 与图例开关
 
 **hover**：鼠标命中叶子（带 `data-row` 的元素）→ tooltip 显示
-`<具名视口> · <geom 层>`、`节点 <id> · 数据行 <行>/<总行>`、文本内容。
+`<具名视口> · <geom 层>`、`节点 <id> · 数据行 <行>/<总行>`、文本内容。整节点
+合成一个元素的图元（`points` / `segments`）显示 `数据行 1–<总行>` 的整段范围。
 
 - 具名视口来自 IR 的 `viewport.name`。`Scene.to_ir_scene()` 现在把**最深视口名**
   （`panel-1` / `guide-0-key-0` / `axis-x-1`）写进这个字段——字段本来就在 schema
@@ -167,10 +173,11 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 | 图例点击 → 隐藏数据系列 | 只隐藏图例组本身 | level → 数据行 的映射 |
 | 多行行距 / `lineheight` | 固定 1.2 | `text.lineheight` |
 | 字体文件 | 浏览器系统字体栈 | 字体 blob 表（`ir.md` §12） |
+| 逐行 hover（单点 tooltip） | 节点级：`points` 一个节点一个 `<path>`，tooltip 给整段行范围 | 同一 path 内给子路径标 `data-row` + JS 命中测试（`elementFromPoint` 拿不到子路径），待 M2 |
 
 ## 10. 测试
 
-`tests/test_viewer.py`（Playwright + 真 Chromium，7 条）：
+`tests/test_viewer.py`（Playwright + 真 Chromium，8 条）：
 
 1. 夹具本身有 4 个面板 + 3 个图例 key；
 2. **渲染完整**：SVG 里 `<rect>` / `<path>` / `<text>` / `<image>` 的数量与 IR
@@ -178,9 +185,11 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 3. **图例开关**：点 key → `data-hidden="true"`、key 图元不可见、同一行的标签
    一起隐藏；再点回来恢复；
 4. **hover**：tooltip 出现且文本含 `panel-1`、`point 层`、`数据行 1/`；
-5. **零 wasm**：整页请求里没有 `.wasm`；
-6. **裁剪口径**：两层嵌套视口的 `clip_rect` 原样落成页面矩形（不乘祖先变换）；
-7. **坏 IR**：删掉一个 text 节点的 `size`，页面报错文本含该节点的 id。
+5. **10k 点 bulk**：10000 行的 points 节点只产出 1 个 `<path>`（`d` 里 10000 条
+   子路径），DOM 总数 < 100；
+6. **零 wasm**：整页请求里没有 `.wasm`；
+7. **裁剪口径**：两层嵌套视口的 `clip_rect` 原样落成页面矩形（不乘祖先变换）；
+8. **坏 IR**：删掉一个 text 节点的 `size`，页面报错文本含该节点的 id。
 
 CI 里由 `pixi run check` 先跑 `viewer:build` 与 `viewer:browsers`；浏览器缺失时
 用例 `pytest.skip`（skipped 消息写明装浏览器的任务名），不会把门禁染红。

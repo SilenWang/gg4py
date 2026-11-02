@@ -35,8 +35,9 @@ export interface RenderedLeaf {
   kind: string;
   /** 最近一层具名视口（`panel-1-1` / `guide-0-key-0`）；没有名字时是 `""`。 */
   viewport: string;
-  /** 在节点缓冲里的行号（数据行）；文本节点是 texts 的下标。 */
+  /** 在节点缓冲里的行号（数据行）；文本节点是 texts 的下标，聚合元素固定为 0。 */
   row: number;
+  /** 节点缓冲总行数；一个元素覆盖多行时 tooltip 显示 `1–rows` 的范围。 */
   rows: number;
   text: string;
   element: SVGElement;
@@ -809,36 +810,44 @@ class Renderer {
         const pch = node.params["pch"] as number;
         const size = node.params["size"] as number;
         const glyph = glyphFor(pch);
+        const attrs = styleAttributes(gpar, scale, {
+          fill: glyph.fill === "gpar",
+          stroke: glyph.stroke,
+        });
+        if (glyph.fill === "col") {
+          // grid 的实心 pch 用 `col` 填充（`ggskia` 的 `use_col=True` 同一口径）。
+          const col = colourValue(gpar.col);
+          attrs["fill"] = col ?? "none";
+          if (col !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
+        }
+        // 一个 points 节点只出一个 `<path>`：每行一条 `M…Z` 子路径拼进同一个 `d`。
+        // 这是 IR 的 bulk 口径（`docs/notes/ir.md`），10k 行也只占 1 个 DOM 元素；
+        // hover 因此到节点粒度，行范围写在 `data-rows`（逐行命中见 viewer.md §9）。
+        let d = "";
+        let box: Box | null = null;
         for (let row = 0; row < rows; row++) {
           const x = bufValue(node, "points", row, 0);
           const y = bufValue(node, "points", row, 1);
           if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-          const local: Matrix = [size, 0, 0, size, x, y];
-          const glyphMatrix = compose(matrix, local);
+          const glyphMatrix = compose(matrix, [size, 0, 0, size, x, y]);
+          d += glyphPath(glyph.ops, glyphMatrix);
           const [px, py] = mapPoint(matrix, x, y);
           const half = Math.abs((size * scale) / 2);
-          const box = { x0: px - half, y0: py - half, x1: px + half, y1: py + half };
-          const attrs = styleAttributes(gpar, scale, {
-            fill: glyph.fill === "gpar",
-            stroke: glyph.stroke,
-          });
-          if (glyph.fill === "col") {
-            // grid 的实心 pch 用 `col` 填充（`ggskia` 的 `use_col=True` 同一口径）。
-            const col = colourValue(gpar.col);
-            attrs["fill"] = col ?? "none";
-            if (col !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
-          }
-          this.emit(
-            node,
-            id,
-            parent,
-            viewport,
-            el("path", { d: glyphPath(glyph.ops, glyphMatrix), ...attrs }),
-            row,
-            rows,
-            box,
-          );
+          const rowBox = { x0: px - half, y0: py - half, x1: px + half, y1: py + half };
+          box =
+            box === null
+              ? rowBox
+              : {
+                  x0: Math.min(box.x0, rowBox.x0),
+                  y0: Math.min(box.y0, rowBox.y0),
+                  x1: Math.max(box.x1, rowBox.x1),
+                  y1: Math.max(box.y1, rowBox.y1),
+                };
         }
+        if (box === null) return;
+        const element = el("path", { d, ...attrs });
+        element.setAttribute("data-rows", rows > 0 ? `0-${rows - 1}` : "0");
+        this.emit(node, id, parent, viewport, element, 0, rows, box);
         return;
       }
       case "text": {

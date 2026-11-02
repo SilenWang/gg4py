@@ -5,7 +5,8 @@
  *
  * - **hover**：命中一个叶子（`data-row` 的那个 SVG 元素），提示框显示它所在的
  *   具名视口（`panel-1-1` 这类名字来自 IR 的 `viewport.name`）、geom 层（按 IR
- *   图元种类推断，IR v0 没有层名字段）、节点 id 与数据行号（缓冲行）。
+ *   图元种类推断，IR v0 没有层名字段）、节点 id 与数据行号（缓冲行）。`points`
+ *   这类整节点合成为单个元素的图元只到节点粒度，显示 `1–rows` 的行范围。
  * - **图例**：名字形如 `<guide>-key-<i>` 的视口就是图例 key 的节点组。点它把
  *   这一组（key 图元 + 同一个 guide 里与它纵向对齐的 key 底框 / 标签文字）
  *   隐藏 / 显示。IR 没有 key→entry 的归属字段，配对靠页面包围盒的纵向对齐，
@@ -96,7 +97,10 @@ export function attachInteractions(result: RenderResult, tooltip: HTMLElement): 
     tooltip.append(title);
     const meta = document.createElement("div");
     meta.className = "tooltip-meta";
-    meta.textContent = `节点 ${leaf.id} · 数据行 ${leaf.row + 1}/${leaf.rows}`;
+    // 一个节点一个元素时（points / segments…）显示整段行范围，不假装能命中单行。
+    const rows =
+      leaf.rows > 1 ? `数据行 1–${leaf.rows}` : `数据行 ${leaf.row + 1}/${leaf.rows}`;
+    meta.textContent = `节点 ${leaf.id} · ${rows}`;
     tooltip.append(meta);
     if (leaf.text) {
       const body = document.createElement("div");
