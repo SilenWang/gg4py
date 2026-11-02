@@ -140,8 +140,8 @@ r-svglite = ">=2.2,<3"
 "refs:build" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/build_ref.R"
 # theme 元素解析（M1-10）：三套完整主题逐元素 calc_element() 的结果。
 "refs:theme" = "Rscript tools/refs/theme_ref.R"
-# 坐标面板参数（M1-5）：8 个 case 的 x.range / y.range / limits / aspect()
-# 与 R 自己报的 "Removed N rows" 计数。
+# 坐标面板参数（M1-5）：10 个 case 的 x.range / y.range / limits / aspect()
+# 与 R 自己报的 "Removed N rows" 计数（含 log10 标度上 coord limits 的变换）。
 "refs:coord" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/coord_ref.R"
 # 标度（M1-4）：limits / expand / breaks / labels / map，外加 hue 与 gradient 色板。
 "refs:scales" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/scales_ref.R"

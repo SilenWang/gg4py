@@ -30,12 +30,20 @@ CartesianCoord / FixedCoord ──panel_params(scales)──▶ PanelParams
 ## 1. 面板范围 = base + expand
 
 ```
-base  = coord 的 xlim/ylim（有就覆盖）或位置标度的 limits()
+base  = coord 的 xlim/ylim（有就覆盖，先过标度变换）或位置标度的 limits()
 range = expand_range(base, mult, add)
 ```
 
 - **连续标度**：`base = ScaleSet.limits("x")`（训练范围或显式 `limits`）；
   默认 `expand = expansion(mult = 0.05)`。
+- **`xlim` / `ylim` 是数据空间的值**：连续标度上先过位置的
+  `transformation$transform()` 再 expand（R 4.0.3 `expand_limits_scale()`）。
+  所以 `scale_x_log10() + coord_cartesian(xlim = c(1, 100))` 的 base 是
+  `0..2`、面板 `-0.1..2.1`；`xlim = c(10, 100)` 是 `1..2` / `0.95..2.05`。
+  离散标度不做变换（按水平序号解释，见 §2）。
+  - `x_limits` 记录的是**变换后**的 base（log10 下 `0..2`），与
+    `panel_params$x.range` 只差一次 expand。
+  - 变换后不是有限值（log10 的 0 / 负值）直接报 `CoordError`，不静默变 NaN。
 - **离散标度**：`base = 1..n`（n = 水平数，含 NA 水平）；默认
   `expand = expansion(add = 0.6)`。所以 3 个水平的面板范围是
   **`0.4 .. 3.6`**。
@@ -65,15 +73,21 @@ expand 只改面板范围，**不改** `ScaleSet.limits()` 的数据范围（口
 | `coord_cartesian(xlim = c(2, 5))` | 1.85..5.15 | **保留**（画到面板外，按 clip 处理） | 无 |
 | `scale_x_continuous(limits = c(2, 5))` | 1.85..5.15 | 变 NA（`oob = censor`），绘制期删除 | `Removed N rows …` |
 
-两类都不静默，分别记在两个计数里（`PanelParams`）：
+缺失与越界都不静默，分别记在三个计数里（`PanelParams`）：
 
-- `dropped[aesthetic]`：数据里已经是 NA 的行数 = R 的 `Removed N rows`；
+- `dropped[aesthetic]`：**按轴**统计的缺失值数（原始数据的 NA + 标度
+  `oob = censor` 丢掉的值）。同一行 x、y 都缺会各记一次，所以
+  `sum(dropped.values())` **不是** R 的 "Removed N rows"，别再拿它当行数说；
+- `rows_dropped`：**行级**计数（x / y 任一缺失即一行）——这个才对应 R 的
+  "Removed N rows"；
 - `out_of_bounds[aesthetic]`：仍是有限值、但落在 **base 范围**（`x_limits` /
   `y_limits`）之外的行数 = `coord_cartesian(xlim=)` 会画到面板外的点。
 
 `coord_cartesian(xlim=(2, 5))` 的 R 参考值是 `removed = 0`、`na_x = 0`，
 两个点（x = 1.513 / 5.424）都还在 `$data` 里；Python 侧 `dropped = 0`、
-`out_of_bounds = 2`，同一份 6 行数据一行不少。`PlotBuild.warnings` 会各发一条。
+`out_of_bounds = 2`，同一份 6 行数据一行不少。`PlotBuild.warnings` 会按
+「行级 Removed + 按轴 NA 数」分别发提示，不会把原始 NA 说成「被 scale
+limits 丢弃」。
 
 离散标度上的 `xlim`：
 
@@ -85,7 +99,7 @@ expand 只改面板范围，**不改** `ScaleSet.limits()` 的数据范围（口
   `missing value where TRUE/FALSE needed`；这里做了一个更有用的口径，
   水平名不存在时报错并列出可用水平。
 - 面板要「去掉某些水平」请用 `scale_x_discrete(limits = …)`（R 的标准做法）；
-  它会删数据行，`dropped` 计数与 R 的 `Removed N rows` 一致。
+  它会删数据行，`rows_dropped` 计数与 R 的 `Removed N rows` 一致。
 
 ## 3. clip
 
@@ -119,6 +133,10 @@ aspect <  1:  同理，height 先撞到 device_h
 轴标签 / 标题的留白由布局负责（M1-11），本模块拿到的就是扣完留白的面板区域。
 x / y 数据范围等宽时 `高/宽 = ratio`；共享数据的 x/y 跨度不同时比例会差一个
 `y跨度/x跨度` 的因子，这不是 bug（R 的 gtable 也这么排）。
+
+跨度算出来是 0（`xlim` / `ylim` 退化成一个点、或 `expand = FALSE` 下数据全相同）
+时 `aspect_ratio` 抛 `CoordError` 并点名是哪条轴 —— 不是 `ZeroDivisionError`，
+也不会算出 `Inf` 交给下游布局。
 
 **等比例验证**（`pixi run cases:coord`，产物 `.coord-aspect/`，不入库）：
 

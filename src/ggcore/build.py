@@ -56,6 +56,7 @@ from ggcore.coord import (
     coord_from_component,
     count_dropped,
     count_out_of_bounds,
+    count_rows_dropped,
 )
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import NO_GROUP, compute_groups, eval_aes, eval_after_stat, parse_aes
@@ -948,6 +949,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
     panel_params = panel_params.with_counts(
         out_of_bounds=count_out_of_bounds(panel_params, scaled),
         dropped=count_dropped(scaled),
+        rows_dropped=count_rows_dropped(scaled),
     )
     notes = tuple(note for build in builds for note in build.notes) + panel_params.warnings()
     return PlotBuild(

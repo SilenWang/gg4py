@@ -17,12 +17,17 @@
 - `expand = TRUE`（默认）用标度自己的 expansion（`scale_*_*(expand = ...)`
   仍然生效）；`expand = FALSE` 完全不扩；给数值序列时按上游 `expansion()`
   解释（标量 / 2 元 / 4 元）。
-- `xlim` / `ylim` **替换**标度范围之后才做 expand，所以
+- `xlim` / `ylim` 是**数据空间**的值，替换标度范围之前要先过位置标度的
+  transformation（上游 4.0.3 `expand_limits_scale()` 的
+  `transformation$transform(coord_limits)`）：`scale_x_log10() +
+  coord_cartesian(xlim = c(1, 100))` 的面板范围是 `-0.1 .. 2.1`（log10 的
+  `0 .. 2` 再 expand），不是 `-3.95 .. 104.95`。之后才做 expand，所以
   `coord_cartesian(xlim = c(2, 5))` 与 `scale_x_continuous(limits = c(2, 5))`
   的面板范围相同（都是 `1.85 .. 5.15`）。区别在数据：标度 limits 把越界值变成
   NA（R 的 "Removed N rows" 警告），coord limits 只把点画到面板外/裁掉。
-  两类越界点分别记在 :attr:`PanelParams.dropped`（变 NA 的）与
-  :attr:`PanelParams.out_of_bounds`（仍有限、在 coord limits 外的）里，不静默。
+  两类越界点分别记在 :attr:`PanelParams.dropped`（按轴 NA 数）与
+  :attr:`PanelParams.out_of_bounds`（仍有限、在 coord limits 外的）里，不静默；
+  行级的 "Removed N rows" 口径单独记在 :attr:`PanelParams.rows_dropped`。
 - `clip = "on"`（默认）/ `"off"`：本模块只解析并记进面板参数；真正的裁剪在
   geom 绘制期（M1-7）。
 - `coord_fixed(ratio = 2)` 的 `aspect()` 是
@@ -63,6 +68,7 @@ __all__ = [
     "coord_from_component",
     "count_dropped",
     "count_out_of_bounds",
+    "count_rows_dropped",
 ]
 
 #: 坐标系处理的两条轴（与 `ScaleSet` 的规范化名一致）。
@@ -102,10 +108,13 @@ class PanelParams:
     `y_limits` 是展开**前**的范围（coord limits 或标度 limits，离散已换成
     `1..n` 的数值）。
 
-    越界点分两类，都不静默：
+    越界点分三类，都不静默：
 
-    - :attr:`dropped`：在数据里已经变成 NA 的行（标度的 `oob = censor` 干的，
-      对应 R 的 "Removed N rows containing missing values"）；
+    - :attr:`dropped`：**按轴**统计的缺失位置数（标度的 `oob = censor` 把值
+      变成 NA，原始数据里的 NA 也算）。同一行 x、y 都缺时会各记一次，所以
+      `sum(dropped.values())` **不是** R 的 "Removed N rows"；
+    - :attr:`rows_dropped`：**行级**计数（x / y 任一缺失即算一行），这才是
+      R 的 "Removed N rows"；
     - :attr:`out_of_bounds`：仍是有限值、但落在 `x_limits` / `y_limits` 之外的
       行（`coord_cartesian(xlim=)` 的语义：R 不删数据，画到面板外再按 clip 处理）。
     """
@@ -118,6 +127,7 @@ class PanelParams:
     ratio: float | None = None
     out_of_bounds: Mapping[str, int] = field(default_factory=dict)
     dropped: Mapping[str, int] = field(default_factory=dict)
+    rows_dropped: int = 0
     coord: str = "cartesian"
     discrete: Mapping[str, bool] = field(default_factory=dict)
 
@@ -143,11 +153,25 @@ class PanelParams:
 
     @property
     def aspect_ratio(self) -> float | None:
-        """物理高/宽（R `CoordFixed$aspect()`）；普通坐标系是 `None`。"""
+        """物理高/宽（R `CoordFixed$aspect()`）；普通坐标系是 `None`。
+
+        x / y 范围跨度为 0 时抛 :class:`CoordError`（R 那边是除零得到
+        `Inf`/`NaN`，交给 grid 布局时报一句难懂的错误）。
+        """
         if self.ratio is None:
             return None
         x_span = self.x_range[1] - self.x_range[0]
         y_span = self.y_range[1] - self.y_range[0]
+        if x_span == 0:
+            raise CoordError(
+                f"x 面板范围跨度为 0（{self.x_range!r}）：xlim 退化成一个点或数据全相同，"
+                "coord_fixed 无法计算物理高/宽"
+            )
+        if y_span == 0:
+            raise CoordError(
+                f"y 面板范围跨度为 0（{self.y_range!r}）：ylim 退化成一个点或数据全相同，"
+                "coord_fixed 的面板高度会是 0"
+            )
         return self.ratio * y_span / x_span
 
     # -- 数据 → npc ---------------------------------------------------------
@@ -211,23 +235,33 @@ class PanelParams:
         *,
         out_of_bounds: Mapping[str, int] | None = None,
         dropped: Mapping[str, int] | None = None,
+        rows_dropped: int | None = None,
     ) -> PanelParams:
         """带上越界计数的新对象（`PanelParams` 不可变，构建期用完再替换）。"""
-        panels: dict[str, Mapping[str, int]] = {}
+        updates: dict[str, Any] = {}
         for name, counts in (("out_of_bounds", out_of_bounds), ("dropped", dropped)):
             if counts is not None:
-                panels[name] = MappingProxyType({axis: int(counts.get(axis, 0)) for axis in AXES})
-        return replace(self, **panels) if panels else self
+                updates[name] = MappingProxyType({axis: int(counts.get(axis, 0)) for axis in AXES})
+        if rows_dropped is not None:
+            updates["rows_dropped"] = int(rows_dropped)
+        return replace(self, **updates) if updates else self
 
     def warnings(self) -> tuple[str, ...]:
         """越界点的人话提示（非空才发；R 侧是 "Removed N rows …"）。"""
         out: list[str] = []
+        if self.rows_dropped:
+            out.append(
+                f"coord: 共 {self.rows_dropped} 行含缺失位置"
+                f"（R: Removed {self.rows_dropped} rows containing missing values"
+                " or values outside the scale range）"
+            )
         for axis in AXES:
             dropped = int(self.dropped.get(axis, 0))
             if dropped:
                 out.append(
-                    f"coord: {axis} 轴有 {dropped} 个值被 scale limits 丢弃"
-                    "（R: Removed N rows containing missing values）"
+                    f"coord: {axis} 轴有 {dropped} 个缺失值"
+                    "（按轴计数：原始 NA 与 scale limits 丢弃的值都算，"
+                    "同一行 x/y 都缺会计两次）"
                 )
             count = int(self.out_of_bounds.get(axis, 0))
             if count:
@@ -307,6 +341,7 @@ class CoordBase:
         coord_limit = getattr(self, f"{axis}lim")
         if coord_limit is not None:
             base = _coord_limits(coord_limit, limits, discrete, axis)
+            base = _transform_coord_limits(base, coord_limit, scale, discrete, axis)
         expansion = self._expansion(scale)
         low, high = expand_range(base[0], base[1], expansion.mult, expansion.add)
         return _AxisPanel(limits=base, range=(low, high), discrete=discrete)
@@ -468,6 +503,31 @@ def _coord_limits(
     return (min(low, high), max(low, high))
 
 
+def _transform_coord_limits(
+    base: tuple[float, float],
+    raw: Any,
+    scale: ScaleBase | None,
+    discrete: bool,
+    axis: str,
+) -> tuple[float, float]:
+    """coord limits → 标度空间（R 4.0.3 `expand_limits_scale()` 的第一步）。
+
+    R 里 `coord$limits` 存的是**数据空间**的值，
+    `expand_limits_scale()` 先 `transformation$transform(coord_limits)` 再
+    expand；所以 `scale_x_log10() + coord_cartesian(xlim = c(1, 100))` 的 base
+    是 `0 .. 2` 而不是 `1 .. 100`。离散标度不做变换（R 按水平序号处理）。
+    """
+    if scale is None or discrete:
+        return base
+    low, high = scale.transform_limits(base)
+    if not (math.isfinite(low) and math.isfinite(high)):
+        raise CoordError(
+            f"{axis}lim = {tuple(raw)!r} 经位置标度变换后不是有限值"
+            f"（{(low, high)!r}）：log10 标度上的 limits 必须 > 0"
+        )
+    return (min(low, high), max(low, high))
+
+
 # ---------------------------------------------------------------------------
 # 越界计数
 # ---------------------------------------------------------------------------
@@ -500,10 +560,13 @@ def count_out_of_bounds(
 
 
 def count_dropped(tables: Iterable[ColumnTable]) -> Mapping[str, int]:
-    """按轴统计已经是 NA 的行数（= R 的 "Removed N rows"）。
+    """按轴统计已经是 NA 的值数（原始 NA + 标度 `oob = censor` 丢掉的值）。
 
-    标度 `oob = censor` 把越界值变成 NA，绘制期 R 会报
-    "Removed N rows containing missing values or values outside the scale range"。
+    这是**按轴**的口径；同一行 x、y 都缺会各记一次，所以
+    `sum(count_dropped(...).values())` 不等于 R 的 "Removed N rows"——
+    行级计数用 :func:`count_rows_dropped`。标度 `oob = censor` 把越界值变成
+    NA，绘制期 R 会报 "Removed N rows containing missing values or values
+    outside the scale range"。
     """
     counts = {axis: 0 for axis in AXES}
     for table in tables:
@@ -517,3 +580,26 @@ def count_dropped(tables: Iterable[ColumnTable]) -> Mapping[str, int]:
             missing = np.asarray(column.na_mask, dtype=bool) | ~np.isfinite(values)
             counts[axis] += int(np.count_nonzero(missing))
     return MappingProxyType(counts)
+
+
+def count_rows_dropped(tables: Iterable[ColumnTable]) -> int:
+    """按**行**统计缺失位置数：x / y 任一缺失就算一行（= R 的 "Removed N rows"）。
+
+    只数位置主通道 `x` / `y`；`xmin/xmax` 这类派生列不重复计数（它们缺失时
+    `x` 通常也缺）。
+    """
+    total = 0
+    for table in tables:
+        missing: np.ndarray | None = None
+        for axis in AXES:
+            if axis not in table.names:
+                continue
+            column = table.column(axis)
+            if column.kind not in _NUMERIC_KINDS:
+                continue
+            values = np.asarray(column.values, dtype=np.float64)
+            axis_missing = np.asarray(column.na_mask, dtype=bool) | ~np.isfinite(values)
+            missing = axis_missing if missing is None else missing | axis_missing
+        if missing is not None:
+            total += int(np.count_nonzero(missing))
+    return total

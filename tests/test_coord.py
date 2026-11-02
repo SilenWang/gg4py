@@ -33,6 +33,7 @@ from ggcore.coord import (
     coord_from_component,
     count_dropped,
     count_out_of_bounds,
+    count_rows_dropped,
 )
 from ggcore.data import Column, ColumnTable
 from ggcore.plot import ggplot
@@ -46,6 +47,14 @@ DATA = ColumnTable(
     ]
 )
 
+#: log10 case 的数据（`coord_ref.R` 的 `log_data`）：数据空间 1..100 / 标度空间 0..2。
+LOG_DATA = ColumnTable(
+    [
+        ("x", Column("float", np.array([1.0, 10.0, 100.0]))),
+        ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+    ]
+)
+
 X_LIMITS = (1.513, 5.424)
 Y_LIMITS = (9.225, 35.075)
 
@@ -56,6 +65,10 @@ def base_plot() -> ggplot:
 
 def discrete_plot() -> ggplot:
     return ggplot(DATA, aes(x="g", y="y")) + registry.geom_point()
+
+
+def log_plot() -> ggplot:
+    return ggplot(LOG_DATA, aes(x="x", y="y")) + registry.geom_point() + registry.scale_x_log10()
 
 
 def panel_params(plot: ggplot) -> PanelParams:
@@ -142,10 +155,12 @@ def test_scale_limits_censor_and_count_out_of_bounds() -> None:
     params = build.panel_params
     assert params is not None
     assert params.x_range == pytest.approx((1.85, 5.15), abs=1e-12)
-    # 标度 limits 把越界值变成 NA：R 的 "Removed 2 rows" 对应 dropped
+    # 标度 limits 把越界值变成 NA：行级 rows_dropped 才是 R 的 "Removed 2 rows"
     assert dict(params.out_of_bounds) == {"x": 0, "y": 0}
     assert dict(params.dropped) == {"x": 2, "y": 0}
-    assert any("被 scale limits 丢弃" in note for note in build.warnings)
+    assert params.rows_dropped == 2
+    assert any("按轴计数" in note for note in build.warnings)
+    assert any("Removed 2 rows" in note for note in build.warnings)
     x = build.layers[0].scaled.column("x")
     assert int(np.count_nonzero(x.na_mask)) == 2
     assert 1.513 not in set(x.values.tolist())
@@ -198,6 +213,66 @@ def test_coord_xlim_validation() -> None:
         build_plot(discrete_plot() + registry.coord_cartesian(xlim=("a", "z")))
     with pytest.raises(CoordError, match="混用"):
         build_plot(base_plot() + registry.coord_cartesian(xlim=(1, "b")))
+
+
+# ---------------------------------------------------------------------------
+# 位置标度的 transform（R `expand_limits_scale()`）
+# ---------------------------------------------------------------------------
+
+
+def test_log10_coord_xlim_is_transformed_before_expand() -> None:
+    """`xlim` 是数据空间的值：先 log10 再做 expand（R 面板 `-0.1 .. 2.1`）。"""
+    params = panel_params(log_plot() + registry.coord_cartesian(xlim=(1, 100)))
+    assert params.x_limits == pytest.approx((0.0, 2.0), abs=1e-12)
+    assert params.x_range == pytest.approx((-0.1, 2.1), abs=1e-12)
+    # 数据 1/10/100 的 log10 是 0/1/2，全在 [0, 2] 里
+    assert dict(params.out_of_bounds) == {"x": 0, "y": 0}
+    assert dict(params.dropped) == {"x": 0, "y": 0}
+    assert params.rows_dropped == 0
+    assert not params.warnings()
+
+    narrower = panel_params(log_plot() + registry.coord_cartesian(xlim=(10, 100)))
+    assert narrower.x_limits == pytest.approx((1.0, 2.0), abs=1e-12)
+    assert narrower.x_range == pytest.approx((0.95, 2.05), abs=1e-12)
+    # log10(1) = 0 在 [1, 2] 外：只计数，数据行还在
+    assert dict(narrower.out_of_bounds) == {"x": 1, "y": 0}
+    assert dict(narrower.dropped) == {"x": 0, "y": 0}
+
+
+def test_log10_scale_limits_and_coord_limits_stack_in_scale_space() -> None:
+    """标度 limits（已是 log10 空间）与 coord limits（数据空间）各走一遍变换。"""
+    plot = (
+        log_plot()
+        + registry.scale_x_log10(limits=(1, 100))
+        + registry.coord_cartesian(xlim=(1, 10))
+    )
+    params = panel_params(plot)
+    # 标度 limits 1..100 → 0..2；coord xlim 1..10 → 0..1 覆盖它，再 expand 5%
+    assert params.x_limits == pytest.approx((0.0, 1.0), abs=1e-12)
+    assert params.x_range == pytest.approx((-0.05, 1.05), abs=1e-12)
+    # x = 100（log10 = 2）在面板外，但没被删
+    assert dict(params.out_of_bounds) == {"x": 1, "y": 0}
+    assert dict(params.dropped) == {"x": 0, "y": 0}
+
+
+def test_log10_coord_fixed_aspect_uses_transformed_span() -> None:
+    """log 轴的 aspect 也在变换后的范围上算：x/y 跨度都是 2.2 → aspect = ratio。"""
+    plot = (
+        log_plot()
+        + registry.scale_x_log10(limits=(1, 100))
+        + registry.coord_fixed(ratio=1, xlim=(1, 100))
+    )
+    params = panel_params(plot)
+    assert params.x_range == pytest.approx((-0.1, 2.1), abs=1e-12)
+    assert params.aspect_ratio == pytest.approx(1.0, abs=1e-12)
+    assert params.panel_sizes(6.0, 4.0) == pytest.approx((4.0, 4.0), abs=1e-12)
+
+
+def test_log10_coord_xlim_must_be_positive() -> None:
+    with pytest.raises(CoordError, match="不是有限值"):
+        build_plot(log_plot() + registry.coord_cartesian(xlim=(0, 100)))
+    with pytest.raises(CoordError, match="不是有限值"):
+        build_plot(log_plot() + registry.scale_y_log10() + registry.coord_fixed(ylim=(-1, 100)))
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +379,43 @@ def test_panel_sizes_rejects_bad_device_and_ratio() -> None:
         coord_from_component(registry.coord_fixed(ratio=0))
 
 
+def test_aspect_ratio_with_zero_span_raises_coord_error() -> None:
+    """零跨度不能是 `ZeroDivisionError`：`xlim` 退化成一点 / 数据全相同都要说清楚。"""
+    degenerate_x = panel_params(
+        base_plot() + registry.coord_fixed(ratio=1, xlim=(2, 2), expand=False)
+    )
+    assert degenerate_x.x_range == pytest.approx((2.0, 2.0), abs=1e-12)
+    with pytest.raises(CoordError, match="x 面板范围跨度为 0"):
+        _ = degenerate_x.aspect_ratio
+    with pytest.raises(CoordError, match="x 面板范围跨度为 0"):
+        degenerate_x.panel_sizes(6.0, 4.0)
+
+    degenerate_y = panel_params(
+        base_plot() + registry.coord_fixed(ratio=1, ylim=(10, 10), expand=False)
+    )
+    with pytest.raises(CoordError, match="y 面板范围跨度为 0"):
+        _ = degenerate_y.aspect_ratio
+
+    # 数据全相同时（没有 xlim）也是同一个错误——但要 expand=FALSE：
+    # 默认 expansion 对零宽范围用上游的 zero_width = 1，仍会撑出 0.1 的跨度
+    flat = ColumnTable(
+        [
+            ("x", Column("float", np.array([5.0, 5.0, 5.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+        ]
+    )
+    default_flat = panel_params(
+        ggplot(flat, aes(x="x", y="y")) + registry.geom_point() + registry.coord_fixed()
+    )
+    assert default_flat.x_range == pytest.approx((4.95, 5.05), abs=1e-12)
+
+    flat_params = panel_params(
+        ggplot(flat, aes(x="x", y="y")) + registry.geom_point() + registry.coord_fixed(expand=False)
+    )
+    with pytest.raises(CoordError, match="x 面板范围跨度为 0"):
+        _ = flat_params.aspect_ratio
+
+
 # ---------------------------------------------------------------------------
 # clip / 参数 / 注册表
 # ---------------------------------------------------------------------------
@@ -344,7 +456,7 @@ def test_coord_from_component_accepts_implementations_and_none() -> None:
 
 
 def test_explicit_scale_limits_on_discrete_count_matches_rows() -> None:
-    """两个计数各管一类：`dropped` = R 的 Removed，`out_of_bounds` = coord limits。"""
+    """两个计数各管一类：`rows_dropped` = R 的 Removed，`out_of_bounds` = coord limits。"""
     build = build_plot(discrete_plot() + registry.scale_x_discrete(limits=("a", "b")))
     params = build.panel_params
     assert params is not None
@@ -353,7 +465,39 @@ def test_explicit_scale_limits_on_discrete_count_matches_rows() -> None:
     out_of_bounds = count_out_of_bounds(params, tables)
     assert dict(dropped) == {"x": 2, "y": 0}
     assert dict(out_of_bounds) == {"x": 0, "y": 0}
+    assert params.rows_dropped == count_rows_dropped(tables) == 2
     assert set(dropped) == set(AXES) == set(out_of_bounds)
+
+
+def test_rows_dropped_counts_rows_not_axes() -> None:
+    """同一行 x、y 都缺只算一行；原始 NA 也算在内，不与 scale limits 混说。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 0.0, 0.0]), na_mask=[False, True, True])),
+            ("y", Column("float", np.array([1.0, 0.0, 3.0]), na_mask=[False, True, False])),
+        ]
+    )
+    # 按轴：x 缺 2 个、y 缺 1 个；按行：2 行（第 2 行两轴都缺只算一次）
+    assert dict(count_dropped((table,))) == {"x": 2, "y": 1}
+    assert count_rows_dropped((table,)) == 2
+    assert count_rows_dropped(()) == 0
+
+
+def test_build_reports_row_level_dropped_for_raw_na() -> None:
+    """原始数据的 NA 也是「行被删」，这是 R 的 Removed 口径，不是 scale limits 的锅。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 0.0, 3.0]), na_mask=[False, True, False])),
+            ("y", Column("float", np.array([1.0, 0.0, 3.0]), na_mask=[False, True, False])),
+        ]
+    )
+    build = build_plot(ggplot(table, aes(x="x", y="y")) + registry.geom_point())
+    params = build.panel_params
+    assert params is not None
+    assert dict(params.dropped) == {"x": 1, "y": 1}
+    assert params.rows_dropped == 1
+    assert any("共 1 行含缺失位置" in note for note in build.warnings)
+    assert any("按轴计数" in note for note in build.warnings)
 
 
 def test_ratio_must_be_finite() -> None:

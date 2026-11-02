@@ -826,6 +826,13 @@ class ScaleBase:
     def transform(self, column: Column) -> Column:
         return column
 
+    def transform_limits(self, limits: Any) -> tuple[Any, ...]:
+        """数据空间的坐标 limits → 标度空间（上游 `transformation$transform()`）。
+
+        只有连续标度真的变换；离散标度按水平序号解释，原样返回。
+        """
+        return tuple(limits)
+
     def map(self, column: Column) -> Column:
         raise NotImplementedError
 
@@ -914,8 +921,18 @@ class ContinuousScale(ScaleBase):
 
     def _transform_limit(self, value: float) -> float:
         """单个显式 limit → 变换后的空间（`log10(0)` 按约定落成 NA）。"""
-        transformed, _ = self.transform_.transform(np.asarray([value], dtype=np.float64))
-        return float(transformed[0])
+        return float(self.transform_limits((value,))[0])
+
+    def transform_limits(self, limits: Any) -> tuple[float, ...]:
+        """坐标 limits → 变换后的空间（不累加 `non_finite_count`，与训练无关）。
+
+        R 4.0.3 的 `expand_limits_scale()` 对连续标度调
+        `transformation$transform(coord_limits)`；`log10(0)` / 负值在这里是
+        NaN，由调用方（coord）报成明确的错误。
+        """
+        values = np.asarray(tuple(limits), dtype=np.float64)
+        transformed, _ = self.transform_.transform(values)
+        return tuple(float(value) for value in transformed)
 
     def expanded_limits(self) -> tuple[float, float] | None:
         if not self.is_position:
