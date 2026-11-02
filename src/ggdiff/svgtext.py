@@ -30,6 +30,7 @@ __all__ = ["SvgTextError", "inline_text_paths", "path_to_d"]
 
 SVG_NS = "http://www.w3.org/2000/svg"
 _TEXT = f"{{{SVG_NS}}}text"
+_TSPAN = f"{{{SVG_NS}}}tspan"
 _PATH = f"{{{SVG_NS}}}path"
 _NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 
@@ -60,9 +61,14 @@ def _style(element: ET.Element) -> dict[str, str]:
         "font-weight",
         "font-style",
         "fill",
-        "text-anchor",
-        "opacity",
         "fill-opacity",
+        "text-anchor",
+        "data-baseline",
+        "dominant-baseline",
+        "alignment-baseline",
+        "letter-spacing",
+        "word-spacing",
+        "opacity",
     ):
         if element.get(name) is not None and name not in properties:
             properties[name] = element.get(name, "")
@@ -70,7 +76,9 @@ def _style(element: ET.Element) -> dict[str, str]:
 
 
 def _font_family(value: str) -> str:
-    family = value.strip().strip("'\"").split(",")[0].strip()
+    # 先按逗号取第一个族，再去引号：viewer 写的是 `"Noto Sans", "Noto Sans CJK SC", …`，
+    # 先整体去引号只对 svglite 的单族写法有效（`"Noto Sans";`）。
+    family = value.split(",")[0].strip().strip("'\"")
     return family or "sans"
 
 
@@ -134,19 +142,82 @@ def path_to_d(path) -> str:
     return " ".join(parts)
 
 
-def _text_path(element: ET.Element, shaper) -> tuple[str, float, float, str]:
-    """一个 `<text>` →（`d`, 起点 x, 基线 y, fill）。"""
+def _text_runs(element: ET.Element) -> list[tuple[str, float, float]]:
+    """一个 `<text>` 的文本行：`[（文字, x, y）…]`。
+
+    查看器把多行写成 `<tspan x=… y=…>`；svglite 的多行也会落到 tspan。这里
+    逐行取自己的 x / y，而不是把所有文字拼成一行——后者的行距会整段塌掉。
+    """
+    spans = [child for child in element if child.tag == _TSPAN]
+    if not spans:
+        return [
+            (
+                "".join(element.itertext()),
+                _number(element.get("x"), 0.0) or 0.0,
+                _number(element.get("y"), 0.0) or 0.0,
+            )
+        ]
+    runs: list[tuple[str, float, float]] = []
+    for span in spans:
+        x = _number(span.get("x"), _number(element.get("x"), 0.0)) or 0.0
+        y = _number(span.get("y"), _number(element.get("y"), 0.0)) or 0.0
+        runs.append(("".join(span.itertext()), x, y))
+    return runs
+
+
+def _baseline_shift(properties: dict[str, str], shaper, font_key: str, size: float) -> float:
+    """`dominant-baseline` → 相对 alphabetic 基线的 y 偏移。
+
+    svglite 写的 `<text>` 都是 alphabetic 基线，查看器的 `<text>` 用
+    `dominant-baseline="central"`（IR 的 `baseline` 是 middle / top / bottom）。
+    转轮廓时不做这一步，文字会整体向下掉半个字高。
+
+    这里的口径与 `ggskia.skia._place_text` 一致：R 的 strheight 是 **cap
+    height × 72.27/72**，不是 ascent/descent。viewer 已经按 1.44 × size 写好
+    tspan 的行距，所以每行的偏移只差一个 cap（middle 是 cap/2，top 是 cap，
+    bottom / alphabetic 是 0）。
+    """
+    baseline = (
+        (
+            properties.get("data-baseline")
+            or properties.get("dominant-baseline")
+            or properties.get("alignment-baseline")
+            or ""
+        )
+        .strip()
+        .lower()
+    )
+    if not baseline:
+        return 0.0
+    metrics = shaper.font(shaper.primary_face(font_key), size).getMetrics()
+    cap = float(metrics.fCapHeight)
+    if cap > 0:
+        cap *= 72.27 / 72.0
+    else:  # 位图字体（CBDT）没有 cap height：退回字面框
+        cap = float(-metrics.fAscent) + float(metrics.fDescent)
+    if baseline in ("central", "middle"):
+        return cap / 2.0
+    if baseline in ("text-before-edge", "hanging", "top"):
+        return cap
+    return 0.0
+
+
+def _text_path(
+    element: ET.Element,
+    shaper,
+    text: str,
+    x: float,
+    y: float,
+) -> tuple[str, float, float, str] | None:
+    """一行 `<text>` →（`d`, 起点 x, 基线 y, style）。"""
     import skia
 
-    text = "".join(element.itertext())
     if not text:
-        return "", 0.0, 0.0, "#000000"
+        return None
     properties = _style(element)
     size = _number(properties.get("font-size"), 12.0) or 12.0
     font_key = _font_key(properties)
     fill = properties.get("fill", "#000000")
-    x = _number(element.get("x"), 0.0) or 0.0
-    y = _number(element.get("y"), 0.0) or 0.0
     anchor = (properties.get("text-anchor") or element.get("text-anchor") or "start").strip()
     text_length = _number(element.get("textLength"))
 
@@ -168,7 +239,12 @@ def _text_path(element: ET.Element, shaper) -> tuple[str, float, float, str]:
         path.transform(skia.Matrix.Scale(target / measured, 1.0))
     shift = {"middle": 0.5, "end": 1.0}.get(anchor, 0.0)
     start = x - target * shift
-    return path_to_d(path), start, y, fill
+    baseline = y + _baseline_shift(properties, shaper, font_key, size)
+    style = f"fill: {fill}; stroke: none;"
+    fill_opacity = properties.get("fill-opacity")
+    if fill_opacity:
+        style += f" fill-opacity: {fill_opacity};"
+    return path_to_d(path), start, baseline, style
 
 
 def inline_text_paths(source: Path, target: Path, *, shaper=None) -> int:
@@ -192,24 +268,42 @@ def inline_text_paths(source: Path, target: Path, *, shaper=None) -> int:
     parents = {child: parent for parent in root.iter() for child in parent}
     converted = 0
     for element in list(root.iter(_TEXT)):
-        d, start, baseline, fill = _text_path(element, shaper)
         parent = parents.get(element)
-        if parent is None or math.isnan(start) or math.isnan(baseline):
+        if parent is None:
             continue
-        replacement = ET.Element(
-            _PATH,
-            {
-                "d": d,
-                # 用内联 style 而不是 fill 属性：svglite 的 `<style>` 里
-                # `.svglite path { fill: none; stroke: #000 }` 的优先级高于表现属性，
-                # 只写 fill 的话字形会被画成描边轮廓（整张参考图因此变粗）。
-                "style": f"fill: {fill}; stroke: none;",
-                "transform": f"translate({start:.3f} {baseline:.3f})",
-            },
-        )
         index = list(parent).index(element)
+        replacements: list[ET.Element] = []
+        for text, x, y in _text_runs(element):
+            result = _text_path(element, shaper, text, x, y)
+            if result is None:
+                continue
+            d, start, baseline, style = result
+            if math.isnan(start) or math.isnan(baseline):
+                continue
+            # 查看器的文字把页面变换 / 旋转放在 `<text transform>` 上；转轮廓时
+            # 必须保留它，否则所有文字都会落到页面原点（不是「近似」，是画错）。
+            transform = f"translate({start:.3f} {baseline:.3f})"
+            existing = (element.get("transform") or "").strip()
+            if existing:
+                transform = f"{existing} {transform}"
+            replacements.append(
+                ET.Element(
+                    _PATH,
+                    {
+                        "d": d,
+                        # 用内联 style 而不是 fill 属性：svglite 的 `<style>` 里
+                        # `.svglite path { fill: none; stroke: #000 }` 的优先级高于表现属性，
+                        # 只写 fill 的话字形会被画成描边轮廓（整张参考图因此变粗）。
+                        "style": style,
+                        "transform": transform,
+                    },
+                )
+            )
+        if not replacements:
+            continue
         parent.remove(element)
-        parent.insert(index, replacement)
+        for offset, replacement in enumerate(replacements):
+            parent.insert(index + offset, replacement)
         converted += 1
 
     target.write_text(

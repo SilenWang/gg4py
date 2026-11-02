@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import http.server
+import re
 import sys
 import threading
 import time
@@ -38,6 +39,9 @@ import playwright_env
 from facet_legend import facet_legend_scene
 
 from ggcore import ir
+from ggcore.geom.scene import scene_from_plot
+from ggcore.plot import aes, geom_point, ggplot
+from ggio.frame import to_column_table
 
 # 浏览器目录、LD_LIBRARY_PATH、fontconfig（见 tools/viewer/playwright_env.py）。
 playwright_env.configure()
@@ -277,6 +281,229 @@ def test_10k_points_render_as_one_path(session, tmp_path: Path) -> None:
     print(f"10k points: 图元={elements} DOM={dom} 子路径={subpaths} 加载={elapsed_ms:.0f}ms")
 
 
+# ---------------------------------------------------------------------------
+# pch 0..25：查看器的路径顶点 / 包围盒与 `ggskia.pch.symbol()` 逐项一致。
+# `triangleOps()` 曾把 pch 11 专用的 `0.5 * (TRC2 + TRC0)` 用在 2/6/14/17/24/25
+# 上（SIL-718）；这组断言让那种回退直接变红。
+# ---------------------------------------------------------------------------
+
+PCH_SIZE = 20.0
+PCH_TOLERANCE = 0.01
+PCH_SCENE_SIZE = (900.0, 620.0)
+
+
+def pch_centres() -> list[tuple[float, float]]:
+    """26 个 pch 的锚点：7 列 4 行，互不重叠。"""
+    return [(120.0 + 120.0 * (pch % 7), 80.0 + 130.0 * (pch // 7)) for pch in range(26)]
+
+
+def pch_scene() -> ir.Scene:
+    """一个 `points` 节点对一个 pch，各一行；节点 id 是 `0/<pch>`。"""
+    nodes = tuple(
+        ir.Node(
+            ir.NodeKind.POINTS,
+            ir.Gpar(col=(30, 30, 30, 255)),
+            params={"pch": pch, "size": PCH_SIZE},
+            bufs={"points": ir.f32([[x, y]])},
+        )
+        for pch, (x, y) in enumerate(pch_centres())
+    )
+    root = ir.Node(ir.NodeKind.VIEWPORT, params={"name": "panel-1", "clip": False}, children=nodes)
+    return ir.Scene(root=root, size=PCH_SCENE_SIZE)
+
+
+#: `glyphPath()` 只写绝对 `M` / `L` / `C` / `Z`（`d` 里没有隐式重复命令）。
+_PATH_TOKEN = re.compile(r"[MLCZ]|[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
+
+
+def viewer_path_vertices(d: str) -> tuple[list[tuple[float, float]], bool]:
+    """把查看器的 `d` 拆成顶点；有 `C` 时返回 `curved=True`（圆只比包围盒）。"""
+    tokens = _PATH_TOKEN.findall(d)
+    points: list[tuple[float, float]] = []
+    curved = False
+    index = 0
+    while index < len(tokens):
+        command = tokens[index]
+        assert command in {"M", "L", "C", "Z"}, f"未知路径命令 {command!r} in {d!r}"
+        index += 1
+        if command == "Z":
+            continue
+        count = 6 if command == "C" else 2
+        values = [float(token) for token in tokens[index : index + count]]
+        assert len(values) == count, f"{command} 参数不足 in {d!r}"
+        index += count
+        if command == "C":
+            curved = True
+        else:
+            points.append((values[0], values[1]))
+    return points, curved
+
+
+def skia_symbol_geometry(
+    pch: int, size: float
+) -> tuple[list[tuple[float, float]], tuple[float, float, float, float], bool]:
+    """`ggskia.pch.symbol()` 的顶点 / 紧包围盒；圆的 conic 不算顶点。"""
+    import skia
+
+    from ggskia.pch import symbol
+
+    glyph = symbol(pch, size)
+    assert glyph is not None, f"pch={pch} 没有几何定义"
+    path = glyph.path
+    curved = any(
+        verb in (skia.Path.Verb.kConic_Verb, skia.Path.Verb.kQuad_Verb, skia.Path.Verb.kCubic_Verb)
+        for verb in path.getVerbs()
+    )
+    bounds = path.computeTightBounds()
+    points = [(point.x(), point.y()) for point in path.getPoints()]
+    return points, (bounds.left(), bounds.top(), bounds.right(), bounds.bottom()), curved
+
+
+def assert_glyph_matches(
+    pch: int,
+    size: float,
+    d: str,
+    box: tuple[float, float, float, float],
+    *,
+    origin: tuple[float, float] | None = None,
+    label: str,
+) -> None:
+    """查看器的路径顶点与包围盒对 `ggskia.pch.symbol()` 逐点比对（≤0.01pt）。"""
+    expected_points, bounds, curved = skia_symbol_geometry(pch, size)
+    got_points, got_curved = viewer_path_vertices(d)
+    assert got_curved == curved, f"{label}：曲线/折线类型不一致（{d}）"
+
+    box_x, box_y, box_w, box_h = box
+    x0, y0, x1, y1 = bounds
+    if origin is None:
+        # 真实管线里的视口只做平移；按包围盒中心对齐即可逐点比。
+        origin_x = box_x + box_w / 2.0 - (x0 + x1) / 2.0
+        origin_y = box_y + box_h / 2.0 - (y0 + y1) / 2.0
+    else:
+        origin_x, origin_y = origin
+
+    if not curved:
+        expected = sorted((origin_x + x, origin_y + y) for x, y in expected_points)
+        assert len(got_points) == len(expected), (
+            f"{label}：顶点数 {len(got_points)} != {len(expected)}（{d}）"
+        )
+        for (want_x, want_y), (got_x, got_y) in zip(expected, sorted(got_points), strict=True):
+            assert abs(want_x - got_x) <= PCH_TOLERANCE, f"{label}：x {got_x} != {want_x}（{d}）"
+            assert abs(want_y - got_y) <= PCH_TOLERANCE, f"{label}：y {got_y} != {want_y}（{d}）"
+
+    want_box = (origin_x + x0, origin_y + y0, x1 - x0, y1 - y0)
+    for name, got, want in zip("xywh", (box_x, box_y, box_w, box_h), want_box, strict=True):
+        assert abs(got - want) <= PCH_TOLERANCE, f"{label}：包围盒 {name} {got} != {want}（{d}）"
+
+
+def rendered_glyphs(page, node_ids: list[str]) -> list[dict[str, object] | None]:
+    return page.evaluate(
+        """(ids) => ids.map(id => {
+              const el = document.querySelector(`[data-kind="points"][data-node="${id}"]`);
+              if (el === null) return null;
+              const box = el.getBBox();
+              return {
+                d: el.getAttribute("d") || "",
+                box: [box.x, box.y, box.width, box.height],
+                vp: el.getAttribute("data-vp"),
+                visible: el.getBoundingClientRect().width > 0,
+              };
+            })""",
+        node_ids,
+    )
+
+
+def test_every_pch_matches_ggskia_geometry(session, tmp_path: Path) -> None:
+    """pch 0..25 逐项对拍：三角形的 bug 会让 2/6/14/17/24/25 红。"""
+    page, _ = session
+    path = tmp_path / "pch-0-25.ggir.cbor"
+    path.write_bytes(ir.encode(pch_scene()))
+    load_scene(page, path)
+
+    node_ids = [f"0/{pch}" for pch in range(26)]
+    glyphs = rendered_glyphs(page, node_ids)
+    for pch, (x, y), glyph in zip(range(26), pch_centres(), glyphs, strict=True):
+        assert glyph is not None, f"pch={pch} 没渲染出来"
+        assert_glyph_matches(
+            pch,
+            PCH_SIZE,
+            str(glyph["d"]),
+            tuple(glyph["box"]),
+            origin=(x, y),
+            label=f"pch={pch}",
+        )
+
+
+def triangle_legend_scene() -> ir.Scene:
+    """真管线：`shape` 映射到两水平（缺省 16 圆 / 17 三角），带 shape 图例。"""
+    table = to_column_table(
+        {
+            "x": [0.25, 0.75],
+            "y": [0.3, 0.7],
+            "g": ["a", "b"],
+        }
+    )
+    plot = ggplot(table, aes(x="x", y="y", shape="g")) + geom_point(size=17 / 2.845276)
+    return scene_from_plot(plot, width_in=4.0, height_in=3.0)
+
+
+def points_node_records(scene: ir.Scene) -> list[tuple[str, ir.Node, str | None]]:
+    """`points` 节点的 (DOM 节点 id, IR 节点, 最近的视口名)。"""
+    records: list[tuple[str, ir.Node, str | None]] = []
+
+    def walk(node: ir.Node, prefix: str, viewport: str | None) -> None:
+        name = viewport
+        if node.kind.value == "viewport" and node.params.get("name"):
+            name = str(node.params["name"])
+        if node.kind.value == "points":
+            records.append((prefix, node, name))
+        for index, child in enumerate(node.children):
+            walk(child, f"{prefix}/{index}", name)
+
+    walk(scene.root, "0", None)
+    return records
+
+
+def test_triangle_pch_scatter_and_legend_render_in_gallery(session, tmp_path: Path) -> None:
+    """真管线（不是合成 IR）出图：三角形散点与图例 key 都按 ggskia 几何落页面。"""
+    page, _ = session
+    scene = triangle_legend_scene()
+    records = points_node_records(scene)
+    panel = [record for record in records if record[2] == "panel-1"]
+    keys = [record for record in records if (record[2] or "").startswith("guide-0-key-")]
+
+    # 夹具本身：两水平 → 16 圆 / 17 三角；每个节点一行，图例每个 key 一个节点。
+    panel_pch = {int(node.params["pch"]) for _, node, _ in panel}
+    key_pch = {int(node.params["pch"]) for _, node, _ in keys}
+    assert 17 in panel_pch, f"散点没映射到 pch 17：{panel_pch}"
+    assert 17 in key_pch, f"图例没映射到 pch 17：{key_pch}"
+    assert all(node.bufs["points"].shape[0] == 1 for _, node, _ in records)
+
+    path = tmp_path / "triangle-legend.ggir.cbor"
+    path.write_bytes(ir.encode(scene))
+    load_scene(page, path)
+
+    node_ids = [node_id for node_id, _, _ in records]
+    glyphs = rendered_glyphs(page, node_ids)
+    triangles = 0
+    for (node_id, node, viewport), glyph in zip(records, glyphs, strict=True):
+        pch = int(node.params["pch"])
+        size = float(node.params["size"])
+        assert glyph is not None, f"{viewport}/{node_id}（pch={pch}）没渲染出来"
+        assert glyph["visible"], f"{viewport}/{node_id}（pch={pch}）在页面上不可见"
+        assert_glyph_matches(
+            pch,
+            size,
+            str(glyph["d"]),
+            tuple(glyph["box"]),
+            label=f"{viewport}/{node_id}（pch={pch}）",
+        )
+        if pch == 17:
+            triangles += 1
+    # 一层面板 + 一个图例 key，至少两条三角形路径。
+    assert triangles >= 2, "三角形散点/图例没有同时出现在 gallery 页面里"
+
+
 def test_page_never_requests_wasm(session) -> None:
     _, requests = session
     assert requests, "页面没发出任何请求？"
@@ -329,6 +556,47 @@ def test_viewport_clip_rect_is_page_absolute(session, tmp_path: Path) -> None:
             })"""
     )
     assert sorted(got) == [[10, 20, 210, 220], [100, 50, 300, 250]]
+
+
+def raster_scene() -> ir.Scene:
+    """一个 clip + raster blob：覆盖查看器的 `<image>` 与 data URL 路径。"""
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2), (220, 30, 30)).save(buffer, format="PNG")
+    blobs, blob_id = ir.BlobTable.empty().add(buffer.getvalue(), "image/png")
+    clipped = ir.Node(
+        ir.NodeKind.CLIP,
+        params={"name": "clip", "rule": "winding"},
+        bufs={"rect": ir.f32([[10.0, 10.0, 50.0, 50.0]])},
+        children=(
+            ir.Node(
+                ir.NodeKind.RASTER,
+                params={"blob": blob_id, "width": 2, "height": 2, "interpolate": False},
+                bufs={"rect": ir.f32([[0.0, 0.0, 80.0, 80.0]])},
+            ),
+        ),
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "page", "clip": False},
+        children=(clipped,),
+    )
+    return ir.Scene(root=root, size=(120.0, 120.0), blobs=blobs)
+
+
+def test_raster_blob_is_embedded_as_data_url(session, tmp_path: Path) -> None:
+    page, _ = session
+    path = tmp_path / "raster.ggir.cbor"
+    path.write_bytes(ir.encode(raster_scene()))
+    load_scene(page, path)
+    image = page.locator('svg.gg-svg image[data-kind="raster"]')
+    assert image.count() == 1
+    href = image.get_attribute("href") or image.get_attribute("xlink:href")
+    assert href is not None and href.startswith("data:image/png;base64,")
+    assert page.locator("svg.gg-svg clipPath rect").count() >= 1
 
 
 def test_broken_ir_reports_the_node_id(session, scene: ir.Scene, tmp_path: Path) -> None:

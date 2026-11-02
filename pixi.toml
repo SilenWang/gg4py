@@ -79,6 +79,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "viewer:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
 "viewer:sample" = "PYTHONPATH=src python tools/viewer/export_scene.py"
 "viewer:shot" = "PYTHONPATH=src python tools/viewer/screenshot.py"
+# M1-16：逐条 case → IR → 浏览器查看器 → 取回 DOM SVG → 与 expected.svg
+# 一起走 resvg 像素对拍，并生成 dist/gallery.html。CI 用 `viewer:cases:ci`
+# 跑 12 条代表性子集（挂进 `pixi run check`，避免每个 PR 全量 61 条）。
+"viewer:cases" = "PYTHONPATH=src python tools/viewer/cases.py"
+"viewer:cases:ci" = { cmd = "PYTHONPATH=src python tools/viewer/cases.py --sample 12 --min-pass 12", depends-on = ["viewer:build", "viewer:browsers"] }
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
@@ -215,6 +220,7 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 check = { depends-on = [
   "viewer:build",
   "viewer:browsers",
+  "viewer:cases:ci",
   "lint",
   "test",
   "gate:imports",

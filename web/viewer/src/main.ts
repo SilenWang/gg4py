@@ -133,4 +133,21 @@ window.ggViewer = {
         },
 };
 
-status.textContent = "把 .ggir.cbor 拖进来，或点「打开文件」。";
+// gallery.html 的卡片链到 `index.html?scene=gallery/<case>.ggir.cbor`：
+// 同一个 viewer 页面自动加载，hover / 图例开关都能直接用。路径按相对 URL 取，
+// 不走 file://（ES module 本来也只支持 http）。
+const sceneParam = new URLSearchParams(window.location.search).get("scene");
+if (sceneParam !== null && sceneParam !== "") {
+  const name = sceneParam.split("/").pop() ?? sceneParam;
+  status.dataset.state = "loading";
+  status.textContent = `读取 ${name}…`;
+  void fetch(sceneParam)
+    .then((response) => {
+      if (!response.ok) throw new Error(`${sceneParam}: HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .then((buffer) => loadBytes(new Uint8Array(buffer), name))
+    .catch(showError);
+} else {
+  status.textContent = "把 .ggir.cbor 拖进来，或点「打开文件」。";
+}
