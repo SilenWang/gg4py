@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gg4py viewer · IR → DOM SVG</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f4f4f2;
+        --ink: #1d1d1b;
+        --muted: #666;
+        --rule: #d6d6d2;
+        --accent: #2b6cb0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--paper);
+        color: var(--ink);
+        font: 13px/1.5 -apple-system, "Segoe UI", "Noto Sans CJK SC", sans-serif;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--rule);
+        background: #fff;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      header h1 span {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .picker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 10px;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        cursor: pointer;
+        background: #fafafa;
+      }
+      .picker:hover {
+        border-color: var(--accent);
+      }
+      .picker input {
+        max-width: 190px;
+      }
+      button {
+        padding: 5px 10px;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        background: #fafafa;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      #status {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      #status[data-state="ok"] {
+        color: #22543d;
+      }
+      #status[data-state="error"] {
+        color: #9b2c2c;
+      }
+      main.workbench {
+        position: relative;
+        flex: 1;
+        overflow: auto;
+        padding: 24px;
+      }
+      #stage {
+        display: flex;
+        justify-content: center;
+        /* 不拉伸：flex 缺省的 align-items: stretch 会把 SVG 的 auto 高度撑满，
+           页面几何被非等比缩放（文字位置全跑偏）。 */
+        align-items: flex-start;
+        min-height: 100%;
+      }
+      #stage .gg-svg {
+        max-width: 100%;
+        height: auto;
+        background: #fff;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 8%);
+      }
+      body.is-dragging::after {
+        content: "松开加载 .ggir.cbor";
+        position: fixed;
+        inset: 12px;
+        display: grid;
+        place-items: center;
+        border: 2px dashed var(--accent);
+        border-radius: 12px;
+        background: rgb(43 108 176 / 8%);
+        color: var(--accent);
+        font-size: 18px;
+        pointer-events: none;
+      }
+      .tooltip {
+        position: absolute;
+        z-index: 10;
+        max-width: 320px;
+        padding: 8px 10px;
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        background: rgb(255 255 255 / 97%);
+        box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+        pointer-events: none;
+      }
+      .tooltip-title {
+        font-weight: 600;
+      }
+      .tooltip-meta {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .tooltip-text {
+        margin-top: 4px;
+        color: var(--ink);
+        word-break: break-word;
+      }
+      .gg-svg [data-row]:hover {
+        outline: none;
+      }
+      .gg-svg [data-row].is-hover {
+        filter: drop-shadow(0 0 3px var(--accent));
+      }
+      .gg-svg .gg-legend-key {
+        cursor: pointer;
+      }
+      .gg-svg .gg-legend-key:hover,
+      .gg-svg .gg-legend-key:focus-visible {
+        filter: drop-shadow(0 0 3px var(--accent));
+        outline: none;
+      }
+      .gg-svg [data-hidden="true"] {
+        opacity: 0.25;
+      }
+      .gg-svg .gg-legend-key[data-hidden="true"] {
+        opacity: 1;
+      }
+      .gg-svg .gg-legend-key[data-hidden="true"] .gg-legend-hit {
+        fill: rgb(43 108 176 / 6%);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>gg4py viewer <span>IR v0 → DOM SVG（零 wasm）</span></h1>
+      <label class="picker">
+        打开文件
+        <input id="file" type="file" accept=".cbor,.ggir,application/cbor,application/octet-stream" />
+      </label>
+      <button id="reset" type="button">重置图例</button>
+      <span id="status">把 .ggir.cbor 拖进来，或点「打开文件」。</span>
+    </header>
+    <main class="workbench">
+      <div id="stage"></div>
+      <div id="tooltip" class="tooltip" hidden></div>
+    </main>
+    <script type="module" src="dist/main.js"></script>
+  </body>
+</html>

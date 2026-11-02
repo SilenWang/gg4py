@@ -244,8 +244,10 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 “猜一个单位框”的默认。
 
 于是 `Scene.to_ir_scene()` 只是一次重排：根视口（`identity` + 页面裁剪框）下按
-**连续的 (transform, clip) 相同**合并出 `viewport` 节点，每个节点带自己的
-`clip_rect`（页面坐标，`docs/notes/ir.md` §4）。`::test_scene_converts_to_an_ir_scene_that_round_trips`
+**连续的 (transform, clip, 视口名) 相同**合并出 `viewport` 节点，每个节点带自己的
+`clip_rect`（页面坐标，`docs/notes/ir.md` §4）。视口名取 `Instruction.vp` 路径的
+最深一段（`panel-1` / `guide-0-key-0`），空串表示没有名字——它不带几何，只给
+浏览器查看器（M1-13）分组用。`::test_scene_converts_to_an_ir_scene_that_round_trips`
 把 13 种可绘制原语一次性编码 / 解码，加上 `viewport` 共 14 种 kind，
 顺带证明它们都在 IR 的节点表里。
 
