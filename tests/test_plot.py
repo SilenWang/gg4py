@@ -12,6 +12,7 @@ from ggcore import plot, registry
 from ggcore.aes import Aes, AfterStat, aes, after_stat
 from ggcore.components import Theme
 from ggcore.layer import Geom, Layer, Position
+from ggcore.theme import element_line, element_text, rel, theme
 
 DATA = {"x": [1.0, 2.0, 3.0], "y": [4.0, 5.0, 6.0]}
 
@@ -47,7 +48,8 @@ def test_ggplot_defaults_match_the_ggplot2_object() -> None:
     assert p.layers == []
     assert p.scales == {}
     assert p.guides == {}
-    assert p.theme == Theme()
+    assert p.theme.name == "grey"
+    assert p.theme.complete is True
     assert p.coordinates.name == "cartesian"
     assert p.facet.name == "null"
     assert p.labels == {}
@@ -244,15 +246,20 @@ def test_complete_theme_replaces_and_partial_theme_merges() -> None:
     p = base_plot() + plot.theme_grey() + plot.theme_minimal()
     assert p.theme.name == "minimal"
 
-    partial = Theme(elements={"axis.text": "red"}, complete=False)
+    partial = theme(**{"axis.text": element_text(colour="red")})
     q = p + partial
     assert q.theme.name == "minimal"
-    assert dict(q.theme.elements) == {"axis.text": "red"}
+    assert q.theme.elements["axis.text"].colour == "red"
+    # 只覆盖 colour，size 仍从 minimal 的 axis.text 继承（rel(0.8) 留到解析时）。
+    assert q.theme.elements["axis.text"].size == rel(0.8)
+    assert "panel.grid" in q.theme.elements
 
-    r = q + Theme(elements={"axis.line": "blue"}, complete=False)
-    assert dict(r.theme.elements) == {"axis.text": "red", "axis.line": "blue"}
+    r = q + theme(**{"axis.line": element_line(colour="blue")})
+    assert r.theme.elements["axis.line"].colour == "blue"
+    assert r.theme.elements["axis.text"].colour == "red"
     # 原始对象不受影响（p / q 的 theme 元素没被就地改）。
-    assert dict(q.theme.elements) == {"axis.text": "red"}
+    assert q.theme.elements["axis.text"].colour == "red"
+    assert q.theme.elements["axis.line"].__class__.__name__ == "ElementBlank"
 
 
 # ---------------------------------------------------------------------------

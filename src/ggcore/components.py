@@ -83,15 +83,19 @@ class Guide:
 
 @dataclass(frozen=True, slots=True)
 class Theme:
-    """主题占位：完整主题（`grey` / `minimal` / `void`）或局部元素集合。
+    """主题：完整主题（`grey` / `minimal` / `void`）或局部元素集合。
 
-    `complete=True` 的主题整份替换；`complete=False` 的只覆盖同名元素（M1-10
-    的元素树尚未实现，这里先保留这两个字段的语义）。
+    `complete=True` 的主题整份替换；`complete=False` 的只覆盖同名元素。
+    元素树、继承与解析在 :mod:`ggcore.theme`（M1-10）。
+
+    `base_size` 是该主题的基础字号（pt），用于把根元素上的 `rel()` 折成
+    具体字号；`theme_grey(base_size=16)` 会把它带下去。
     """
 
     name: str = ""
     elements: dict[str, Any] = field(default_factory=dict)
     complete: bool = False
+    base_size: float = 11.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "elements", frozen_mapping(self.elements))

@@ -28,7 +28,7 @@ EXPECTED = {
     "coord": ("cartesian", "fixed"),
     "facet": ("null", "wrap", "grid"),
     "guide": ("legend", "colourbar", "none"),
-    "theme": ("grey", "minimal", "void"),
+    "theme": ("grey", "bw", "minimal", "void"),
     "label": ("labs",),
 }
 
