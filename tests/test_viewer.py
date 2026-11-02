@@ -331,6 +331,47 @@ def test_viewport_clip_rect_is_page_absolute(session, tmp_path: Path) -> None:
     assert sorted(got) == [[10, 20, 210, 220], [100, 50, 300, 250]]
 
 
+def raster_scene() -> ir.Scene:
+    """一个 clip + raster blob：覆盖查看器的 `<image>` 与 data URL 路径。"""
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2), (220, 30, 30)).save(buffer, format="PNG")
+    blobs, blob_id = ir.BlobTable.empty().add(buffer.getvalue(), "image/png")
+    clipped = ir.Node(
+        ir.NodeKind.CLIP,
+        params={"name": "clip", "rule": "winding"},
+        bufs={"rect": ir.f32([[10.0, 10.0, 50.0, 50.0]])},
+        children=(
+            ir.Node(
+                ir.NodeKind.RASTER,
+                params={"blob": blob_id, "width": 2, "height": 2, "interpolate": False},
+                bufs={"rect": ir.f32([[0.0, 0.0, 80.0, 80.0]])},
+            ),
+        ),
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "page", "clip": False},
+        children=(clipped,),
+    )
+    return ir.Scene(root=root, size=(120.0, 120.0), blobs=blobs)
+
+
+def test_raster_blob_is_embedded_as_data_url(session, tmp_path: Path) -> None:
+    page, _ = session
+    path = tmp_path / "raster.ggir.cbor"
+    path.write_bytes(ir.encode(raster_scene()))
+    load_scene(page, path)
+    image = page.locator('svg.gg-svg image[data-kind="raster"]')
+    assert image.count() == 1
+    href = image.get_attribute("href") or image.get_attribute("xlink:href")
+    assert href is not None and href.startswith("data:image/png;base64,")
+    assert page.locator("svg.gg-svg clipPath rect").count() >= 1
+
+
 def test_broken_ir_reports_the_node_id(session, scene: ir.Scene, tmp_path: Path) -> None:
     page, _ = session
     envelope = cbor2.loads(ir.encode(scene))

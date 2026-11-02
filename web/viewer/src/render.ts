@@ -17,6 +17,8 @@
 import { bufValue, nodeRows, paramNumber, paramString } from "./ir.js";
 import type { Color, FloatBuffer, Gpar, IrNode, IrScene } from "./ir.js";
 import { IrError } from "./ir.js";
+import { curvePoints, xsplinePoints } from "./curves.js";
+import type { Point } from "./curves.js";
 
 export type Matrix = [number, number, number, number, number, number];
 
@@ -230,61 +232,72 @@ function circleOps(radius = 0.5): GlyphOp[] {
   ];
 }
 
-const SQUARE_OPS: GlyphOp[] = [
-  ["M", [-0.5, -0.5]],
-  ["L", [0.5, -0.5]],
-  ["L", [0.5, 0.5]],
-  ["L", [-0.5, 0.5]],
-  ["Z", []],
-];
-const TRIANGLE_UP_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0.5, 0.433]],
-  ["L", [-0.5, 0.433]],
-  ["Z", []],
-];
-const TRIANGLE_DOWN_OPS: GlyphOp[] = [
-  ["M", [0, 0.5]],
-  ["L", [0.5, -0.433]],
-  ["L", [-0.5, -0.433]],
-  ["Z", []],
-];
-const DIAMOND_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0.5, 0]],
-  ["L", [0, 0.5]],
-  ["L", [-0.5, 0]],
-  ["Z", []],
-];
-const PLUS_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0, 0.5]],
-  ["M", [-0.5, 0]],
-  ["L", [0.5, 0]],
-];
-const CROSS_OPS: GlyphOp[] = [
-  ["M", [-0.354, -0.354]],
-  ["L", [0.354, 0.354]],
-  ["M", [0.354, -0.354]],
-  ["L", [-0.354, 0.354]],
-];
-const STAR_VERTS: Array<[number, number]> = [
-  [0, -0.5],
-  [0.118, -0.162],
-  [0.476, -0.155],
-  [0.19, 0.062],
-  [0.294, 0.405],
-  [0, 0.2],
-  [-0.294, 0.405],
-  [-0.19, 0.062],
-  [-0.476, -0.155],
-  [-0.118, -0.162],
-];
-const STAR_OPS: GlyphOp[] = [
-  ["M", STAR_VERTS[0]],
-  ...STAR_VERTS.slice(1).map((point): GlyphOp => ["L", point]),
-  ["Z", []],
-];
+// R 的 `engine.c` 常量（与 `src/ggskia/pch.py` 同一份，别改成 0.5）：
+// 符号半径是 `RADIUS × size`，不是 size/2——旧实现把直径画成了 size，大了 1/3。
+const PCH_RADIUS = 0.375;
+const PCH_SQRC = 0.886226925452758;
+const PCH_DMDC = 1.2533141373155003;
+const PCH_TRC0 = 1.5551203015562142;
+const PCH_TRC1 = 1.3467736870885984;
+const PCH_TRC2 = 0.7775601507781071;
+
+function squareOps(half = PCH_RADIUS): GlyphOp[] {
+  return [
+    ["M", [-half, -half]],
+    ["L", [half, -half]],
+    ["L", [half, half]],
+    ["L", [-half, half]],
+    ["Z", []],
+  ];
+}
+
+function triangleOps(down: boolean): GlyphOp[] {
+  const radius = PCH_RADIUS;
+  const r = PCH_TRC0 * radius;
+  const yc = 0.5 * (PCH_TRC2 * radius + r);
+  const xc = PCH_TRC1 * radius;
+  return down
+    ? [
+        ["M", [0, r]],
+        ["L", [xc, -yc]],
+        ["L", [-xc, -yc]],
+        ["Z", []],
+      ]
+    : [
+        ["M", [0, -r]],
+        ["L", [xc, yc]],
+        ["L", [-xc, yc]],
+        ["Z", []],
+      ];
+}
+
+function diamondOps(d = Math.SQRT2 * PCH_RADIUS): GlyphOp[] {
+  return [
+    ["M", [0, -d]],
+    ["L", [d, 0]],
+    ["L", [0, d]],
+    ["L", [-d, 0]],
+    ["Z", []],
+  ];
+}
+
+function plusOps(cross = Math.SQRT2 * PCH_RADIUS): GlyphOp[] {
+  return [
+    ["M", [0, -cross]],
+    ["L", [0, cross]],
+    ["M", [-cross, 0]],
+    ["L", [cross, 0]],
+  ];
+}
+
+function crossOps(half = PCH_RADIUS): GlyphOp[] {
+  return [
+    ["M", [-half, -half]],
+    ["L", [half, half]],
+    ["M", [half, -half]],
+    ["L", [-half, half]],
+  ];
+}
 
 interface Glyph {
   ops: GlyphOp[];
@@ -294,61 +307,65 @@ interface Glyph {
 }
 
 /**
- * grid `pch` → 单位空间字形。9..14 是“复合”字形（圈里加号等），这里落到最接近的
- * 简单形状；未知编号按 `pch = 1`（空心圆）处理。差异记在 `docs/notes/viewer.md`。
+ * grid `pch` → `size` 单位的字形（坐标直接乘 `size`，不再走半径 0.5 的单位空间）。
+ * 几何与 `ggskia.pch.symbol()` 对齐；字符型 pch 由 IR 写方决定，查看器只认 0..25。
  */
 function glyphFor(pch: number): Glyph {
   switch (pch) {
     case 0:
-      return { ops: SQUARE_OPS, fill: "none", stroke: true };
+      return { ops: squareOps(), fill: "none", stroke: true };
     case 1:
-      return { ops: circleOps(), fill: "none", stroke: true };
+      return { ops: circleOps(PCH_RADIUS), fill: "none", stroke: true };
     case 2:
-      return { ops: TRIANGLE_UP_OPS, fill: "none", stroke: true };
+      return { ops: triangleOps(false), fill: "none", stroke: true };
     case 3:
-    case 9:
-    case 12:
-      return { ops: PLUS_OPS, fill: "none", stroke: true };
+      return { ops: plusOps(), fill: "none", stroke: true };
     case 4:
-    case 13:
-      return { ops: CROSS_OPS, fill: "none", stroke: true };
+      return { ops: crossOps(), fill: "none", stroke: true };
     case 5:
-      return { ops: DIAMOND_OPS, fill: "none", stroke: true };
+      return { ops: diamondOps(), fill: "none", stroke: true };
     case 6:
-      return { ops: TRIANGLE_DOWN_OPS, fill: "none", stroke: true };
+      return { ops: triangleOps(true), fill: "none", stroke: true };
     case 7:
-    case 14:
-      return { ops: [...SQUARE_OPS, ...PLUS_OPS], fill: "none", stroke: true };
+      return { ops: [...squareOps(), ...crossOps()], fill: "none", stroke: true };
     case 8:
-      return { ops: STAR_OPS, fill: "none", stroke: true };
+      return { ops: [...crossOps(), ...plusOps()], fill: "none", stroke: true };
+    case 9:
+      return { ops: [...diamondOps(), ...plusOps()], fill: "none", stroke: true };
     case 10:
-      return { ops: [...circleOps(), ...PLUS_OPS], fill: "none", stroke: true };
+      return { ops: [...circleOps(PCH_RADIUS), ...plusOps(PCH_RADIUS)], fill: "none", stroke: true };
     case 11:
-      return { ops: [...TRIANGLE_UP_OPS, ...TRIANGLE_DOWN_OPS], fill: "none", stroke: true };
+      return { ops: [...triangleOps(false), ...triangleOps(true)], fill: "none", stroke: true };
+    case 12:
+      return { ops: [...squareOps(), ...plusOps(PCH_RADIUS)], fill: "none", stroke: true };
+    case 13:
+      return { ops: [...circleOps(PCH_RADIUS), ...crossOps()], fill: "none", stroke: true };
+    case 14:
+      return { ops: [...triangleOps(false), ...squareOps()], fill: "none", stroke: true };
     case 15:
-      return { ops: SQUARE_OPS, fill: "col", stroke: false };
+      return { ops: squareOps(), fill: "col", stroke: false };
     case 16:
-    case 19:
+      return { ops: circleOps(PCH_RADIUS), fill: "col", stroke: false };
     case 20:
-      return { ops: pch === 20 ? circleOps(0.2) : circleOps(), fill: "col", stroke: false };
+      return { ops: circleOps(0.25), fill: "col", stroke: true };
+    case 19:
+      return { ops: circleOps(PCH_RADIUS), fill: "col", stroke: true };
     case 17:
+      return { ops: triangleOps(false), fill: "col", stroke: false };
     case 24:
-      return {
-        ops: TRIANGLE_UP_OPS,
-        fill: pch === 17 ? "col" : "gpar",
-        stroke: pch !== 17,
-      };
+      return { ops: triangleOps(false), fill: "gpar", stroke: true };
     case 18:
+      return { ops: diamondOps(PCH_RADIUS), fill: "col", stroke: false };
     case 23:
-      return { ops: DIAMOND_OPS, fill: pch === 18 ? "col" : "gpar", stroke: pch !== 18 };
+      return { ops: diamondOps(PCH_RADIUS * PCH_DMDC), fill: "gpar", stroke: true };
     case 21:
-      return { ops: circleOps(), fill: "gpar", stroke: true };
+      return { ops: circleOps(PCH_RADIUS), fill: "gpar", stroke: true };
     case 22:
-      return { ops: SQUARE_OPS, fill: "gpar", stroke: true };
+      return { ops: squareOps(PCH_RADIUS * PCH_SQRC), fill: "gpar", stroke: true };
     case 25:
-      return { ops: TRIANGLE_DOWN_OPS, fill: "gpar", stroke: true };
+      return { ops: triangleOps(true), fill: "gpar", stroke: true };
     default:
-      return { ops: circleOps(), fill: "none", stroke: true };
+      return { ops: circleOps(PCH_RADIUS), fill: "none", stroke: true };
   }
 }
 
@@ -721,7 +738,7 @@ class Renderer {
         return;
       }
       case "xspline": {
-        const d = xsplinePath(node, matrix, node.params["shape"] as number, node.params["open"] as boolean);
+        const d = xsplinePath(node, matrix, this.scene.size);
         this.emit(
           node,
           id,
@@ -765,41 +782,14 @@ class Renderer {
         return;
       }
       case "curve": {
-        const ends = node.bufs["ends"];
-        const curvature = node.params["curvature"] as number;
-        const inflect = node.params["inflect"] as boolean;
-        const subpaths: SubPath[] = [];
-        for (let row = 0; row < ends.rows; row++) {
-          const p1 = mapPoint(matrix, ends.data[row * 4] as number, ends.data[row * 4 + 1] as number);
-          const p2 = mapPoint(matrix, ends.data[row * 4 + 2] as number, ends.data[row * 4 + 3] as number);
-          const dx = p2[0] - p1[0];
-          const dy = p2[1] - p1[1];
-          const length = Math.hypot(dx, dy) || 1;
-          // 弦的法向（页面 y 向下）：grid.curve 的精确公式未实现，见 viewer.md 差异表。
-          const nx = -dy / length;
-          const ny = dx / length;
-          const bulge = (curvature * length) / 2;
-          const sign = inflect ? -1 : 1;
-          const sub = pushSubPath(subpaths, p1);
-          sub.segments.push([
-            "C",
-            [
-              p1[0] + nx * bulge,
-              p1[1] + ny * bulge,
-              p2[0] + nx * bulge * sign,
-              p2[1] + ny * bulge * sign,
-              p2[0],
-              p2[1],
-            ],
-          ]);
-        }
+        const subpaths = curveSubPaths(node, matrix, this.scene.size);
         const d = pathData(subpaths, false);
         this.emit(
           node,
           id,
           parent,
           viewport,
-          el("path", { d, ...styleAttributes(gpar, scale, { fill: false }) }),
+          el("path", { d, ...styleAttributes(gpar, scale, { fill: node.params["open"] !== true }) }),
           0,
           rows,
           boxOfPathData(d),
@@ -832,7 +822,7 @@ class Renderer {
           const glyphMatrix = compose(matrix, [size, 0, 0, size, x, y]);
           d += glyphPath(glyph.ops, glyphMatrix);
           const [px, py] = mapPoint(matrix, x, y);
-          const half = Math.abs((size * scale) / 2);
+          const half = Math.abs(size * scale * PCH_RADIUS);
           const rowBox = { x0: px - half, y0: py - half, x1: px + half, y1: py + half };
           box =
             box === null
@@ -878,6 +868,7 @@ class Renderer {
     const angle = paramNumber(node, "angle");
     const rows = nodeRows(node);
     const fill = colourValue(gpar.col);
+    const spec = fontSpec(font);
     for (let row = 0; row < rows; row++) {
       const x = bufValue(node, "pos", row, 0);
       const y = bufValue(node, "pos", row, 1);
@@ -889,10 +880,15 @@ class Renderer {
         x: 0,
         y: 0,
         transform: `matrix(${matrix.map(num).join(" ")}) translate(${num(x)} ${num(y)}) rotate(${num(-angle)})`,
-        "font-family": fontStack(font),
+        "font-family": spec.family,
+        "font-weight": spec.weight,
+        "font-style": spec.style,
         "font-size": num(size),
         "text-anchor": anchor === "left" ? "start" : anchor === "right" ? "end" : "middle",
         "dominant-baseline": baselineAttribute(baseline),
+        // 浏览器只认 CSS 的近似基线；diff 侧按 IR 的原始 baseline 用与
+        // `ggskia._place_text` 相同的 cap height 口径落基线（见 svgtext.py）。
+        "data-baseline": baseline,
         fill: fill ?? "none",
         "fill-opacity": num(colourOpacity(gpar.col, gpar.alpha)),
       });
@@ -901,7 +897,12 @@ class Renderer {
       } else {
         // 多行：grid 缺省 lineheight = 1.2（绘制行距 1.44 × size，ir.md §7）。
         const dy = size * LINE_SPACING;
-        const offset = baseline === "top" ? 0 : baseline === "bottom" ? -(lines.length - 1) * dy : (-(lines.length - 1) * dy) / 2;
+        const offset =
+          baseline === "top" || baseline === "alphabetic"
+            ? 0
+            : baseline === "bottom"
+              ? -(lines.length - 1) * dy
+              : (-(lines.length - 1) * dy) / 2;
         lines.forEach((line, index) => {
           const tspan = el("tspan", { x: 0, y: num(offset + index * dy) });
           tspan.textContent = line;
@@ -989,44 +990,86 @@ function boxOfPathData(d: string): Box {
 }
 
 /** xspline：shape=0 等价于 Catmull-Rom（转成三次贝塞尔）；|shape|>0 向直线收拢。 */
-function xsplinePath(node: IrNode, matrix: Matrix, shape: number, open: boolean): string {
+/** 按 `id` 把 points 缓冲切成若干组，组内保留原始点序（IR 的 bulk 口径）。 */
+function pointGroups(node: IrNode, matrix: Matrix): Point[][] {
   const points = node.bufs["points"];
   const ids = node.bufs["id"] ?? null;
-  const tension = Math.max(0, 1 - Math.abs(shape));
-  const subpaths: SubPath[] = [];
+  const groups: Point[][] = [];
+  let current: Point[] = [];
   let start = 0;
   for (let row = 1; row <= points.rows; row++) {
     const changed = row === points.rows || (ids !== null && ids.data[row] !== ids.data[start]);
     if (!changed) continue;
-    const slice: Array<[number, number]> = [];
+    current = [];
     for (let index = start; index < row; index++) {
-      slice.push(
+      current.push(
         mapPoint(matrix, points.data[index * 2] as number, points.data[index * 2 + 1] as number),
       );
     }
-    if (slice.length >= 2) {
-      const sub = pushSubPath(subpaths, slice[0]);
-      const at = (index: number): [number, number] =>
-        slice[Math.max(0, Math.min(slice.length - 1, index))];
-      for (let index = 0; index + 1 < slice.length; index++) {
-        const p0 = at(index - 1);
-        const p1 = at(index);
-        const p2 = at(index + 1);
-        const p3 = at(index + 2);
-        const c1: [number, number] = [
-          p1[0] + ((p2[0] - p0[0]) / 6) * tension,
-          p1[1] + ((p2[1] - p0[1]) / 6) * tension,
-        ];
-        const c2: [number, number] = [
-          p2[0] - ((p3[0] - p1[0]) / 6) * tension,
-          p2[1] - ((p3[1] - p1[1]) / 6) * tension,
-        ];
-        sub.segments.push(["C", [...c1, ...c2, ...p2]]);
-      }
-    }
+    if (current.length >= 2) groups.push(current);
     start = row;
   }
+  return groups;
+}
+
+function sampledPath(sampled: Point[]): SubPath | null {
+  if (sampled.length < 2) return null;
+  const sub = pushSubPath([], sampled[0]);
+  for (let index = 1; index < sampled.length; index++) {
+    sub.segments.push(["L", [sampled[index][0], sampled[index][1]]]);
+  }
+  return sub;
+}
+
+/** xspline：与 `ggskia.curves.xspline_points` 同一套 R 公式（不是 Catmull-Rom 近似）。 */
+function xsplinePath(node: IrNode, matrix: Matrix, page: [number, number]): string {
+  const groups = pointGroups(node, matrix);
+  const open = node.params["open"] !== false;
+  const shape = node.params["shape"] as number;
+  const subpaths: SubPath[] = [];
+  for (const group of groups) {
+    const sampled = xsplinePoints(group, shape, open, true, page);
+    const sub = sampledPath(sampled);
+    if (sub !== null) subpaths.push(sub);
+  }
   return pathData(subpaths, !open);
+}
+
+/** grid.curve：先翻到 R 坐标求控制点/采样，再翻回页面坐标（SIL-636）。 */
+function curveSubPaths(node: IrNode, matrix: Matrix, page: [number, number]): SubPath[] {
+  const ends = node.bufs["ends"];
+  const open = node.params["open"] !== false;
+  const height = page[1];
+  const subpaths: SubPath[] = [];
+  for (let row = 0; row < ends.rows; row++) {
+    const x1 = ends.data[row * 4] as number;
+    const y1 = ends.data[row * 4 + 1] as number;
+    const x2 = ends.data[row * 4 + 2] as number;
+    const y2 = ends.data[row * 4 + 3] as number;
+    if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
+    let sampled: Point[];
+    try {
+      sampled = curvePoints(x1, height - y1, x2, height - y2, {
+        curvature: node.params["curvature"] as number,
+        angle: node.params["angle"] as number,
+        ncp: node.params["ncp"] as number,
+        shape: node.params["shape"] as number,
+        square: node.params["square"] as boolean,
+        inflect: node.params["inflect"] as boolean,
+        open,
+        page,
+      });
+    } catch {
+      sampled = [
+        [x1, y1],
+        [x2, y2],
+      ];
+    }
+    const mapped = sampled.map(([x, y]) => mapPoint(matrix, x, height - y));
+    const sub = sampledPath(mapped);
+    if (sub !== null) subpaths.push(sub);
+  }
+  return subpaths;
 }
 
 function baselineAttribute(baseline: string): string {
@@ -1042,11 +1085,21 @@ function baselineAttribute(baseline: string): string {
   }
 }
 
-/** IR 的 `font` 是已解析的单个字族 key，不是回退栈（ir.md §7）；浏览器端补系统栈。 */
-function fontStack(font: string): string {
-  if (!font) return DEFAULT_FONT_STACK;
-  const family = font.includes(" ") ? `"${font}"` : font;
-  return `${family}, "Noto Sans CJK SC", "DejaVu Sans", sans-serif`;
+/**
+ * IR 的 `font` 是已解析的单个字族 key（`Noto Sans CJK SC`、`Noto Sans CJK SC:bold`、
+ * `…:italic`、`…:bold-italic`），不是回退栈（ir.md §7）。浏览器端补系统栈，并把
+ * 后缀翻成 `font-weight` / `font-style`；只把 key 当 family 会把粗斜体画成常规字面。
+ */
+function fontSpec(font: string): { family: string; weight: string; style: string } {
+  const [rawFamily, ...suffixes] = font.split(":");
+  const suffix = suffixes.join(":").trim().toLowerCase();
+  const family = rawFamily.trim() || DEFAULT_FONT_STACK;
+  const quoted = family.includes(" ") ? `"${family}"` : family;
+  return {
+    family: `${quoted}, "Noto Sans CJK SC", "DejaVu Sans", sans-serif`,
+    weight: suffix.includes("bold") ? "bold" : "normal",
+    style: suffix.includes("italic") ? "italic" : "normal",
+  };
 }
 
 function toBase64(data: Uint8Array): string {

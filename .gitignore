@@ -34,3 +34,5 @@ web/viewer/dist/
 web/viewer/samples/
 # `pixi run viewer:shot` 的截图产物
 .viewer-shot/
+# `pixi run viewer:cases` 的逐 case 产物与报告
+.viewer-cases/
