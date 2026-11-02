@@ -13,6 +13,16 @@ ggplot2 的 `geom_point()` / `theme_grey()` / `scale_x_log10()` 这类函数在�
 遍历顺序：`KINDS` 是固定元组，每个种类内部用 dict 的插入序（不是 set），
 默认登记顺序写在 `_register_defaults()` 里，可复现。
 
+## 参数路由（M1-3 的约定，别让它变成隐性坑）
+
+- `geom_*(...)` 的 `**params` 只进 `Layer.params`（几何参数）；
+- `stat_*(...)` 的 `**params` 只进 `Stat.params`（统计参数）；
+- 两边都不互传。`geom_histogram(bins=30)` 的 `bins` 落在 `Layer.params`，
+  `Stat("bin").params` 为空；M1-3 需要 stat 参数时显式构造
+  `stat=Stat("bin", {"bins": 30})`（或由 stat 层自己从 `Layer.params` 取）。
+  当前 `_stat_layer_factory` / `_geom_layer_factory` 的行为与这条一致，有
+  `tests/test_registry.py` 的 `test_params_route_to_layer_or_stat_only` 守着。
+
 跨模块依赖只有 ggcore 自身（X1 白名单）：`aes` / `components` / `layer`。
 """
 
@@ -45,6 +55,34 @@ PREFIXES: Mapping[str, str] = MappingProxyType(
     }
 )
 
+#: 公开 API 的静态部分；`geom_*` / `stat_*` … 这些入口由 `_refresh_entry` 在
+#: 登记时追加、`unregister` 时移除，所以 `from ggcore.registry import *` 始终
+#: 与当前注册表一致（不会出现 `__all__` 里留着已删除名字的 AttributeError）。
+__all__: list[str] = [
+    "GEOM_SPECS",
+    "KINDS",
+    "PREFIXES",
+    "SCALE_SPECS",
+    "STAT_GEOMS",
+    "STAT_NAMES",
+    "GeomSpec",
+    "bind_plot",
+    "construct",
+    "entry_name",
+    "register",
+    "register_coord",
+    "register_facet",
+    "register_geom",
+    "register_guide",
+    "register_label",
+    "register_scale",
+    "register_stat",
+    "register_theme",
+    "registered",
+    "required_aes_groups",
+    "unregister",
+]
+
 #: 每个种类的有序注册表。用 dict 的插入序，保证遍历稳定。
 _REGISTRY: dict[str, dict[str, Callable[..., Any]]] = {kind: {} for kind in KINDS}
 
@@ -56,11 +94,35 @@ _PLOT_MODULE: Any = None
 
 @dataclass(frozen=True, slots=True)
 class GeomSpec:
-    """geom 的静态契约（对齐 ggplot2 4.0.3 的 `required_aes` / `default_aes`）。"""
+    """geom 的静态契约（对齐 ggplot2 4.0.3）。
+
+    - `required_aes` 是 **stat 之后**的必需列：`bar` / `histogram` 的 `y` 由
+      `stat_count` / `stat_bin` 产出，数据里可以没有；M1-3 的流水线按这个顺序
+      （先 stat、再校验）使用。
+    - 名字里出现 `|` 的是上游的备选写法（如 boxplot 的 `"x|y"`），用
+      :func:`required_aes_groups` 拆开判断。
+    - `default_aes` 是「按 theme_grey 解析后」的静态值（上游写的是
+      `from_theme(...)` 表达式）；M1-10 做主题元素树时再按需重新解析，之前
+      别把它当成会随主题变化的动态值。
+    - `stat` / `position` 是这个 geom 的默认构造；`geom_*(position=...)` 可覆盖。
+      bar / col / histogram / area 默认 `stack`，boxplot 默认 `dodge2`，其余
+      `identity`（与 ggplot2 4.0.3 一致）。
+    """
 
     required_aes: tuple[str, ...]
     default_aes: dict[str, Any]
     stat: str = "identity"
+    position: str = "identity"
+
+
+def required_aes_groups(required_aes: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    """把上游的 `"x|y"` 备选写法拆成名字组。
+
+    M1-3 的校验口径：每一组里至少有一个名字在（stat 之后的）数据里存在。
+    例：boxplot 的 `("x|y", "lower|xlower", ...)` → `(("x", "y"), ("lower",
+    "xlower"), ...)`。
+    """
+    return tuple(tuple(name.split("|")) for name in required_aes)
 
 
 def entry_name(kind: str, name: str) -> str:
@@ -107,6 +169,9 @@ def unregister(kind: str, name: str) -> None:
     del _REGISTRY[kind][name]
     entry = entry_name(kind, name)
     globals().pop(entry, None)
+    exports = globals().get("__all__")
+    if isinstance(exports, list) and entry in exports:
+        exports.remove(entry)
     if _PLOT_MODULE is not None and hasattr(_PLOT_MODULE, entry):
         delattr(_PLOT_MODULE, entry)
         _forget_export(_PLOT_MODULE, entry)
@@ -157,11 +222,14 @@ def _refresh_entry(kind: str, name: str) -> None:
     entry = entry_name(kind, name)
     function = _entry_point(kind, name)
     globals()[entry] = function
+    exports = globals().get("__all__")
+    if isinstance(exports, list) and entry not in exports:
+        exports.append(entry)
     if _PLOT_MODULE is not None:
         setattr(_PLOT_MODULE, entry, function)
-        exports = getattr(_PLOT_MODULE, "__all__", None)
-        if isinstance(exports, list) and entry not in exports:
-            exports.append(entry)
+        plot_exports = getattr(_PLOT_MODULE, "__all__", None)
+        if isinstance(plot_exports, list) and entry not in plot_exports:
+            plot_exports.append(entry)
     if _PLOT_CLASS is not None:
         setattr(_PLOT_CLASS, entry, _plot_method(kind, name))
 
@@ -198,6 +266,7 @@ _BAR_DEFAULTS = {
     "linewidth": 0.5,
     "linetype": 1,
     "alpha": None,
+    "width": 0.9,
 }
 _LINE_DEFAULTS = {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None}
 
@@ -216,31 +285,43 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
         ),
         "line": GeomSpec(("x", "y"), _LINE_DEFAULTS),
         "path": GeomSpec(("x", "y"), _LINE_DEFAULTS),
-        "bar": GeomSpec(("x",), _BAR_DEFAULTS, "count"),
-        "col": GeomSpec(("x", "y"), _BAR_DEFAULTS),
+        "bar": GeomSpec(("x", "y"), _BAR_DEFAULTS, "count", "stack"),
+        "col": GeomSpec(("x", "y"), _BAR_DEFAULTS, position="stack"),
         "area": GeomSpec(
             ("x", "y"),
             {
                 "fill": "grey20",
-                "colour": "black",
+                "colour": None,
                 "linewidth": 0.5,
                 "linetype": 1,
                 "alpha": None,
             },
+            "align",
+            "stack",
         ),
-        "histogram": GeomSpec(("x",), _BAR_DEFAULTS, "bin"),
+        "histogram": GeomSpec(("x", "y"), _BAR_DEFAULTS, "bin", "stack"),
         "boxplot": GeomSpec(
-            ("x", "lower", "upper", "middle"),
+            (
+                "x|y",
+                "lower|xlower",
+                "upper|xupper",
+                "middle|xmiddle",
+                "ymin|xmin",
+                "ymax|xmax",
+            ),
             {
                 "fill": "white",
-                "colour": "black",
+                "colour": "grey20",
                 "linewidth": 0.5,
                 "linetype": 1,
                 "alpha": None,
                 "shape": 19,
                 "size": 1.5,
+                "weight": 1,
+                "width": 0.9,
             },
             "boxplot",
+            "dodge2",
         ),
         "smooth": GeomSpec(
             ("x", "y"),
@@ -250,18 +331,27 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "linewidth": 1,
                 "linetype": 1,
                 "alpha": 0.4,
+                "weight": 1,
             },
             "smooth",
+            "identity",
         ),
     }
 )
 
-#: 5 个 stat。
-STAT_NAMES: tuple[str, ...] = ("identity", "bin", "count", "boxplot", "smooth")
+#: 6 个 stat（M1-1 只登记名字；`align` 是 4.0.3 里 area 的默认 stat）。
+STAT_NAMES: tuple[str, ...] = ("identity", "bin", "count", "boxplot", "smooth", "align")
 
-#: `stat_*()` 的默认 geom（照 ggplot2：identity→point、count/bin→bar …）。
+#: `stat_*()` 的默认 geom（照 ggplot2：identity→point、count/bin→bar、align→area …）。
 STAT_GEOMS: Mapping[str, str] = MappingProxyType(
-    {"identity": "point", "bin": "bar", "count": "bar", "boxplot": "boxplot", "smooth": "smooth"}
+    {
+        "identity": "point",
+        "bin": "bar",
+        "count": "bar",
+        "boxplot": "boxplot",
+        "smooth": "smooth",
+        "align": "area",
+    }
 )
 
 #: 6 组 scale：position（x/y 连续与离散）+ colour / fill / size / shape / alpha。
@@ -288,7 +378,10 @@ GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
 
 
 def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
-    """`geom_<name>(...)` → `Layer`（不画图）。"""
+    """`geom_<name>(...)` → `Layer`（不画图）。
+
+    参数路由（M1-3 的约定）：`**params` 只进 `Layer.params`，不往 stat 传。
+    """
 
     def factory(
         mapping: Any = None,
@@ -303,7 +396,7 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
         return Layer(
             geom=Geom(name=name, required_aes=spec.required_aes, default_aes=spec.default_aes),
             stat=as_stat(stat, spec.stat),
-            position=as_position(position),
+            position=as_position(position, spec.position),
             mapping=as_aes(mapping),
             data=data,
             params=params,
@@ -315,7 +408,12 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
 
 
 def _stat_layer_factory(name: str) -> Callable[..., Layer]:
-    """`stat_<name>(...)` 在 ggplot2 里同样是图层快捷方式。"""
+    """`stat_<name>(...)` 在 ggplot2 里同样是图层快捷方式。
+
+    参数路由（M1-3 的约定）：`**params` 只进 `Stat.params`；geom 需要的参数
+    （例如 `width`）不在这里，走 geom 的缺省值或 `geom=` 显式传入。
+    """
+
     geom_name = STAT_GEOMS[name]
     spec = GEOM_SPECS[geom_name]
 
@@ -332,7 +430,7 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
         return Layer(
             geom=as_geom(geom, geom_name, spec.required_aes, spec.default_aes),
             stat=Stat(name, params),
-            position=as_position(position),
+            position=as_position(position, spec.position),
             mapping=as_aes(mapping),
             data=data,
             inherit_aes=inherit_aes,
@@ -434,27 +532,3 @@ def _register_defaults() -> None:
 
 
 _register_defaults()
-
-__all__ = [
-    "GEOM_SPECS",
-    "KINDS",
-    "PREFIXES",
-    "SCALE_SPECS",
-    "STAT_GEOMS",
-    "STAT_NAMES",
-    "GeomSpec",
-    "bind_plot",
-    "construct",
-    "entry_name",
-    "register",
-    "register_coord",
-    "register_facet",
-    "register_geom",
-    "register_guide",
-    "register_label",
-    "register_scale",
-    "register_stat",
-    "register_theme",
-    "registered",
-    "unregister",
-] + [entry_name(kind, name) for kind in KINDS for name in _REGISTRY[kind]]

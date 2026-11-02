@@ -353,3 +353,49 @@ def test_unknown_component_type_in_layers_helpers_raises() -> None:
         plot.geom_point(stat=42)
     with pytest.raises(TypeError, match="position"):
         plot.geom_point(position=42)
+
+
+# ---------------------------------------------------------------------------
+# 递归只读：任意层级都改不动原图
+# ---------------------------------------------------------------------------
+
+
+def test_nested_label_values_are_frozen_all_the_way_down() -> None:
+    p = plot.ggplot({"x": [1]}, aes(x="x")) + plot.labs(meta={"a": 1})
+    q = p + plot.geom_point()
+
+    with pytest.raises(TypeError):
+        q.labels["meta"]["a"] = 2
+    assert p.labels == {"meta": {"a": 1}}
+    assert dict(q.labels["meta"]) == {"a": 1}
+
+
+def test_component_params_are_recursively_frozen() -> None:
+    theme = Theme(
+        elements={"axis.text": {"colour": "red"}, "axis.ticks": ["a"]},
+        complete=False,
+    )
+    with pytest.raises(TypeError):
+        theme.elements["axis.text"]["colour"] = "blue"
+    assert isinstance(theme.elements["axis.ticks"], tuple)
+
+    scale = plot.scale_x_log10(breaks=[1, 10])
+    with pytest.raises(TypeError):
+        scale.params["breaks"][0] = 2
+    assert scale.params["breaks"] == (1, 10)
+
+    layer = plot.geom_point(limits={"x": [0, 1]})
+    with pytest.raises(TypeError):
+        layer.params["limits"]["x"][0] = 5
+    assert layer.params["limits"]["x"] == (0, 1)
+    with pytest.raises(TypeError):
+        layer.geom.default_aes["colour"] = "red"
+
+
+def test_aes_nested_values_are_frozen() -> None:
+    mapping = aes(x=["a", "b"], meta={"k": "v"})
+    with pytest.raises(TypeError):
+        mapping["x"][0] = "c"
+    with pytest.raises(TypeError):
+        mapping["meta"]["k"] = "w"
+    assert mapping["x"] == ("a", "b")

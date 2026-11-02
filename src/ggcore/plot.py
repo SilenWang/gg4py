@@ -27,7 +27,7 @@ from functools import singledispatch
 from typing import Any
 
 from ggcore import registry
-from ggcore.aes import Aes, as_aes
+from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
@@ -71,7 +71,7 @@ class ggplot:
         self.theme: Theme = theme if theme is not None else Theme()
         self.coordinates: Coord = coordinates if coordinates is not None else Coord("cartesian")
         self.facet: Facet = facet if facet is not None else Facet("null")
-        self.labels: dict[str, Any] = dict(labels) if labels is not None else {}
+        self.labels: dict[str, Any] = dict(frozen_mapping(labels)) if labels is not None else {}
         self.position: Position | None = position
 
     # -- 克隆 ---------------------------------------------------------------

@@ -9,7 +9,7 @@ from ggcore.layer import Geom, Layer
 
 EXPECTED = {
     "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
-    "stat": ("identity", "bin", "count", "boxplot", "smooth"),
+    "stat": ("identity", "bin", "count", "boxplot", "smooth", "align"),
     "scale": (
         "x_continuous",
         "y_continuous",
@@ -73,10 +73,50 @@ def test_iteration_is_stable_across_calls() -> None:
 
 def test_geom_specs_carry_the_ggplot2_contract() -> None:
     assert registry.GEOM_SPECS["point"].required_aes == ("x", "y")
-    assert registry.GEOM_SPECS["histogram"].required_aes == ("x",)
+    # bar / histogram 的 y 由 stat_count / stat_bin 产出，是 stat 之后的必需列。
+    assert registry.GEOM_SPECS["bar"].required_aes == ("x", "y")
+    assert registry.GEOM_SPECS["histogram"].required_aes == ("x", "y")
     assert registry.GEOM_SPECS["histogram"].stat == "bin"
     assert registry.GEOM_SPECS["bar"].stat == "count"
-    assert registry.GEOM_SPECS["boxplot"].required_aes == ("x", "lower", "upper", "middle")
+    assert registry.GEOM_SPECS["bar"].default_aes["width"] == 0.9
+    boxplot = registry.GEOM_SPECS["boxplot"]
+    assert boxplot.required_aes == (
+        "x|y",
+        "lower|xlower",
+        "upper|xupper",
+        "middle|xmiddle",
+        "ymin|xmin",
+        "ymax|xmax",
+    )
+    assert boxplot.default_aes["weight"] == 1
+    assert boxplot.default_aes["width"] == 0.9
+    assert boxplot.default_aes["colour"] == "grey20"
+
+
+def test_required_aes_groups_expands_the_upstream_alternatives() -> None:
+    assert registry.required_aes_groups(("x", "y")) == (("x",), ("y",))
+    groups = registry.required_aes_groups(registry.GEOM_SPECS["boxplot"].required_aes)
+    assert groups == (
+        ("x", "y"),
+        ("lower", "xlower"),
+        ("upper", "xupper"),
+        ("middle", "xmiddle"),
+        ("ymin", "xmin"),
+        ("ymax", "xmax"),
+    )
+
+
+def test_area_uses_stat_align_without_a_default_outline() -> None:
+    area = registry.GEOM_SPECS["area"]
+    assert area.stat == "align"
+    assert area.default_aes["colour"] is None
+    assert registry.STAT_GEOMS["align"] == "area"
+
+    layer = plot.stat_align()
+    assert layer.stat.name == "align"
+    assert layer.geom.name == "area"
+    assert plot.geom_area().stat.name == "align"
+    assert plot.geom_area().geom.default_aes["colour"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -88,6 +128,7 @@ def test_every_registered_name_has_both_entry_points() -> None:
     for kind in registry.KINDS:
         for name in registry.registered(kind):
             entry = registry.entry_name(kind, name)
+            assert entry in registry.__all__, entry
             assert callable(getattr(registry, entry)), entry
             assert callable(getattr(plot, entry)), entry
             # 模块级入口是同一个函数对象：没有第二套实现。
@@ -183,6 +224,22 @@ def test_unregister_cleans_up_both_entry_points(sparkle_registered) -> None:
     assert not hasattr(plot.ggplot, "geom_sparkle")
 
 
+def test_registry_all_tracks_register_and_unregister(sparkle_registered) -> None:
+    # 新登记的名字进 __all__，且 __all__ 里每个名字都真的存在。
+    assert "geom_sparkle" in registry.__all__
+    assert all(hasattr(registry, name) for name in registry.__all__)
+
+    registry.unregister("geom", "sparkle")
+    assert "geom_sparkle" not in registry.__all__
+    assert all(hasattr(registry, name) for name in registry.__all__)
+
+    # 关键回归：unregister 之后 `from ggcore.registry import *` 不能再 AttributeError。
+    namespace: dict[str, object] = {}
+    exec("from ggcore.registry import *", namespace)
+    assert "geom_point" in namespace
+    assert "geom_sparkle" not in namespace
+
+
 def test_reregistering_keeps_the_original_position(sparkle_registered) -> None:
     before = registry.registered("geom")
     assert before[-1] == "sparkle"
@@ -213,3 +270,39 @@ def test_theme_coord_facet_guide_placeholders_carry_params() -> None:
     guide = plot.guide_colourbar(aesthetic="fill")
     assert guide.name == "colourbar"
     assert guide.key == "fill"
+
+
+def test_geom_specs_carry_the_default_position() -> None:
+    assert registry.GEOM_SPECS["bar"].position == "stack"
+    assert registry.GEOM_SPECS["col"].position == "stack"
+    assert registry.GEOM_SPECS["histogram"].position == "stack"
+    assert registry.GEOM_SPECS["area"].position == "stack"
+    assert registry.GEOM_SPECS["boxplot"].position == "dodge2"
+    assert registry.GEOM_SPECS["point"].position == "identity"
+    assert registry.GEOM_SPECS["smooth"].position == "identity"
+
+
+def test_layer_factories_take_position_from_the_spec_unless_overridden() -> None:
+    assert plot.geom_bar().position.name == "stack"
+    assert plot.geom_boxplot().position.name == "dodge2"
+    assert plot.geom_point().position.name == "identity"
+    assert plot.stat_count().position.name == "stack"
+    assert plot.stat_align().position.name == "stack"
+    # 显式传参仍然覆盖 spec 的默认值。
+    assert plot.geom_bar(position="dodge").position.name == "dodge"
+
+
+def test_smooth_carries_a_weight_default() -> None:
+    assert registry.GEOM_SPECS["smooth"].default_aes["weight"] == 1
+
+
+def test_params_route_to_layer_or_stat_only() -> None:
+    # geom 的参数只进 Layer.params，不会偷偷落到 stat 上。
+    geom_layer = plot.geom_histogram(bins=30)
+    assert geom_layer.params["bins"] == 30
+    assert dict(geom_layer.stat.params) == {}
+
+    # stat 的参数只进 Stat.params。
+    stat_layer = plot.stat_count(bins=10)
+    assert dict(stat_layer.params) == {}
+    assert stat_layer.stat.params["bins"] == 10

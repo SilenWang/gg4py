@@ -22,20 +22,32 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
-__all__ = ["Aes", "AfterStat", "aes", "after_stat", "as_aes", "frozen_mapping"]
+__all__ = ["Aes", "AfterStat", "aes", "after_stat", "as_aes", "frozen_mapping", "frozen_value"]
+
+
+def frozen_value(value: Any) -> Any:
+    """递归冻结一个值：`Mapping` → `MappingProxyType`，`list` / `tuple` → `tuple`。
+
+    其它对象（字符串、数字、numpy 数组）原样返回、按引用共享——它们是后续阶段
+    只读消费的数据，深拷贝既不必要也会破坏「不可变值共享」的性能约定。
+    """
+    if isinstance(value, Mapping):
+        return MappingProxyType({key: frozen_value(item) for key, item in value.items()})
+    if isinstance(value, (list, tuple)):
+        return tuple(frozen_value(item) for item in value)
+    return value
 
 
 def frozen_mapping(values: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
-    """把映射冻结成只读视图，供各组件共享「不可变值」。
+    """把映射递归冻结成只读视图，供各组件共享「不可变值」。
 
-    只做浅冻结：值本身（字符串、数字、numpy 数组）按引用共享，这与克隆语义
-    「可变容器复制、不可变值共享」是同一条约定。
+    **任意层级**都不可写：嵌套 dict 变 `MappingProxyType`、list 变 tuple，
+    所以拿到克隆的一方改不动原图（见 `tests/test_plot.py` 的 labels 回归用例）。
+    其它对象按引用共享，这与克隆语义「可变容器复制、不可变值共享」是同一条约定。
     """
     if values is None:
         return MappingProxyType({})
-    if isinstance(values, MappingProxyType):
-        return values
-    return MappingProxyType(dict(values))
+    return MappingProxyType({key: frozen_value(value) for key, value in values.items()})
 
 
 @dataclass(frozen=True, slots=True)
