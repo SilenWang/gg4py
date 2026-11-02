@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "size-aes", "scale-limits"]
+ci = true
+title = "point：连续 size 映射"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "size 走 scale_size_continuous 的缺省 range (1, 6) mm（面积口径的 sqrt 重标定）。"

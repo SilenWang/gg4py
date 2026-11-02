@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "theme-complete", "scale-limits"]
+ci = false
+title = "theme：theme_grey 完整主题"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "阻塞项：panel.grid.major/minor 还没画（scene.py 只装 panel.background/border），网格线整片缺失；参考图已生成，M2 接上网格线后可翻 ci = true。"

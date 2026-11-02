@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "theme-complete", "scale-limits"]
+ci = false
+title = "theme：theme_minimal 完整主题"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "阻塞项同 theme-grey-basic：panel.grid 缺失（minimal 的视觉主体就是网格线）。"

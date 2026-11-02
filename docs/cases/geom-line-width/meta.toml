@@ -1,0 +1,7 @@
+family = "geom-line"
+features = ["aes-mapping", "line-type"]
+ci = true
+title = "line：linewidth + 虚线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "linewidth 0.9mm（R 侧同值，pt = 0.9 * .pt）；linetype = \\\"dashed\\\" 的段长由设备默认 dash 表决定。"

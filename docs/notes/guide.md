@@ -184,7 +184,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | `legend.position = c(x, y)`（数值坐标） | 同上 |
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
 | `legend.frame` / 高级图例盒子主题（`legend.box.just` 等） | 只画 `legend.frame` 的描边；`legend.box.background` 只画矩形 |
-| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12）；改成 `nbin` 个等高矩形，视觉一致、节点更多 |
+| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12）；改成 `nbin` 个等高矩形。**不是无缝的**：细条在当前 `resvg` 下每像素覆盖率不足，整条比 R 的 1×300 位图偏白约 30%（`guide-colourbar` 实测图级 3.9%，因此标 `ci = false`，见 `docs/cases/README.md`）。修法：IR 加渐变节点，或让色条走 `raster_grob` 的位图 |
 | 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
 | `override_aes` 的高级形态（逐键不同值） | 只支持标量覆盖所有键 |
 

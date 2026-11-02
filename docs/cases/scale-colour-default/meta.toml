@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "scale-discrete"]
+ci = true
+title = "scale：离散 colour 缺省色板"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "三个水平落到 hue_pal(h = c(15, 375), c = 100, l = 65)：逐点颜色对拍 R 的缺省 scale。"

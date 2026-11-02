@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "aes-grouping", "stat-count", "orientation-horizontal", "scale-discrete"]
+ci = true
+title = "bar：横向计数"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "只映射 y（离散）；stat_count 的计数落到 x，geom 走 flipped_aes 的横向路径。"

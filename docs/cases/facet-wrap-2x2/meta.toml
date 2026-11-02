@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-wrap", "scale-limits"]
+ci = true
+title = "facet：wrap 2×2"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "四个水平 a..d 按 levels 排成 2 列；theme_void 下只剩 strip 标签 + 面板。"

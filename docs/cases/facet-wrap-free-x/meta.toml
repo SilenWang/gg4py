@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-wrap", "facet-free", "scale-limits"]
+ci = true
+title = "facet：free_x"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "a 组 x ≈ 0.1..0.3、b 组 ≈ 1..2.2：free_x 下两个面板的 x 范围互不影响。"

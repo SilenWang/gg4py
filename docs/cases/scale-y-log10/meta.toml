@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "scale-log10", "scale-limits"]
+ci = true
+title = "scale：y 轴 log10"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "y 的 limits 同样在数据空间；横向↔纵向的 log10 路径对称性由 x/y 两张 case 钉住。"

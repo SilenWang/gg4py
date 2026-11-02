@@ -1,0 +1,7 @@
+family = "geom-line"
+features = ["aes-mapping", "na-removal"]
+ci = true
+title = "line：NA 断线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "中间 1 个 + 连续 2 个 NA：应断成 3 段，首尾缺失直接删。"

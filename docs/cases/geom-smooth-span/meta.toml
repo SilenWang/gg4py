@@ -1,0 +1,7 @@
+family = "geom-smooth"
+features = ["aes-mapping", "stat-smooth", "scale-limits"]
+ci = true
+title = "smooth：span = 0.4"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "span 落到 loess 的跨度参数（R 侧同值）；锯齿数据 + 0.4 跨度让窗口贴合度更敏感。"

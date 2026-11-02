@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-grid", "scale-limits"]
+ci = true
+title = "facet：grid r ~ c"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "行变量 r（t/u）× 列变量 c（l/r）：两点 strip 在行、列方向各占一条。"

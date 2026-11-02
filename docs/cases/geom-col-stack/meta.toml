@@ -1,0 +1,7 @@
+family = "geom-col"
+features = ["aes-mapping", "aes-grouping", "position-stack", "scale-discrete", "scale-limits"]
+ci = true
+title = "col：堆叠（数值 y）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "geom_col 不做计数，堆叠顺序按 fill 的 levels（p 在下、q 在上）。"

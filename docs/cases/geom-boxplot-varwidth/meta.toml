@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "stat-boxplot", "scale-limits"]
+ci = true
+title = "boxplot：varwidth"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "三组 n = 8 / 4 / 6：箱宽 = 0.8 × sqrt(n / 8)（relvarwidth 在 stat 阶段算）。"

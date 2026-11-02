@@ -1,0 +1,7 @@
+family = "geom-histogram"
+features = ["aes-mapping", "stat-bin", "orientation-horizontal", "scale-limits"]
+ci = true
+title = "histogram：横向计数"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "只给 y（连续 0..1）：断点仍按 y 标度算，count 画到 x；与 stat-histogram-horizontal 的 binwidth 口径互补。"

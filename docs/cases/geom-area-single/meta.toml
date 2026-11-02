@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "stat-align", "scale-limits"]
+ci = true
+title = "area：单组 + 不规则 x"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "只有一个 group 时 stat_align 原样通过；x 间距不等，折点是数据本身的顺序，不做插值。"
