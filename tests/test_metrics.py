@@ -314,7 +314,7 @@ def test_table_and_harfbuzz_agree_on_the_corpus(hb: MetricProvider, table: Metri
         reference = hb.advance(text, 16)
         worst = max(worst, abs(table.advance(text, 16) - reference) / reference)
     # 表不做 kerning：实测最大 2.374%，判据 5%（docs/notes/metrics-ledger.md · M0-7）。
-    # 2.374% 只是这份 200 条语料的结果，不是上界：绝对差 0.18–1.58 px @16px 随字对
+    # 2.374% 只是这份 200 条语料的结果，不是上界：绝对差 0.05–2.72 px @16px 随字对
     # 而变，短标签相对差更大（`'To'` 单对 5.84%）。
     assert worst < 0.05, f"fallback table drifts {worst:.2%} from HarfBuzz"
 
