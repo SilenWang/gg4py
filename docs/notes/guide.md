@@ -32,6 +32,12 @@ page（plot.margin）
 `guide_from_component()` 转成实现。未注册的名字（比如 `guide_bins`）明确报
 `GuideError`，不降级成 `guide_legend`。
 
+`scale_*(guide = )` 也认（SIL-705）：字符串（`"none"` / `"legend"` /
+`"colourbar"`）、`components.Guide`（`registry.guide_legend(...)`）与
+`ggcore.guide` 的 `Guide` 实例（`guide_legend(...)`）三种写法等价；
+`plot.guides` 里同美学的条目优先于它（`build_guides()` 先查 `plot.guides`，
+没有条目才回落到 `scale.params["guide"]`）。
+
 ## 2. 合并规则（照 `Guide$merge()`）
 
 R 4.0.3 的判据是 `hashables = (title, key$.label, name)`：**标题、按键标签、guide
@@ -46,7 +52,8 @@ ggcore 的实现（`build_guides()`）：
 2. 默认 guide：连续 colour / fill → `GuideColourbar`，其余 → `GuideLegend`；
 3. 只有「被**映射**过的」美学进图例：`aes(colour = "g")` 进，
    `geom_point(colour = "red")`（常量）不进；`show_legend = False` 的图层排除；
-4. `guide = "none"` 或 `legend.position = "none"` 直接没有图例；
+4. `guide = "none"`（`plot.guides` 或 `scale_*(guide = )`）或
+   `legend.position = "none"` 直接没有图例；
 5. 合并：`kind` + 标题 + 标签序列相同且美学不重叠 → 合成一张（`_can_merge`）；
 6. 按 `order` 排序，同 order 按美学顺序（colour 先于 shape）。
 
@@ -76,6 +83,13 @@ ggcore 的实现（`build_guides()`）：
 能带进图例），再被 guide 管理的键值覆盖；`override_aes` 最后覆盖。没有模板的
 geom 报 `GuideError` 并点名已实现的 geom。
 
+**只有常量美学进 key**（SIL-705）：被标度映射、但不由这张 guide 管理的美学不能
+从第一行带进来，否则 `colour = cyl, fill = gear` + `shape = 21` 时 colour 图例的
+圆会被灌进第一行的 `fill`。实现上 `key_table()` 接收图层的 `raw_mappings`：
+`colour` / `fill` 置成全 NA（与 R 一致：colour 图例的圆只有 stroke，fill 图例的
+圆只有 fill），其余映射美学直接省略、回落到几何默认值（mapped `size` 不参与
+colour 图例，键用 1.5mm 的默认点大小）。
+
 ## 4. 尺寸口径
 
 所有数字都来自主题（默认 `theme_grey()`，`--` 表示 R 4.0.3 的实测值，见 R 脚本）：
@@ -90,7 +104,8 @@ geom 报 `GuideError` 并点名已实现的 geom。
 | 标签宽 | `Metrics.strwidth()`（没有度量时 0.6em/字符） | — |
 | 图例盒与面板的间隙 | `legend.box.spacing`（11pt） | 0.3866cm |
 | 多张图例之间 | `legend.spacing`（11pt） | 0.3866cm |
-| 色条 | 宽 = `legend.key.width`，高 = **5 ×** `legend.key.height` | 0.6096 × 3.048cm |
+| 色条（竖向） | 宽 = `legend.key.width`，高 = **5 ×** `legend.key.height` | 0.6096 × 3.048cm |
+| 色条（横向） | 宽 = **5 ×** `legend.key.width`，高 = `legend.key.height`；断点标签排在色条下方一行 | 3.048 × 0.6096cm（R 的盒高 1.487cm） |
 
 文字行高取 0.955em（`TEXT_LINE_EM`，与 `ggcore.facet` 的 strip 同一常量）：R 的
 `stringHeight()` + `font_descent()` 在 8.8/11/20pt 上量出来都是 ≈0.94–0.96em。
@@ -170,6 +185,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
 | `legend.frame` / 高级图例盒子主题（`legend.box.just` 等） | 只画 `legend.frame` 的描边；`legend.box.background` 只画矩形 |
 | 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12）；改成 `nbin` 个等高矩形，视觉一致、节点更多 |
+| 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
 | `override_aes` 的高级形态（逐键不同值） | 只支持标量覆盖所有键 |
 
 ## 9. 确定性
@@ -193,3 +209,16 @@ pixi run -e refs refs:guide       # 重新生成 tests/fixtures/guide_r_referenc
 pixi run test                     # 含 tests/test_axis.py / test_guide.py / test_guide_r_parity.py
 pixi run render --scene <scene>.ggir.cbor --out report.png
 ```
+
+### 评审前自检（SIL-705 起）
+
+```bash
+pixi run check                    # lint + test + 各 gate（含静态的 cases:matrix:check）
+pixi run cases:matrix             # 案例回归，必须 20/20 pass
+pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
+```
+
+`pixi run check` 里的 `cases:matrix:check` 只跑 `--no-run`：校验矩阵新鲜度与
+`plot.py` 可导入，**不渲染也不比图**。所以本地 `check` 绿不代表案例回归绿——
+改 guide / geom / theme 之后必须单独跑一次 `cases:matrix`。SIL-705 的教训就是
+5 个 case 在 `check` 全绿的 PR 上仍然红（新增图例改变了像素）。

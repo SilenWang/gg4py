@@ -12,7 +12,9 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -32,6 +34,7 @@ from ggcore.guide import (
     guide_from_component,
     guide_legend,
     guide_none,
+    key_table,
     legend_grob,
     legend_layout,
 )
@@ -447,6 +450,139 @@ def test_theme_void_keeps_the_legend_but_drops_the_axes() -> None:
     assert layout.x_axis_cm == 0.0 and layout.y_axis_cm == 0.0
     assert layout.x_title_cm == 0.0 and layout.y_title_cm == 0.0
     assert layout.guides and layout.legend_boxes
+
+
+# ---------------------------------------------------------------------------
+# SIL-705 回归：scale guide / colourbar reverse / 横向 / key 串美学 / 网格
+# ---------------------------------------------------------------------------
+
+
+def test_scale_guide_parameter_is_honoured() -> None:
+    """`scale_*(guide=)` 不再被静默忽略；`plot.guides` 仍优先。"""
+    base = ggplot(data(), aes(x="x", y="y", colour="g")) + registry.geom_point()
+    assert build_guides(build_plot(base + registry.scale_colour_discrete(guide="none"))) == ()
+    titled = build_guides(
+        build_plot(base + registry.scale_colour_discrete(guide=registry.guide_legend(title="X")))
+    )
+    assert titled[0].title == "X"
+    both = build_guides(
+        build_plot(
+            base
+            + registry.scale_colour_discrete(guide="none")
+            + registry.guide_legend("colour", title="P")
+        )
+    )
+    assert both[0].title == "P"
+    with pytest.raises(GuideError, match="guide_bins"):
+        build_guides(build_plot(base + registry.scale_colour_discrete(guide="bins")))
+
+
+def test_colourbar_reverse_ticks_follow_the_bar() -> None:
+    """R：`reverse=TRUE` 时 `.value` 也是反的——标签与色带同向。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="y"))
+        + registry.geom_point()
+        + registry.guide_colourbar("colour", reverse=True)
+    )
+    build, theme_value, guides, layouts = _layout(plot)
+    guide, layout = guides[0], layouts[0]
+    bar = layout.bar
+    assert bar is not None
+    # 键已反序（最大值在前）；R 的 reverse 把最大值放到色带底部。
+    assert layout.ticks[0][0] == pytest.approx(bar.y_cm)
+    assert layout.ticks[-1][0] == pytest.approx(bar.y_cm + bar.height_cm)
+    grobs = legend_grob(guide, build, theme_value, layout, name="g")
+    bottom = next(grob for grob in grobs if grob.name == "g.bar-0")
+    assert bottom.gp.fill == guide.keys[0].values["colour"]
+
+
+def test_horizontal_colourbar_draws_bar_and_labels_below() -> None:
+    """横向 colourbar 有真实色条（5×key 宽 × key 高），标签在下方。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="y"))
+        + registry.geom_point()
+        + registry.guide_colourbar("colour", direction="horizontal")
+    )
+    build, theme_value, guides, layouts = _layout(plot)
+    guide, layout = guides[0], layouts[0]
+    bar = layout.bar
+    assert layout.direction == "horizontal" and bar is not None
+    assert bar.width_cm == pytest.approx(5 * 0.6096)
+    assert bar.height_cm == pytest.approx(0.6096)
+    assert layout.ticks
+    assert all(bar.x_cm <= x <= bar.x_cm + bar.width_cm for x, _label in layout.ticks)
+    grobs = legend_grob(guide, build, theme_value, layout, name="g")
+    assert len([grob for grob in grobs if ".bar-" in grob.name]) == guide.guide.nbin
+    labels = [grob for grob in grobs if "colourbar-label" in grob.name]
+    assert len(labels) == len(guide.keys)
+    label_y = float(np.asarray(convert_height(labels[0].y, "cm", ctx=UnitContext())).sum())
+    assert label_y < bar.y_cm
+
+
+def test_colourbar_ticks_false_drops_tick_lines_but_keeps_labels() -> None:
+    """R：`ticks = FALSE` 只去掉刻度线，断点标签照画。"""
+    base = ggplot(data(), aes(x="x", y="y", colour="y")) + registry.geom_point()
+    for ticks in (True, False):
+        plot = base + registry.guide_colourbar("colour", ticks=ticks)
+        build, theme_value, guides, layouts = _layout(plot)
+        grobs = legend_grob(guides[0], build, theme_value, layouts[0], name="g")
+        has_tick_lines = bool([grob for grob in grobs if ".tick-" in grob.name])
+        assert has_tick_lines is ticks
+        assert len([grob for grob in grobs if "colourbar-label" in grob.name]) == len(
+            guides[0].keys
+        )
+
+
+def test_legend_grid_too_small_is_an_error() -> None:
+    """`nrow * ncol` 放不下键时明确报错，不再抛 IndexError。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + registry.guide_legend("colour", nrow=1, ncol=1)
+    )
+    with pytest.raises(GuideError, match="放不下"):
+        _layout(plot)
+
+
+def test_split_guides_do_not_leak_the_other_aesthetic() -> None:
+    """`colour = cyl, fill = gear` + `shape = 21`：两个图例各管各的美学。"""
+    plot = ggplot(data(), aes(x="x", y="y", colour="g", fill="h")) + registry.geom_point(
+        shape=21, size=2.5
+    )
+    build = build_plot(plot)
+    guides = build_guides(build)
+    assert [guide.aesthetics for guide in guides] == [("colour",), ("fill",)]
+    colour_guide, fill_guide = guides
+    index = colour_guide.layers[0]
+    layer = build.layers[index]
+    mapping = build.raw_mappings[index]
+    geom = layer.geom_object.name
+    colour_key = key_table(layer, colour_guide.keys[0].values, geom, mapping=mapping)
+    fill_key = key_table(layer, fill_guide.keys[0].values, geom, mapping=mapping)
+    assert bool(np.all(colour_key.column("fill").na_mask))
+    assert bool(np.all(fill_key.column("colour").na_mask))
+    assert colour_key.column("colour").values[0] == colour_guide.keys[0].values["colour"]
+
+
+_CASES_WITHOUT_LEGEND = (
+    "geom-bar-stacked",
+    "geom-col-identity",
+    "geom-line-groups",
+    "geom-point-shapes",
+    "stat-area-align",
+)
+
+
+@pytest.mark.parametrize("name", _CASES_WITHOUT_LEGEND)
+def test_reference_cases_keep_the_legend_off(name: str) -> None:
+    """R 参考图是 `theme_void() + legend.position="none"`：case 也必须关图例。"""
+    path = Path(__file__).resolve().parents[1] / "docs" / "cases" / name / "plot.py"
+    spec = importlib.util.spec_from_file_location(f"case_{name.replace('-', '_')}", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    layout = plot_layout(build_plot(module.build()["plot"]), metrics=METRICS)
+    assert not layout.legend_layouts
 
 
 def test_axis_and_legend_are_deterministic() -> None:
