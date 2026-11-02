@@ -424,8 +424,12 @@ def test_aspect_ratio_with_zero_span_raises_coord_error() -> None:
 def test_clip_is_parsed_and_recorded() -> None:
     params = panel_params(base_plot() + registry.coord_fixed(ratio=1, clip="off"))
     assert params.clip == "off"
+    # R 4.0.3 的 coord_cartesian(clip = "inherit") 是合法入口（三态照 grid 的
+    # viewport clip）；只有 `on` / `off` / `inherit` 之外的值才报错。
+    inherit = panel_params(base_plot() + registry.coord_cartesian(clip="inherit"))
+    assert inherit.clip == "inherit"
     with pytest.raises(CoordError, match="clip"):
-        coord_from_component(registry.coord_cartesian(clip="inherit"))
+        coord_from_component(registry.coord_cartesian(clip="open"))
     assert coord_from_component(registry.coord_cartesian(clip="off")).clip == "off"
 
 

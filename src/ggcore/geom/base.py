@@ -106,6 +106,50 @@ def row_slice(table: ColumnTable, keep: np.ndarray) -> ColumnTable:
 
 
 # ---------------------------------------------------------------------------
+# 默认尺寸（R 的 resolution() / compute_data_size()）
+# ---------------------------------------------------------------------------
+
+
+def resolution(values: Any) -> float:
+    """上游 `resolution(x, zero = FALSE)`：相邻唯一值的最小间距。
+
+    全等（或只有一个水平）时给 1；离散位置在 ggplot2 里本来就是 1..n，间距为 1，
+    所以不需要单独的 `is_mapped_discrete()` 分支。口径与
+    :func:`ggcore.position._resolution` 一致（jitter 的缺省抖动幅度用同一个数）。
+    """
+    data = np.asarray(values, dtype=np.float64)
+    finite = data[~np.isnan(data)]
+    if finite.size == 0:
+        return 1.0
+    unique = np.unique(finite)
+    if unique.size <= 1:
+        return 1.0
+    diffs = np.diff(unique)
+    tolerance = float(np.sqrt(np.finfo(np.float64).eps))
+    if np.all(diffs < tolerance):
+        return 1.0
+    return float(np.min(diffs[diffs > tolerance]))
+
+
+def panel_resolution(table: ColumnTable, name: str) -> float:
+    """`compute_data_size(panels = "across")`：逐 PANEL 求 resolution 后取最小值。"""
+    values = table_numeric(table, name, default=np.nan)
+    if "PANEL" not in table or table.nrows == 0:
+        return resolution(values)
+    labels = [str(item) for item in table.column("PANEL").values.tolist()]
+    panels = sorted(set(labels))
+    if len(panels) < 2:
+        return resolution(values)
+    groups = [values[[label == panel for label in labels]] for panel in panels]
+    return min(resolution(group) for group in groups)
+
+
+def default_size(table: ColumnTable, name: str, default: float = 0.9) -> float:
+    """`compute_data_size(data, default = 0.9, zero = FALSE)` 的标量宽度 / 高度。"""
+    return panel_resolution(table, name) * float(default)
+
+
+# ---------------------------------------------------------------------------
 # 横向（flipped_aes）与列名重命名
 # ---------------------------------------------------------------------------
 
@@ -179,6 +223,20 @@ def _is_discrete(column: Column | None) -> bool:
     return column.is_discrete or column.kind == "bool"
 
 
+def _with_discrete_position(resolved: dict[str, Any], source: ColumnTable) -> dict[str, Any]:
+    """记下「宽度轴是不是离散位置」。
+
+    R 的 `mapped_discrete` 列在 `setup_data()` 里仍带整数类，`resolution()` 的
+    `is.integer(x)` 分支直接给 1（多图层共用全局水平、位置是 1/3/5 时也一样）。
+    这里从映射前的原始列复现同一个判断，供 bar / boxplot 的 `compute_data_size()`：
+    离散位置 → 默认宽度恒为 0.9；连续位置 → `resolution(x) * 0.9`。
+    """
+    axis = "y" if resolved.get("flipped_aes") else "x"
+    column = source.column(axis) if axis in source else None
+    resolved["_discrete_position"] = _is_discrete(column)
+    return resolved
+
+
 class GeomRenderer:
     """一个 geom 的绘制实现。子类至少实现 :meth:`draw`。"""
 
@@ -209,22 +267,22 @@ class GeomRenderer:
         与显式的 `orientation`。
         """
         resolved = dict(params)
+        source = raw if raw is not None else data
         if "flipped_aes" in resolved and resolved["flipped_aes"] is not None:
             resolved["flipped_aes"] = bool(resolved["flipped_aes"])
-            return resolved
+            return _with_discrete_position(resolved, source)
         orientation = resolved.get("orientation")
         if orientation is not None:
             if orientation not in ("x", "y"):
                 raise GeomError(f"orientation 只能是 'x' 或 'y'，收到 {orientation!r}")
             resolved["flipped_aes"] = orientation == "y"
-            return resolved
+            return _with_discrete_position(resolved, source)
         if not self.detect_flipped:
             resolved.setdefault("flipped_aes", False)
-            return resolved
+            return _with_discrete_position(resolved, source)
         if self.ambiguous_flipped:
             resolved["flipped_aes"] = False
-            return resolved
-        source = raw if raw is not None else data
+            return _with_discrete_position(resolved, source)
         x = source.column("x") if "x" in source else None
         y = source.column("y") if "y" in source else None
         x_discrete = _is_discrete(x)
@@ -232,7 +290,7 @@ class GeomRenderer:
         # R `has_flipped_aes()` 的离散分支：xor(y_is_discrete, x_is_discrete) 时
         # 返回 `y_is_discrete`（`main_is_continuous = FALSE`）。
         resolved["flipped_aes"] = bool(y_discrete != x_discrete and y_discrete)
-        return resolved
+        return _with_discrete_position(resolved, source)
 
     def setup_data(self, data: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
         """`Geom$setup_data()` 的缺省实现：不改数据。"""

@@ -103,10 +103,11 @@ limits 丢弃」。
 
 ## 3. clip
 
-`clip = "on"`（默认）/ `"off"`。本任务只**解析并记进**
+`clip = "on"`（默认）/ `"off"` / `"inherit"`。本任务只**解析并记进**
 `PanelParams.clip`；真正的裁剪发生在 geom 绘制期（M1-7）：`clip = "on"` 把
-绘制裁到 panel 的 `clip_rect`，`"off"` 允许画到面板外。`coord_*` 只收这两个
-值（不像 viewport 还有 `"inherit"`）。
+绘制裁到 panel 的 `clip_rect`，`"off"` 允许画到面板外，`"inherit"` 沿用父视口
+（页面，clip 也是 off）。三态与 grid 的 `viewport(clip=)` 一致；R 4.0.3 的
+`coord_cartesian(clip = "inherit")` 是合法入口。
 
 ## 4. `coord_fixed(ratio)`
 

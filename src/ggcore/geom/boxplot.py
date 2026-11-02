@@ -31,6 +31,7 @@ from ggcore.geom.base import (
     GeomError,
     GeomRenderer,
     alpha_colour,
+    default_size,
     flip_data,
     lty_value,
     npc_values,
@@ -99,7 +100,10 @@ class BoxplotRenderer(GeomRenderer):
                 Column("float", np.fmax(high, table_numeric(frame, "ymax"))),
             )
             frame = ColumnTable(columns, nrows=frame.nrows)
-        width = _width_column(frame, params, 0.9)
+        # R `compute_data_size(data, default = 0.9, zero = FALSE, discrete = TRUE)`：
+        # 离散位置恒为 0.9；连续位置是 resolution(x) * 0.9（不是写死的 0.9）。
+        default_width = 0.9 if params.get("_discrete_position") else default_size(frame, "x")
+        width = _width_column(frame, params, default_width)
         x = table_numeric(frame, "x")
         if params.get("varwidth") and "relvarwidth" in frame:
             relative = table_numeric(frame, "relvarwidth", default=1.0)
@@ -252,12 +256,14 @@ def _outlier_points(panel: Any, data: ColumnTable, flip: bool, across: np.ndarra
         along = _npc(panel, np.array(values), "x" if flip else "y")
         xs = along.tolist() if flip else [float(across[index])] * len(values)
         ys = [float(across[index])] * len(values) if flip else along.tolist()
+        # `GeomPoint$draw_panel()`：fontsize = size * .pt + stroke * .stroke / 2。
+        size_pt = float(size[index]) * POINT_PER_MM + float(stroke[index]) * STROKE_PER_MM / 2.0
         out.append(
             points_grob(
                 unit(xs, "native"),
                 unit(ys, "native"),
                 pch=translate_shape(shapes[index]) if shapes else 19,
-                size=unit(float(size[index]) * POINT_PER_MM, "bigpts"),
+                size=unit(size_pt, "bigpts"),
                 size_units="bigpts",
                 default_units="native",
                 gp=gpar(

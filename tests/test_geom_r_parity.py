@@ -37,6 +37,7 @@ TOLERANCE = 1e-6
 #: M1-10 的事（与 tests/test_build_r_parity.py 的 SKIP_VALUES 同一口径）。
 SKIP_VALUES: dict[str, frozenset[str]] = {
     "col_horizontal": frozenset({"fill"}),
+    "col_default_width": frozenset({"fill"}),
     "boxplot_identity": frozenset({"colour"}),
 }
 
@@ -137,6 +138,7 @@ _CASE_GEOM = {
     "bar_stacked": "bar",
     "col_identity": "col",
     "col_horizontal": "col",
+    "col_default_width": "col",
     "area_identity": "area",
     "histogram_stat": "histogram",
     "histogram_identity": "histogram",
@@ -275,6 +277,12 @@ BUILDERS = {
         + registry.scale_y_discrete(expand=(0.6, 0.6))
         + registry.theme_void()
     ),
+    "col_default_width": lambda: (
+        ggplot(_float(x=[0, 10, 20], y=[1, 2, 3]), aes(x="x", y="y"))
+        + registry.geom_col()
+        + registry.coord_cartesian(xlim=(0, 20), expand=(0, 0))
+        + registry.theme_void()
+    ),
     "area_identity": lambda: (
         ggplot(_float(x=[1, 2, 3, 4, 5], y=[1, 3, 2, 4, 3]), aes(x="x", y="y"))
         + registry.geom_area(stat="identity", fill="#4C78A8")
@@ -348,6 +356,7 @@ def _assert_column_equal(name: str, ours: Column, expected: Column) -> None:
         "bar_stacked",
         "col_identity",
         "col_horizontal",
+        "col_default_width",
         "area_identity",
         "histogram_identity",
         "boxplot_identity",

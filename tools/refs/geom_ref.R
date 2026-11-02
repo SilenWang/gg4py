@@ -196,6 +196,13 @@ df_col_h <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# 连续 x、不传 width：默认宽度走 compute_data_size(default = 0.9) =
+# resolution(x, zero = FALSE) * 0.9（这里 = 10 * 0.9 = 9）。
+df_col_default <- data.frame(
+  x = c(0, 10, 20),
+  y = c(1, 2, 3)
+)
+
 df_area <- data.frame(
   x = c(1, 2, 3, 4, 5),
   y = c(1, 3, 2, 4, 3)
@@ -251,6 +258,10 @@ fixed_y <- function(limits) scale_y_continuous(limits = limits, expand = c(0, 0)
 
 check_warnings <- function(plot) {
   messages <- character()
+  # `ggplotGrob()` 会打开默认设备（pdf() → 仓库根目录的 Rplots.pdf）。显式开一个
+  # 临时 pdf 设备并在 on.exit 里关掉，产线跑完不留未跟踪文件（SIL-698 #6）。
+  grDevices::pdf(file = tempfile(fileext = ".pdf"))
+  on.exit(grDevices::dev.off(), add = TRUE)
   withCallingHandlers(
     invisible(ggplotGrob(plot)),
     warning = function(w) {
@@ -346,6 +357,17 @@ plot_col_h <- ggplot(df_col_h, aes(y = cls, x = v)) +
   geom_col(width = 0.7) +
   fixed_x(c(0, 1)) + scale_y_discrete(expand = c(0.6, 0.6)) + theme_case()
 cases$col_horizontal <- record_case("col_horizontal", plot_col_h, "横向 col：flipped_aes = TRUE")
+
+# 7b. col：连续 x、不传 width → 默认宽度 = resolution(x, zero = FALSE) * 0.9
+# 用 coord limits（不是 scale limits）：scale limits 会把 xmin/xmax 越界值 censor 成 NA，
+# 这里要对拍的是 setup_data 算出来的宽度本身。
+plot_col_default <- ggplot(df_col_default, aes(x, y)) +
+  geom_col() +
+  coord_cartesian(xlim = c(0, 20), expand = c(0, 0)) + theme_case()
+cases$col_default_width <- record_case(
+  "col_default_width", plot_col_default,
+  "col：连续 x 的默认宽度 = resolution(x) * 0.9"
+)
 
 # 8. area：identity stat
 plot_area <- ggplot(df_area, aes(x, y)) +
