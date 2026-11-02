@@ -101,6 +101,17 @@ def test_buffers_are_read_only() -> None:
         column.na_mask[0] = True
 
 
+def test_column_snapshots_the_source_buffer() -> None:
+    """只读不能是浅的：调用方留着源数组，也不该能改到已经建好的表。"""
+    source = np.array([1.0, 2.0])
+    mask = np.array([False, False])
+    column = Column("float", source, na_mask=mask)
+    source[0] = 9.0
+    mask[0] = True
+    assert column.values.tolist() == [1.0, 2.0]
+    assert column.na_mask.tolist() == [False, False]
+
+
 def test_table_keeps_column_order_and_lookup() -> None:
     table = ColumnTable(
         [

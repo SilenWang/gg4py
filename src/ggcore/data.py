@@ -8,8 +8,9 @@ pandas DataFrame / Arrow Table / dict of arrays 三种输入在 `ggio.frame` 里
 （`tools/gates/check_import_whitelist.py`）。口径见 `docs/notes/data.md`：
 
 - `kind` 是语义类型：float / int / bool / str / categorical / datetime / timedelta；
-- 数值缓冲一律 float64（`int` 的 kind 仍是 int，只是以 float64 的 bulk 表承载；
-  datetime / timedelta 是自 epoch 起的秒，`datetime.date` 口径是「天」）；
+- 数值缓冲是 float32 / float64，源端给 float32 就保留 float32（`int` 的 kind 仍是
+  int，只是以 float64 的 bulk 表承载；datetime / timedelta 是自 epoch 起的秒，
+  `datetime.date` 口径是「天」）；
 - 离散列的 `levels` 是**标度顺序**：categorical 用输入给的显式顺序，普通字符串列
   按升序去重（ggplot2 离散标度的缺省顺序）；
 - 缺失只进 `na_mask`，数值缓冲里用 0 / False / "" 占位（IR 侧只认 mask）。
@@ -34,10 +35,10 @@ _DISCRETE = frozenset({"str", "categorical"})
 
 
 def _frozen(arr: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    """只读视图：表一旦建好，调用方就不能悄悄改缓冲。"""
-    view = arr.view()
-    view.setflags(write=False)
-    return view
+    """只读副本：表一旦建好，连源数组的后续修改也影响不到它。"""
+    frozen = np.array(arr, copy=True, subok=False)
+    frozen.setflags(write=False)
+    return frozen
 
 
 def _same_buffer(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]) -> bool:

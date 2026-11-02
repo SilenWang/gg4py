@@ -16,6 +16,10 @@
   python `datetime.date` → 自 1970-01-01 起的天数；`timedelta64` → 秒。
 - NaN / None / pd.NA / NaT / arrow null 一律进 `na_mask`，缓冲里用 0 占位。
 - arrow / pandas 的整型保 `int` kind；**有缺失**的整型列退化为 float + mask。
+- 数值缓冲跟随源端 dtype：源端 float32 三路都保 float32（dict / pandas / arrow
+  逐列相等），`int` 一律以 float64 承载。
+- **带类型**的全缺列保原类型（pandas datetime / bool / Categorical，arrow
+  timestamp / date / boolean / dictionary）；没有类型信息的全缺列统一落 float。
 - pandas / pyarrow 是可选导入：没装时抛 ImportError，文案指向 dev 环境与 `pixi add`。
 """
 
@@ -388,7 +392,10 @@ def _column_from_series(series: Any, pd: Any, name: str) -> Column:
         return Column("int", np.asarray(series.to_numpy(dtype="float64"), dtype=np.float64))
 
     if api.is_float_dtype(dtype):
-        return _column_from_array(np.asarray(series.to_numpy(dtype="float64")), name)
+        # 跟随源端 dtype：DataFrame 的 float32 列不该在这里被悄悄抬成 float64
+        # （dict / arrow 两条路都保留 float32，抬上去三路就不逐列相等了）。
+        target = np.dtype(getattr(dtype, "numpy_dtype", dtype))
+        return _column_from_array(series.to_numpy(dtype=target, na_value=np.nan), name)
 
     return _infer_objects(series.to_numpy(dtype=object, na_value=None), name)
 
@@ -415,6 +422,15 @@ def _column_from_arrow_array(array: Any, pa: Any, name: str) -> Column:
             np.zeros(len(array), dtype=np.float64),
             na_mask=np.ones(len(array), dtype=bool),
         )
+
+    if len(array) and array.null_count == len(array):
+        # 带类型但全缺：to_pylist / to_numpy 只剩 [None, ...]，类型信息只在 schema
+        # 里。按 schema 保住 kind，pandas 才能与 arrow 逐列相等（docs/notes/data.md §5）。
+        all_missing = np.ones(len(array), dtype=bool)
+        if pa.types.is_boolean(arrow_type):
+            return Column("bool", np.zeros(len(array), dtype=np.bool_), na_mask=all_missing)
+        if pa.types.is_timestamp(arrow_type) or pa.types.is_date(arrow_type):
+            return Column("datetime", np.zeros(len(array), dtype=np.float64), na_mask=all_missing)
 
     if (
         pa.types.is_string(arrow_type)

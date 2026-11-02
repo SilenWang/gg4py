@@ -247,6 +247,43 @@ def test_all_missing_column_is_float_and_fully_masked() -> None:
         assert column.values.tolist() == [0.0, 0.0]
 
 
+def test_all_missing_typed_columns_keep_their_kind() -> None:
+    """源端带类型时，全缺列不该退化：pandas 与 arrow 两条路逐列相等。"""
+    timestamps = (
+        from_dict({"t": np.array(["NaT", "NaT"], dtype="datetime64[ns]")}),
+        to_column_table(pd.DataFrame({"t": pd.to_datetime([None, None])})),
+        to_column_table(pa.table({"t": pa.array([None, None], type=pa.timestamp("ns"))})),
+    )
+    for table in timestamps:
+        column = table.column("t")
+        assert column.kind == "datetime"
+        assert column.na_mask.tolist() == [True, True]
+    assert timestamps[0] == timestamps[1] == timestamps[2]
+
+    booleans = (
+        to_column_table(pd.DataFrame({"b": pd.array([None, None], dtype="boolean")})),
+        to_column_table(pa.table({"b": pa.array([None, None], type=pa.bool_())})),
+    )
+    for table in booleans:
+        column = table.column("b")
+        assert column.kind == "bool"
+        assert column.na_mask.tolist() == [True, True]
+    assert booleans[0] == booleans[1]
+
+
+def test_float32_columns_stay_float32_on_every_route() -> None:
+    """三路同表要守住 dtype 口径：pandas 不能把 float32 悄悄抬成 float64。"""
+    values = np.array([1.0, np.nan, 3.0], dtype=np.float32)
+    by_dict = from_dict({"x": values})
+    by_pandas = to_column_table(pd.DataFrame({"x": values}))
+    by_arrow = to_column_table(pa.table({"x": pa.array(values)}))
+    for table in (by_dict, by_pandas, by_arrow):
+        column = table.column("x")
+        assert column.values.dtype == np.float32
+        assert column.na_mask.tolist() == [False, True, False]
+    assert by_dict == by_pandas == by_arrow
+
+
 # ---------------------------------------------------------------------------
 # 整型退化
 # ---------------------------------------------------------------------------
