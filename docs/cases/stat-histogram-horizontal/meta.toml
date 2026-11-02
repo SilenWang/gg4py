@@ -1,0 +1,7 @@
+family = "geom-histogram"
+features = ["aes-mapping", "stat-bin", "scale-limits"]
+ci = true
+title = "横向 histogram：只映射 y 的连续轴 + 默认 stat_bin"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M1-8 的横向 stat_bin：断点取 y 标度的 dimension，count 落在 x 轴；geom 消费 stat 的 flipped_aes。"

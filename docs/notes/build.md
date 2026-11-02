@@ -224,9 +224,14 @@ M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_in
   `docs/notes/scales.md`（M1-4 已接上），分面布局 / 逐面板流水线见
   `docs/notes/facet.md`（M1-6：`build_plot()` 已接线，单面板路径保持逐字节不变），
   position 的七种调整见 `docs/notes/position.md`（M1-9）。
-- 横向（`orientation = "y"`）的 `flipped_aes` 检测：geom 侧在 `setup_data()`、
-  stat 侧在 `ggcore.stat._has_flipped_aes()`（M1-7 / M1-8 都已接上）；横向柱状图
-  现在端到端可用（`stat_count` 在翻转后的 `x` 上计数）。
+- 横向（`orientation = "y"`）的 `flipped_aes` 检测：stat 侧在
+  `ggcore.stat._has_flipped_aes()`，geom 侧在 `GeomRenderer.setup_params()`
+  （`Geom$setup_params()`），后者**先读 stat 产出的 `data$flipped_aes` 列**
+  （上游 `has_flipped_aes()` 的第一分支），读不到才按 `orientation` / 映射前的
+  列类型推断。横向柱状图（`geom_bar` / `stat_count`）、横向箱线图、横向
+  `geom_area`、横向 `geom_histogram`（`aes(y = <连续>)`，断点取 y 标度）都已
+  端到端可用；横向 `geom_smooth` 见 `docs/notes/stat.md` §5（`fullrange` 的
+  `xseq` 仍取 x 标度，与 R 一致）。
 - `GeomBoxplot` 的 `outliers` / `varwidth` 分支：M1-8 的 `stat_boxplot` 已产出
   `outliers`（`str` 文本）与 `relvarwidth`，geom 的 `setup_data()` 直接消费。
 - `geom_*(x = 1, y = 2)` 这种常量美学参数会在 `finish` 里 materialize 成列

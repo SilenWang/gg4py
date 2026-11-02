@@ -4,9 +4,12 @@
 
 - 每个 case 在 Python 侧重放整条流水线，与 `ggplot_build(p)$data[[1]]` 逐列对拍
   （列名、列序、kind、逐值、NA）；
-- `stat_smooth` 的 R 侧显式用 `loess.control(surface = "direct", statistics =
-  "exact")`：gg4py 实现的是 direct 口径，R 默认的 `surface = "interpolate"` 是
-  kd 树插值（C 实现），见 `docs/notes/stat.md`「已知差异」；
+- `stat_smooth` 的 loess 两种面都在夹具里：`smooth_se` / `smooth_no_se` /
+  `smooth_span` / `smooth_n` / `smooth_group` 的 R 侧显式用
+  `loess.control(surface = "direct", statistics = "exact", trace.hat = "exact")`；
+  `smooth_default` / `smooth_horizontal_fullrange` 走 R 的默认口径
+  （`surface = "interpolate"`，kd 树 + Hermite 插值）。两侧的 `method.args`
+  写法一一对应，见 `docs/notes/stat.md`；
 - `stat_boxplot` 的 `outliers` 在 R 里是 list 列，`ColumnTable` 没有 list kind，
   gg4py 用 `"c(1, 2)"` 文本表达：这一列按「解析出来的数值列表」比较。
 """
@@ -42,6 +45,7 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
     "bin_pad": frozenset({"fill"}),
     "bin_group": frozenset({"fill"}),
     "bin_density": frozenset({"fill"}),
+    "bin_horizontal": frozenset({"fill"}),
     "count_default": frozenset({"fill"}),
     "count_horizontal": frozenset({"fill"}),
     "count_prop": frozenset({"fill"}),
@@ -57,6 +61,8 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
     "smooth_n": frozenset({"fill"}),
     "smooth_lm": frozenset({"fill"}),
     "smooth_group": frozenset({"fill"}),
+    "smooth_default": frozenset({"fill"}),
+    "smooth_horizontal_fullrange": frozenset({"fill"}),
     "align_unaligned": frozenset({"fill"}),
     "align_duplicate": frozenset({"fill"}),
     "align_negative": frozenset({"fill"}),
@@ -147,6 +153,11 @@ SMOOTH_GROUP = {
     "y": [0.1, 0.2, 0.35, 0.4, 0.55, 0.6, 0.7, 0.8, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
     "g": ["a"] * 8 + ["b"] * 8,
 }
+#: 横向 smooth 的 fullrange case：x 是响应（0..10）、y 是预测变量（1..12）。
+SMOOTH_HORIZONTAL = {
+    "v": list(np.linspace(0.0, 10.0, 12)),
+    "cls": list(range(1, 13)),
+}
 
 
 def _table(values: dict[str, list]) -> ColumnTable:
@@ -170,7 +181,19 @@ def _hist(data: dict[str, list], **params) -> ColumnTable:
 
 
 def _loess(**params):
-    return {"method": "loess", "formula": "y ~ x", **params}
+    # R 侧的 `smooth_control`：显式走 direct 面（statistics / trace.hat 都是 exact）。
+    return {
+        "method": "loess",
+        "formula": "y ~ x",
+        "method_args": {
+            "control": {
+                "surface": "direct",
+                "statistics": "exact",
+                "trace.hat": "exact",
+            }
+        },
+        **params,
+    }
 
 
 BUILDERS = {
@@ -192,6 +215,9 @@ BUILDERS = {
     ),
     "bin_density": lambda: (
         ggplot(_hist(BIN), aes(x="x", y=after_stat("density"))) + registry.geom_histogram(bins=4)
+    ),
+    "bin_horizontal": lambda: (
+        ggplot(_hist(BIN), aes(y="x")) + registry.geom_histogram(binwidth=1, boundary=0)
     ),
     "count_default": lambda: ggplot(_table(COUNT), aes(x="cls", fill="grp")) + registry.geom_bar(),
     "count_horizontal": lambda: ggplot(_table(COUNT_H), aes(y="cls")) + registry.geom_bar(),
@@ -232,6 +258,14 @@ BUILDERS = {
     "smooth_group": lambda: (
         ggplot(_table(SMOOTH_GROUP), aes(x="x", y="y", colour="g"))
         + registry.geom_smooth(**_loess(se=False))
+    ),
+    "smooth_default": lambda: (
+        # 与 R 侧一致：不传 method.args（R 默认 surface="interpolate"）。
+        ggplot(_table(SMOOTH), aes(x="x", y="y")) + registry.geom_smooth()
+    ),
+    "smooth_horizontal_fullrange": lambda: (
+        ggplot(_table(SMOOTH_HORIZONTAL), aes(x="v", y="cls"))
+        + registry.geom_smooth(orientation="y", fullrange=True)
     ),
     "align_unaligned": lambda: (
         ggplot(_table(ALIGN), aes(x="x", y="y", fill="g")) + registry.geom_area(position="stack")
