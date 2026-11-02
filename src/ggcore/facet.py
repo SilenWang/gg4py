@@ -27,6 +27,7 @@ import ast
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 
 import numpy as np
@@ -36,6 +37,7 @@ from ggcore.components import Facet
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import eval_aes, parse_aes
 from ggcore.gtable import CellBox, GTable, Placement, gtable
+from ggcore.scales import ScaleSet
 from ggcore.theme import (
     ElementBlank,
     ElementText,
@@ -57,6 +59,8 @@ __all__ = [
     "FacetVar",
     "FacetWrap",
     "PanelMap",
+    "PanelScaleSet",
+    "PanelScales",
     "facet_from_component",
     "facet_table",
 ]
@@ -395,6 +399,129 @@ class PanelMap:
         return int(self.panels.size)
 
 
+class PanelScaleSet(ScaleSet):
+    """一个面板看到的标度：位置走该面板自己的槽位，其余共享全局标度。
+
+    上游 `layout$get_scales(panel)` 返回的就是这种「位置按面板分、非位置共用」
+    的组合。继承 :class:`ggcore.scales.ScaleSet` 只是为了满足坐标系的
+    `isinstance` 检查；所有查询方法都转发给两个真实对象，本类自己不持有标度。
+    """
+
+    def __init__(
+        self,
+        shared: ScaleSet,
+        x_set: ScaleSet | None = None,
+        y_set: ScaleSet | None = None,
+    ) -> None:
+        super().__init__({})
+        self.shared = shared
+        self.x_set = x_set
+        self.y_set = y_set
+
+    def _target(self, aesthetic: str) -> ScaleSet:
+        if aesthetic in ("x", "xmin", "xmax", "xend") and self.x_set is not None:
+            return self.x_set
+        if aesthetic in ("y", "ymin", "ymax", "yend") and self.y_set is not None:
+            return self.y_set
+        return self.shared
+
+    # -- 流水线入口 -------------------------------------------------------
+
+    def train(self, values: Any, aesthetic: str) -> None:
+        self._target(aesthetic).train(values, aesthetic)
+
+    def transform(self, values: Any, aesthetic: str) -> Any:
+        return self._target(aesthetic).transform(values, aesthetic)
+
+    def transform_table(self, table: ColumnTable) -> ColumnTable:
+        if table.nrows == 0:
+            return table
+        return ColumnTable(
+            [
+                (name, self._target(name).transform(column, name))
+                for name, column in zip(table.names, table.columns(), strict=True)
+            ],
+            nrows=table.nrows,
+        )
+
+    def map(self, values: Any, aesthetic: str) -> Any:
+        return self._target(aesthetic).map(values, aesthetic)
+
+    # -- 查询 -------------------------------------------------------------
+
+    def scale(self, aesthetic: str) -> Any:
+        return self._target(aesthetic).scale(aesthetic)
+
+    def limits(self, aesthetic: str) -> Any:
+        return self._target(aesthetic).limits(aesthetic)
+
+    def expanded_limits(self, aesthetic: str) -> Any:
+        return self._target(aesthetic).expanded_limits(aesthetic)
+
+    def breaks(self, aesthetic: str) -> tuple[Any, ...]:
+        return self._target(aesthetic).breaks(aesthetic)
+
+    def labels(self, aesthetic: str) -> tuple[Any, ...]:
+        return self._target(aesthetic).labels(aesthetic)
+
+    def levels(self, aesthetic: str) -> tuple[str, ...]:
+        return self._target(aesthetic).levels(aesthetic)
+
+    @property
+    def trained(self) -> Mapping[str, tuple[str, ...]]:
+        out = dict(self.shared.trained)
+        for part in (self.x_set, self.y_set):
+            if part is not None:
+                out.update(part.trained)
+        return MappingProxyType(out)
+
+    def aesthetics(self) -> tuple[str, ...]:
+        names = list(self.shared.aesthetics())
+        for part in (self.x_set, self.y_set):
+            if part is not None:
+                for name in part.aesthetics():
+                    if name not in names:
+                        names.append(name)
+        return tuple(names)
+
+
+@dataclass(frozen=True, slots=True)
+class PanelScales:
+    """整张图的面板标度池：共享集 + 每面板（或每行/每列）的位置标度。"""
+
+    layout: FacetLayout
+    shared: ScaleSet
+    x_sets: tuple[ScaleSet, ...] | None
+    y_sets: tuple[ScaleSet, ...] | None
+
+    @classmethod
+    def create(
+        cls,
+        layout: FacetLayout,
+        scales: ScaleSet | Mapping[str, Any],
+        free: tuple[bool, bool],
+    ) -> PanelScales:
+        shared = scales if isinstance(scales, ScaleSet) else ScaleSet(scales)
+        x_sets = None
+        y_sets = None
+        if free[0]:
+            count = int(layout.table.column("SCALE_X").values.max())
+            x_sets = tuple(ScaleSet(shared.specs) for _ in range(count))
+        if free[1]:
+            count = int(layout.table.column("SCALE_Y").values.max())
+            y_sets = tuple(ScaleSet(shared.specs) for _ in range(count))
+        return cls(layout=layout, shared=shared, x_sets=x_sets, y_sets=y_sets)
+
+    def for_panel(self, panel: int) -> PanelScaleSet:
+        x_set = None
+        y_set = None
+        if self.x_sets is not None:
+            x_set = self.x_sets[self.layout.scale_x_of(panel) - 1]
+        if self.y_sets is not None:
+            y_set = self.y_sets[self.layout.scale_y_of(panel) - 1]
+        return PanelScaleSet(self.shared, x_set, y_set)
+
+
 @dataclass(frozen=True, slots=True)
 class FacetBase:
     """分面公共部分：变量、free 轴、drop、labeller。"""
@@ -434,6 +561,19 @@ class FacetBase:
             )
         missing = _missing_vars(data, self.facet_vars)
         return _map_with_replication(data, layout, self.facet_vars, missing)
+
+    def init_scales(
+        self,
+        layout: FacetLayout,
+        scales: ScaleSet | Mapping[str, Any],
+        free: tuple[bool, bool] | None = None,
+    ) -> PanelScales:
+        """面板标度池（上游 `Facet$init_scales()`）。
+
+        `free` 不给时用本对象的 `free`；固定刻度的轴共用 `shared`，
+        自由刻度的轴各槽位一份 `ScaleSet`（fresh，未训练）。
+        """
+        return PanelScales.create(layout, scales, self.free if free is None else free)
 
     # -- 标签 ---------------------------------------------------------------
 

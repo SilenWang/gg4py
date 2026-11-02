@@ -1570,6 +1570,11 @@ class ScaleSet:
         """当前有标度的美学（解析顺序 = 创建顺序）。"""
         return tuple(self._all_scales())
 
+    @property
+    def specs(self) -> Mapping[str, Scale]:
+        """构造这张图时的显式标度组件（只读）；分面复制面板标度要用它。"""
+        return MappingProxyType(dict(self._specs))
+
     def _all_scales(self) -> dict[str, ScaleBase]:
         merged: dict[str, ScaleBase] = {}
         for name, scale in self._explicit.items():

@@ -323,6 +323,20 @@ def test_facet_grid_fixed_scales_use_one_range_everywhere() -> None:
     assert all(panel.scales.x_set is None and panel.scales.y_set is None for panel in build.panels)
 
 
+def test_init_scales_allocates_one_slot_per_row_or_column() -> None:
+    free_plot = grid_plot(scales="free")
+    free = facet_from_component(free_plot.facet)
+    layout = free.compute_layout(DATA)
+    pool = free.init_scales(layout, free_plot.scales)
+    assert pool.x_sets is not None and len(pool.x_sets) == 2
+    assert pool.y_sets is not None and len(pool.y_sets) == 2
+    assert pool.for_panel(1).x_set is pool.for_panel(3).x_set
+    assert pool.for_panel(1).y_set is pool.for_panel(2).y_set
+    fixed = facet_from_component(grid_plot().facet)
+    fixed_pool = fixed.init_scales(fixed.compute_layout(DATA), {})
+    assert fixed_pool.x_sets is None and fixed_pool.y_sets is None
+
+
 def test_facet_grid_one_sided_layouts_keep_a_single_row_or_column() -> None:
     cols_only = build_plot(base_plot() + registry.facet_grid(cols=("a",)))
     assert (cols_only.layout.nrow, cols_only.layout.ncol) == (1, 2)

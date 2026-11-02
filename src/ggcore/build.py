@@ -60,7 +60,13 @@ from ggcore.coord import (
 )
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import NO_GROUP, compute_groups, eval_aes, eval_after_stat, parse_aes
-from ggcore.facet import FacetBase, FacetLayout, facet_from_component
+from ggcore.facet import (
+    FacetBase,
+    FacetLayout,
+    PanelScales,
+    PanelScaleSet,
+    facet_from_component,
+)
 from ggcore.layer import Layer
 from ggcore.registry import required_aes_groups
 from ggcore.scales import ScaleSet
@@ -957,121 +963,6 @@ def _assemble(stages: _Stages, scales: ScaleSet) -> LayerBuild:
 # ---------------------------------------------------------------------------
 
 
-class PanelScaleSet(ScaleSet):
-    """一个面板看到的标度：位置走该面板自己的槽位，其余共享全局标度。
-
-    上游 `layout$get_scales(panel)` 返回的就是这种「位置按面板分、非位置共用」
-    的组合。继承 :class:`ScaleSet` 只是为了满足坐标系的 `isinstance` 检查；
-    所有查询方法都转发给下面两个真实对象，本类自己不持有标度。
-    """
-
-    def __init__(
-        self,
-        shared: ScaleSet,
-        x_set: ScaleSet | None = None,
-        y_set: ScaleSet | None = None,
-    ) -> None:
-        super().__init__({})
-        self.shared = shared
-        self.x_set = x_set
-        self.y_set = y_set
-
-    def _target(self, aesthetic: str) -> ScaleSet:
-        if aesthetic in ("x", "xmin", "xmax", "xend") and self.x_set is not None:
-            return self.x_set
-        if aesthetic in ("y", "ymin", "ymax", "yend") and self.y_set is not None:
-            return self.y_set
-        return self.shared
-
-    # -- 流水线入口 -------------------------------------------------------
-
-    def train(self, values: Any, aesthetic: str) -> None:
-        self._target(aesthetic).train(values, aesthetic)
-
-    def transform(self, values: Any, aesthetic: str) -> Any:
-        return self._target(aesthetic).transform(values, aesthetic)
-
-    def transform_table(self, table: ColumnTable) -> ColumnTable:
-        if table.nrows == 0:
-            return table
-        return ColumnTable(
-            [(name, _as_column(self.transform(column, name))) for name, column in _items(table)],
-            nrows=table.nrows,
-        )
-
-    def map(self, values: Any, aesthetic: str) -> Any:
-        return self._target(aesthetic).map(values, aesthetic)
-
-    # -- 查询 -------------------------------------------------------------
-
-    def scale(self, aesthetic: str) -> Any:
-        return self._target(aesthetic).scale(aesthetic)
-
-    def limits(self, aesthetic: str) -> Any:
-        return self._target(aesthetic).limits(aesthetic)
-
-    def expanded_limits(self, aesthetic: str) -> Any:
-        return self._target(aesthetic).expanded_limits(aesthetic)
-
-    def breaks(self, aesthetic: str) -> tuple[Any, ...]:
-        return self._target(aesthetic).breaks(aesthetic)
-
-    def labels(self, aesthetic: str) -> tuple[Any, ...]:
-        return self._target(aesthetic).labels(aesthetic)
-
-    def levels(self, aesthetic: str) -> tuple[str, ...]:
-        return self._target(aesthetic).levels(aesthetic)
-
-    @property
-    def trained(self) -> Mapping[str, tuple[str, ...]]:
-        out = dict(self.shared.trained)
-        for part in (self.x_set, self.y_set):
-            if part is not None:
-                out.update(part.trained)
-        return MappingProxyType(out)
-
-    def aesthetics(self) -> tuple[str, ...]:
-        names = list(self.shared.aesthetics())
-        for part in (self.x_set, self.y_set):
-            if part is not None:
-                for name in part.aesthetics():
-                    if name not in names:
-                        names.append(name)
-        return tuple(names)
-
-
-@dataclass(frozen=True, slots=True)
-class _PanelScales:
-    """整张图的面板标度池：共享集 + 每面板（或每行/每列）的位置标度。"""
-
-    layout: FacetLayout
-    shared: ScaleSet
-    x_sets: tuple[ScaleSet, ...] | None
-    y_sets: tuple[ScaleSet, ...] | None
-
-    @classmethod
-    def create(cls, plot: ggplot, layout: FacetLayout, facet: FacetBase) -> _PanelScales:
-        shared = ScaleSet(plot.scales)
-        x_sets = None
-        y_sets = None
-        if facet.free_x:
-            count = int(layout.table.column("SCALE_X").values.max())
-            x_sets = tuple(ScaleSet(plot.scales) for _ in range(count))
-        if facet.free_y:
-            count = int(layout.table.column("SCALE_Y").values.max())
-            y_sets = tuple(ScaleSet(plot.scales) for _ in range(count))
-        return cls(layout=layout, shared=shared, x_sets=x_sets, y_sets=y_sets)
-
-    def for_panel(self, panel: int) -> PanelScaleSet:
-        x_set = None
-        y_set = None
-        if self.x_sets is not None:
-            x_set = self.x_sets[self.layout.scale_x_of(panel) - 1]
-        if self.y_sets is not None:
-            y_set = self.y_sets[self.layout.scale_y_of(panel) - 1]
-        return PanelScaleSet(self.shared, x_set, y_set)
-
-
 def _slice_table(table: ColumnTable, rows: np.ndarray) -> ColumnTable:
     """按行号取子表（保留 kind / levels / na_mask）。"""
     return ColumnTable([(name, _gather_column(column, rows)) for name, column in _items(table)])
@@ -1119,7 +1010,7 @@ def _restore_order(table: ColumnTable, order: np.ndarray) -> ColumnTable:
 
 
 def _transform_panels(
-    scales: _PanelScales,
+    scales: PanelScales,
     aesthetics: Aesthetics,
     panels: np.ndarray,
 ) -> Aesthetics:
@@ -1138,7 +1029,7 @@ def _transform_panels(
 
 
 def _map_position_panels(
-    scales: _PanelScales,
+    scales: PanelScales,
     aesthetics: Aesthetics,
     panels: np.ndarray,
 ) -> Aesthetics:
@@ -1192,7 +1083,7 @@ def _compute_panel_stages(
 
 
 def _map_scales_panels(
-    scales: _PanelScales,
+    scales: PanelScales,
     positioned: ColumnTable,
 ) -> tuple[ColumnTable, dict[int, ColumnTable]]:
     """阶段 5 按面板映射，再按原行序拼回；同时留下每面板的 scaled 表。"""
@@ -1323,7 +1214,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         else _slice_table(table, mapping.rows)
         for table, mapping in zip(tables, maps, strict=True)
     ]
-    scales = _PanelScales.create(plot, layout, facet)
+    scales = facet.init_scales(layout, plot.scales)
 
     raw = [
         compute_aesthetics(
