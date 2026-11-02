@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ggcore.aes as aes
 import ggcore.components as components
+import ggcore.data as data
 import ggcore.grobs as grobs
 import ggcore.gtable as gtable
 import ggcore.layer as layer
@@ -30,6 +31,7 @@ __all__ = [
     "__version__",
     "aes",
     "components",
+    "data",
     "grobs",
     "gtable",
     "layer",
@@ -39,5 +41,4 @@ __all__ = [
     "units",
     "viewport",
 ]
-
 __version__ = "0.1.0"
