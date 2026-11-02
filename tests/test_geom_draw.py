@@ -151,6 +151,42 @@ def test_setup_params_detects_flipped_only_where_r_does() -> None:
     )
 
 
+def test_setup_params_prefers_the_flipped_aes_column_from_the_stat() -> None:
+    """`has_flipped_aes()` 的第一分支：`data$flipped_aes` 优先于列类型推断。
+
+    横向 `geom_histogram()` 的 stat 产出 `flipped_aes = TRUE`，但映射前的
+    `raw` 里只有连续的 y（推断不出横向）——geom 必须消费 stat 的结论，否则
+    `setup_data()` 会按竖向把长度轴与类别轴对调。
+    """
+    # 映射前的美学表：只有连续的 y，按列类型推断只会得到「竖向」。
+    raw = _table(y=[1.0, 1.0, 2.0, 2.0])
+    # stat 之后的数据：带 flipped_aes 列（stat_bin 的横向输出），x/y 都连续。
+    stat_table = ColumnTable(
+        [
+            ("x", Column("float", np.array([2.0, 1.0]))),
+            ("y", Column("float", np.array([1.5, 2.5]))),
+            ("flipped_aes", Column("bool", np.array([True, True]))),
+        ]
+    )
+    for geom in (registry.geom_histogram(), registry.geom_bar(), registry.geom_boxplot()):
+        resolved = geom.geom.setup_params(stat_table, {}, raw=raw)
+        assert resolved["flipped_aes"] is True
+
+    # 反过来：stat 说竖向时不能被 raw 的离散类型带偏。
+    vertical = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0]))),
+            ("y", Column("float", np.array([2.0, 2.0]))),
+            ("flipped_aes", Column("bool", np.array([False, False]))),
+        ]
+    )
+    discrete_raw = _table(x=["a", "b"], y=[1.0, 2.0])
+    assert (
+        registry.geom_col().geom.setup_params(vertical, {}, raw=discrete_raw)["flipped_aes"]
+        is False
+    )
+
+
 def test_handle_na_warns_with_r_wording_and_count() -> None:
     source = ColumnTable(
         [("x", Column("float", np.array([0.1, 0.3, 0.5]))), ("y", _column([0.2, 0.0, 0.6], [1]))]

@@ -37,6 +37,7 @@ import numpy as np
 
 from ggcore.build import BuildError, BuildWarning, _column_values, _items
 from ggcore.data import Column, ColumnTable
+from ggcore.loess import INTERPOLATE_CELL, loess_fit, loess_interpolate
 
 __all__ = [
     "IMPLEMENTED_STATS",
@@ -740,7 +741,9 @@ def _stat_bin(
         center=_optional_float(params.get("center"), "center"),
         boundary=_optional_float(params.get("boundary"), "boundary"),
         closed=closed,
-        x_range=_dimension(scales, "x", values),
+        # 上游 `StatBin$compute_group()`：`compute_bins(data[[x]], scales[[x]])`，
+        # `x <- flipped_names(flipped_aes)$x` —— 横向 histogram 的断点取自 y 轴。
+        x_range=_dimension(scales, "y" if flipped else "x", values),
     )
     widths = np.diff(breaks_obj.breaks)
     centres = (breaks_obj.breaks[:-1] + breaks_obj.breaks[1:]) / 2.0
@@ -943,6 +946,157 @@ def _format_number(value: float) -> str:
 # stat_smooth（loess / lm）
 # ---------------------------------------------------------------------------
 
+#: R `loess.control()` 的缺省值（gg4py 只实现其中两种组合，见 `_loess_control`）。
+_LOESS_CONTROL_DEFAULTS: Mapping[str, Any] = {
+    "surface": "interpolate",
+    "statistics": "approximate",
+    "trace.hat": "exact",
+    "cell": INTERPOLATE_CELL,
+}
+
+#: 两种「面 + 统计量」组合，其余组合 R 有、gg4py 尚未实现。
+_LOESS_IMPLEMENTED: Mapping[str, tuple[str, str]] = {
+    "interpolate": ("approximate", "exact"),
+    "direct": ("exact", "exact"),
+}
+
+
+def _loess_control(params: Mapping[str, Any]) -> dict[str, Any]:
+    """解析 `method.args`（R 的 `loess(...)` 参数）里的 loess control。
+
+    R 的写法是 `method.args = list(control = loess.control(surface = "direct",
+    statistics = "exact", trace.hat = "exact"))`；gg4py 用同名字典表达
+    （`loess.control()` 在 Python 里没有对应对象）。
+
+    - 缺省 = R 缺省：`surface = "interpolate"`、`statistics = "approximate"`、
+      `trace.hat = "exact"`、`cell = 0.2`；
+    - `surface = "direct"` 走 `ggcore.loess.loess_fit()`（逐点局域回归），要求
+      `statistics = "exact"`、`trace.hat = "exact"`（既有实现的口径）；
+    - `surface = "interpolate"` 走 k-d 树 + Hermite 插值，只实现 R 缺省的
+      `statistics = "approximate"`（`trace.hat = "exact"`）。
+    """
+    raw_args = params.get("method_args")
+    if raw_args is None:
+        raw_args = {}
+    if not isinstance(raw_args, Mapping):
+        raise BuildError(
+            "stat_smooth 的 method_args 必须是映射"
+            f"（对应 R 的 method.args = list(...)），收到 {raw_args!r}"
+        )
+    allowed = {"control", "degree", "span"}
+    unknown = sorted(str(key) for key in raw_args if key not in allowed)
+    if unknown:
+        raise BuildError(
+            f"stat_smooth 的 method_args 只支持 control / degree / span，收到 {', '.join(unknown)}"
+        )
+    control = dict(_LOESS_CONTROL_DEFAULTS)
+    raw_control = raw_args.get("control")
+    if raw_control is not None:
+        if not isinstance(raw_control, Mapping):
+            raise BuildError(
+                'stat_smooth 的 method_args["control"] 必须是映射'
+                "（R 的 loess.control(...)），"
+                f"收到 {raw_control!r}"
+            )
+        unknown = sorted(
+            str(key)
+            for key in raw_control
+            if key not in _LOESS_CONTROL_DEFAULTS and key not in ("iterations", "iterTrace")
+        )
+        if unknown:
+            raise BuildError(
+                "loess control 只支持 surface / statistics / trace.hat / cell，"
+                f"收到 {', '.join(unknown)}"
+            )
+        iterations = raw_control.get("iterations", 1)
+        if int(iterations) != 1:
+            raise BuildError(
+                f"loess 的稳健迭代（iterations = {iterations!r}）尚未实现；"
+                "只支持 family = 'gaussian'（iterations = 1）"
+            )
+        if raw_control.get("iterTrace"):
+            raise BuildError("loess 的 iterTrace 尚未实现（只支持 iterations = 1）")
+        for key in ("surface", "statistics", "trace.hat"):
+            if key in raw_control:
+                control[key] = str(raw_control[key])
+        if "cell" in raw_control:
+            control["cell"] = float(raw_control["cell"])
+    surface = control["surface"]
+    if surface not in _LOESS_IMPLEMENTED:
+        raise BuildError(f"loess 的 surface 只能是 'interpolate' / 'direct'，收到 {surface!r}")
+    wanted = (control["statistics"], control["trace.hat"])
+    if wanted != _LOESS_IMPLEMENTED[surface]:
+        expected = _LOESS_IMPLEMENTED[surface]
+        raise BuildError(
+            f"gg4py 的 loess surface = {surface!r} 只实现 statistics = "
+            f"{expected[0]!r}、trace.hat = {expected[1]!r}（上游该面还有其它组合，"
+            f"尚未实现）；收到 statistics = {wanted[0]!r}、trace.hat = {wanted[1]!r}"
+        )
+    cell = float(control["cell"])
+    if not (0 < cell <= 1):
+        raise BuildError(f"loess 的 cell 必须在 (0, 1] 内，收到 {cell!r}")
+    control["cell"] = cell
+    if "degree" in raw_args:
+        # R 只有 `method.args` 能传 loess 的 `degree`（geom_smooth 没有该参数）。
+        control["degree"] = raw_args["degree"]
+    return control
+
+
+def _loess_prediction(
+    x: np.ndarray,
+    y: np.ndarray,
+    weight: np.ndarray,
+    xseq: np.ndarray,
+    *,
+    span: float,
+    degree: int,
+    level: float,
+    se: bool,
+    control: Mapping[str, Any],
+) -> list[tuple[str, Column]]:
+    """`method = "loess"` 的预测列（x / y / ymin / ymax / se）。
+
+    `surface = "interpolate"`（R 默认）在数据范围外给 NA（R 的
+    `predLoess()` 只对 `inside` 的点求值）；`surface = "direct"` 可外推。
+    """
+    if control["surface"] == "interpolate":
+        result = loess_interpolate(
+            x,
+            y,
+            weight,
+            span=span,
+            degree=degree,
+            newx=xseq,
+            cell=float(control["cell"]),
+            se=se,
+        )
+        fit = result["fit"]
+        ses = result["se"]
+        df = result["df"]
+    else:
+        fit, kernel = loess_fit(x, y, weight, span=span, degree=degree, newx=xseq)
+        if se:
+            scale, df = _loess_scale(x, y, weight, span=span, degree=degree)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                ses = scale * np.sqrt(np.sum(kernel**2 / weight, axis=1))
+        else:
+            ses, df = None, float("nan")
+    prediction: list[tuple[str, Column]] = [
+        ("x", _float_column(xseq)),
+        ("y", _float_column(fit)),
+    ]
+    if se:
+        assert ses is not None
+        half = t_quantile(level / 2.0 + 0.5, df) * ses
+        prediction.extend(
+            [
+                ("ymin", _float_column(fit - half)),
+                ("ymax", _float_column(fit + half)),
+                ("se", _float_column(ses)),
+            ]
+        )
+    return prediction
+
 
 def _stat_smooth(
     table: ColumnTable,
@@ -974,7 +1128,10 @@ def _stat_smooth(
     span = float(params.get("span", 0.75))
     if not (0 < span <= 1):
         raise BuildError(f"stat_smooth 的 span 必须在 (0, 1] 内，收到 {span!r}")
-    degree = int(params.get("degree", 2))
+    control = _loess_control(params)
+    # 上游 `StatSmooth$setup_params()`：`method.args$span` 恒被 stat 的 span 覆盖，
+    # `degree` 则只能从 `method.args` 传（loess 的形参，geom_smooth 没有 degree）。
+    degree = int(control.pop("degree", params.get("degree", 2)))
     if degree not in (0, 1, 2):
         raise BuildError(f"stat_smooth 的 degree 只能是 0 / 1 / 2，收到 {degree!r}")
     level = float(params.get("level", 0.95))
@@ -982,11 +1139,6 @@ def _stat_smooth(
         raise BuildError(f"stat_smooth 的 level 必须在 (0, 1) 内，收到 {level!r}")
     fullrange = bool(params.get("fullrange", False))
     xseq_param = params.get("xseq")
-    if params.get("method.args"):
-        raise BuildError(
-            'stat_smooth 的 method.args 尚未支持（loess 恒为 surface="direct"、'
-            'statistics="exact" 口径，见 docs/notes/stat.md）'
-        )
     work = _flip_table(table) if flipped else table
 
     def group_fn(sub: ColumnTable, rows: np.ndarray) -> list[tuple[str, Column]] | None:
@@ -1004,27 +1156,25 @@ def _stat_smooth(
         if xseq_param is not None:
             xseq = np.asarray(xseq_param, dtype=np.float64)
         elif fullrange:
+            # 上游 `StatSmooth$compute_group()`：`scales$x$dimension()` —— 取的
+            # 是**x 标度**，横向（flipped）时也不换成 y 轴（R 4.0.3 如此，见
+            # `tests/test_stat_r_parity.py` 的 `smooth_horizontal_fullrange`）。
             low, high = _dimension(scales, "x", x)
             xseq = np.linspace(low, high, n)
         else:
             xseq = np.linspace(float(np.min(x)), float(np.max(x)), n)
         if method == "loess":
-            fit, kernel = loess_fit(x, y, weight, span=span, degree=degree, newx=xseq)
-            prediction: list[tuple[str, Column]] = [
-                ("x", _float_column(xseq)),
-                ("y", _float_column(fit)),
-            ]
-            if se:
-                scale, df = _loess_scale(x, y, weight, span=span, degree=degree)
-                ses = scale * np.sqrt(np.sum(kernel**2 / weight, axis=1))
-                half = t_quantile(level / 2.0 + 0.5, df) * ses
-                prediction.extend(
-                    [
-                        ("ymin", _float_column(fit - half)),
-                        ("ymax", _float_column(fit + half)),
-                        ("se", _float_column(ses)),
-                    ]
-                )
+            prediction = _loess_prediction(
+                x,
+                y,
+                weight,
+                xseq,
+                span=span,
+                degree=degree,
+                level=level,
+                se=se,
+                control=control,
+            )
         else:
             prediction = _lm_prediction(x, y, weight, xseq, se=se, level=level)
         prediction.append(("flipped_aes", _bool_column(np.full(xseq.size, flipped))))
@@ -1099,58 +1249,8 @@ def _loess_scale(
     return scale, df
 
 
-def loess_fit(
-    x: np.ndarray,
-    y: np.ndarray,
-    weights: np.ndarray,
-    *,
-    span: float,
-    degree: int,
-    newx: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
-    """局域多项式回归（Cleveland 的 loess，"direct" 口径）。
-
-    返回 `(在 newx 上的拟合值, L)`，`L[j, i]` 是第 j 个预测点对第 i 个观测的
-    等效权重（`fit_j = Σ_i L[j,i] · y_i`）。权重函数是 tricube，邻域宽度取
-    `floor(span · n)` 个最近观测的距离；与 R 的 `loess(..., surface = "direct")`
-    逐值一致（见 `tests/test_stat_r_parity.py`）。
-    """
-    x = np.asarray(x, dtype=np.float64)
-    y = np.asarray(y, dtype=np.float64)
-    weights = np.asarray(weights, dtype=np.float64)
-    newx = np.asarray(newx, dtype=np.float64)
-    n = x.size
-    q = min(max(math.floor(span * n), 1), n)
-    fits = np.empty(newx.size, dtype=np.float64)
-    kernel = np.empty((newx.size, n), dtype=np.float64)
-    for j, point in enumerate(newx.tolist()):
-        distance = np.abs(x - point)
-        order = np.argsort(distance, kind="stable")
-        bandwidth = float(distance[order[q - 1]])
-        if bandwidth <= 0:
-            positive = distance[distance > 0]
-            bandwidth = float(positive.min()) if positive.size else 1.0
-        local = weights * _tricube(distance / bandwidth)
-        design = _design(x - point, degree)
-        weighted = design * local[:, None]
-        normal = design.T @ weighted
-        try:
-            solver = np.linalg.solve(normal, weighted.T)
-        except np.linalg.LinAlgError:
-            solver = np.linalg.pinv(normal) @ weighted.T
-        kernel[j] = solver[0]
-        fits[j] = float(solver[0] @ y)
-    return fits, kernel
-
-
-def _design(dx: np.ndarray, degree: int) -> np.ndarray:
-    """局域多项式的设计矩阵 `[1, dx, dx²]`（不缩放，与 R 的 C 实现一致）。"""
-    return np.vstack([dx**power for power in range(degree + 1)]).T
-
-
-def _tricube(u: np.ndarray) -> np.ndarray:
-    u = np.minimum(np.abs(u), 1.0)
-    return (1.0 - u**3) ** 3
+# `loess_fit()`（direct）与 `loess_interpolate()`（R 默认的 interpolate）都在
+# `ggcore.loess`；这里保留同名导出，`ggcore.stat.loess_fit` 是既有调用点。
 
 
 # ---------------------------------------------------------------------------

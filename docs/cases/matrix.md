@@ -4,7 +4,7 @@
 
 矩阵是**静态**覆盖视图（只由仓库内容决定）：行 = 族，列 = 特性标签，`—` = 该组合没有 case。运行时红绿与「差多少」在 `.cases-matrix/report.md`（`pixi run cases:matrix` 生成，不入库）。
 
-- 三文件 case：**20** 个（`plot.py` + `expected.svg|png` + `meta.toml`）
+- 三文件 case：**21** 个（`plot.py` + `expected.svg|png` + `meta.toml`）
 - 历史快照目录：**18** 个（`case.json`，M0-4 / M0-6，不进矩阵）
 
 ## 覆盖矩阵
@@ -17,7 +17,7 @@
 | `geom-bar` | `geom-bar-stacked` | `geom-bar-stacked` | — | — | — | — | — | — | — | — | — | `geom-bar-stacked` | — | — | — | `geom-bar-stacked` | — | — | — | — | — | `geom-bar-stacked` | — | — | — | — | — | — | — | — | — | — | 1 |
 | `geom-col` | `geom-col-basic`<br>`geom-col-identity` | `geom-col-identity` | — | `geom-col-basic`<br>`geom-col-identity` | — | — | — | — | — | — | — | — | `geom-col-basic`<br>`geom-col-identity` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
 | `geom-area` | `geom-area-identity`<br>`stat-area-align` | `stat-area-align` | — | — | — | — | — | — | — | — | — | — | `geom-area-identity`<br>`stat-area-align` | — | — | — | — | — | — | `stat-area-align` | — | `stat-area-align` | — | — | — | — | — | — | — | — | — | — | 2 |
-| `geom-histogram` | `geom-histogram-identity`<br>`stat-histogram-bin` | — | — | — | — | — | — | — | — | — | — | — | `geom-histogram-identity`<br>`stat-histogram-bin` | — | — | — | `geom-histogram-identity`<br>`stat-histogram-bin` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
+| `geom-histogram` | `geom-histogram-identity`<br>`stat-histogram-bin`<br>`stat-histogram-horizontal` | — | — | — | — | — | — | — | — | — | — | — | `geom-histogram-identity`<br>`stat-histogram-bin`<br>`stat-histogram-horizontal` | — | — | — | `geom-histogram-identity`<br>`stat-histogram-bin`<br>`stat-histogram-horizontal` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 3 |
 | `geom-boxplot` | `geom-boxplot-precomputed`<br>`stat-boxplot-stat` | — | — | — | — | — | — | — | — | — | — | — | `geom-boxplot-precomputed`<br>`stat-boxplot-stat` | — | — | — | — | `stat-boxplot-stat` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
 | `geom-violin` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `geom-smooth` | `geom-smooth-se`<br>`stat-smooth-loess` | — | — | — | — | `geom-smooth-se` | — | — | — | — | — | — | `geom-smooth-se`<br>`stat-smooth-loess` | — | — | — | — | — | `stat-smooth-loess` | — | — | — | — | — | — | — | — | — | — | — | — | — | 2 |
@@ -37,7 +37,7 @@
 | `annotation` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `guide` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `lab` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| **合计** | 17 | 6 | — | 7 | — | 1 | 1 | 1 | — | 1 | — | 2 | 13 | — | — | 1 | 2 | 1 | 1 | 1 | — | 2 | — | — | — | — | — | — | 1 | 1 | 1 | 1 | 20 |
+| **合计** | 18 | 6 | — | 7 | — | 1 | 1 | 1 | — | 1 | — | 2 | 14 | — | — | 1 | 3 | 1 | 1 | 1 | — | 2 | — | — | — | — | — | — | 1 | 1 | 1 | 1 | 21 |
 
 ## 覆盖缺口（786 个空位）
 
@@ -92,6 +92,7 @@
 | `stat-area-align` | `geom-area` | `aes-mapping`<br>`aes-grouping`<br>`stat-align`<br>`position-stack`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `stat-boxplot-stat` | `geom-boxplot` | `aes-mapping`<br>`stat-boxplot`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `stat-histogram-bin` | `geom-histogram` | `aes-mapping`<br>`stat-bin`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `stat-histogram-horizontal` | `geom-histogram` | `aes-mapping`<br>`stat-bin`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `stat-smooth-loess` | `geom-smooth` | `aes-mapping`<br>`stat-smooth`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-bold-italic` | `geom-text` | `font-face` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-emoji` | `geom-text` | `emoji-text` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
