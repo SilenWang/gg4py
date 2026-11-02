@@ -279,7 +279,7 @@ def _outlier_points(panel: Any, data: ColumnTable, flip: bool, across: np.ndarra
 def _outliers(data: ColumnTable, index: int) -> list[float]:
     """离群点列 → 该行的数值列表。
 
-    当前 `ColumnTable` 没有「列表列」这一 kind（M1-8 的 `stat_boxplot` 会补）；
+    当前 `ColumnTable` 没有「列表列」这一 kind（`stat_boxplot` 产 `c(…)` 文本）；
     绘制层接受三种写法：数值列（每行一个值）、`str` 列的 `1;2` / `c(1, 2)` /
     `[1, 2]` 分隔文本、以及缺失（没有离群点）。
     """

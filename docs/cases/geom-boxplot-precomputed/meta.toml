@@ -4,4 +4,4 @@ ci = true
 title = "boxplot：五数预计算"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "stat_boxplot 归 M1-8；这里用五数预计算的 identity 路径做端到端。"
+notes = "stat_boxplot 的端到端见 stat-boxplot-stat；本用例保留五数预计算的 identity 对照路径。"

@@ -13,8 +13,8 @@
 
 - `Aes` 是不可变映射（`Mapping` 协议），所以 `p + ...` 的克隆语义可以直接共享
   同一个实例，不必深拷贝；
-- `after_stat(expr)` 只打标记（:class:`AfterStat`），表达式原样留存，等 M1-8
-  的 stat 产出之后再由 `ggcore.eval.eval_after_stat` 求值；
+- `after_stat(expr)` 只打标记（:class:`AfterStat`），表达式原样留存，等 `ggcore.stat`
+  产出之后再由 `ggcore.eval.eval_after_stat` 求值；
 - :class:`AesSpec` 只是**解析结果的数据容器**（语法树 + 引用到的列名 + 阶段），
   由 `ggcore.eval.parse_aes` 产出；本模块仍然没有 `eval` / `exec`，也不在运行时
   import `ast`（只有类型标注用到）；
@@ -248,7 +248,7 @@ def after_stat(expr: Any) -> AfterStat:
     """标记「这个美学取 stat 的计算结果」，例如 `aes(y=after_stat("count"))`。
 
     只打标记，不解析、不求值；M1-2 的 `ggcore.eval.parse_aes` 负责解析，
-    `eval_after_stat(values)` 负责在 stat 产出之后求值（真正的 stat 是 M1-8）。
+    `eval_after_stat(values)` 负责在 stat 产出之后求值（stat 在 `ggcore.stat`）。
     """
     return AfterStat(expr)
 

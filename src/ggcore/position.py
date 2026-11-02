@@ -341,6 +341,13 @@ def _collide_stack(table: ColumnTable, params: Mapping[str, Any], *, fill: bool)
 
     ymin = np.zeros(nrows, dtype=np.float64)
     ymax = np.zeros(nrows, dtype=np.float64)
+    # 上游 `pos_stack()`：输入行里 ymax < ymin（面积/ribbon 的负段）时输出保持这个
+    # 朝向（max_is_lower），y 仍取 pmax（vjust = 1）。
+    if "ymin" in frame and "ymax" in frame:
+        with np.errstate(invalid="ignore"):
+            max_is_lower = frame.values("ymax") < frame.values("ymin")
+    else:
+        max_is_lower = np.zeros(nrows, dtype=bool)
     for index in dict.fromkeys(keys):
         rows = np.array([i for i, key in enumerate(keys) if key == index], dtype=np.int64)
         # collide(reverse = params$reverse)：reverse=FALSE 时按 -group（第一个
@@ -365,9 +372,16 @@ def _collide_stack(table: ColumnTable, params: Mapping[str, Any], *, fill: bool)
     # 上游在**翻转坐标里**写 ymin/ymax/y，最后才 `flip_data()` 回原朝向：横向
     # 时这三个名字就是 x 族（长度轴），累计值因此落到 xmin/xmax/x 上，而 y 族
     # （类别轴）原样保留。先 flip 回来再 set 会把累计值写进类别轴（SIL-692）。
-    frame.set("ymin", ymin)
-    frame.set("ymax", ymax)
+    frame.set("ymin", np.where(max_is_lower, ymax, ymin))
+    frame.set("ymax", np.where(max_is_lower, ymin, ymax))
     frame.set("y", (1.0 - vjust) * ymin + vjust * ymax)
+    # 上游 `collide()`：跑累加的层一定有区间列。geom 已经给了 xmin/xmax（柱）就
+    # 原样保留；面积没有（`GeomArea$setup_data()` 只补 ymin/ymax），宽度按 0 算
+    # → `xmin = xmax = x`。缺了这两列，`stat_align` 的端到端结果会少列。
+    if "xmin" not in frame:
+        frame.set("xmin", x)
+    if "xmax" not in frame:
+        frame.set("xmax", x)
     frame.flip(flipped)
     return frame.table()
 

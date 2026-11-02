@@ -15,7 +15,7 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 | 阶段 | 产出（`LayerBuild` 字段） | 做什么 |
 | --- | --- | --- |
 | `compute_aesthetics` | `.aesthetics` | 合并 mapping、求值数据美学、补 `PANEL` / `group`、统计缺失（**不删行**） |
-| `compute_stat` | `.statistic` | 按 `layer.stat.name` 算统计量（`identity` / `count`） |
+| `compute_stat` | `.statistic` | 按 `layer.stat.name` 算统计量（六个 stat 都在 `ggcore.stat`，见 `stat.md`） |
 | `map_statistic` | `.mapped` | `after_stat(...)` 与 stat 缺省映射落成美学列 |
 | `compute_position` | `.positioned` | `Geom$setup_data()`（锚点 / `flipped_aes` / line 排序）+ 位置调整 |
 | `map_scales` | `.scaled` | 逐列过 `ScaleSet.map`（M1-4 真实标度：离散位置 → 1..n、连续位置 → 变换后的值、colour/fill/size/shape/alpha → 调色板 / rescale） |
@@ -97,14 +97,22 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 ## 5. stat 与 position
 
 `stat` 名来自 `Layer.stat`（构造器已按 `GEOM_SPECS[geom].stat` / `STAT_GEOMS`
-填好缺省，`geom_*(stat=...)` 覆盖）：
+填好缺省，`geom_*(stat=...)` 覆盖）。**六个 stat 全部在 `ggcore.stat`（M1-8）**，
+口径全文见 `docs/notes/stat.md`，这里只记与本模块的接线：
 
-- `identity`：数据美学原样通过；
-- `count`：每个 group 内按 x 汇总 `count`、`prop = count / sum(abs(count))`，输出
-  列序 `count, prop, x, flipped_aes, <组内恒定的其余列（含 PANEL / group）>`；
-  组内变化的列丢弃并发 `BuildWarning`（上游同样丢弃）。
-- 其它（`bin` / `boxplot` / `smooth` / `align`）→ `BuildError`，消息点名「M1-8」，
-  不静默当成 identity。
+- `identity`：数据美学原样通过（`compute_stat()` 直接返回 `.table`）；
+- `count`：每个 group 内按 x（横向按 y）汇总 `count`、`prop = count / sum(abs(count))`，
+  输出列序 `count, prop, x, flipped_aes, <组内恒定的其余列（含 PANEL / group）>`；
+  组内变化的列丢弃并发 `BuildWarning`（上游同样丢弃）；
+- `bin` / `boxplot` / `smooth` / `align`：`compute_stat(layer, aesthetics,
+  scales=…, raw=…)` 交给 `ggcore.stat.compute_stat()`。`scales` 是这一面板的
+  `ScaleSet`（`bin` 的断点、`smooth(fullrange = TRUE)` 要用），`raw` 是位置
+  映射前的美学表（横向判定）。分面时逐面板取 `PanelScales.for_panel(panel)`；
+- 不认识的名字 → `BuildError`，消息里列出已实现的 stat，不静默当成 identity。
+
+`stat` 自己补的缺省美学（上游 `Stat$default_aes`）在 `map_statistic()` 里落成
+列：`count` / `bin` 的 `x`、`y` 都指向 `after_stat(count)`（缺哪个补哪个），
+所以 `geom_histogram(aes(x))` 不需要写 `y`。用户显式写的 `after_stat(...)` 优先。
 
 `compute_position` 先做上游 `Geom$setup_data()`（这一步在位置调整**之前**，
 所以列序与 R 一致）：
@@ -211,17 +219,21 @@ M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_in
 
 ## 10. 不做 / 后续
 
-- geom 绘制（M1-7）与其余 stat（M1-8）都不在这里；标度见
+- geom 绘制（M1-7）与 stat 实现（M1-8，`src/ggcore/stat.py`）都不在这里；stat 的
+  参数 / 列口径 / 与 R 的已知差异见 `docs/notes/stat.md`。标度见
   `docs/notes/scales.md`（M1-4 已接上），分面布局 / 逐面板流水线见
   `docs/notes/facet.md`（M1-6：`build_plot()` 已接线，单面板路径保持逐字节不变），
   position 的七种调整见 `docs/notes/position.md`（M1-9）。
-- 横向（`orientation = "y"`）的 `flipped_aes` 检测仍归 geom `setup_data()`，M1-7 补。
-- `GeomBoxplot` 的 `outliers` / `varwidth` 分支未实现（预计算路径不需要）。
-- 横向柱状图（只映射 `y`、由 `orientation` 推断）不在本任务范围：`stat_count`
-  与 bar 的 `setup_data` 都假定有 `x`；M1-7 接 orientation 时再补。
+- 横向（`orientation = "y"`）的 `flipped_aes` 检测：geom 侧在 `setup_data()`、
+  stat 侧在 `ggcore.stat._has_flipped_aes()`（M1-7 / M1-8 都已接上）；横向柱状图
+  现在端到端可用（`stat_count` 在翻转后的 `x` 上计数）。
+- `GeomBoxplot` 的 `outliers` / `varwidth` 分支：M1-8 的 `stat_boxplot` 已产出
+  `outliers`（`str` 文本）与 `relvarwidth`，geom 的 `setup_data()` 直接消费。
 - `geom_*(x = 1, y = 2)` 这种常量美学参数会在 `finish` 里 materialize 成列
   （required 校验也把它们算通过）；空数据框的常量参数不保证与 R 的
   `empty(data)` 分支一致。
 - `y` 上的 NA 在 `stack` 下按「保留坐标 + 零高度」处理（§5），不与 R 的
   `x → NA` artifact 对拍；绘制期口径留给 M1-7 的 `handle_na()`。
+- `stat` 的输入删除（NA / 非有限行 + warning）发生在 `compute_stat()` 里，不在
+  `compute_aesthetics()`；所以 `.aesthetics` 仍是「行保留、只计数」的原表。
 - 不碰 IR 版本；产物留到 M1-7 再进 IR。

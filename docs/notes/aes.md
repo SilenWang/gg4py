@@ -21,7 +21,7 @@ ndarray                       # 求值：ColumnTable → 数据掩码 → 白名
 | --- | --- |
 | `aes(x="mpg / cyl")` | 两列相除（`mpg`、`cyl` 都是数据列） |
 | `aes(colour="class")` | 离散列 `class` 直接参与映射 |
-| `aes(y=after_stat("count"))` | stat 产出之后再求值（M1-8） |
+| `aes(y=after_stat("count"))` | stat 产出之后再求值（M1-8 已接线，见 `stat.md` §7） |
 | `aes(colour=1)`、`aes(size=3.5)` | 非字符串常量，求值时广播到 `nrows` |
 | `aes(colour="'red'")` | 字符串**常量**要写成带引号的表达式（外层字符串是表达式） |
 | `aes(x='col("mpg class")')` | 列名不是合法标识符（空格 / 标点）时的显式写法 |
@@ -160,7 +160,8 @@ aes 表达式 `mpg / zzz` 第 1 行第 7 列：数据里没有列 'zzz'；可用
 
 ## 7. 边界
 
-- 不做 stat 计算（M1-8）：`after_stat` 只解析 + 标记，`eval_aes` 明确拒绝它；
+- 不做 stat 计算（在 `ggcore.stat`）：`after_stat` 只解析 + 标记，`eval_aes` 明确拒绝它，
+  真正的求值在 `build.map_statistic()` 里走 `eval_after_stat()`；
 - 不做 scale 变换、不做图层流水线（M1-3）；
 - 不引入第三方表达式库（numexpr / asteval 等）；求值器就是本文件里的递归解释器；
 - 不支持下标 / 切片 / 属性 / lambda / 推导式；列名引用走 `col("…")`。
