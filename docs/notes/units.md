@@ -81,6 +81,15 @@ R `transform()` 先把源单位换算成**英寸**，再由 `transformFromINCHES
 
 ## 不明显的口径
 
+### 根视口上的 `native` = 英寸
+
+`UnitContext` 只按 `xscale` / `yscale` 换算，不另判「是不是根」；根视口由
+`ViewportTree` 建成 `xscale = 0..width_in`、`yscale = 0..height_in`——即设备
+原生单位，而本模块的 `Device` 以英寸计量。所以根级 `unit(1, "native")`
+**位置与尺寸都是 1 英寸**。R 的 pdf 设备原生单位是点（7in → 0..504），同一条
+规则、不同的设备单位。子视口仍按自己的 `xscale` / `yscale` 换算。口径与测试见
+`docs/notes/coord.md` §5 与 `tests/test_viewport.py::test_root_native_units_are_device_inches`。
+
 ### `lines` 带行高，不是字号
 
 R 里 1 line = `ps * cex * lineheight / 72` 英寸；`lineheight` 默认 1.2，

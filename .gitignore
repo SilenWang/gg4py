@@ -25,3 +25,6 @@ docs/spike/e1_coldstart/static/
 .gate-pyodide/
 # `pixi run metrics:advance` 的 hinted/linear 推进报告（每次重跑覆盖，不入库）
 .metrics-advance/
+
+# M1-5 等比例测量的运行时产物（`pixi run cases:coord`）
+.coord-aspect/

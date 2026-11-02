@@ -915,13 +915,50 @@ def test_scale_accepts_numpy_and_other_non_sequence_iterables() -> None:
 
 
 def test_root_scale_is_device_inches() -> None:
-    """根视口的 `xscale` / `yscale` 定死为设备英寸，不是设备原生单位（§9 差异表）。"""
+    """根视口的 `xscale` / `yscale` 定死为设备英寸（§9 差异表）。"""
     tree = ViewportTree(DEVICE)
     assert tree.root.xscale == pytest.approx((0.0, 6.0))
     assert tree.root.yscale == pytest.approx((0.0, 4.0))
     assert tree.current.device_loc(unit(6.0, "native"), unit(4.0, "native")) == pytest.approx(
         (6.0, 4.0), abs=1e-12
     )
+
+
+def test_root_native_units_are_device_inches() -> None:
+    """M0 交接的遗留口径：根级 `native` = 设备原生单位 = 英寸（M1-5 钉住）。
+
+    R 的根视口 `xscale`/`yscale` 是设备原生单位（pdf 下 0..504 点）；本模块的
+    `Device` 以英寸计量，所以 `unit(1, "native")` 在根视口上就是 1 英寸。
+    子视口不改语义：仍按自己的 `xscale` / `yscale` 换算。
+    """
+    tree = ViewportTree(DEVICE)  # 6 × 4 in
+    root = tree.root
+    assert root.convert(unit(1.0, "native"), "inches", axis="x") == pytest.approx([1.0])
+    assert root.convert(unit(1.0, "native"), "inches", axis="y") == pytest.approx([1.0])
+    # 位置与尺寸都成立：1 native 的位置是 1in，1 native 的宽度也是 1in。
+    assert root.device_loc(unit(1.0, "native"), unit(1.0, "native")) == pytest.approx(
+        (1.0, 1.0), abs=1e-12
+    )
+    assert root.device_loc(unit(6.0, "native"), unit(4.0, "native")) == pytest.approx(
+        (6.0, 4.0), abs=1e-12
+    )
+    assert root.convert(unit(1.0, "native"), "inches", axis="x", measure="dimension") == (
+        pytest.approx([1.0])
+    )
+    # 子视口：xscale 0..10 铺满 6in → 1 native = 0.6in（与 R 的口径一致）
+    child = tree.push(
+        viewport(
+            "panel",
+            width=unit(1.0, "npc"),
+            height=unit(1.0, "npc"),
+            just=("left", "bottom"),
+            xscale=(0.0, 10.0),
+            yscale=(0.0, 5.0),
+        )
+    )
+    assert child.convert(unit(1.0, "native"), "inches", axis="x") == pytest.approx([0.6])
+    assert child.convert(unit(10.0, "native"), "inches", axis="x") == pytest.approx([6.0])
+    assert child.convert(unit(1.0, "native"), "inches", axis="y") == pytest.approx([0.8])
 
 
 def test_viewport_validation() -> None:
