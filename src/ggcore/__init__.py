@@ -7,7 +7,9 @@ CBOR 编码库；pandas / Arrow / 任何绘图库都必须留在包外（见
 语法层（M1-1）在 `ggcore.plot` / `ggcore.registry` / `ggcore.aes` /
 `ggcore.layer` / `ggcore.components`：`ggplot()` 对象、`+` 组合、克隆语义与
 方法链别名。aes 表达式层（M1-2）在 `ggcore.eval`：字符串解析、白名单 AST
-求值、数据掩码与自动分组（`docs/notes/aes.md`）。
+求值、数据掩码与自动分组（`docs/notes/aes.md`）。图层流水线（M1-3）在
+`ggcore.build`：六阶段把 `ggplot` + `Layer` 变成每层已算好的数据
+（`docs/notes/build.md`）。
 
 IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/notes/ir.md`。
 坐标底座在 `ggcore.units` / `ggcore.viewport`，口径见 `docs/notes/units.md` /
@@ -17,6 +19,7 @@ IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/no
 from __future__ import annotations
 
 import ggcore.aes as aes
+import ggcore.build as build
 import ggcore.components as components
 import ggcore.data as data
 import ggcore.eval as eval
@@ -32,6 +35,7 @@ import ggcore.viewport as viewport
 __all__ = [
     "__version__",
     "aes",
+    "build",
     "components",
     "data",
     "eval",

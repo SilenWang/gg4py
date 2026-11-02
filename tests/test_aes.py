@@ -56,6 +56,28 @@ def test_aes_names_are_standardised_like_upstream() -> None:
     assert standardise_aes_names(["color", "pch", "x"]) == ("colour", "shape", "x")
 
 
+def test_aes_puts_x_then_y_first_like_upstream() -> None:
+    # R: names(aes(y = hwy, x = displ)) == c("x", "y")；
+    #    names(aes(fill = class, x = drv)) == c("x", "fill")。
+    assert list(aes(y="hwy", x="displ")) == ["x", "y"]
+    assert list(aes(fill="class", x="drv")) == ["x", "fill"]
+    assert list(aes(colour="class", y="hwy", x="displ", size="cyl")) == [
+        "x",
+        "y",
+        "colour",
+        "size",
+    ]
+
+
+def test_aes_name_order_only_moves_x_and_y_not_other_keys() -> None:
+    assert list(aes(size="cyl", colour="class", y="hwy", x="displ")) == [
+        "x",
+        "y",
+        "size",
+        "colour",
+    ]
+
+
 def test_aes_name_standardisation_applies_through_as_aes() -> None:
     assert dict(as_aes({"color": "class"})) == {"colour": "class"}
 

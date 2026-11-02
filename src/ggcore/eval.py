@@ -11,8 +11,9 @@
 2. :func:`eval_aes` 用自己写的解释器求值——**不调用 `eval` / `exec` / `compile`**，
    只认识下面 `_BINOPS` / `_UNARY` / `_CMP` / `CALLABLES` 里的东西；
 3. :func:`compute_groups` 按 ggplot2 4.x 的 `add_group()` 口径推分组：显式
-   `group` 优先，否则用所有离散（字符/分类）aes 做 interaction，id 按首次出现
-   编号；NA 行给 :data:`NO_GROUP`（-1），留给 M1-3 的 `remove_missing`。
+   `group` 优先，否则用所有离散（字符/分类）aes 做 interaction，组合按值域排序
+   编号（上游 `id()` 的 `sort(unique())` 口径）；NA 行给 :data:`NO_GROUP`（-1），
+   留给 M1-3 的 `remove_missing`。
 
 安全口径（本任务的核心验收）：
 
@@ -848,62 +849,76 @@ def _is_discrete(values: np.ndarray) -> bool:
     return all(item is None or isinstance(item, str) for item in values.tolist())
 
 
-def _object_codes(values: np.ndarray) -> np.ndarray:
-    """object / 字符串数组 → 每个不同值一个 int 码；`None` / NaN 给 -1。"""
+def _is_missing_item(item: Any) -> bool:
+    """单个取值是否缺失（`None` / NaN）。"""
+    return item is None or (isinstance(item, (float, np.floating)) and bool(np.isnan(item)))
+
+
+def _object_codes(values: np.ndarray, order: tuple[str, ...] | None = None) -> np.ndarray:
+    """object / 字符串数组 → 每个不同值一个 int 码（缺失排最后，也有码）。
+
+    码是值域顺序里的位置（不是首次出现的位置）：上游 `id_var()` 走
+    `levels <- sort(unique0(x), na.last = TRUE); match(x, levels)`。普通字符
+    列按升序；**categorical 列按 `Column.levels` 的顺序**（`order`），所以
+    `factor(..., levels = c("b", "a"))` 的 group 跟 levels 走，不是字母序。
+    """
+    items = values.tolist()
+    present = [item for item in (order or ()) if item in set(items)]
+    known = set(present)
+    present.extend(
+        sorted({item for item in items if not _is_missing_item(item) and item not in known})
+    )
+    has_missing = any(_is_missing_item(item) for item in items)
+    index = {item: position for position, item in enumerate(present)}
+    missing_code = len(present) if has_missing else -1
     codes = np.empty(values.shape[0], dtype=np.int64)
-    seen: dict[Any, int] = {}
-    for i, item in enumerate(values.tolist()):
-        if item is None or (isinstance(item, (float, np.floating)) and bool(np.isnan(item))):
-            codes[i] = -1
-            continue
-        code = seen.get(item)
-        if code is None:
-            code = len(seen)
-            seen[item] = code
-        codes[i] = code
+    for i, item in enumerate(items):
+        codes[i] = missing_code if _is_missing_item(item) else index[item]
     return codes
 
 
-def _value_codes(values: np.ndarray) -> np.ndarray:
-    """把一列值编码成 int 码（只保证「相等 ↔ 同码」）；缺失为 -1。"""
+def _value_codes(values: np.ndarray, order: tuple[str, ...] | None = None) -> np.ndarray:
+    """把一列值编码成 int 码（只保证「相等 ↔ 同码」）；缺失排最后。"""
     kind = values.dtype.kind
     if kind in ("U", "S", "O"):
-        return _object_codes(values)
+        return _object_codes(values, order)
     if kind == "f":
-        missing = np.isnan(values)
-        codes = np.full(values.shape[0], -1, dtype=np.int64)
-        if (~missing).any():
-            _, inverse = np.unique(values[~missing], return_inverse=True)
-            codes[~missing] = inverse.astype(np.int64, copy=False)
-        return codes
+        # np.unique 把 NaN 排到最后并给它一个码（与上游 na.last = TRUE 一致）。
+        if values.size == 0:
+            return np.empty(0, dtype=np.int64)
+        _, inverse = np.unique(values, return_inverse=True)
+        return inverse.astype(np.int64, copy=False)
     if values.size == 0:
         return np.empty(0, dtype=np.int64)
     _, inverse = np.unique(values, return_inverse=True)
     return inverse.astype(np.int64, copy=False)
 
 
-def _ids_from_keys(keys: list[np.ndarray]) -> np.ndarray:
-    """多列 interaction → 分组 id：按组合首次出现编号，缺失行给 `NO_GROUP`。"""
+def _ids_from_keys(
+    keys: list[np.ndarray],
+    orders: list[tuple[str, ...] | None] | None = None,
+) -> np.ndarray:
+    """多列 interaction → 分组 id（缺失作为一个水平，排在最后）。
+
+    编码与编号都照上游 `id()`：第一个 key 变化最慢、最后一个最快（R 的实现把
+    `.variables` 反过来做混合进制），再把用到的组合按**组合码升序**编号
+    （`id_var(res, drop = TRUE)` 同样是 `match(x, sort(unique(x)))`）。
+    `orders` 是每个 key 的 categorical levels（没有就是 None，走升序）。
+    """
     n = keys[0].shape[0]
     ids = np.full(n, NO_GROUP, dtype=np.int32)
     if n == 0:
         return ids
 
+    orders = orders or [None] * len(keys)
     combined = np.zeros(n, dtype=np.int64)
-    missing = np.zeros(n, dtype=bool)
-    for values in keys:
-        codes = _value_codes(np.asarray(values))
-        missing |= codes < 0
-        usable = codes >= 0
-        radix = int(codes[usable].max()) + 1 if usable.any() else 1
-        combined = combined * radix + np.where(codes < 0, 0, codes)
+    for values, order in zip(keys, orders, strict=True):
+        codes = _value_codes(np.asarray(values), order)
+        radix = int(codes.max()) + 1 if codes.size else 1
+        combined = combined * radix + codes
 
-    keep = ~missing
-    if keep.any():
-        uniq, first, inverse = np.unique(combined[keep], return_index=True, return_inverse=True)
-        rank = np.empty(uniq.size, dtype=np.int32)
-        rank[np.argsort(first, kind="stable")] = np.arange(uniq.size, dtype=np.int32)
-        ids[keep] = rank[inverse]
+    uniq = np.unique(combined)
+    ids = np.searchsorted(uniq, combined).astype(np.int32, copy=False)
     return ids
 
 
@@ -912,9 +927,11 @@ def compute_groups(mapping: Aes | Mapping[str, Any], data: ColumnTable) -> np.nd
 
     - 显式 `aes(group=...)` 优先（`group` 里每个不同值一组）；
     - 否则用**所有离散的 aes**（`str` / `categorical` / 逻辑值，对齐上游
-      `is_discrete()`；排除 `label` / `PANEL`）做 interaction，组合按首次出现编号；
+      `is_discrete()`；排除 `label` / `PANEL`）做 interaction，组合按组合码升序
+      编号（对齐上游 `id()`：第一个 aes 变化最慢、最后一个最快）；
     - 没有任何离散 aes 时全部是 :data:`NO_GROUP`（-1），`has_groups()` 为 False；
-    - 分组列里有 NA 的行给 :data:`NO_GROUP`，留给 M1-3 的 `remove_missing`。
+    - 分组列里的 **NA 也作为一个水平**（排在最后）参与编号：上游 `id_var()` 是
+      `sort(unique0(x), na.last = TRUE)`，NA 行不会得到 `NO_GROUP`。
 
     `after_stat(...)` 的 aes 在数据阶段拿不到值，不参与分组（与上游
     `compute_aesthetics()` 先丢弃 calculated aes 再调 `add_group()` 一致）。
@@ -926,23 +943,52 @@ def compute_groups(mapping: Aes | Mapping[str, Any], data: ColumnTable) -> np.nd
         return np.full(0, NO_GROUP, dtype=np.int32)
 
     evaluated: dict[str, np.ndarray] = {}
+    orders: dict[str, tuple[str, ...]] = {}
     for name, value in resolved.items():
         spec = parse_aes(value)
         if spec.after_stat:
             continue
         evaluated[name] = eval_aes(spec, table, nrows=n)
+        column = _column_reference(spec, table)
+        if column is not None and column.kind == "categorical" and column.levels:
+            orders[name] = column.levels
 
     if "group" in evaluated:
         keys = [evaluated["group"]]
+        key_orders = [orders.get("group")]
     else:
-        keys = [
-            values
+        names = [
+            name
             for name, values in evaluated.items()
             if name not in _GROUP_EXCLUDED and _is_discrete(values)
         ]
+        keys = [evaluated[name] for name in names]
+        key_orders = [orders.get(name) for name in names]
     if not keys:
         return np.full(n, NO_GROUP, dtype=np.int32)
-    return _ids_from_keys(keys)
+    return _ids_from_keys(keys, key_orders)
+
+
+def _column_reference(spec: AesSpec, table: ColumnTable) -> Column | None:
+    """表达式就是「裸列」时返回源列（用来读 categorical 的 levels 顺序）。"""
+    if spec.tree is None or spec.constant:
+        return None
+    body = spec.tree.body
+    name: str | None = None
+    if isinstance(body, ast.Name):
+        name = body.id
+    elif (
+        isinstance(body, ast.Call)
+        and isinstance(body.func, ast.Name)
+        and body.func.id == "col"
+        and len(body.args) == 1
+        and isinstance(body.args[0], ast.Constant)
+        and isinstance(body.args[0].value, str)
+    ):
+        name = body.args[0].value
+    if name is None or name not in table:
+        return None
+    return table.column(name)
 
 
 def has_groups(ids: np.ndarray) -> bool:

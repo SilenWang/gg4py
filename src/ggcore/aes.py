@@ -227,10 +227,21 @@ def aes(**aesthetics: Any) -> Aes:
     键按上游 `standardise_aes_names()` 标准化（`color` → `colour`、`pch` →
     `shape`、`cex` → `size` …），值（表达式）原样保留。
 
+    **键序照上游 `aes()`**：`x` 先、`y` 次，其余按调用顺序（R 的 `aes()`
+    把位置参数放在最前，即使按名字传）。这样 `aes(y="hwy", x="displ")` 与
+    `aes(x="displ", y="hwy")` 得到同一列序，图层数据的列序才能与 R 对拍。
+
     字符串按**表达式**解释（`"mpg / cyl"` 是两个列名做除法），不是常量；
     常量字符串要写成带引号的表达式（`aes(colour="'red'")`）或直接传 Python 值。
     """
-    return Aes(dict(aesthetics))
+    ordered: dict[str, Any] = {}
+    for name in ("x", "y"):
+        if name in aesthetics:
+            ordered[name] = aesthetics[name]
+    for name, value in aesthetics.items():
+        if name not in ordered:
+            ordered[name] = value
+    return Aes(ordered)
 
 
 def after_stat(expr: Any) -> AfterStat:
