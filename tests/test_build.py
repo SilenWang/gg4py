@@ -28,7 +28,16 @@ from ggcore.build import (
     map_statistic,
 )
 from ggcore.data import Column, ColumnTable
-from ggcore.plot import aes, geom_bar, geom_histogram, geom_point, ggplot
+from ggcore.plot import (
+    aes,
+    geom_bar,
+    geom_col,
+    geom_histogram,
+    geom_line,
+    geom_path,
+    geom_point,
+    ggplot,
+)
 
 # ---------------------------------------------------------------------------
 # 夹具
@@ -213,10 +222,13 @@ def test_stack_reverses_group_order_and_rewrites_y() -> None:
     assert values_of(layer.positioned, "ymax") == [4.0, 1.0, 1.0]
 
 
-def test_stack_without_duplicate_x_falls_back_to_identity() -> None:
+def test_stack_without_duplicate_x_does_not_restack() -> None:
     plot = ggplot(table(), aes(x="class")) + geom_bar()
     layer = layer_of(plot)
-    assert layer.positioned.names == layer.mapped.names
+    # 没有重复 x 时 position 不再累加；ymin/ymax 是 geom setup 的锚点（0 / y）。
+    assert values_of(layer.positioned, "y") == values_of(layer.mapped, "y")
+    assert values_of(layer.positioned, "ymin") == [0.0, 0.0, 0.0]
+    assert values_of(layer.positioned, "ymax") == [3.0, 1.0, 1.0]
 
 
 def test_unimplemented_position_is_rejected() -> None:
@@ -245,15 +257,16 @@ def test_continuous_position_values_pass_through() -> None:
 
 
 def test_pipeline_calls_the_scale_set_instead_of_hardcoding() -> None:
-    class Doubling(ScaleSet):
+    class Constant(ScaleSet):
         def map(self, values, aesthetic):
             if aesthetic == "x":
-                return np.asarray(values.values, dtype=np.float64) * 2.0
+                return np.full(values.size, 7.0)
             return super().map(values, aesthetic)
 
     plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point()
-    layer = build_layer(plot, plot.layers[0], 0, Doubling())
-    assert values_of(layer.scaled, "x") == [3.6, 3.6, 4.0, 4.8, 6.0]
+    layer = build_layer(plot, plot.layers[0], 0, Constant())
+    assert values_of(layer.scaled, "x") == [7.0] * 5
+    assert values_of(layer.data, "x") == [7.0] * 5
 
 
 def test_bad_scale_output_is_rejected() -> None:
@@ -269,16 +282,12 @@ def test_bad_scale_output_is_rejected() -> None:
 
 
 def test_build_plot_trains_one_scale_set_for_all_layers() -> None:
+    """多层离散 x 按上游口径**全局排序**，不是「先遇到先保留」。"""
     plot = ggplot(table(), aes(x="class")) + geom_bar() + geom_bar(aes(x="drv"))
     build = build_plot(plot)
-    assert build.scales.trained["x"] == (
-        "compact",
-        "midsize",
-        "suv",
-        "f",
-        "r",
-    )
-    assert values_of(build.layers[1].scaled, "x") == [4.0, 5.0]
+    assert build.scales.trained["x"] == ("compact", "f", "midsize", "r", "suv")
+    assert values_of(build.layers[0].scaled, "x") == [1.0, 3.0, 5.0]
+    assert values_of(build.layers[1].scaled, "x") == [2.0, 4.0]
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +339,7 @@ def test_missing_required_aes_errors_with_the_group_name() -> None:
         layer_of(plot)
 
 
-def test_all_rows_dropped_is_an_empty_layer_with_counts() -> None:
+def test_all_missing_values_still_keep_every_row() -> None:
     table_all_missing = ColumnTable(
         [
             ("x", Column("float", np.array([1.0, 2.0]))),
@@ -341,11 +350,11 @@ def test_all_rows_dropped_is_an_empty_layer_with_counts() -> None:
         ]
     )
     plot = ggplot(table_all_missing, aes(x="x", y="y")) + geom_point()
-    with pytest.warns(BuildWarning, match="2 行"):
-        build = build_plot(plot)
-    assert build.empty_layers == (0,)
-    assert build.layers[0].data.nrows == 0
-    assert dict(build.layers[0].dropped_missing) == {"y": 2}
+    layer = layer_of(plot)
+    assert layer.empty is False
+    assert layer.data.nrows == 2
+    assert dict(layer.dropped_missing) == {"y": 2}
+    assert layer.data.column("y").na_mask.tolist() == [True, True]
 
 
 def test_non_column_table_data_points_at_the_boundary_converter() -> None:
@@ -383,21 +392,24 @@ def _table_with_missing() -> ColumnTable:
     )
 
 
-def test_missing_values_drop_rows_and_are_counted_per_column() -> None:
+def test_missing_values_are_counted_but_rows_are_kept() -> None:
+    """ggplot2 4.0.3 的 `$data` 保留 NA 行；删除在绘制期 `handle_na()`。"""
     plot = ggplot(_table_with_missing(), aes(x="x", y="y")) + geom_point()
-    with pytest.warns(BuildWarning, match="1 行"):
-        layer = layer_of(plot)
-    assert layer.aesthetics.nrows == 2
+    layer = layer_of(plot)
+    assert layer.aesthetics.nrows == 3
     assert dict(layer.dropped_missing) == {"y": 1}
-    assert values_of(layer.data, "y") == [10.0, 30.0]
+    assert layer.data.nrows == 3
+    assert layer.data.column("y").na_mask.tolist() == [False, True, False]
+    assert values_of(layer.data, "y") == [10.0, 0.0, 30.0]
 
 
-def test_na_rm_true_is_silent_but_still_counted() -> None:
+def test_na_rm_does_not_change_the_built_data() -> None:
     plot = ggplot(_table_with_missing(), aes(x="x", y="y")) + geom_point(na_rm=True)
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         layer = layer_of(plot)
     assert not [item for item in caught if issubclass(item.category, BuildWarning)]
+    assert layer.data.nrows == 3
     assert dict(layer.dropped_missing) == {"y": 1}
 
 
@@ -410,6 +422,189 @@ def test_build_is_deterministic() -> None:
 
     plot = ggplot(table(), aes(x="drv", fill="class")) + geom_bar()
     assert digest(layer_of(plot)) == digest(layer_of(plot))
+
+
+def test_na_colour_rows_are_kept_and_grouped_like_r() -> None:
+    """`colour = NA` 的行保留、NA 也是一个 group 水平（R: group 1,2,3,1,2）。"""
+    table_na = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0]))),
+            (
+                "g",
+                Column(
+                    "str",
+                    np.array(["a", "b", "", "a", "b"]),
+                    na_mask=np.array([False, False, True, False, False]),
+                ),
+            ),
+        ]
+    )
+    plot = ggplot(table_na, aes(x="x", y="y", colour="g")) + geom_point()
+    layer = layer_of(plot)
+    assert layer.data.nrows == 5
+    assert values_of(layer.data, "group") == [1.0, 2.0, 3.0, 1.0, 2.0]
+    assert layer.data.column("colour").na_mask.tolist() == [False, False, True, False, False]
+    assert dict(layer.dropped_missing) == {"colour": 1}
+
+
+def test_discrete_na_gets_the_last_position() -> None:
+    """离散位置的 NA 占最后一个水平（上游 sort(unique(), na.last = TRUE)）。"""
+    table_na = ColumnTable(
+        [
+            (
+                "xs",
+                Column(
+                    "str",
+                    np.array(["a", "b", "a", "c", "", "b"]),
+                    na_mask=np.array([False, False, False, False, True, False]),
+                ),
+            )
+        ]
+    )
+    plot = ggplot(table_na, aes(x="xs")) + geom_bar()
+    layer = layer_of(plot)
+    assert values_of(layer.aesthetics, "x") == [1.0, 2.0, 1.0, 3.0, 4.0, 2.0]
+    assert values_of(layer.data, "x") == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_count_stat_gives_na_x_its_own_bar() -> None:
+    table_na = ColumnTable(
+        [
+            (
+                "xs",
+                Column(
+                    "str",
+                    np.array(["a", "b", "a", "c", "", "b"]),
+                    na_mask=np.array([False, False, False, False, True, False]),
+                ),
+            )
+        ]
+    )
+    plot = ggplot(table_na, aes(x="xs")) + geom_bar()
+    data = layer_of(plot).data
+    assert data.nrows == 4
+    assert values_of(data, "count") == [2.0, 2.0, 1.0, 1.0]
+    assert values_of(data, "x") == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_geom_params_override_default_aes() -> None:
+    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(colour="red", size=3)
+    data = layer_of(plot).data
+    assert values_of(data, "colour") == ["red"] * 5
+    assert values_of(data, "size") == [3.0] * 5
+    # 参数不改变列序：default_aes 的键序仍然决定位置。
+    assert data.names == (
+        "x",
+        "y",
+        "PANEL",
+        "group",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke",
+    )
+
+
+def test_geom_width_param_reaches_data_and_anchors() -> None:
+    plot = ggplot(table(), aes(x="class", y="displ")) + geom_col(width=0.3)
+    data = layer_of(plot).data
+    assert values_of(data, "width") == [0.3, 0.3, 0.3, 0.3, 0.3]
+    assert values_of(data, "xmin") == [0.85, 0.85, 0.85, 1.85, 2.85]
+
+
+def test_flipped_aes_and_anchors_are_added_before_position() -> None:
+    """上游 setup_data() 在 compute_position() 之前：列序是 flipped_aes → 锚点。"""
+    plot = ggplot(table(), aes(x="class", y="displ")) + geom_col()
+    data = layer_of(plot).data
+    assert data.names[:10] == (
+        "x",
+        "y",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "colour",
+    )
+
+
+def test_line_rows_are_sorted_by_panel_group_x() -> None:
+    table_line = ColumnTable(
+        [
+            ("x", Column("float", np.array([3.0, 1.0, 2.0, 1.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("g", Column("str", np.array(["a", "a", "a", "b"]))),
+        ]
+    )
+    plot = ggplot(table_line, aes(x="x", y="y", group="g")) + geom_line()
+    layer = layer_of(plot)
+    assert values_of(layer.positioned, "x") == [1.0, 2.0, 3.0, 1.0]
+    assert values_of(layer.positioned, "y") == [2.0, 3.0, 1.0, 4.0]
+    assert values_of(layer.positioned, "group") == [1.0, 1.0, 1.0, 2.0]
+    assert "flipped_aes" in layer.positioned.names
+
+
+def test_path_keeps_the_given_row_order() -> None:
+    table_line = ColumnTable(
+        [
+            ("x", Column("float", np.array([3.0, 1.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+        ]
+    )
+    plot = ggplot(table_line, aes(x="x", y="y")) + geom_path()
+    layer = layer_of(plot)
+    assert values_of(layer.positioned, "x") == [3.0, 1.0, 2.0]
+    assert "flipped_aes" not in layer.positioned.names
+
+
+def test_categorical_levels_drive_group_ids() -> None:
+    """factor levels 反序时 group 跟 levels 走（R: group 1,2,1）。"""
+    table_cat = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("g", Column("categorical", np.array([0, 1, 0]), levels=("b", "a"))),
+        ]
+    )
+    plot = ggplot(table_cat, aes(x="x", y="y", colour="g")) + geom_point()
+    assert values_of(layer_of(plot).data, "group") == [1.0, 2.0, 1.0]
+
+
+def test_categorical_levels_drive_position_codes() -> None:
+    table_cat = ColumnTable(
+        [
+            ("g", Column("categorical", np.array([1, 0, 1]), levels=("b", "a"))),
+        ]
+    )
+    plot = ggplot(table_cat, aes(x="g")) + geom_bar()
+    layer = layer_of(plot)
+    # code 0 = "b"、1 = "a"；levels 是 ("b", "a")，所以 b → 1、a → 2。
+    assert values_of(layer.aesthetics, "x") == [2.0, 1.0, 2.0]
+
+
+def test_logical_position_uses_false_before_true() -> None:
+    table_bool = ColumnTable(
+        [
+            ("x", Column("bool", np.array([True, False, True]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+        ]
+    )
+    plot = ggplot(table_bool, aes(x="x", y="y")) + geom_point()
+    layer = layer_of(plot)
+    assert values_of(layer.scaled, "x") == [2.0, 1.0, 2.0]
+    assert layer.scaled.column("x").kind == "float"
+
+
+def test_constant_aes_params_materialize_required_columns() -> None:
+    plot = ggplot(table()) + geom_point(x=1, y=2)
+    data = layer_of(plot).data
+    assert values_of(data, "x") == [1.0] * 5
+    assert values_of(data, "y") == [2.0] * 5
 
 
 def test_every_stage_is_separately_addressable() -> None:

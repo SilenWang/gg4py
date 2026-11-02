@@ -25,7 +25,7 @@ import pytest
 
 from ggcore.build import LayerBuild, build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.plot import aes, geom_bar, geom_boxplot, geom_point, ggplot
+from ggcore.plot import aes, geom_bar, geom_boxplot, geom_col, geom_line, geom_point, ggplot
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "tests" / "fixtures" / "build_r_reference.json"
@@ -35,6 +35,12 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
     "count_bar": frozenset({"fill"}),
     "box_precomputed": frozenset({"colour"}),
     "stacked_bar_interaction": frozenset({"fill"}),
+    "point_na_colour": frozenset({"colour"}),
+    "count_na_x": frozenset({"fill"}),
+    "col_identity": frozenset({"fill"}),
+    "col_width_param": frozenset({"fill"}),
+    "categorical_group": frozenset({"colour"}),
+    "multi_layer_levels": frozenset({"fill"}),
 }
 
 #: 每个 case 的（列数, 行数, 参与比值的列数）——钉住，防止「悄悄少比一列」。
@@ -44,6 +50,17 @@ EXPECTED: dict[str, tuple[int, int, int]] = {
     "box_precomputed": (20, 4, 19),
     "stacked_bar_interaction": (17, 12, 16),
     "layer_data_override": (10, 81, 10),
+    "point_na_colour": (10, 5, 9),
+    "count_na_x": (17, 4, 16),
+    "col_identity": (15, 6, 14),
+    "col_width_param": (15, 6, 14),
+    "line_unsorted": (9, 4, 9),
+    "point_params": (10, 234, 10),
+    "bar_fill_param": (17, 7, 17),
+    "aes_reordered": (10, 234, 10),
+    "categorical_group": (10, 3, 9),
+    "bool_discrete_x": (10, 3, 10),
+    "multi_layer_levels": (17, 3, 16),
 }
 
 TOLERANCE = 1e-9
@@ -68,6 +85,12 @@ def _column_from_reference(spec: dict) -> Column:
     if kind == "bool":
         data = np.array([False if value is None else bool(value) for value in values])
         return Column("bool", data, na_mask=missing)
+    if "levels" in spec:
+        levels = tuple(spec["levels"])
+        codes = np.array(
+            [0 if value is None else levels.index(value) for value in values], dtype=np.int32
+        )
+        return Column("categorical", codes, levels=levels, na_mask=missing)
     data = np.array(["" if value is None else value for value in values], dtype=object)
     return Column("str", data, na_mask=missing)
 
@@ -89,8 +112,16 @@ def _row_subset(table: ColumnTable, mask: np.ndarray) -> ColumnTable:
 
 
 def _plots(reference: dict) -> dict[str, ggplot]:
-    mpg = _table(reference["datasets"]["mpg"])
-    boxes = _table(reference["datasets"]["boxes"])
+    datasets = {name: _table(spec) for name, spec in reference["datasets"].items()}
+    mpg = datasets["mpg"]
+    boxes = datasets["boxes"]
+    na_point = datasets["na_point"]
+    na_x = datasets["na_x"]
+    col_data = datasets["col_data"]
+    line_data = datasets["line_data"]
+    categorical_data = datasets["categorical_data"]
+    bool_data = datasets["bool_data"]
+    multi_data = datasets["multi_data"]
     cyl4 = _row_subset(mpg, mpg.column("cyl").values == 4.0)
     return {
         "point_computed": ggplot(mpg, aes(x="displ", y="hwy / cyl")) + geom_point(),
@@ -103,6 +134,19 @@ def _plots(reference: dict) -> dict[str, ggplot]:
         ),
         "stacked_bar_interaction": ggplot(mpg, aes(x="drv", fill="class")) + geom_bar(),
         "layer_data_override": ggplot(mpg, aes(x="displ", y="hwy")) + geom_point(data=cyl4),
+        "point_na_colour": ggplot(na_point, aes(x="x", y="y", colour="g")) + geom_point(),
+        "count_na_x": ggplot(na_x, aes(x="xs")) + geom_bar(),
+        "col_identity": ggplot(col_data, aes(x="xs", y="ys")) + geom_col(),
+        "col_width_param": ggplot(col_data, aes(x="xs", y="ys")) + geom_col(width=0.3),
+        "line_unsorted": ggplot(line_data, aes(x="x", y="y", group="g")) + geom_line(),
+        "point_params": ggplot(mpg, aes(x="displ", y="hwy")) + geom_point(colour="red", size=3),
+        "bar_fill_param": ggplot(mpg, aes(x="class")) + geom_bar(fill="steelblue"),
+        "aes_reordered": ggplot(mpg, aes(y="hwy", x="displ")) + geom_point(),
+        "categorical_group": ggplot(categorical_data, aes(x="x", y="y", colour="g")) + geom_point(),
+        "bool_discrete_x": ggplot(bool_data, aes(x="x", y="y")) + geom_point(),
+        "multi_layer_levels": ggplot(multi_data, aes(x="cls"))
+        + geom_bar()
+        + geom_bar(aes(x="drv")),
     }
 
 
@@ -133,10 +177,15 @@ def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
     for spec in case["columns"]:
         name = spec["name"]
         column = layer.data.column(name)
+        if name in skip:
+            # 值归 M1-4 / M1-10 的调色板与主题；kind 仍然比（唯一例外是
+            # categorical 源列：我们保留 categorical code，R 的 $data 是 character）。
+            if not (case_id == "categorical_group" and name == "colour"):
+                assert column.kind == spec["kind"], f"{name}: kind 不一致"
+            continue
+        assert column.kind == spec["kind"], f"{name}: kind 不一致"
         expected_missing = np.array([value is None for value in spec["values"]], dtype=bool)
         assert np.array_equal(column.na_mask, expected_missing), f"{name}: 缺失行不一致"
-        if name in skip:
-            continue
         values = column.values
         if spec["kind"] == "str":
             got = [
@@ -163,7 +212,7 @@ def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """对拍规模：74 列里 71 列参与比值、3530 个值（钉住，不许悄悄缩水）。"""
+    """对拍规模：214 列里 205 列参与比值、8747 个值（钉住，不许悄悄缩水）。"""
     total_columns = 0
     total_values = 0
     for case in reference["cases"]:
@@ -172,8 +221,8 @@ def test_compared_cell_count(reference: dict) -> None:
         assert rows == case["rows"]
         total_columns += compared
         total_values += compared * rows
-    assert total_columns == 71
-    assert total_values == 3530
+    assert total_columns == 205
+    assert total_values == 8747
 
 
 def test_skipped_columns_only_carry_scale_or_theme_values(reference: dict) -> None:
@@ -184,6 +233,47 @@ def test_skipped_columns_only_carry_scale_or_theme_values(reference: dict) -> No
         assert skipped <= set(names)
         for name in skipped:
             assert name in ("colour", "fill")
+
+
+def test_multi_layer_levels_match_r(reference: dict) -> None:
+    """多层离散 x：跨层水平全局排序，两层各自的 x 编码都要对上。"""
+    case = next(item for item in reference["cases"] if item["id"] == "multi_layer_levels")
+    build = build_plot(_plots(reference)["multi_layer_levels"])
+    assert list(build.scales.trained["x"]) == case["x_labels"]
+    assert len(case["layers"]) == 2
+    for index, layer_spec in enumerate(case["layers"]):
+        layer = build.layers[index]
+        names = [column["name"] for column in layer_spec["columns"]]
+        assert list(layer.data.names) == names
+        assert layer.data.nrows == layer_spec["rows"]
+        for spec in layer_spec["columns"]:
+            name = spec["name"]
+            if name in SKIP_VALUES["multi_layer_levels"]:
+                continue
+            column = layer.data.column(name)
+            assert column.kind == spec["kind"], f"layer[{index}].{name}: kind 不一致"
+            values = column.values
+            if spec["kind"] == "str":
+                got = [
+                    None if missing else str(value)
+                    for value, missing in zip(values.tolist(), column.na_mask.tolist(), strict=True)
+                ]
+                assert got == spec["values"], f"layer[{index}].{name}: 字符串列不一致"
+            else:
+                got = np.array(
+                    [
+                        np.nan if missing else float(value)
+                        for value, missing in zip(
+                            values.tolist(), column.na_mask.tolist(), strict=True
+                        )
+                    ]
+                )
+                expected = np.array(
+                    [np.nan if value is None else float(value) for value in spec["values"]]
+                )
+                assert np.allclose(got, expected, rtol=0, atol=TOLERANCE, equal_nan=True), (
+                    f"layer[{index}].{name}: 数值列不一致"
+                )
 
 
 def test_parity_has_teeth(reference: dict) -> None:

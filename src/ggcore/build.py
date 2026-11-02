@@ -21,8 +21,9 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 - **缺省 aes** 从 `Geom.default_aes` 补，追加顺序 = spec 的键顺序（上游
   `use_defaults()` 的口径）；`required_aes` 缺失报 :class:`MissingAesError`，
   消息里列出缺哪一组。
-- **缺失值**：按参与计算的 aes 逐列计数后整行删除；`na_rm=False` 时发
-  :class:`BuildWarning`，不静默。
+- **缺失值**：按参与计算的 aes 逐列计数（`LayerBuild.dropped_missing`），
+  **行保留**——ggplot2 4.0.3 的 `$data` 不删 NA 行，删除在绘制期
+  `Geom$handle_na()`（M1-7）。
 - **分组**：用 M1-2 的 `compute_groups()`（0 起），这里转成 ggplot2 内置数据的
   1 起编号；`group` 显式映射优先。
 - **scale 接口先行**：映射全部经 :class:`ScaleSet`。本任务给 identity 实现
@@ -40,7 +41,7 @@ from __future__ import annotations
 import ast
 import warnings as _warnings
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
@@ -237,65 +238,108 @@ def _bare_column_name(spec: AesSpec) -> str | None:
 class ScaleSet:
     """一组按 aesthetic 索引的标度；本任务是 identity 实现。
 
-    `train(values, aesthetic)` 记录离散位置美学的水平顺序，`map(values,
+    `train(values, aesthetic)` 收集离散位置美学的水平，`map(values,
     aesthetic)` 把离散位置编码成 1..n（ggplot2 默认离散位置标度的行为），其它
     美学原样返回。**流水线只调用这两个方法**，没有任何写死的线性映射，所以
     M1-4 换实现时 do not touch 流水线——`tests/test_build.py` 用自定义子类证明
     这一点。
+
+    水平顺序照上游 `scale_x_discrete()` 的训练口径：
+
+    - 普通字符列：跨层合并后**全局升序**（不是「先遇到先保留」）；
+    - categorical 列：按 `Column.levels`（标度顺序），其余水平升序追加；
+    - 逻辑值：`False` 在 `True` 前；
+    - NA 也占一个水平（排在最后）：上游 `sort(unique(x), na.last = TRUE)`，
+      所以 `geom_bar(aes(x = c("a", NA)))` 的 NA 是一根独立的柱。
+
+    连续位置列经过 `map` 会统一成 float（上游 `map_position()` 把位置值变
+    double），`kind` 与 R 的内置数据一致；`group` 等非位置美学不动。
     """
 
     def __init__(self) -> None:
-        self._levels: dict[str, tuple[str, ...]] = {}
+        self._seen: dict[str, set[Any]] = {}
+        self._categorical: dict[str, tuple[str, ...]] = {}
+        self._missing: dict[str, bool] = {}
 
     @property
     def trained(self) -> Mapping[str, tuple[str, ...]]:
-        """已训练的离散水平（只读视图）。"""
-        return MappingProxyType(dict(self._levels))
+        """已训练的离散水平（解析后的顺序；只读视图）。"""
+        return MappingProxyType({name: self._resolved(name) for name in self._seen})
 
     def levels(self, aesthetic: str) -> tuple[str, ...]:
         """某个美学已训练的水平；没有训练过就是空元组。"""
-        return self._levels.get(aesthetic, ())
+        return self._resolved(aesthetic)
+
+    def _resolved(self, aesthetic: str) -> tuple[str, ...]:
+        seen = self._seen.get(aesthetic, set())
+        if not seen:
+            return ()
+        base = [level for level in self._categorical.get(aesthetic, ()) if level in seen]
+        rest = sorted(level for level in seen if level not in set(base))
+        return tuple(base + rest)
 
     def train(self, values: Any, aesthetic: str) -> None:
-        """训练一列：只关心位置美学上的离散值。"""
+        """训练一列：只关心位置美学上的离散值（含 NA 水平）。"""
         if aesthetic not in POSITION_AESTHETICS:
             return
         levels = _discrete_levels(values)
         if levels is None:
             return
-        known = self._levels.get(aesthetic, ())
-        merged = list(known)
-        for level in levels:
-            if level not in merged:
-                merged.append(level)
-        self._levels[aesthetic] = tuple(merged)
+        self._seen.setdefault(aesthetic, set()).update(levels)
+        if isinstance(values, Column) and values.kind == "categorical" and values.levels:
+            if aesthetic not in self._categorical:
+                self._categorical[aesthetic] = values.levels
+        if _has_missing(values):
+            self._missing[aesthetic] = True
 
     def map(self, values: Any, aesthetic: str) -> Any:
-        """映射一列：离散位置 → 1..n（缺失保持缺失），其它原样返回。"""
+        """映射一列：离散位置 → 1..n（NA → 最后一个水平），其它原样返回。"""
         if aesthetic not in POSITION_AESTHETICS:
             return values
         levels = _discrete_levels(values)
         if levels is None:
+            # 连续位置列：上游 map_position() 输出 double。
+            if isinstance(values, Column) and values.kind in ("int", "bool"):
+                return Column("float", values.values.astype(np.float64), na_mask=values.na_mask)
             return values
-        ordered = self._levels.get(aesthetic) or levels
+        ordered = self._resolved(aesthetic) or levels
         number = {level: index + 1 for index, level in enumerate(ordered)}
         source = values if isinstance(values, Column) else None
         array = _column_values(values) if source is not None else np.asarray(values)
-        missing = _is_missing_array(array)
+        if isinstance(values, Column) and values.kind == "bool":
+            array = np.asarray(values.values, dtype=bool)
+            missing = np.asarray(values.na_mask, dtype=bool)
+        else:
+            missing = _is_missing_array(array)
+        has_missing = self._missing.get(aesthetic, False) or bool(missing.any())
+        na_code = float(len(ordered) + 1) if has_missing else np.nan
         codes = np.zeros(array.shape[0], dtype=np.float64)
         for i, item in enumerate(array.tolist()):
-            if missing[i]:
-                continue
-            codes[i] = number.get(item, np.nan)
+            codes[i] = na_code if missing[i] else number.get(_level_key(item), np.nan)
         if source is not None:
-            return Column("float", np.where(missing, 0.0, codes), na_mask=missing)
-        codes[missing] = np.nan
+            return Column("float", codes)
         return codes
 
 
-def _discrete_levels(values: Any) -> tuple[str, ...] | None:
-    """离散值域（按值域顺序）；不是离散列返回 None。"""
+def _level_key(item: Any) -> str:
+    """水平比较用的键：逻辑值统一成 "False" / "True"，其余按字符串。"""
+    if isinstance(item, (bool, np.bool_)):
+        return "True" if bool(item) else "False"
+    return item if isinstance(item, str) else str(item)
+
+
+def _has_missing(values: Any) -> bool:
+    """一列是否有缺失（`Column.na_mask` 或 ndarray 里的 None / NaN）。"""
     if isinstance(values, Column):
+        return bool(values.na_mask.any())
+    return bool(_is_missing_array(np.asarray(values)).any())
+
+
+def _discrete_levels(values: Any) -> tuple[str, ...] | None:
+    """离散值域（按值域顺序）；连续列返回 None。"""
+    if isinstance(values, Column):
+        if values.kind == "bool":
+            return ("False", "True")
         if not values.is_discrete:
             return None
         if values.levels:
@@ -303,6 +347,8 @@ def _discrete_levels(values: Any) -> tuple[str, ...] | None:
         array = _column_values(values)
     else:
         array = np.asarray(values)
+        if array.dtype.kind == "b":
+            return ("False", "True")
         if array.dtype.kind not in ("U", "S", "O"):
             return None
         if array.dtype.kind == "O" and not all(
@@ -310,7 +356,9 @@ def _discrete_levels(values: Any) -> tuple[str, ...] | None:
         ):
             return None
     missing = _is_missing_array(array)
-    present = {item for item, flag in zip(array.tolist(), missing, strict=True) if not flag}
+    present = {
+        _level_key(item) for item, flag in zip(array.tolist(), missing, strict=True) if not flag
+    }
     return tuple(sorted(present))
 
 
@@ -323,8 +371,8 @@ def _discrete_levels(values: Any) -> tuple[str, ...] | None:
 class Aesthetics:
     """阶段 1 的产物：数据美学表 + 被推迟的 after_stat 映射。
 
-    `dropped` 是「列名 → 该列缺失行数」，`notes` 是已经发出去的提示文本；
-    `empty` 表示（删完缺失行之后）0 行——后续阶段走空表路径。
+    `dropped` 是「列名 → 该列缺失行数」（**只是计数，行不删**）；`notes` 是
+    已经发出去的提示文本；`empty` 表示 0 行——后续阶段走空表路径。
     """
 
     table: ColumnTable
@@ -358,10 +406,12 @@ def _resolve_mapping(plot: ggplot, layer: Layer) -> Aes:
 
 
 def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics:
-    """阶段 1：合并 mapping、求值数据美学、补 PANEL / group、删缺失行。
+    """阶段 1：合并 mapping、求值数据美学、补 PANEL / group、统计缺失。
 
-    返回的 `table` 列序 = 层/plot mapping 顺序（discard after_stat）→ `PANEL` →
+    返回的 `table` 列序 = 层/plot mapping 顺序（after_stat 的不进表）→ `PANEL` →
     `group`（显式 group 留在 mapping 原位，与上游 `add_group()` 一致）。
+    缺失行**不删除**，只记进 `dropped_missing`；`build` 会在这一步之后调用
+    :func:`map_position` 做位置标度的第一次编码。
     """
     table = _resolve_data(plot, layer)
     mapping = _resolve_mapping(plot, layer)
@@ -380,7 +430,8 @@ def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics
         else:
             columns.append((name, _column_from_values(eval_aes(spec, table, nrows=nrows))))
 
-    # 分组：M1-2 给 0 起的 id，ggplot2 的内置数据是 1 起；NA 行保持 NO_GROUP。
+    # 分组：M1-2 给 0 起的 id，ggplot2 的内置数据是 1 起。NA 也是一个水平，
+    # 所以只有「没有任何离散 aes」时才是 NO_GROUP。
     ids = compute_groups(mapping, table)
     group = Column("int", np.where(ids >= 0, ids + 1, NO_GROUP).astype(np.int64))
     group_position = next((i for i, (name, _) in enumerate(columns) if name == "group"), None)
@@ -391,7 +442,9 @@ def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics
         columns[group_position] = ("group", group)
         columns.append(("PANEL", Column("str", np.full(nrows, "1", dtype=str))))
 
-    # 缺失值：逐列计数，再整行删除（参与计算的列 = 除 PANEL / group 外全部）。
+    # 缺失值：**只统计、不删行**。ggplot2 4.0.3 的 `$data` 保留 NA 行，删除
+    # 发生在绘制期 `Geom$handle_na()`（只看 required_aes + non_missing_aes），
+    # 由 M1-7 负责发 "Removed N rows" 的 warning。
     counts: dict[str, int] = {}
     for name, column in columns:
         if name in ("PANEL", "group"):
@@ -399,31 +452,44 @@ def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics
         missing = int(column.na_count)
         if missing:
             counts[name] = missing
-    keep = np.ones(nrows, dtype=bool)
-    for name, column in columns:
-        if name in ("PANEL", "group"):
-            continue
-        keep &= ~column.na_mask
-    dropped_rows = int((~keep).sum())
-    notes: list[str] = []
-    if dropped_rows:
-        detail = "，".join(f"{name}: {count}" for name, count in counts.items())
-        geom = f"geom_{layer.geom.name}"
-        message = f"layer[{index}]（{geom}）删除了 {dropped_rows} 行含缺失值的观测（{detail}）"
-        notes.append(message)
-        if not bool(layer.params.get("na_rm", False)):
-            _warnings.warn(message, BuildWarning, stacklevel=4)
-        columns = [(name, _gather_column(column, keep)) for name, column in columns]
 
-    notes_tuple = tuple(notes)
-    remaining = int(keep.sum())
     return Aesthetics(
-        table=ColumnTable(columns, nrows=remaining),
+        table=ColumnTable(columns, nrows=nrows),
         deferred=tuple(deferred),
         dropped=MappingProxyType(counts),
-        notes=notes_tuple,
-        empty=remaining == 0,
+        notes=(),
+        empty=nrows == 0,
     )
+
+
+def map_position(scales: ScaleSet, aesthetics: Aesthetics) -> Aesthetics:
+    """阶段 1 与阶段 2 之间：位置标度的第一次训练/映射。
+
+    上游 `build_ggplot()` 在 `compute_aesthetics()` 之后立刻
+    `layout$train_position()` + `layout$map_position()`，所以 stat 拿到的 x/y
+    已经是位置值（离散 → 1..n，NA → 最后一个水平）。这里的输出等价于那一步；
+    `LayerBuild.aesthetics` 与对拍用的 `$data` 都按这个口径。
+    """
+    return replace(aesthetics, table=_map_position_table(scales, aesthetics.table))
+
+
+def _map_position_table(scales: ScaleSet, table: ColumnTable) -> ColumnTable:
+    if table.nrows == 0:
+        return _EMPTY
+    return ColumnTable(
+        [(name, _as_column(scales.map(column, name))) for name, column in _items(table)],
+        nrows=table.nrows,
+    )
+
+
+def _as_column(value: Any) -> Column:
+    """`ScaleSet.map` 的结果统一成 Column。"""
+    return value if isinstance(value, Column) else _column_from_values(value)
+
+
+def _train(scales: ScaleSet, table: ColumnTable) -> None:
+    for name, column in _items(table):
+        scales.train(column, name)
 
 
 # ---------------------------------------------------------------------------
@@ -592,19 +658,29 @@ def _put(columns: list[tuple[str, Column]], name: str, column: Column) -> list[t
 
 
 def compute_position(layer: Layer, mapped: ColumnTable, index: int = 0) -> ColumnTable:
-    """阶段 4：位置调整。本任务实现 `identity` 与 `stack`。
+    """阶段 4：geom 派生的坐标列 + 位置调整。本任务实现 `identity` 与 `stack`。
+
+    顺序照上游：`required_aes` 校验 → `Geom$setup_data()` → `Position$compute_layer()`。
+    `setup_data()` 在 `compute_position()` **之前**，所以 `flipped_aes` /
+    `xmin` / `xmax` / `ymin` / `ymax` 的列序与 R 一致；stage 输出
+    （`LayerBuild.positioned`）已经包含这些列。
 
     `stack` 按 x 分组把 y 反向累加（上游 `collide(reverse = FALSE)`：第一个
-    group 在最上面），同时写 `ymin` / `ymax`，并把 `y` 设成 `ymax`；x 没有重复
-    值时和上游一样退化成 identity（只由 finish 的 geom setup 补锚点）。
+    group 在最上面），同时覆盖 `ymin` / `ymax` 并把 `y` 设成 `ymax`；x 没有重复
+    值时和上游一样退化成 identity。
+
+    `line` 的 `setup_data()` 还会按 `(PANEL, group, x)` 重排行序（上游
+    `GeomLine$setup_data()`），路径的连接顺序由它决定。
     """
     if mapped.nrows == 0:
         return _EMPTY
+    _check_required_aes(layer, mapped, index)
+    table = ColumnTable(_geom_setup(layer, mapped), nrows=mapped.nrows)
     name = layer.position.name
     if name == "identity":
-        return mapped
+        return table
     if name == "stack":
-        return _position_stack(mapped, layer.position.params)
+        return _position_stack(table, layer.position.params)
     raise BuildError(
         f"position {name!r} 尚未实现；M1-3 只实现 identity / stack"
         '（boxplot 的 dodge2 请显式写 position="identity" 或等后续任务）'
@@ -669,21 +745,62 @@ def map_scales(scales: ScaleSet, positioned: ColumnTable) -> ColumnTable:
 
 
 def finish(layer: Layer, scaled: ColumnTable, index: int = 0) -> ColumnTable:
-    """阶段 6：补齐 geom 派生的坐标列与 `default_aes`，得到 ggplot2 内置数据。
+    """阶段 6：补 `default_aes` 与 `geom_*(...)` 的字面参数，得到 ggplot2 内置数据。
 
-    顺序照上游：`required_aes` 校验 → `Geom$setup_data()`（bar/col/histogram 的
-    `ymin/ymax/xmin/xmax`、boxplot 的 `flipped_aes/xmin/xmax`）→
-    `Geom$use_defaults()`（按 spec 键顺序追加）。
+    顺序照上游 `Geom$use_defaults()`：
+
+    1. 先按 `default_aes` 的键序补缺失列（列序就是从这一步来的）；
+    2. 再把 `intersect(geom$ aesthetics(), names(params))` 的层参数写回 data
+       （`geom_point(colour = "red", size = 3)` / `geom_bar(fill = "steelblue")`
+       / `geom_col(width = 0.3)`）：已有列原位覆盖，没有的列追加到末尾。
     """
     if scaled.nrows == 0:
         return _EMPTY
-    _check_required_aes(layer, scaled, index)
-    columns = _geom_setup(layer, scaled)
+    columns = list(_items(scaled))
     for name, value in layer.geom.default_aes.items():
         if name in dict(columns):
             continue
         columns = _put(columns, name, _default_column(value, scaled.nrows))
+    for name, value in _aes_params(layer).items():
+        columns = _put(columns, name, _value_column(value, scaled.nrows))
     return ColumnTable(columns, nrows=scaled.nrows)
+
+
+def _geom_aesthetics(geom: Any) -> tuple[str, ...]:
+    """`Geom$aesthetics()`：required_aes 展开 + default_aes 名字 + group。"""
+    names: list[str] = []
+    for alternatives in required_aes_groups(geom.required_aes):
+        names.extend(alternatives)
+    names.extend(geom.default_aes)
+    names.append("group")
+    return tuple(dict.fromkeys(names))
+
+
+def _aes_params(layer: Layer) -> dict[str, Any]:
+    """层参数里属于「几何美学」的部分（上游 `aes_params`）。"""
+    allowed = set(_geom_aesthetics(layer.geom))
+    return {name: value for name, value in layer.params.items() if name in allowed}
+
+
+def _value_column(value: Any, nrows: int) -> Column:
+    """层参数的取值 → 列：标量 / 长度 1 广播，长度 n 逐行，`None` 整列缺失。"""
+    if value is None:
+        return _default_column(None, nrows)
+    if isinstance(value, (bool, np.bool_, str)):
+        return _default_column(value, nrows)
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        # R 的 aes 参数是 double（`geom_point(size = 3)` 的 size 是 3，不是 3L）。
+        return Column("float", np.full(nrows, float(value)))
+    array = np.asarray(value)
+    if array.ndim == 0:
+        return _default_column(array.item(), nrows)
+    if array.ndim != 1:
+        raise BuildError(f"geom 参数必须是标量或一维数组，得到 {array.ndim} 维")
+    if array.size == 1:
+        return _default_column(array[0], nrows)
+    if array.size != nrows:
+        raise BuildError(f"geom 参数长度 {array.size} 与数据行数 {nrows} 不符")
+    return _column_from_values(array)
 
 
 def _check_required_aes(layer: Layer, table: ColumnTable, index: int) -> None:
@@ -731,7 +848,22 @@ def _geom_setup(layer: Layer, table: ColumnTable) -> list[tuple[str, Column]]:
         if "xmax" not in dict(columns):
             columns = _put(columns, "xmax", Column("float", x + width / 2.0))
         columns = [(key, column) for key, column in columns if key != "width"]
+    elif name == "line":
+        # GeomLine$setup_data(): flipped_aes + 按 (PANEL, group, x) 重排行序。
+        columns = _put(columns, "flipped_aes", Column("bool", np.zeros(nrows, dtype=bool)))
+        columns = _sorted(columns, table)
     return columns
+
+
+def _sorted(columns: list[tuple[str, Column]], table: ColumnTable) -> list[tuple[str, Column]]:
+    """按 `(PANEL, group, x)` 稳定排序（上游 `order(data$PANEL, data$group, data$x)`）。"""
+    keys = [
+        _column_values(table.column("x")).astype(np.float64),
+        _column_values(table.column("group")).astype(np.float64),
+        _column_values(table.column("PANEL")),
+    ]
+    order = np.lexsort(keys)
+    return [(name, _gather_column(column, order)) for name, column in columns]
 
 
 def _width(layer: Layer, table: ColumnTable) -> np.ndarray | float:
@@ -744,9 +876,14 @@ def _width(layer: Layer, table: ColumnTable) -> np.ndarray | float:
 
 
 def _default_column(value: Any, nrows: int) -> Column:
-    """`default_aes` 的静态值 → 列（标量广播；`None` 是整列缺失）。"""
+    """`default_aes` 的静态值 → 列（标量广播；`None` 是整列缺失）。
+
+    类型照 R 的内置数据：`None` 落成 **logical NA**（`colour` / `fill` /
+    `alpha` 的缺省都是 `NA`），整数按 Python 字面量类型走（`linetype = 1` 是
+    integer、`shape = 19.0` / `weight = 1.0` 是 double——spec 里写成对应的字面量）。
+    """
     if value is None:
-        return Column("float", np.zeros(nrows), na_mask=np.ones(nrows, dtype=bool))
+        return Column("bool", np.zeros(nrows, dtype=bool), na_mask=np.ones(nrows, dtype=bool))
     if isinstance(value, (bool, np.bool_)):
         return Column("bool", np.full(nrows, bool(value), dtype=bool))
     if isinstance(value, str):
@@ -765,7 +902,7 @@ def _default_column(value: Any, nrows: int) -> Column:
 
 @dataclass(frozen=True, slots=True)
 class LayerBuild:
-    """一层的数据：六个阶段各一张表，外加缺失值 / 空层记录。"""
+    """一层的数据：六个阶段各一张表，外加缺失值计数与空层标记。"""
 
     index: int
     geom: str
@@ -824,8 +961,8 @@ class _Stages:
     positioned: ColumnTable
 
 
-def _compute_stages(plot: ggplot, layer: Layer, index: int) -> _Stages:
-    aesthetics = compute_aesthetics(plot, layer, index)
+def _compute_stages(aesthetics: Aesthetics, layer: Layer, index: int) -> _Stages:
+    """阶段 2–4：输入是已经过位置标度第一次编码的 `Aesthetics`。"""
     statistic = compute_stat(layer, aesthetics)
     mapped = map_statistic(layer, statistic, aesthetics)
     positioned = compute_position(layer, mapped, index)
@@ -862,27 +999,37 @@ def build_layer(
     """构建单层（六阶段全走一遍）。
 
     `scales` 给出时复用调用方的标度（本函数仍会用这一层的列训练它）；不给就
-    新建一个。跨层联合训练请用 :func:`build_plot`。
+    新建一个。位置标度按上游口径训练两次（`compute_aesthetics` 之后、
+    `compute_position` 之后各一次）。跨层联合训练请用 :func:`build_plot`。
     """
     if scales is None:
         scales = ScaleSet()
-    stages = _compute_stages(plot, layer, index)
-    for name, column in _items(stages.positioned):
-        scales.train(column, name)
-    return _assemble(stages, scales)
+    aesthetics = compute_aesthetics(plot, layer, index)
+    _train(scales, aesthetics.table)
+    aesthetics = map_position(scales, aesthetics)
+    # 上游在 compute_position 之后会再 train/map 一次；identity 下是幂等的，
+    # 但把这一步留着，M1-4 的连续标度才能拿到第二段数据范围（见 build.md §6）。
+    _train(scales, aesthetics.table)
+    return _assemble(_compute_stages(aesthetics, layer, index), scales)
 
 
 def build_plot(plot: ggplot) -> PlotBuild:
     """按层顺序构建整张图；**本任务不产出 gtable / 不出图**。
 
     标度先在所有层上训练，再统一映射（上游 `scales$train_df(data)` 的口径），
-    所以同一离散 x 在不同层里得到同一套 1..n 编码。
+    所以同一离散 x 在不同层里得到同一套 1..n 编码；位置标度同样保留上游的
+    两段训练（aesthetics 之后、position 之后各一次）。
     """
     scales = ScaleSet()
-    stages = [_compute_stages(plot, layer, index) for index, layer in enumerate(plot.layers)]
-    for stage in stages:
-        for name, column in _items(stage.positioned):
-            scales.train(column, name)
-    builds = tuple(_assemble(stage, scales) for stage in stages)
+    raw = [compute_aesthetics(plot, layer, index) for index, layer in enumerate(plot.layers)]
+    for aesthetics in raw:
+        _train(scales, aesthetics.table)
+    mapped = [map_position(scales, aesthetics) for aesthetics in raw]
+    for aesthetics in mapped:
+        _train(scales, aesthetics.table)
+    builds = tuple(
+        _assemble(_compute_stages(aesthetics, layer, index), scales)
+        for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
+    )
     notes = tuple(note for build in builds for note in build.notes)
     return PlotBuild(layers=builds, scales=scales, warnings=notes)

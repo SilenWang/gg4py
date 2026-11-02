@@ -279,7 +279,7 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
         "point": GeomSpec(
             ("x", "y"),
             {
-                "shape": 19,
+                "shape": 19.0,
                 "colour": "black",
                 "fill": None,
                 "size": 1.5,
@@ -314,12 +314,12 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "ymax|xmax",
             ),
             {
-                "weight": 1,
+                "weight": 1.0,
                 "colour": "grey20",
                 "fill": "white",
                 "size": 1.5,
                 "alpha": None,
-                "shape": 19,
+                "shape": 19.0,
                 "linetype": 1,
                 "linewidth": 0.5,
                 "width": 0.9,
@@ -335,7 +335,7 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "linewidth": 1,
                 "linetype": 1,
                 "alpha": 0.4,
-                "weight": 1,
+                "weight": 1.0,
             },
             "smooth",
             "identity",

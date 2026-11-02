@@ -394,7 +394,9 @@ def test_constant_colour_does_not_change_grouping() -> None:
     assert base.tolist() == numeric.tolist() == textual.tolist() == [0, 0, 1, 0, 2]
 
 
-def test_rows_with_na_in_a_grouping_column_get_no_group() -> None:
+def test_rows_with_na_in_a_grouping_column_get_their_own_level() -> None:
+    # 上游 id_var(): sort(unique0(x), na.last = TRUE) —— NA 是最后一个水平，
+    # 不是 NO_GROUP（4.0.3 的 $data 也保留这些行）。
     t = ColumnTable(
         [
             (
@@ -404,7 +406,8 @@ def test_rows_with_na_in_a_grouping_column_get_no_group() -> None:
         ]
     )
     ids = compute_groups(aes(colour="g"), t)
-    assert ids.tolist() == [0, NO_GROUP, 1]
+    assert ids.tolist() == [0, 2, 1]
+    assert (ids != NO_GROUP).all()
 
 
 def test_after_stat_aes_does_not_participate_in_grouping() -> None:
