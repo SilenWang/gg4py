@@ -14,18 +14,24 @@ from ggcore.theme import (
     ElementBlank,
     ElementLine,
     ElementRect,
+    ElementText,
+    Rel,
     ThemeError,
     element_blank,
+    element_geom,
     element_line,
+    element_point,
     element_text,
     merge_theme,
     rel,
     resolve_theme,
     theme,
+    theme_bw,
     theme_grey,
     theme_minimal,
     theme_void,
 )
+from ggcore.units import Unit
 
 
 def margin_pt(value) -> tuple[float | None, ...]:
@@ -254,3 +260,94 @@ def test_theme_objects_are_immutable_and_merge_returns_new_objects() -> None:
     assert merged is not base
     assert base.elements["text"].size == 11
     assert merged.elements["text"].size.mult == 2
+
+
+def test_theme_bw_is_registered_on_the_plot() -> None:
+    p = plot.ggplot({"x": [1.0], "y": [2.0]})
+
+    for bw in (p + theme_bw(), p.theme_bw(), p + plot.theme_bw()):
+        assert bw.theme.name == "bw"
+        assert bw.theme.complete is True
+
+    resolved = resolve_theme((p + theme_bw()).theme)
+    assert resolved["panel.background"].fill == "#FFFFFF"
+    assert resolved["panel.background"].colour is None
+    assert resolved["panel.border"].colour == "#333333"
+    assert resolved["panel.grid.major"].colour == "#EBEBEB"
+    assert resolved["panel.grid.minor"].linewidth == pytest.approx(0.25)
+    assert resolved["strip.background"].fill == "#D9D9D9"
+
+
+def test_element_text_carries_italic_fontweight_fontwidth() -> None:
+    fields = ElementText.__dataclass_fields__
+    assert {"italic", "fontweight", "fontwidth"} <= set(fields)
+
+    merged = merge_theme(
+        theme_grey(),
+        theme(**{"plot.title": element_text(fontweight="bold", italic=True)}),
+    )
+    title = resolve_theme(merged)["plot.title"]
+    assert isinstance(title, ElementText)
+    assert (title.italic, title.fontweight, title.fontwidth) == (True, "bold", None)
+
+    # 完整主题里这三项没设置，保持 None（R 侧同样是 null）。
+    plain = resolve_theme(theme_grey())["axis.text"]
+    assert (plain.italic, plain.fontweight, plain.fontwidth) == (None, None, None)
+
+
+_REL_WHITELIST = {
+    ("point", "stroke"),
+    ("geom", "borderwidth"),
+    ("geom", "fontsize"),
+    ("geom", "pointsize"),
+}
+
+
+def _rel_sites(resolved) -> set[tuple[str, str | None]]:
+    sites: set[tuple[str, str | None]] = set()
+    for name, value in resolved.elements.items():
+        if isinstance(value, Rel) or (
+            isinstance(value, Unit) and any(part.kind == "rel" for part in value.elements)
+        ):
+            sites.add((name, None))
+            continue
+        for field_name in getattr(value, "__dataclass_fields__", ()):
+            if isinstance(getattr(value, field_name), Rel):
+                sites.add((name, field_name))
+    return sites
+
+
+def test_no_rel_survives_outside_the_whitelist() -> None:
+    themed = merge_theme(
+        theme_grey(),
+        theme(
+            text=element_text(size=rel(2)),
+            line=element_line(linewidth=rel(2)),
+            point=element_point(size=rel(2), stroke=rel(2)),
+            **{
+                "geom": element_geom(
+                    linewidth=rel(2),
+                    borderwidth=rel(2),
+                    fontsize=rel(1.5),
+                    pointsize=rel(2),
+                )
+            },
+        ),
+    )
+    resolved = resolve_theme(themed)
+
+    # size / linewidth 即使在根元素上也折成具体值。
+    assert resolved["text"].size == pytest.approx(22)
+    assert resolved["point"].size == pytest.approx(3)
+    assert resolved["geom"].linewidth == pytest.approx(1.0)
+    # 白名单里的字段原样保留。
+    assert resolved["point"].stroke == rel(2)
+    assert resolved["geom"].fontsize == rel(1.5)
+    assert resolved["axis.minor.ticks.length"] == rel(0.75)
+
+    leftovers = {
+        site
+        for site in _rel_sites(resolved)
+        if site not in _REL_WHITELIST and not site[0].startswith("axis.minor.ticks.length")
+    }
+    assert leftovers == set()

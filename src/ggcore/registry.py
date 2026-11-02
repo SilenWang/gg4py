@@ -37,7 +37,7 @@ from typing import Any
 from ggcore.aes import as_aes, frozen_mapping
 from ggcore.components import Coord, Facet, Guide, Labels, Scale
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
-from ggcore.theme import theme_grey, theme_minimal, theme_void
+from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。
 KINDS: tuple[str, ...] = ("geom", "stat", "scale", "coord", "facet", "guide", "theme", "label")
@@ -521,6 +521,7 @@ def _register_defaults() -> None:
     for name in GUIDE_NAMES:
         register_guide(name, _guide_factory(name))
     register_theme("grey", theme_grey)
+    register_theme("bw", theme_bw)
     register_theme("minimal", theme_minimal)
     register_theme("void", theme_void)
     register_label("labs", _labels_factory)

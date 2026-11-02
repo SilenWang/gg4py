@@ -45,6 +45,12 @@ _KINDS = {
     ElementGeom: "geom",
 }
 
+#: 夹具里有、Python 侧刻意不建模的键（都恒为 null）。这份名单只能缩小。
+_KNOWN_ONLY_IN_EXPECTED = {
+    ("geom", "colour"),
+    ("geom", "fill"),
+}
+
 
 def _unit(value: Unit) -> dict:
     return {
@@ -110,6 +116,7 @@ def test_every_element_matches_ggplot2_4_0_3(reference: dict, name: str, builder
     expected_theme = reference["themes"][name]
     assert set(expected_theme) == set(resolved.elements)
 
+    skipped: set[tuple[str, str]] = set()
     for element_name, expected in expected_theme.items():
         actual = describe(resolved[element_name])
         if expected is None:
@@ -120,8 +127,16 @@ def test_every_element_matches_ggplot2_4_0_3(reference: dict, name: str, builder
         for key, want in expected.items():
             if key == "class":
                 continue
+            if key not in actual:
+                assert want is None, f"{element_name}.{key} 在夹具里非 null，Python 侧却没有这个键"
+                skipped.add((element_name, key))
+                continue
             got = actual.get(key)
             if isinstance(want, float) or isinstance(got, float):
                 assert got == pytest.approx(want), f"{element_name}.{key}"
             else:
                 assert got == want, f"{element_name}.{key}"
+
+    # expected-only 的 null 键不许无限增长：超出现有名单就说明少建模了字段。
+    assert len(skipped) <= len(_KNOWN_ONLY_IN_EXPECTED), sorted(skipped)
+    assert skipped <= _KNOWN_ONLY_IN_EXPECTED, sorted(skipped - _KNOWN_ONLY_IN_EXPECTED)

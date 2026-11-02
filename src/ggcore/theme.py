@@ -113,6 +113,9 @@ class ElementBlank(Element):
 class ElementText(Element):
     family: str | None = None
     face: str | None = None
+    italic: bool | None = None
+    fontweight: str | float | None = None
+    fontwidth: str | float | None = None
     size: float | Rel | None = None
     colour: str | _NotAvailable | None = None
     hjust: float | None = None
@@ -235,6 +238,9 @@ def _check_size(name: str, value: Any) -> None:
 def element_text(
     family: str | None = None,
     face: str | None = None,
+    italic: bool | None = None,
+    fontweight: str | float | None = None,
+    fontwidth: str | float | None = None,
     size: float | Rel | None = None,
     colour: str | _NotAvailable | None = None,
     hjust: float | None = None,
@@ -267,6 +273,9 @@ def element_text(
     return ElementText(
         family=family,
         face=face,
+        italic=italic,
+        fontweight=fontweight,
+        fontwidth=fontwidth,
         size=size,
         colour=colour,
         hjust=hjust,
@@ -714,8 +723,8 @@ def _check_element(name: str, value: Any) -> None:
 def theme(complete: bool = False, **elements: Any) -> Theme:
     """局部主题：只覆盖给到的元素。
 
-    - `theme(panel.grid=element_blank())` → 画空白；
-    - `theme(panel.grid=None)` → 删除该元素，解析时回落到父元素；
+    - `theme(**{"panel.grid": element_blank()})` → 画空白；
+    - `theme(**{"panel.grid": None})` → 删除该元素，解析时回落到父元素；
     - 未知元素名直接报错（ggplot2 对拼写错误同样报错）。
     """
     unknown = [name for name in elements if name not in ELEMENT_TREE]
@@ -930,7 +939,15 @@ def _resolve_one(
 
 @dataclass(frozen=True, slots=True)
 class ResolvedTheme:
-    """解析后的主题：每个元素都是具体值（无 rel、颜色已规范化）。
+    """解析后的主题：每个元素都是可断言的具体值（颜色已规范化）。
+
+    `Rel` 只在这几处保留，其余都折成 pt/mm：
+
+    - `point.stroke`、`geom.borderwidth` / `geom.fontsize` / `geom.pointsize`
+      这几个非 `size` / `linewidth` 的字段与 R 的 `calc_element()` 一致，
+      渲染时才相对根元素消费；
+    - 没有父元素的 `axis.minor.ticks.length*`（主题值 `rel(0.75)`），
+      由 guide 相对主轴刻度消费。
 
     `metrics` 目前只为后续 `strwidth` / `strheight` 单位与 guide 布局保留；
     本任务的元素值不依赖字体度量。

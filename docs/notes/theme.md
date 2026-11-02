@@ -32,7 +32,7 @@ ggplot2 `calc_element()` 的结果（颜色/单位/边距已换成 ggcore 的规
 
 | 构造器 | 字段 |
 | --- | --- |
-| `element_text(family, face, size, colour, hjust, vjust, angle, lineheight, margin)` | 另可 `debug=` / `inherit_blank=` |
+| `element_text(family, face, italic, fontweight, fontwidth, size, colour, hjust, vjust, angle, lineheight, margin)` | 另可 `debug=` / `inherit_blank=`；`italic` / `fontweight` / `fontwidth` 原样透传 |
 | `element_line(colour, linewidth, linetype, lineend, linejoin)` | `linewidth` 单位 mm；`arrow=` / `arrow_fill=` |
 | `element_rect(fill, colour, linewidth, linetype, linejoin)` | 背景/边框 |
 | `element_polygon(...)` | 与 rect 同字段 |
@@ -88,8 +88,8 @@ ggplot2 `calc_element()` 的结果（颜色/单位/边距已换成 ggcore 的规
 
 | 写法 | 主题里的值 | 解析结果 |
 | --- | --- | --- |
-| `theme(panel.background=element_blank())` | `ElementBlank()` | `ElementBlank()`（画空白） |
-| `theme(panel.background=None)` | `None`（删除） | 回落到父元素 `rect`：白底、黑边、0.5mm |
+| `theme(**{"panel.background": element_blank()})` | `ElementBlank()` | `ElementBlank()`（画空白） |
+| `theme(**{"panel.background": None})` | `None`（删除） | 回落到父元素 `rect`：白底、黑边、0.5mm |
 | 不给 `panel.background` | 保持主题原值 | `theme_grey()` 的 `#EBEBEB` 填充 |
 
 `theme()` 是局部覆盖：只合并给到的元素；`theme_grey()` 这类完整主题整份替换
@@ -101,13 +101,15 @@ ggplot2 `calc_element()` 的结果（颜色/单位/边距已换成 ggcore 的规
 合并只填 `None` 字段，`rel()` 原样保留到解析阶段：
 
 ```python
+from ggcore.theme import element_text, merge_theme, rel, resolve_theme, theme, theme_grey
+
 base = theme_grey()
-scaled = base + theme(text=element_text(size=rel(1.5)))
+scaled = merge_theme(base, theme(text=element_text(size=rel(1.5))))
 
 base.elements["text"].size  # 11
-scaled.elements["text"].size  # rel(1.5)
+scaled.elements["text"].size  # Rel(mult=1.5)
 resolve_theme(scaled)["text"].size  # 16.5
-resolve_theme(scaled)["axis.text"].size  # 13.2 = 11 × 1.5 × 0.8，只乘一次
+resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0.8，只乘一次）
 ```
 
 两层嵌套也只解析一次：`text=rel(1.5)` + `axis.text=rel(0.5)` → `0.5 × 1.5 × 11
@@ -119,9 +121,17 @@ resolve_theme(scaled)["axis.text"].size  # 13.2 = 11 × 1.5 × 0.8，只乘一�
 `base_size` 折成 pt/mm。`theme_grey(base_size=16)` 会把这个基数带下去，
 `+ theme(text=element_text(size=rel(1.5)))` 得到 24pt。
 
-`axis.minor.ticks.length` 是例外：树里它没有父元素，主题值 `rel(0.75)` 在
-R 侧也保持 `rel`，由 guide 在绘制时相对主轴刻度消费；`ResolvedTheme` 保留
-`Rel(0.75)` 而不是猜一个基数。
+白名单之外，`ResolvedTheme` 里不会剩下 `Rel`。白名单只有下面两类：
+
+- `point.stroke`、`geom.borderwidth` / `geom.fontsize` / `geom.pointsize`：
+  这几个字段不叫 `size` / `linewidth`，`calc_element()` 在 R 侧也不折，
+  ggcore 原样保留，渲染时相对根元素消费；
+- `axis.minor.ticks.length*`：树里它没有父元素，主题值 `rel(0.75)` 在 R 侧
+  也保持 `rel`，由 guide 在绘制时相对主轴刻度消费；`ResolvedTheme` 保留
+  `Rel(0.75)` 而不是猜一个基数。
+
+`tests/test_theme.py::test_no_rel_survives_outside_the_whitelist` 守着这条
+约定（新增的 `Rel` 落点会让它变红）。
 
 ## 三套完整主题
 
@@ -130,8 +140,22 @@ R 侧也保持 `rel`，由 guide 在绘制时相对主轴刻度消费；`Resolve
 三套主题共享 `base_size=11`、`base_line_size=base_size/22=0.5`、
 `base_rect_size=0.5`；`ink="black"`、`paper="white"`、`accent="#3366FF"`。
 `theme_void()` 的 `paper` 默认是 `alpha(ink, 0)`（`#00000000`）。
+`theme_bw()` 也注册在册：`p + theme_bw()` 与 `p.theme_bw()` 等价。
 
 八类核心元素的解析值（pt 为字号，mm 为线宽）：
+
+| 元素 | theme_grey | theme_minimal | theme_void |
+| --- | --- | --- | --- |
+| `plot.background` | rect fill=#FFFFFF colour=#FFFFFF lw=0.5mm | rect fill=#FFFFFF colour=NA lw=0.5mm | rect fill=#00000000 colour=NA lw=0mm |
+| `panel.background` | rect fill=#EBEBEB colour=NA lw=0.5mm | blank | blank |
+| `panel.grid.major` | line #FFFFFF lw=0.5mm | line #EBEBEB lw=0.5mm | blank |
+| `axis.text` | text 8.8pt #4D4D4D | text 8.8pt #4D4D4D | blank |
+| `axis.title` | text 11pt #000000 | text 11pt #000000 | blank |
+| `plot.title` | text 13.2pt #000000 h=0 v=1 margin(0/0/5.5pt/0) | 同 grey | text 13.2pt h=0 v=1 margin(5.5pt/0/0/0) |
+| `legend.text` | text 8.8pt #000000 | text 8.8pt #000000 | text 8.8pt #000000 |
+| `legend.key` | rect fill=#EBEBEB colour=NA lw=0.5mm | blank | blank |
+
+完整逐元素对照表（`—` = 该主题没有定义、解析结果是 `None`）：
 
 | 元素 | theme_grey | theme_minimal | theme_void |
 | --- | --- | --- | --- |
@@ -307,16 +331,5 @@ R 侧也保持 `rel`，由 guide 在绘制时相对主轴刻度消费；`Resolve
   状态；这些由 M1-11 与 facet 任务消费这里的解析值。
 - `resolve_theme(theme, metrics)` 的 `metrics` 目前只保留给后续的
   `strwidth` / `strheight` 单位与 guide 布局，元素值不依赖字体度量。
-| `plot.background` | rect fill=#FFFFFF colour=#FFFFFF lw=0.5mm | rect fill=#FFFFFF colour=NA lw=0.5mm | rect fill=#00000000 colour=NA lw=0mm |
-| `panel.background` | rect fill=#EBEBEB colour=NA lw=0.5mm | blank | blank |
-| `panel.grid.major` | line #FFFFFF lw=0.5mm | line #EBEBEB lw=0.5mm | blank |
-| `axis.text` | text 8.8pt #4D4D4D | text 8.8pt #4D4D4D | blank |
-| `axis.title` | text 11pt #000000 | text 11pt #000000 | blank |
-| `plot.title` | text 13.2pt #000000 h=0 v=1 margin(0/0/5.5pt/0) | 同 grey | text 13.2pt h=0 v=1 margin(5.5pt/0/0/0) |
-| `legend.text` | text 8.8pt #000000 | text 8.8pt #000000 | text 8.8pt #000000 |
-| `legend.key` | rect fill=#EBEBEB colour=NA lw=0.5mm | blank | blank |
-
-完整逐元素对照表（`—` = 该主题没有定义、解析结果是 `None`）：
-
-| 元素 | theme_grey | theme_minimal | theme_void |
-| --- | --- | --- | --- |
+- 146 行逐元素表目前是手工维护的（与 `tests/fixtures/theme_r_reference.json`
+  同源但未联动）；写生成器是待办，改了主题数值要记得同时更新表和夹具。
