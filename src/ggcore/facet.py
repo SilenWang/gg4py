@@ -612,7 +612,10 @@ def _map_with_replication(
     row_out: list[int] = []
     for index in range(data.nrows):
         for combo in combinations:
-            key = tuple(combo[name] if name in combo else values[name][index] for name in names)
+            key = tuple(
+                _label(combo[name]) if name in combo else _label(values[name][index])
+                for name in names
+            )
             try:
                 panel_out.append(key_map[key])
             except KeyError:

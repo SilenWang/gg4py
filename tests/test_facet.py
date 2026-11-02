@@ -259,6 +259,21 @@ def test_facet_wrap_accepts_a_string_or_an_aes_mapping() -> None:
     ]
 
 
+def test_numeric_facet_variable_maps_and_labels_like_r() -> None:
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("z", Column("float", np.array([2.0, 2.0, 1.0, 1.0]))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    build = build_plot(plot + registry.facet_wrap(("z",), ncol=2))
+    assert [record["z"] for record in layout_records(build)] == ["1", "2"]
+    assert build.layers[0].data.column("PANEL").values.tolist() == ["2", "2", "1", "1"]
+    assert [strip.text for strip in build.facet_table().strips] == ["1", "2"]
+
+
 def test_facet_wrap_accepts_a_callable_labeller() -> None:
     def upper(labels: dict[str, list[str]]) -> dict[str, list[str]]:
         return {name: [value.upper() for value in values] for name, values in labels.items()}
