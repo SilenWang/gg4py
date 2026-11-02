@@ -97,6 +97,22 @@ class AesEvalError(AesError):
 # 白名单
 # ---------------------------------------------------------------------------
 
+
+def _float_power(left: Any, right: Any) -> Any:
+    """`**` 按 R 的 `^` 口径走 double：`2 ** 3` 是 8（double）。
+
+    如果照 Python 的整数幂走，`10 ** 10 ** 10` 会算一个十亿位的大整数——表达式
+    由用户提供，这会让求值线程（浏览器里就是整个页面）挂死。R 在这里直接得到
+    `Inf`，所以转 float64 既对齐上游，也堵掉这条 DoS。
+    """
+    # R 的算术对上溢 / NaN 不报警，这里同样静默（结果仍是 Inf / NaN）。
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        return np.power(
+            np.asarray(left, dtype=np.float64),
+            np.asarray(right, dtype=np.float64),
+        )
+
+
 _BINOPS: Mapping[type[ast.operator], Callable[[Any, Any], Any]] = MappingProxyType(
     {
         ast.Add: operator.add,
@@ -105,13 +121,14 @@ _BINOPS: Mapping[type[ast.operator], Callable[[Any, Any], Any]] = MappingProxyTy
         ast.Div: operator.truediv,
         ast.FloorDiv: operator.floordiv,
         ast.Mod: operator.mod,
-        ast.Pow: operator.pow,
+        ast.Pow: _float_power,
         # `&` / `|` 是逐元素逻辑（numpy 数组上比 Python 的 `and/or` 好用），
         # 也是 R 里 `&` / `|` 的直接对应；`and/or` 见 ast.BoolOp。
         ast.BitAnd: np.logical_and,
         ast.BitOr: np.logical_or,
     }
 )
+
 
 _UNARY: Mapping[type[ast.unaryop], Callable[[Any], Any]] = MappingProxyType(
     {
@@ -817,9 +834,14 @@ def eval_after_stat(
 
 
 def _is_discrete(values: np.ndarray) -> bool:
-    """是否按离散变量参与分组：字符 / 分类（上游 `is_discrete()` 的口径）。"""
+    """是否按离散变量参与分组（上游 `is_discrete()` 的口径）。
+
+    上游是 `is.factor(x) || is.character(x) || is.logical(x)`：所以 bool 列、
+    以及 `mpg > 20` 这种算出来的逻辑值，都要参与自动分组。str / categorical 在
+    数据掩码里已经变成 object 字符串数组。
+    """
     kind = values.dtype.kind
-    if kind in ("U", "S"):
+    if kind in ("U", "S", "b"):
         return True
     if kind != "O":
         return False
@@ -889,8 +911,8 @@ def compute_groups(mapping: Aes | Mapping[str, Any], data: ColumnTable) -> np.nd
     """按 ggplot2 4.x `add_group()` 的口径算分组 id。
 
     - 显式 `aes(group=...)` 优先（`group` 里每个不同值一组）；
-    - 否则用**所有离散的 aes**（`str` / `categorical`；排除 `label` / `PANEL`）
-      做 interaction，组合按首次出现编号；
+    - 否则用**所有离散的 aes**（`str` / `categorical` / 逻辑值，对齐上游
+      `is_discrete()`；排除 `label` / `PANEL`）做 interaction，组合按首次出现编号；
     - 没有任何离散 aes 时全部是 :data:`NO_GROUP`（-1），`has_groups()` 为 False；
     - 分组列里有 NA 的行给 :data:`NO_GROUP`，留给 M1-3 的 `remove_missing`。
 

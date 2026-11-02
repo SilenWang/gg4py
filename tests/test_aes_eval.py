@@ -75,6 +75,17 @@ def test_whitelisted_functions_are_callable_by_dotted_and_bare_name() -> None:
     np.testing.assert_allclose(eval_aes("log10(mpg) * 2", t), np.log10(MPG) * 2)
 
 
+def test_power_is_double_like_r_and_huge_exponents_cannot_hang() -> None:
+    t = table()
+    result = eval_aes("2 ** 3", t)
+    assert result.dtype == np.float64  # R 的 `^` 总是 double
+    np.testing.assert_allclose(result, 8.0)
+    np.testing.assert_allclose(eval_aes("2 ** 0.5", t), np.sqrt(2.0))
+    # Python 的整数幂会把 `10 ** 10 ** 10` 算成十亿位大整数（求值线程挂死）；
+    # R 给 Inf。这里必须立刻返回 Inf。
+    assert np.isinf(eval_aes("10 ** 10 ** 10", t)).all()
+
+
 def test_np_where_and_np_isnan_work_on_missing_values() -> None:
     t = ColumnTable(
         [
@@ -390,3 +401,11 @@ def test_after_stat_aes_does_not_participate_in_grouping() -> None:
 def test_grouping_uses_standardised_aes_names() -> None:
     # `color` 在 aes() 里标准化成 `colour`，分组行为一致。
     assert compute_groups(aes(color="class"), table()).tolist() == [0, 0, 1, 0, 2]
+
+
+def test_logical_aes_participates_in_grouping() -> None:
+    # 上游 is_discrete() 是 factor / character / logical：bool 列也是离散。
+    t = ColumnTable([("flag", Column("bool", np.array([True, True, False, True])))])
+    assert compute_groups(aes(colour="flag"), t).tolist() == [0, 0, 1, 0]
+    # 算出来的逻辑值同样参与分组（mpg > 20 → [True, True, False, True, True]）。
+    assert compute_groups(aes(colour="mpg > 20"), table()).tolist() == [0, 0, 1, 0, 0]

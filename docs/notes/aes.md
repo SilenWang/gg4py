@@ -59,6 +59,9 @@ ndarray                       # 求值：ColumnTable → 数据掩码 → 白名
 | 逻辑 / 条件 | `and` / `or`（逐元素）、`a if cond else b`（数组条件走 `np.where`） |
 | 调用 | 只允许下面函数表里的名字 |
 
+`**` 按 R 的 `^` 口径走 double（`2 ** 3` 是 `8.0`）；大指数
+（`10 ** 10 ** 10`）得到 `Inf`，不会变成十亿位大整数把求值线程挂死。
+
 函数表（`ggcore.eval.CALLABLES`，按需扩时同步改这里与 `FUNCTION_HINT`）：
 
 - `np.log` / `np.log10` / `np.log2` / `np.sqrt` / `np.exp` / `np.abs` /
@@ -135,7 +138,8 @@ aes 表达式 `mpg / zzz` 第 1 行第 7 列：数据里没有列 'zzz'；可用
 `compute_groups(mapping, table)` 返回 `int32` 的 group id：
 
 1. 显式 `aes(group=…)` 优先：`group` 的每个不同值一组；
-2. 否则用**所有离散的 aes**（求值结果是字符 / 分类）做 interaction，`label` /
+2. 否则用**所有离散的 aes**（求值结果是字符 / 分类 / 逻辑值，对齐上游
+   `is_discrete()` 的 factor / character / logical）做 interaction，`label` /
    `PANEL` 不参与；
 3. 组合 id 按**首次出现**编号（0, 1, 2 …）；只出现过的组合占 id，未出现的组合
    不占（上游 `id(..., drop = TRUE)`）；
