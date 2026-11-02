@@ -18,7 +18,8 @@ Python 模块，反之亦然。
 | `ggcore.aes` | `R/aes.R:93` | `aes()` | 已实现（M1-1 存原样表达式；M1-2 补 `AesSpec` 与解析入口） |
 | `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 已实现（M1-2：`color`/`pch`/… 别名在 `Aes.__post_init__` 标准化） |
 | `ggcore.registry` | — | 组件注册表（本项目自造，上游靠 export + ggproto） | 已实现（M1-1：一条注册表，模块函数与 `ggplot` 方法两个入口） |
-| `ggcore.components` | — | 非图层组件的占位类（scale / theme / coord / facet / guide / labels） | 已实现（M1-1：名字 + 参数；语义在 M1-4 / M1-5 / M1-6 / M1-10 / M1-11） |
+| `ggcore.scales` | `R/scale-continuous.R` / `R/scale-discrete.R` / `R/scale-*.R` | 13 个标度（位置连续/离散/log10、colour/fill gradient+hue、size/shape/alpha） | 已实现（M1-4：limits / expand / breaks / labels / trans / na.value / values；口径见 `docs/notes/scales.md`） |
+| `ggcore.components` | — | 非图层组件的占位类（scale / theme / coord / facet / guide / labels） | 已实现（M1-1：名字 + 参数；scale 语义在 `ggcore.scales`（M1-4），其余在 M1-5 / M1-6 / M1-10 / M1-11） |
 | `ggcore.eval` | `R/aes-evaluation.R:349` | `eval_aesthetics()` | 已实现（M1-2：`parse_aes` / `eval_aes` / `eval_after_stat`，白名单解释器） |
 | `ggcore.eval` | `R/grouping.R:11` | `add_group()` | 已实现（M1-2：`compute_groups` / `has_groups`，显式 group 与离散 aes interaction） |
 | `ggcore.build` | `R/layer.R` | `Layer$compute_aesthetics()` / `compute_statistic()` / `map_statistic()` / `compute_position()` / `finish_statistics()` | 已实现（M1-3：六阶段流水线；`identity` / `count` stat，`identity` / `stack` position） |

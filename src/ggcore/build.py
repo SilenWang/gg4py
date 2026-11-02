@@ -10,7 +10,7 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
     layer = build.layers[0]
     layer.aesthetics.names      # ("x", "y", "PANEL", "group")
     layer.data.names            # R `ggplot_build()$data[[1]]` 的列名与列序
-    layer.scaled.column("x").values  # 第 5 阶段输出的 x（identity 下不变）
+    layer.scaled.column("x").values  # 第 5 阶段输出的 x（标度变换后的空间）
 
 本模块只做「数据」：不产出 gtable、不画图、不碰 IR（M1-7 才把这里的结果送进 IR）。
 口径全文见 `docs/notes/build.md`，要点：
@@ -26,9 +26,11 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
   `Geom$handle_na()`（M1-7）。
 - **分组**：用 M1-2 的 `compute_groups()`（0 起），这里转成 ggplot2 内置数据的
   1 起编号；`group` 显式映射优先。
-- **scale 接口先行**：映射全部经 :class:`ScaleSet`。本任务给 identity 实现
-  （唯一的非恒等行为是「离散位置美学 → 1..n」，这是 ggplot2 默认离散位置标度
-  做的事；真正的调色板 / 连续标度是 M1-4）。流水线里不写死任何线性映射。
+- **标度**：映射全部经 :class:`ggcore.scales.ScaleSet`（M1-4）。`plot.scales`
+  里的显式标度优先，其余按列类型解析成默认标度；位置数据在训练前先过
+  `transform_scales()`（上游 `scales$transform_df()`），第二段训练用 position
+  之后的数据。流水线里不写死任何线性映射（`tests/test_build.py` 用自定义子类
+  证明）。
 - **空层**：0 行不报错，后续阶段给空表，`PlotBuild.empty_layers` 留记录。
 
 边界：`src/ggcore` 只 import 标准库 + numpy + ggcore，所以数据必须是
@@ -52,6 +54,7 @@ from ggcore.data import Column, ColumnTable
 from ggcore.eval import NO_GROUP, compute_groups, eval_aes, eval_after_stat, parse_aes
 from ggcore.layer import Layer
 from ggcore.registry import required_aes_groups
+from ggcore.scales import ScaleSet
 
 if TYPE_CHECKING:  # 只用于类型标注，避免 build ↔ plot 的运行时环
     from ggcore.plot import ggplot
@@ -231,138 +234,6 @@ def _bare_column_name(spec: AesSpec) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# ScaleSet（scale 接口先行；M1-4 用真实现替换）
-# ---------------------------------------------------------------------------
-
-
-class ScaleSet:
-    """一组按 aesthetic 索引的标度；本任务是 identity 实现。
-
-    `train(values, aesthetic)` 收集离散位置美学的水平，`map(values,
-    aesthetic)` 把离散位置编码成 1..n（ggplot2 默认离散位置标度的行为），其它
-    美学原样返回。**流水线只调用这两个方法**，没有任何写死的线性映射，所以
-    M1-4 换实现时 do not touch 流水线——`tests/test_build.py` 用自定义子类证明
-    这一点。
-
-    水平顺序照上游 `scale_x_discrete()` 的训练口径：
-
-    - 普通字符列：跨层合并后**全局升序**（不是「先遇到先保留」）；
-    - categorical 列：按 `Column.levels`（标度顺序），其余水平升序追加；
-    - 逻辑值：`False` 在 `True` 前；
-    - NA 也占一个水平（排在最后）：上游 `sort(unique(x), na.last = TRUE)`，
-      所以 `geom_bar(aes(x = c("a", NA)))` 的 NA 是一根独立的柱。
-
-    连续位置列经过 `map` 会统一成 float（上游 `map_position()` 把位置值变
-    double），`kind` 与 R 的内置数据一致；`group` 等非位置美学不动。
-    """
-
-    def __init__(self) -> None:
-        self._seen: dict[str, set[Any]] = {}
-        self._categorical: dict[str, tuple[str, ...]] = {}
-        self._missing: dict[str, bool] = {}
-
-    @property
-    def trained(self) -> Mapping[str, tuple[str, ...]]:
-        """已训练的离散水平（解析后的顺序；只读视图）。"""
-        return MappingProxyType({name: self._resolved(name) for name in self._seen})
-
-    def levels(self, aesthetic: str) -> tuple[str, ...]:
-        """某个美学已训练的水平；没有训练过就是空元组。"""
-        return self._resolved(aesthetic)
-
-    def _resolved(self, aesthetic: str) -> tuple[str, ...]:
-        seen = self._seen.get(aesthetic, set())
-        if not seen:
-            return ()
-        base = [level for level in self._categorical.get(aesthetic, ()) if level in seen]
-        rest = sorted(level for level in seen if level not in set(base))
-        return tuple(base + rest)
-
-    def train(self, values: Any, aesthetic: str) -> None:
-        """训练一列：只关心位置美学上的离散值（含 NA 水平）。"""
-        if aesthetic not in POSITION_AESTHETICS:
-            return
-        levels = _discrete_levels(values)
-        if levels is None:
-            return
-        self._seen.setdefault(aesthetic, set()).update(levels)
-        if isinstance(values, Column) and values.kind == "categorical" and values.levels:
-            if aesthetic not in self._categorical:
-                self._categorical[aesthetic] = values.levels
-        if _has_missing(values):
-            self._missing[aesthetic] = True
-
-    def map(self, values: Any, aesthetic: str) -> Any:
-        """映射一列：离散位置 → 1..n（NA → 最后一个水平），其它原样返回。"""
-        if aesthetic not in POSITION_AESTHETICS:
-            return values
-        levels = _discrete_levels(values)
-        if levels is None:
-            # 连续位置列：上游 map_position() 输出 double。
-            if isinstance(values, Column) and values.kind in ("int", "bool"):
-                return Column("float", values.values.astype(np.float64), na_mask=values.na_mask)
-            return values
-        ordered = self._resolved(aesthetic) or levels
-        number = {level: index + 1 for index, level in enumerate(ordered)}
-        source = values if isinstance(values, Column) else None
-        array = _column_values(values) if source is not None else np.asarray(values)
-        if isinstance(values, Column) and values.kind == "bool":
-            array = np.asarray(values.values, dtype=bool)
-            missing = np.asarray(values.na_mask, dtype=bool)
-        else:
-            missing = _is_missing_array(array)
-        has_missing = self._missing.get(aesthetic, False) or bool(missing.any())
-        na_code = float(len(ordered) + 1) if has_missing else np.nan
-        codes = np.zeros(array.shape[0], dtype=np.float64)
-        for i, item in enumerate(array.tolist()):
-            codes[i] = na_code if missing[i] else number.get(_level_key(item), np.nan)
-        if source is not None:
-            return Column("float", codes)
-        return codes
-
-
-def _level_key(item: Any) -> str:
-    """水平比较用的键：逻辑值统一成 "False" / "True"，其余按字符串。"""
-    if isinstance(item, (bool, np.bool_)):
-        return "True" if bool(item) else "False"
-    return item if isinstance(item, str) else str(item)
-
-
-def _has_missing(values: Any) -> bool:
-    """一列是否有缺失（`Column.na_mask` 或 ndarray 里的 None / NaN）。"""
-    if isinstance(values, Column):
-        return bool(values.na_mask.any())
-    return bool(_is_missing_array(np.asarray(values)).any())
-
-
-def _discrete_levels(values: Any) -> tuple[str, ...] | None:
-    """离散值域（按值域顺序）；连续列返回 None。"""
-    if isinstance(values, Column):
-        if values.kind == "bool":
-            return ("False", "True")
-        if not values.is_discrete:
-            return None
-        if values.levels:
-            return values.levels
-        array = _column_values(values)
-    else:
-        array = np.asarray(values)
-        if array.dtype.kind == "b":
-            return ("False", "True")
-        if array.dtype.kind not in ("U", "S", "O"):
-            return None
-        if array.dtype.kind == "O" and not all(
-            item is None or isinstance(item, str) for item in array.tolist()
-        ):
-            return None
-    missing = _is_missing_array(array)
-    present = {
-        _level_key(item) for item, flag in zip(array.tolist(), missing, strict=True) if not flag
-    }
-    return tuple(sorted(present))
-
-
-# ---------------------------------------------------------------------------
 # 阶段 1：compute_aesthetics
 # ---------------------------------------------------------------------------
 
@@ -462,13 +333,26 @@ def compute_aesthetics(plot: ggplot, layer: Layer, index: int = 0) -> Aesthetics
     )
 
 
+def transform_scales(scales: ScaleSet, aesthetics: Aesthetics) -> Aesthetics:
+    """阶段 1 与「第一次位置训练」之间：位置数据先做变换。
+
+    上游 `build_ggplot()` 在 `compute_aesthetics()` 之后、`train_position()`
+    之前调用 `scales$transform_df(data)`。所以 `scale_x_log10()` 训练到的是
+    `log10(x)`，`$data$x` 也是 log10 空间的值（x = 1/10/100 → 0/1/2）。
+    没有变换的标度（identity）原样通过。
+    """
+    if aesthetics.table.nrows == 0:
+        return aesthetics
+    return replace(aesthetics, table=scales.transform_table(aesthetics.table))
+
+
 def map_position(scales: ScaleSet, aesthetics: Aesthetics) -> Aesthetics:
-    """阶段 1 与阶段 2 之间：位置标度的第一次训练/映射。
+    """阶段 1 与阶段 2 之间：位置标度的第一次映射。
 
     上游 `build_ggplot()` 在 `compute_aesthetics()` 之后立刻
     `layout$train_position()` + `layout$map_position()`，所以 stat 拿到的 x/y
-    已经是位置值（离散 → 1..n，NA → 最后一个水平）。这里的输出等价于那一步；
-    `LayerBuild.aesthetics` 与对拍用的 `$data` 都按这个口径。
+    已经是位置值（离散 → 1..n，NA → 最后一个水平；连续 → 变换后的值）。
+    `layout$map_position()` 只碰位置美学，colour / fill 等留到阶段 5。
     """
     return replace(aesthetics, table=_map_position_table(scales, aesthetics.table))
 
@@ -477,7 +361,10 @@ def _map_position_table(scales: ScaleSet, table: ColumnTable) -> ColumnTable:
     if table.nrows == 0:
         return _EMPTY
     return ColumnTable(
-        [(name, _as_column(scales.map(column, name))) for name, column in _items(table)],
+        [
+            (name, _as_column(scales.map(column, name)) if name in POSITION_AESTHETICS else column)
+            for name, column in _items(table)
+        ],
         nrows=table.nrows,
     )
 
@@ -733,7 +620,8 @@ def _position_stack(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTabl
 
 
 def map_scales(scales: ScaleSet, positioned: ColumnTable) -> ColumnTable:
-    """阶段 5：逐列过 `ScaleSet.map`（本任务 identity；离散位置 → 1..n）。"""
+    """阶段 5：逐列过 `ScaleSet.map`（连续位置 = trans 空间 + oob censor；
+    离散位置 → 1..n；colour / fill / size / alpha / shape = 调色板 / rescale）。"""
     if positioned.nrows == 0:
         return _EMPTY
     columns: list[tuple[str, Column]] = []
@@ -1009,14 +897,17 @@ def build_layer(
     `compute_position` 之后各一次）。跨层联合训练请用 :func:`build_plot`。
     """
     if scales is None:
-        scales = ScaleSet()
+        scales = ScaleSet(plot.scales)
     aesthetics = compute_aesthetics(plot, layer, index)
+    aesthetics = transform_scales(scales, aesthetics)
     _train(scales, aesthetics.table)
     aesthetics = map_position(scales, aesthetics)
-    # 上游在 compute_position 之后会再 train/map 一次；identity 下是幂等的，
-    # 但把这一步留着，M1-4 的连续标度才能拿到第二段数据范围（见 build.md §6）。
-    _train(scales, aesthetics.table)
-    return _assemble(_compute_stages(aesthetics, layer, index), scales)
+    stages = _compute_stages(aesthetics, layer, index)
+    # 上游 compute_position 之后再 train 一次：这一次的数据已经包含 geom setup
+    # 派生的坐标列（xmin/xmax/ymin/ymax），连续标度要靠它才能把柱子的锚点收进
+    # 范围（否则 stage 5 的 oob 会把锚点 censor 成 NA）。
+    _train(scales, stages.positioned)
+    return _assemble(stages, scales)
 
 
 def build_plot(plot: ggplot) -> PlotBuild:
@@ -1026,16 +917,19 @@ def build_plot(plot: ggplot) -> PlotBuild:
     所以同一离散 x 在不同层里得到同一套 1..n 编码；位置标度同样保留上游的
     两段训练（aesthetics 之后、position 之后各一次）。
     """
-    scales = ScaleSet()
+    scales = ScaleSet(plot.scales)
     raw = [compute_aesthetics(plot, layer, index) for index, layer in enumerate(plot.layers)]
+    raw = [transform_scales(scales, aesthetics) for aesthetics in raw]
     for aesthetics in raw:
         _train(scales, aesthetics.table)
     mapped = [map_position(scales, aesthetics) for aesthetics in raw]
-    for aesthetics in mapped:
-        _train(scales, aesthetics.table)
-    builds = tuple(
-        _assemble(_compute_stages(aesthetics, layer, index), scales)
+    stages = [
+        _compute_stages(aesthetics, layer, index)
         for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
-    )
+    ]
+    # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax），见 build_layer。
+    for staged in stages:
+        _train(scales, staged.positioned)
+    builds = tuple(_assemble(staged, scales) for staged in stages)
     notes = tuple(note for build in builds for note in build.notes)
     return PlotBuild(layers=builds, scales=scales, warnings=notes)

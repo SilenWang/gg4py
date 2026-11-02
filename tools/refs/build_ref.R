@@ -8,7 +8,7 @@
 # 每一行的值**原样落进 JSON；Python 侧 `ggcore.build.build_plot()` 产出的
 # `LayerBuild.data` 用同一套列名/列序/值对拍（tests/test_build_r_parity.py）。
 #
-# 覆盖五张图（issue 的验收清单）：
+# 覆盖 17 张图（前 5 张是 issue 的验收清单，其余 12 张见 docs/notes/build.md §9）：
 #   1. point_computed        mpg / cyl 计算列
 #   2. count_bar             stat = "count" 的柱
 #   3. box_precomputed       boxplot 预计算（stat = "identity"，列全部给好）
@@ -199,7 +199,7 @@ datasets <- list(
 )
 
 # ---------------------------------------------------------------------------
-# 13 张图
+# 17 张图
 # ---------------------------------------------------------------------------
 
 mpg_cyl4 <- mpg_data[mpg_data$cyl == 4, , drop = FALSE]

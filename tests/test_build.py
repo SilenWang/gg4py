@@ -257,6 +257,8 @@ def test_continuous_position_values_pass_through() -> None:
 
 
 def test_pipeline_calls_the_scale_set_instead_of_hardcoding() -> None:
+    # 注意：`ScaleSet.map` 会被 `map_position()` 与阶段 5 各调一次，所以自定义
+    # map **必须幂等**（这个常量映射就是幂等的；累加 / 有状态的映射不行）。
     class Constant(ScaleSet):
         def map(self, values, aesthetic):
             if aesthetic == "x":
@@ -444,7 +446,17 @@ def test_na_colour_rows_are_kept_and_grouped_like_r() -> None:
     layer = layer_of(plot)
     assert layer.data.nrows == 5
     assert values_of(layer.data, "group") == [1.0, 2.0, 3.0, 1.0, 2.0]
-    assert layer.data.column("colour").na_mask.tolist() == [False, False, True, False, False]
+    # M1-4 起 colour 走真实的离散标度：NA 落成 na.value（默认 "grey50"），
+    # 与 R 的 `ggplot_build()$data[[1]]$colour` 一致（见 build fixture 的
+    # point_na_colour）；行保留、缺失计数仍是 1。
+    assert layer.data.column("colour").values.tolist() == [
+        "#F8766D",
+        "#00BFC4",
+        "grey50",
+        "#F8766D",
+        "#00BFC4",
+    ]
+    assert not layer.data.column("colour").na_mask.any()
     assert dict(layer.dropped_missing) == {"colour": 1}
 
 
@@ -598,6 +610,48 @@ def test_logical_position_uses_false_before_true() -> None:
     layer = layer_of(plot)
     assert values_of(layer.scaled, "x") == [2.0, 1.0, 2.0]
     assert layer.scaled.column("x").kind == "float"
+
+
+@pytest.mark.parametrize(
+    ("values", "levels"),
+    [
+        ([True, True], ("True",)),
+        ([False, False], ("False",)),
+    ],
+)
+def test_logical_position_single_level_maps_to_code_one(
+    values: list[bool], levels: tuple[str, ...]
+) -> None:
+    """单水平 bool：水平只有它自己，map 全是 1（R: `scale_x_discrete()` train
+    `c(TRUE, TRUE)` → limits `TRUE`、map `1, 1`；`c(FALSE, FALSE)` 同理）。
+
+    区别只在**没有**把 `("False", "True")` 无条件 seed 进离散标度：一旦 seed，
+    单水平 bool 也会变成两个水平、code 落在 2 上。
+    """
+    table_bool = ColumnTable(
+        [
+            ("x", Column("bool", np.array(values))),
+            ("y", Column("float", np.arange(1.0, len(values) + 1))),
+        ]
+    )
+    build = build_plot(ggplot(table_bool, aes(x="x", y="y")) + geom_point())
+    assert build.scales.trained["x"] == levels
+    assert build.scales.limits("x") == levels
+    assert values_of(build.layers[0].scaled, "x") == [1.0] * len(values)
+
+
+def test_categorical_levels_only_keep_observed_levels() -> None:
+    """factor levels = ("c", "b", "a") 只出现 b / a：位置 1,2、trained ("b", "a")。"""
+    table_partial = ColumnTable(
+        [
+            ("g", Column("categorical", np.array([1, 2]), levels=("c", "b", "a"))),
+            ("y", Column("float", np.array([1.0, 2.0]))),
+        ]
+    )
+    build = build_plot(ggplot(table_partial, aes(x="g", y="y")) + geom_point())
+    assert values_of(build.layers[0].scaled, "x") == [1.0, 2.0]
+    assert build.scales.trained["x"] == ("b", "a")
+    assert build.scales.levels("x") == ("b", "a")
 
 
 def test_constant_aes_params_materialize_required_columns() -> None:

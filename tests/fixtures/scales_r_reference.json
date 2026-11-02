@@ -1,0 +1,1186 @@
+{
+  "generated_by": "tools/refs/scales_ref.R",
+  "r_version": "R version 4.5.3 (2026-03-11)",
+  "ggplot2_version": "4.0.3",
+  "locale": "C.UTF-8",
+  "palettes": {
+    "hue": [
+      {
+        "n": 2,
+        "values": [
+          "#F8766D",
+          "#00BFC4"
+        ]
+      },
+      {
+        "n": 3,
+        "values": [
+          "#F8766D",
+          "#00BA38",
+          "#619CFF"
+        ]
+      },
+      {
+        "n": 6,
+        "values": [
+          "#F8766D",
+          "#B79F00",
+          "#00BA38",
+          "#00BFC4",
+          "#619CFF",
+          "#F564E3"
+        ]
+      }
+    ],
+    "gradient": {
+      "low": "#132B43",
+      "high": "#56B1F7",
+      "positions": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "values": [
+        "#132B43",
+        "#22496C",
+        "#336A98",
+        "#448DC6",
+        "#56B1F7"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "continuous_default_expand",
+      "title": "连续 x：默认 expansion(mult = 0.05)",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        1,
+        7
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        0.69999999999999996,
+        7.2999999999999998
+      ],
+      "breaks": [
+        null,
+        2,
+        4,
+        6,
+        null
+      ],
+      "labels": [
+        null,
+        "2",
+        "4",
+        "6",
+        null
+      ],
+      "mapped": [
+        1,
+        3,
+        7
+      ]
+    },
+    {
+      "id": "continuous_expand_zero",
+      "title": "连续 x：expand = c(0, 0) 不扩边",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        1,
+        7
+      ],
+      "expand": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "expanded_limits": [
+        1,
+        7
+      ],
+      "breaks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "mapped": [
+        1,
+        3,
+        7
+      ]
+    },
+    {
+      "id": "continuous_limits_censor",
+      "title": "连续 x：显式 limits，越界 → NA（oob = censor）",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          2,
+          6
+        ]
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        2,
+        6
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        1.8,
+        6.2000000000000002
+      ],
+      "breaks": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "labels": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "mapped": [
+        null,
+        3,
+        null
+      ]
+    },
+    {
+      "id": "continuous_manual_breaks_labels",
+      "title": "连续 x：手动 breaks + labels",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "breaks": [
+          2,
+          4,
+          6
+        ],
+        "labels": [
+          "low",
+          "mid",
+          "high"
+        ]
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        2,
+        4,
+        6
+      ],
+      "limits": [
+        1,
+        7
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        0.69999999999999996,
+        7.2999999999999998
+      ],
+      "breaks": [
+        2,
+        4,
+        6
+      ],
+      "labels": [
+        "low",
+        "mid",
+        "high"
+      ],
+      "mapped": [
+        2,
+        4,
+        6
+      ]
+    },
+    {
+      "id": "continuous_nbreaks",
+      "title": "连续 x：n.breaks = 3（breaks 函数拿 n）",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "n.breaks": 3
+      },
+      "train": [
+        0,
+        100
+      ],
+      "map": [
+        0,
+        50,
+        100
+      ],
+      "limits": [
+        0,
+        100
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -5,
+        105
+      ],
+      "breaks": [
+        0,
+        50,
+        100
+      ],
+      "labels": [
+        "0",
+        "50",
+        "100"
+      ],
+      "mapped": [
+        0,
+        50,
+        100
+      ]
+    },
+    {
+      "id": "x_log10",
+      "title": "log10 x：0 / 负值 → NA；映射后是 log10 空间的值",
+      "scale": "x_log10",
+      "aesthetic": "x",
+      "trans": "log-10",
+      "params": [],
+      "train": [
+        1,
+        10,
+        100
+      ],
+      "map": [
+        1,
+        10,
+        100,
+        0,
+        -1
+      ],
+      "limits": [
+        0,
+        2
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -0.10000000000000001,
+        2.1000000000000001
+      ],
+      "breaks": [
+        null,
+        0,
+        1,
+        2,
+        null
+      ],
+      "labels": [
+        null,
+        "1",
+        "10",
+        "100",
+        null
+      ],
+      "mapped": [
+        0,
+        1,
+        2,
+        "-Inf",
+        null
+      ]
+    },
+    {
+      "id": "y_log10",
+      "title": "log10 y（同一套口径，覆盖 y 通道）",
+      "scale": "y_log10",
+      "aesthetic": "y",
+      "trans": "log-10",
+      "params": [],
+      "train": [
+        0.10000000000000001,
+        1,
+        10
+      ],
+      "map": [
+        0.10000000000000001,
+        1,
+        10
+      ],
+      "limits": [
+        -1,
+        1
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -1.1000000000000001,
+        1.1000000000000001
+      ],
+      "breaks": [
+        null,
+        -1,
+        0,
+        1,
+        null
+      ],
+      "labels": [
+        null,
+        "0.1",
+        "1.0",
+        "10.0",
+        null
+      ],
+      "mapped": [
+        -1,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "x_log10_limits",
+      "title": "log10 x：显式 limits 先过变换（limits 1..100 → 0..2，越界 → NA）",
+      "scale": "x_log10",
+      "aesthetic": "x",
+      "trans": "log-10",
+      "params": {
+        "limits": [
+          1,
+          100
+        ]
+      },
+      "train": [
+        1,
+        10,
+        100
+      ],
+      "map": [
+        0.5,
+        1,
+        10,
+        100,
+        200
+      ],
+      "limits": [
+        0,
+        2
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -0.10000000000000001,
+        2.1000000000000001
+      ],
+      "breaks": [
+        null,
+        0,
+        1,
+        2,
+        null
+      ],
+      "labels": [
+        null,
+        "1",
+        "10",
+        "100",
+        null
+      ],
+      "mapped": [
+        null,
+        0,
+        1,
+        2,
+        null
+      ]
+    },
+    {
+      "id": "discrete_levels",
+      "title": "离散 x：水平升序，未在 limits 里的值 → NA",
+      "scale": "x_discrete",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "b",
+        "a",
+        "c",
+        "a"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c",
+        "z"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": [
+        0,
+        0.59999999999999998,
+        0,
+        0.59999999999999998
+      ],
+      "expanded_limits": [
+        0.40000000000000002,
+        3.6000000000000001
+      ],
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        1,
+        2,
+        3,
+        null
+      ]
+    },
+    {
+      "id": "discrete_limits",
+      "title": "离散 x：显式 limits（含未出现的水平 z）",
+      "scale": "x_discrete",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          "b",
+          "a",
+          "z"
+        ]
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "b",
+        "a",
+        "z"
+      ],
+      "expand": [
+        0,
+        0.59999999999999998,
+        0,
+        0.59999999999999998
+      ],
+      "expanded_limits": [
+        0.40000000000000002,
+        3.6000000000000001
+      ],
+      "breaks": [
+        "b",
+        "a",
+        "z"
+      ],
+      "labels": [
+        "b",
+        "a",
+        "z"
+      ],
+      "mapped": [
+        2,
+        1,
+        null
+      ]
+    },
+    {
+      "id": "discrete_drop_false",
+      "title": "离散 x：drop = FALSE 保留未出现的 factor 水平",
+      "scale": "x_discrete",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "drop": false
+      },
+      "train": [
+        "a"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "b",
+        "a",
+        "c"
+      ],
+      "expand": [
+        0,
+        0.59999999999999998,
+        0,
+        0.59999999999999998
+      ],
+      "expanded_limits": [
+        0.40000000000000002,
+        3.6000000000000001
+      ],
+      "breaks": [
+        "b",
+        "a",
+        "c"
+      ],
+      "labels": [
+        "b",
+        "a",
+        "c"
+      ],
+      "mapped": [
+        2,
+        1,
+        3
+      ]
+    },
+    {
+      "id": "discrete_na_level",
+      "title": "离散 x：NA 也是一个水平（排在最后）",
+      "scale": "x_discrete",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        null,
+        "b"
+      ],
+      "map": [
+        "a",
+        null,
+        "b"
+      ],
+      "limits": [
+        "a",
+        "b",
+        null
+      ],
+      "expand": [
+        0,
+        0.59999999999999998,
+        0,
+        0.59999999999999998
+      ],
+      "expanded_limits": [
+        0.40000000000000002,
+        3.6000000000000001
+      ],
+      "breaks": [
+        "a",
+        "b",
+        null
+      ],
+      "labels": [
+        "a",
+        "b",
+        null
+      ],
+      "mapped": [
+        1,
+        3,
+        2
+      ]
+    },
+    {
+      "id": "discrete_reverse_limits",
+      "title": "离散 x：limits 反序，编码按 limits 顺序",
+      "scale": "x_discrete",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          "c",
+          "b",
+          "a"
+        ]
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "c",
+        "b",
+        "a"
+      ],
+      "expand": [
+        0,
+        0.59999999999999998,
+        0,
+        0.59999999999999998
+      ],
+      "expanded_limits": [
+        0.40000000000000002,
+        3.6000000000000001
+      ],
+      "breaks": [
+        "c",
+        "b",
+        "a"
+      ],
+      "labels": [
+        "c",
+        "b",
+        "a"
+      ],
+      "mapped": [
+        3,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "colour_hue",
+      "title": "离散 colour：hue_pal 色板（3 个水平），NA → na.value",
+      "scale": "colour_discrete",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c",
+        "a"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "#F8766D",
+        "#00BA38",
+        "#619CFF",
+        "grey50"
+      ]
+    },
+    {
+      "id": "colour_hue_na_value",
+      "title": "离散 colour：自定义 na.value",
+      "scale": "colour_discrete",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "na.value": "red"
+      },
+      "train": [
+        "a",
+        "b"
+      ],
+      "map": [
+        "a",
+        null
+      ],
+      "limits": [
+        "a",
+        "b"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b"
+      ],
+      "labels": [
+        "a",
+        "b"
+      ],
+      "mapped": [
+        "#F8766D",
+        "red"
+      ]
+    },
+    {
+      "id": "colour_hue_limits",
+      "title": "离散 colour：显式 limits 之外的取值 → na.value",
+      "scale": "colour_discrete",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          "b",
+          "a"
+        ]
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "b",
+        "a"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "b",
+        "a"
+      ],
+      "labels": [
+        "b",
+        "a"
+      ],
+      "mapped": [
+        "#00BFC4",
+        "#F8766D",
+        "grey50"
+      ]
+    },
+    {
+      "id": "colour_manual",
+      "title": "离散 colour：values = 手动色板（按水平顺序，长度必须够）",
+      "scale": "colour_discrete",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "values": [
+          "red",
+          "#00FF00",
+          "blue"
+        ]
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "red",
+        "#00FF00",
+        "blue"
+      ]
+    },
+    {
+      "id": "fill_hue",
+      "title": "离散 fill：与 colour 同一套 hue 口径",
+      "scale": "fill_discrete",
+      "aesthetic": "fill",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "p",
+        "q"
+      ],
+      "map": [
+        "p",
+        "q"
+      ],
+      "limits": [
+        "p",
+        "q"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "p",
+        "q"
+      ],
+      "labels": [
+        "p",
+        "q"
+      ],
+      "mapped": [
+        "#F8766D",
+        "#00BFC4"
+      ]
+    },
+    {
+      "id": "colour_gradient",
+      "title": "连续 colour：gradient 默认 low/high，Lab 插值",
+      "scale": "colour_continuous",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1,
+        null
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        "#132B43",
+        "#336A98",
+        "#56B1F7",
+        "grey50"
+      ]
+    },
+    {
+      "id": "colour_gradient_limits",
+      "title": "连续 colour：显式 limits，越界 → na.value",
+      "scale": "colour_continuous",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          0.25,
+          0.75
+        ]
+      },
+      "train": [
+        0,
+        0.5,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        0.25,
+        0.75
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.30000000000000004,
+        0.40000000000000002,
+        0.5,
+        0.60000000000000009,
+        0.70000000000000007
+      ],
+      "labels": [
+        "0.3",
+        "0.4",
+        "0.5",
+        "0.6",
+        "0.7"
+      ],
+      "mapped": [
+        "grey50",
+        "#336A98",
+        "grey50"
+      ]
+    },
+    {
+      "id": "size_continuous",
+      "title": "连续 size：area 标度（sqrt 后线性映射到 1..6）",
+      "scale": "size_continuous",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "map": [
+        1,
+        2,
+        2,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        1,
+        3.8867513459481287,
+        3.8867513459481287,
+        6
+      ]
+    },
+    {
+      "id": "alpha_continuous",
+      "title": "连续 alpha：0..1 映射到 0.1..1",
+      "scale": "alpha_continuous",
+      "aesthetic": "alpha",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        2,
+        3
+      ],
+      "map": [
+        1,
+        2,
+        3
+      ],
+      "limits": [
+        1,
+        3
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        1.5,
+        2,
+        2.5,
+        3
+      ],
+      "labels": [
+        "1.0",
+        "1.5",
+        "2.0",
+        "2.5",
+        "3.0"
+      ],
+      "mapped": [
+        0.10000000000000001,
+        0.55000000000000004,
+        1
+      ]
+    },
+    {
+      "id": "shape_discrete",
+      "title": "离散 shape：默认实心形状 16/17/15/3/7/8",
+      "scale": "shape_discrete",
+      "aesthetic": "shape",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        16,
+        17,
+        15
+      ]
+    }
+  ]
+}

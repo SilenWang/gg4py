@@ -1,4 +1,4 @@
-"""M1-3 与 ggplot2 4.0.3 的对拍：五张图的图层数据逐列比。
+"""M1-3 与 ggplot2 4.0.3 的对拍：17 张图的图层数据逐列比。
 
 夹具由 `pixi run -e refs refs:build`（`tools/refs/build_ref.R`）生成：R 侧
 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与每一行的值原样写进
@@ -9,10 +9,11 @@
 - **列名与列序**必须完全一致（含 `PANEL` / `group` / geom 派生的 `xmin/xmax`）；
 - 数值 `allclose(rtol=0, atol=1e-9)`，字符串精确相等，缺失（R 的 `NA` /
   这里的 `na_mask`）逐行一致；
-- 只有三列**比列名与位置、不比值**，因为它们的值由本任务之外的部分决定：
-  `count_bar.fill` 与 `box_precomputed.colour` 是 theme_grey 解析出的主题色
-  （M1-10），`stacked_bar_interaction.fill` 是离散调色板（M1-4）。本任务的
-  identity scale 不做调色板，M1-10 之前 `Geom.default_aes` 也只存语义色名。
+- 只剩主题色那几列**比列名与位置、不比值**：`count_bar.fill` 等是 theme_grey
+  解析出的 `#595959FF`，由 M1-10 负责（`Geom.default_aes` 里目前只存语义色名）。
+  M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_interaction.fill`、
+  `point_na_colour.colour`、`categorical_group.colour`、`col_negative_stack.fill`）
+  已经与 R 逐值相等。
 """
 
 from __future__ import annotations
@@ -30,18 +31,15 @@ from ggcore.plot import aes, geom_bar, geom_boxplot, geom_col, geom_line, geom_p
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "tests" / "fixtures" / "build_r_reference.json"
 
-#: 只比列名/列序、不比值的列（值归 M1-4 / M1-10）。
+#: 只比列名/列序、不比值的列：都是 theme_grey 解析出来的主题色（M1-10）。
+#: 调色板列（离散 fill / colour）从 M1-4 起已经参与比值。
 SKIP_VALUES: dict[str, frozenset[str]] = {
     "count_bar": frozenset({"fill"}),
     "box_precomputed": frozenset({"colour"}),
-    "stacked_bar_interaction": frozenset({"fill"}),
-    "point_na_colour": frozenset({"colour"}),
     "count_na_x": frozenset({"fill"}),
     "col_identity": frozenset({"fill"}),
     "col_width_param": frozenset({"fill"}),
-    "categorical_group": frozenset({"colour"}),
     "multi_layer_levels": frozenset({"fill"}),
-    "col_negative_stack": frozenset({"fill"}),
 }
 
 #: 每个 case 的（列数, 行数, 参与比值的列数）——钉住，防止「悄悄少比一列」。
@@ -49,9 +47,9 @@ EXPECTED: dict[str, tuple[int, int, int]] = {
     "point_computed": (10, 234, 10),
     "count_bar": (17, 7, 16),
     "box_precomputed": (20, 4, 19),
-    "stacked_bar_interaction": (17, 12, 16),
+    "stacked_bar_interaction": (17, 12, 17),
     "layer_data_override": (10, 81, 10),
-    "point_na_colour": (10, 5, 9),
+    "point_na_colour": (10, 5, 10),
     "count_na_x": (17, 4, 16),
     "col_identity": (15, 6, 14),
     "col_width_param": (15, 6, 14),
@@ -59,10 +57,10 @@ EXPECTED: dict[str, tuple[int, int, int]] = {
     "point_params": (10, 234, 10),
     "bar_fill_param": (17, 7, 17),
     "aes_reordered": (10, 234, 10),
-    "categorical_group": (10, 3, 9),
+    "categorical_group": (10, 3, 10),
     "bool_discrete_x": (10, 3, 10),
     "multi_layer_levels": (17, 3, 16),
-    "col_negative_stack": (15, 8, 14),
+    "col_negative_stack": (15, 8, 15),
 }
 
 TOLERANCE = 1e-9
@@ -167,7 +165,7 @@ def test_fixture_comes_from_pinned_ggplot2(reference: dict) -> None:
 
 @pytest.mark.parametrize("case_id", list(EXPECTED))
 def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
-    """五张图：列名 / 列序 / 行数 / 逐列值。"""
+    """17 张图：列名 / 列序 / 行数 / 逐列值。"""
     case = next(item for item in reference["cases"] if item["id"] == case_id)
     layer = _built(reference, case_id)
     skip = SKIP_VALUES.get(case_id, frozenset())
@@ -182,10 +180,8 @@ def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
         name = spec["name"]
         column = layer.data.column(name)
         if name in skip:
-            # 值归 M1-4 / M1-10 的调色板与主题；kind 仍然比（唯一例外是
-            # categorical 源列：我们保留 categorical code，R 的 $data 是 character）。
-            if not (case_id == "categorical_group" and name == "colour"):
-                assert column.kind == spec["kind"], f"{name}: kind 不一致"
+            # 值归 M1-10 的主题色；kind 仍然比。
+            assert column.kind == spec["kind"], f"{name}: kind 不一致"
             continue
         assert column.kind == spec["kind"], f"{name}: kind 不一致"
         expected_missing = np.array([value is None for value in spec["values"]], dtype=bool)
@@ -216,7 +212,7 @@ def test_layer_data_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """对拍规模：229 列里 219 列参与比值、8859 个值（钉住，不许悄悄缩水）。"""
+    """对拍规模：229 列里 223 列参与比值、8887 个值（钉住，不许悄悄缩水）。"""
     total_columns = 0
     total_values = 0
     for case in reference["cases"]:
@@ -225,12 +221,12 @@ def test_compared_cell_count(reference: dict) -> None:
         assert rows == case["rows"]
         total_columns += compared
         total_values += compared * rows
-    assert total_columns == 219
-    assert total_values == 8859
+    assert total_columns == 223
+    assert total_values == 8887
 
 
-def test_skipped_columns_only_carry_scale_or_theme_values(reference: dict) -> None:
-    """被跳过值的列仍然存在且位置一致；跳过的只有 theme 色 / 调色板。"""
+def test_skipped_columns_only_carry_theme_values(reference: dict) -> None:
+    """被跳过值的列仍然存在且位置一致；跳过的只剩主题色（M1-10）。"""
     for case in reference["cases"]:
         skipped = SKIP_VALUES.get(case["id"], frozenset())
         names = [column["name"] for column in case["columns"]]
