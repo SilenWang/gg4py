@@ -268,6 +268,17 @@ class GeomRenderer:
         """
         resolved = dict(params)
         source = raw if raw is not None else data
+        # 上游 `has_flipped_aes()` 的第一分支：先读统计阶段已经产出的
+        # `data$flipped_aes`（`stat_bin` 的横向 histogram 就是靠它把方向传给
+        # geom 的）；只有它缺失时才按 `orientation` / 列类型推断。
+        if "flipped_aes" in data:
+            column = data.column("flipped_aes")
+            mask = np.asarray(column.na_mask, dtype=bool).tolist()
+            for value, missing in zip(np.asarray(column.values).tolist(), mask, strict=True):
+                if missing:
+                    continue
+                resolved["flipped_aes"] = bool(value)
+                return _with_discrete_position(resolved, source)
         if "flipped_aes" in resolved and resolved["flipped_aes"] is not None:
             resolved["flipped_aes"] = bool(resolved["flipped_aes"])
             return _with_discrete_position(resolved, source)

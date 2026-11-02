@@ -7,10 +7,11 @@
 compute_aesthetics → compute_stat → map_statistic → compute_position → map_scales → finish
 ```
 
-- 代码：`src/ggcore/stat.py`；派发在 `src/ggcore/build.py::compute_stat()`；
-- 夹具：`tests/fixtures/stat_r_reference.json`（27 个 case，`pixi run -e refs refs:stat`）；
-- 对拍：`tests/test_stat_r_parity.py`（列名 + 列序 + kind + 逐值 + NA，27 个 case）；
-- 端到端：`docs/cases/stat-{histogram-bin,boxplot-stat,smooth-loess,area-align}`。
+- 代码：`src/ggcore/stat.py`；loess 两套面在 `src/ggcore/loess.py`；
+  派发在 `src/ggcore/build.py::compute_stat()`；
+- 夹具：`tests/fixtures/stat_r_reference.json`（30 个 case，`pixi run -e refs refs:stat`）；
+- 对拍：`tests/test_stat_r_parity.py`（列名 + 列序 + kind + 逐值 + NA，30 个 case）；
+- 端到端：`docs/cases/stat-{histogram-bin,histogram-horizontal,boxplot-stat,smooth-loess,area-align}`。
 
 `compute_stat(layer, aesthetics, scales=…, raw=…)` 多出两个可选入参：
 
@@ -87,7 +88,9 @@ R 的图层只有一个 `params` 字典，stat 与 geom 各取自己认识的名
   `cut(x, fuzzy, right = closed == "right", include.lowest = TRUE)` 的等价实现
   （`searchsorted`），**不是** `arange` + 比较。
 - 断点范围是 `scale$dimension()`（这一面板训练后的范围，含显式 limits），不是
-  组内的 min/max。
+  组内的 min/max。横轴取哪一条由 `flipped_aes` 决定：上游
+  `StatBin$compute_group()` 用 `flipped_names(flipped_aes)$x`，横向
+  （`aes(y = <连续>)`）取的是 **y 标度**的范围；竖向才是 x 标度。
 - 输出列序照 `bin_out()`：`count, x, xmin, xmax, width, density, ncount,
   ndensity`，然后是 `flipped_aes` 与组内恒定的旧列。`pad = TRUE` 两端各补一个
   0 计数箱；`drop = "all"` 去掉 0 计数箱、`"extremes"` 只去两端的连续 0 箱。
@@ -135,42 +138,62 @@ after_stat(count)` 由 `_STAT_DEFAULT_AES` 补。
 ## 5. `stat_smooth`（loess / lm）
 
 参数：`method = "loess"`、`formula = y ~ x`、`span = 0.75`、`degree = 2`、
-`n = 80`、`se = TRUE`、`level = 0.95`、`fullrange = FALSE`、`na.rm`。
+`n = 80`、`se = TRUE`、`level = 0.95`、`fullrange = FALSE`、`na.rm`、
+`method_args`。
 
-- 纯 numpy 的局域多项式回归（Cleveland 的 loess，"direct" 口径）：
-  - 邻域 `q = floor(span · n_group)`（至少 1）；
-  - 带宽 `d = 第 q 近的观测距离`；tricube 权重 `w = (1 - |u|³)³`，`u = |x - x₀| / d`；
-  - 局域权 `w_i × 观测权重`，对 `[1, x-x₀, (x-x₀)²]` 做加权最小二乘，取截距。
-  这一组数（`q` 的取整、带宽不乘 0.999、设计矩阵不缩放）是用 R 的
-  `loess(..., surface = "direct")` 逐个探出来的，实测逐值差 ≤ 1.4e-15。
-- `se = TRUE` 时：
-  `s = sqrt(Σ w·r² / δ₁)`、`se.fit = s · sqrt(Σ L²/w)`、`df = δ₁²/δ₂`，
-  其中 `δ₁ = ‖I - L‖²_F`、`δ₂ = ‖(I-L)(I-L)′‖²_F`（`loessf.f` 的 `lowesc()`），
-  `ymin/ymax = y ∓ qt(0.975, df) · se.fit`。`qt()` 用不完全 Beta 反解（自带实现，
-  不引 scipy）。
+loess 的两套实现在 `src/ggcore/loess.py`（`stat_smooth` 只是选面 + 组列）：
+
+- **`surface = "interpolate"`（缺省，R 的默认口径）**
+  - 一维 k-d 树：包围盒外扩 0.5%，叶单元不超过
+    `floor(n · span · cell)` 个观测（`cell = 0.2`，R 传给 C 的是 `span · cell`），
+    每个内部结点在切分值处加一个顶点（`ehg126` / `ehg124` / `ehg106` / `ehg125`）；
+  - 每个顶点做一次局域二次拟合，留下**值**与**一阶导**（`ehg139` / `ehg127`）；
+  - 预测点落在哪个叶单元，就用两端顶点的 (值, 导) 做三次 Hermite 插值
+    （`ehg128`），这就是 `lowese()`；
+  - 标准误：每个顶点的「局域拟合行」同法插值（`ehg191`），
+    `se = s · sqrt(Σ L²/w)`；`trL = tr(L)`，`s`、`df` 用 R 的近似公式
+    （`ehg141` / `lowesa`，`statistics = "approximate"`）；
+  - 数据范围外的预测点是 **NA**（`predLoess()` 的 `inside` 判定）——
+    `fullrange = TRUE` 时也会出现整段 NA；
+  - 实测与 R 4.0.3 逐值差 ≤ 1.0e-14（默认口径的 `y/ymin/ymax/se` 全部达标）。
+- **`surface = "direct"`（显式选项）**
+  - 纯 numpy 的局域多项式回归：
+    邻域 `q = floor(span · n_group)`（至少 1）；带宽 = 第 q 近的观测距离；
+    tricube 权重 `w = (1 - |u|³)³`，`u = |x - x₀| / d`；局域权 `w_i × 观测权重`，
+    对 `[1, x-x₀, (x-x₀)²]` 做加权最小二乘，取截距。可外推；
+  - `se = TRUE` 时 `s = sqrt(Σ w·r² / δ₁)`、`se.fit = s · sqrt(Σ L²/w)`、
+    `df = δ₁²/δ₂`，其中 `δ₁ = ‖I - L‖²_F`、`δ₂ = ‖(I-L)(I-L)′‖²_F`
+    （`loessf.f` 的 `lowesc()`，即 R 的 `statistics = "exact"`）；
+  - 与 R 的 `loess(..., surface = "direct", statistics = "exact",
+    trace.hat = "exact")` 逐值差 ≤ 1.4e-15。
+- `method_args` 写法（对应 R 的 `list(...)`）：
+  `method_args = {"control": {"surface": "direct", "statistics": "exact",
+  "trace.hat": "exact"}}`。缺省 = R 缺省（`interpolate` / `approximate` /
+  `exact` / `cell = 0.2`）。只实现两种组合：`interpolate + approximate`（R 默认）
+  与 `direct + exact`；其余组合与 `iterations > 1`（稳健迭代）明确报错。
+  `degree` 只从 `method_args` 取（R 的 `geom_smooth()` 没有 `degree` 形参），
+  `span` 恒取 stat 的 `span`（上游 `StatSmooth$setup_params()` 会用
+  `params$span` 覆盖 `method.args$span`）。
+- `ymin/ymax = y ∓ qt(0.975, df) · se.fit`。`qt()` 用不完全 Beta 反解
+  （自带实现，不引 scipy）。
 - 输出列序：`x, y, [ymin, ymax, se], flipped_aes`；`se = FALSE` 时**不产**
   `ymin/ymax/se`。
 - `method = "lm"`：加权最小二乘 + `predict.lm(interval = "confidence")` 的口径
   （`sigma² = Σ w·r²/df.residual`，`se = sqrt(diag(X₀ (X′WX)⁻¹ X₀′)·sigma²)`）。
-- `gam` / `glm` / 其他 formula / `method.args` 明确报错并点名后续任务。
+- `gam` / `glm` / 其他 formula 明确报错并点名后续任务。
 
-### 与 R 默认的差异（重要）
+横向（`orientation = "y"`）时 `fullrange = TRUE` 的 `xseq` 取的仍是
+**x 标度**（`StatSmooth$compute_group()` 里写死 `scales$x$dimension()`），不是
+翻转后的 y 轴；夹具 `smooth_horizontal_fullrange` 守着这条（数据范围外给 NA）。
 
-R 的 `loess()` 默认 `surface = "interpolate"`：先在 kd 树的顶点上算局域拟合，
-再对预测点做插值（C 实现，`loessf.f` 的 `ifit`）。gg4py 实现的是
-**direct** 口径，两者在 `n = 15, span = 0.75` 上逐值可差到 **2.1e-3**
-（另一个 8 点样本上是 5.2e-3）；这不是浮点误差，是算法差异。
+`stat_bin` 横向断点取 y 标度那一条同理，见 §2。
 
-因此：
+### 与 R 默认的差异
 
-- `refs:stat` 里的 smooth case 显式传
-  `method.args = list(control = loess.control(surface = "direct", statistics =
-  "exact", trace.hat = "exact"))`，与 gg4py 的口径对齐后才逐值对拍到 1e-15；
-- `docs/cases/stat-smooth-loess` 的 `expected.svg` 用同一口径生成；
-- 用户如果拿 R 的默认输出逐像素比，smooth 的曲线会差 ≤ 0.5% 面板高度（本仓的
-  `pixi run diff` 实测 0.03% 图级差异，因为差值落在 1–2 px 的抗锯齿带里）。
-
-后续若要复刻 interpolate 面，需要移植 cloess 的 kd 树 + `ifit` 插值。
+无（默认路径已对齐）。`docs/cases/stat-smooth-loess` 的 `expected.svg` 仍用
+`smooth_control`（direct / exact）生成，因为它是既有验收资产；夹具里另有
+`smooth_default` / `smooth_horizontal_fullrange` 两个走 R 默认 interpolate 的
+case，把默认口径也钉住。
 
 ## 6. `stat_align`
 
@@ -212,9 +235,11 @@ ggplot(tbl, aes(x="cls", group=1, y=after_stat("prop"))) + geom_bar()
 
 | 能力 | 现状 | 去向 |
 | --- | --- | --- |
-| loess 的 `surface = "interpolate"` | 未实现（direct 口径，差 ≤ 5.2e-3） | 需要移植 cloess 的 kd 树插值 |
+| loess `surface="direct"` + `statistics="approximate"` / `trace.hat="trL-1"` | `BuildError` 点名（direct 只实现 exact 口径） | 需要 `ehg196` 的 trL 近似 |
+| loess `surface="interpolate"` + `statistics="exact"` | `BuildError` 点名（默认只实现 approximate） | 需要 n×n 帽子矩阵（`lowesc`） |
+| loess 的稳健迭代（`iterations > 1` / `family="symmetric"`） | `BuildError` 点名 | 需要 `lowesw` / `lowesp` |
 | `stat_smooth(method = "gam" / "glm")` | `BuildError` 点名 | 后续 |
-| `stat_smooth` 的其他 formula / `method.args` | `BuildError` 点名 | 后续 |
+| `stat_smooth` 的其他 formula | `BuildError` 点名 | 后续 |
 | `stat_bin(weight = …)` | 支持（缺失权重按 0） | — |
 | `stat_boxplot` 的加权分位（`quantreg::rq`） | 不支持；有 `weight` 列时报错 | 后续（需要 quantreg 等价实现） |
 | `stat_bin` 的 `breaks` 只认数值序列 | 函数 / lambda 未实现 | 后续 |
@@ -224,9 +249,9 @@ ggplot(tbl, aes(x="cls", group=1, y=after_stat("prop"))) + geom_bar()
 ## 9. 验收口径
 
 ```bash
-pixi run -e refs refs:stat        # 夹具 + 4 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
+pixi run -e refs refs:stat        # 夹具 + 5 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
 pixi run pytest tests/test_stat_r_parity.py -q
-pixi run cases:matrix             # 4 张 stat case 逐张 render + diff
+pixi run cases:matrix             # 5 张 stat case 逐张 render + diff
 pixi run check                    # 全量门禁
 ```
 

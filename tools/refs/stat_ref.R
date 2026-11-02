@@ -11,10 +11,11 @@
 #     （NA / NaN / Inf 一律写 null，见 fmt_num）；
 #   - `ggplot_build()` 与 `ggplotGrob()` 期间的 warning 逐条记录（stat 的
 #     remove_missing 与 geom 的 handle_na 都会发）；
-#   - stat_smooth 的 loess 显式用 surface = "direct"、statistics = "exact"、
-#     trace.hat = "exact"：这是 gg4py 实现的算法口径。R 的**默认**是
-#     surface = "interpolate"（kd 树插值，C 实现），与 direct 逐值可差
-#     ~5e-3，见 docs/notes/stat.md「已知差异」。
+#   - stat_smooth 的 loess 两种面都覆盖：`smooth_se` / `smooth_no_se` /
+#     `smooth_span` / `smooth_n` / `smooth_group` 显式用 `surface = "direct"`、
+#     `statistics = "exact"`、`trace.hat = "exact"`（gg4py 的 direct 实现口径）；
+#     `smooth_default` / `smooth_horizontal_fullrange` 走 R 的默认
+#     `surface = "interpolate"`（kd 树 + Hermite 插值），gg4py 逐值对齐到 1e-6。
 #
 # `ggplotGrob()` 会打开默认设备（pdf() → 仓库根目录的 Rplots.pdf）。显式开一个
 # 临时 pdf 设备并在 on.exit 里关掉，产线跑完不留未跟踪文件（SIL-698 #6）。
@@ -221,6 +222,12 @@ df_smooth <- data.frame(
   y = c(0.1, 0.35, 0.32, 0.45, 0.5, 0.48, 0.62, 0.6,
         0.7, 0.68, 0.78, 0.82, 0.8, 0.9, 0.95)
 )
+# 横向 smooth：x 是响应、y 是预测变量；fullrange 的 xseq 取的是 **x 标度**
+# （0..10），落在预测变量（1..12）之外的点按 R 的 `predLoess()` 给 NA。
+df_smooth_h <- data.frame(
+  v = seq(0, 10, length.out = 12),
+  cls = seq_len(12)
+)
 df_align <- data.frame(
   x = c(1, 2, 3, 4, 2, 3, 4, 5),
   y = c(1, 2, 1, 2, 2, 1, 2, 1),
@@ -287,6 +294,13 @@ cases$bin_density <- record_case(
   "bin_density",
   ggplot(df_bin, aes(x, y = after_stat(density))) + geom_histogram(bins = 4),
   "bin + after_stat(density)", "bin"
+)
+cases$bin_horizontal <- record_case(
+  "bin_horizontal",
+  # 只映射 y（连续）：断点取 y 标度的 dimension，输出翻回横向
+  # （`StatBin$compute_group()` 的 `flipped_names(flipped_aes)$x`）。
+  ggplot(df_bin, aes(y = x)) + geom_histogram(binwidth = 1, boundary = 0),
+  "bin：横向（没有 x 美学，断点取 y 轴）", "bin"
 )
 
 # --- stat_count ------------------------------------------------------------
@@ -388,6 +402,22 @@ cases$smooth_group <- record_case(
   ) + geom_smooth(method = "loess", formula = y ~ x, se = FALSE, method.args = smooth_control),
   "smooth：两个 group 各自拟合", "smooth"
 )
+cases$smooth_default <- record_case(
+  "smooth_default",
+  # 不传 method.args：R 的默认口径（surface = "interpolate"、
+  # statistics = "approximate"、trace.hat = "exact"，cell = 0.2）。
+  ggplot(df_smooth, aes(x, y)) + geom_smooth(),
+  "smooth：默认参数（R 默认的 interpolate 面）", "smooth"
+)
+cases$smooth_horizontal_fullrange <- record_case(
+  "smooth_horizontal_fullrange",
+  # 横向 + fullrange：`StatSmooth$compute_group()` 的 `scales$x$dimension()`
+  # 取的仍是 **x 标度**（0..10），预测变量的实际范围是 1..12，所以数据范围外
+  # 的点按 `predLoess()` 的 `inside` 判定给 NA。
+  ggplot(df_smooth_h, aes(x = v, y = cls)) +
+    geom_smooth(orientation = "y", fullrange = TRUE),
+  "smooth：横向 + fullrange（xseq 取 x 标度，范围外 NA）", "smooth"
+)
 
 # --- stat_align ------------------------------------------------------------
 cases$align_unaligned <- record_case(
@@ -412,7 +442,7 @@ cases$align_single <- record_case(
 )
 
 # ---------------------------------------------------------------------------
-# docs/cases 的 4 张端到端参考图（theme_void 整页，svglite 4×3 in）
+# docs/cases 的 5 张端到端参考图（theme_void 整页，svglite 4×3 in）
 # ---------------------------------------------------------------------------
 
 theme_case <- function() {
@@ -466,6 +496,15 @@ save_case(
     fixed_x(c(0.5, 5.5)) + fixed_y(c(0, 4)) + theme_case()
 )
 
+# 5. 横向 histogram：只映射 y（连续），断点取 y 标度（count 在 x 轴上）
+#    y 不设 limits：断点仍按数据范围（1..4）算，3 个箱正好铺满面板。
+save_case(
+  "stat-histogram-horizontal",
+  ggplot(df_bin, aes(y = x)) +
+    geom_histogram(binwidth = 1, boundary = 0, fill = "#4C78A8") +
+    fixed_x(c(0, 5)) + scale_y_continuous(expand = c(0, 0)) + theme_case()
+)
+
 # ---------------------------------------------------------------------------
 # 写盘
 # ---------------------------------------------------------------------------
@@ -474,8 +513,9 @@ fixture <- list(
   r_version = paste(R.version$major, R.version$minor, sep = "."),
   ggplot2_version = as.character(packageVersion("ggplot2")),
   loess = paste0(
-    "surface=direct, statistics=exact, trace.hat=exact",
-    "（R 的默认 surface=interpolate 是 kd 树插值，见 docs/notes/stat.md）"
+    "默认 surface=interpolate / statistics=approximate / trace.hat=exact；",
+    "显式 case 用 surface=direct / statistics=exact / trace.hat=exact",
+    "（见 docs/notes/stat.md）"
   ),
   scale = paste0(
     length(cases), " case；data[[1]] 的列名+列序+kind+逐值；",
