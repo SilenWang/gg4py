@@ -56,8 +56,10 @@ group`，`bar` / `col` / `histogram` / `boxplot` 还带 `flipped_aes`（geom
 - **`flipped_aes`**：`flipped_aes()` 取该列第一个非缺失值（上游
   `has_flipped_aes()`）。为 TRUE 时先按 `switch_orientation()` 把 x 族与 y 族
   列名对调（`ggplot_global$x_aes` / `y_aes` 的同一份名单），算完再对调回来；
-  stack / fill / dodge / dodge2 都走这条路。`jitter` / `nudge` 照上游直接作用
-  在 x / y 上。
+  stack / fill / dodge / dodge2 都走这条路。**写入发生在翻转坐标里**：横向的
+  stack / fill 把累计值写进 `ymin/ymax/y`（翻回来就是 `xmin/xmax/x`，长度轴），
+  类别轴（原来的 `y` 族）原样保留——与上游 `flip_data()` 包住整段计算的顺序
+  一致。`jitter` / `nudge` 照上游直接作用在 x / y 上。
 - **PANEL**：分组键是 `(位置值, PANEL)`；没有 `PANEL` 列时当作单面板。
 - 位置值用 `repr(float)` 作分组键，所以 `NA`（NaN）自成一个水平，与 vctrs 把
   NA 当同一个值的口径一致。
@@ -97,6 +99,9 @@ R 对照（`two_groups`：x = 1,1,2,2；y = 1,2,3,4；group 1,2,1,2）：
 同符号累计总量），得到 0..1；`vjust` 仍生效。x 只有一组时该组顶到 1。
 
 R 对照（同上数据）：y = `1, 2/3, 1, 4/7`，ymin = `2/3, 0, 4/7, 0`。
+横向（`flipped_aes = TRUE`，同一份数据画 `geom_col(orientation = "y")`）时，
+这些值落在 x 族：x = `1, 2/3, 1, 4/7`、xmin = `2/3, 0, 4/7, 0`，y = `1, 1, 2, 2`
+（类别轴）不动。
 
 ### dodge
 
@@ -136,6 +141,9 @@ R 对照（同上数据，`position_dodge()`）：
   按 `downup` 填充、重叠组重新编号）。
 - `newx = (min(xmin) + max(xmax)) / 2`；`n` 缺省（`preserve = "total"`）取每个
   重叠组的行数，`preserve = "single"` 取所有 x 上的最大行数。
+  `preserve = "single"` 的「最大行数」按上游 `setup_params()` 在**补 x 之前**
+  决定：data 有 `x` 时是 `table(panel$x)`，只有 `xmin`/`xmax` 时是逐面板
+  `find_x_overlaps()` 的重叠组数（`geom_rect` 这类没有 x 的图层因此得到 ≥ 2）。
   `new_width = (xmax - xmin) / n`，再按 `newx` 把各组的 `new_width` 累加、从
   `newx - size/2` 起依次切分 → 新的 `xmin/xmax`，`x = (xmin + xmax) / 2`。
 - 多个重叠组时再叠 `padding`：`pad_width = new_width * (1 - padding)`，

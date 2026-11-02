@@ -1827,6 +1827,169 @@
       ]
     },
     {
+      "id": "dodge2_preserve_single_no_x",
+      "title": "dodge2(preserve = 'single') 且 data 没有 x：n 取 find_x_overlaps 的重叠组数",
+      "code": "ggplot(rects, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = g)) + geom_rect(position = position_dodge2(preserve = 'single'))",
+      "position": "dodge2",
+      "position_params": {
+        "preserve": "single"
+      },
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": 2,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0,
+            0.10000000000000001,
+            1
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            0.5,
+            0.59999999999999998,
+            1.5
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.17499999999999999,
+            0.42500000000000004,
+            1.25
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.062499999999999986,
+            0.31250000000000006,
+            1.1375
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            0.28749999999999998,
+            0.53750000000000009,
+            1.3625
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "output_names": [
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
+        "fill",
+        "PANEL",
+        "group",
+        "x",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha"
+      ]
+    },
+    {
       "id": "dodge_horizontal",
       "title": "横向 dodge（flipped_aes = TRUE）：位移作用在 y 上，x 是长度",
       "code": "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = position_dodge())",
@@ -2046,6 +2209,440 @@
         "ymin",
         "ymax",
         "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "stack_horizontal",
+      "title": "横向 stack（flipped_aes = TRUE）：累计值落在 x 族（长度轴），y 仍是类别轴",
+      "code": "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y')",
+      "position": "stack",
+      "position_params": {},
+      "flipped": true,
+      "params": {
+        "var": "ymax",
+        "fill": false,
+        "vjust": 1,
+        "reverse": false,
+        "flipped_aes": true
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            3,
+            2,
+            7,
+            4
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            2,
+            0,
+            4,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            3,
+            2,
+            7,
+            4
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "fill_horizontal",
+      "title": "横向 fill（flipped_aes = TRUE）：归一后的 y 族写回 x 族，y 保持类别",
+      "code": "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = 'fill')",
+      "position": "fill",
+      "position_params": {},
+      "flipped": true,
+      "params": {
+        "var": "ymax",
+        "fill": true,
+        "vjust": 1,
+        "reverse": false,
+        "flipped_aes": true
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            0.66666666666666663,
+            1,
+            0.5714285714285714
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.66666666666666663,
+            0,
+            0.5714285714285714,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            0.66666666666666663,
+            1,
+            0.5714285714285714
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
         "colour",
         "linewidth",
         "linetype",

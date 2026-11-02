@@ -77,6 +77,27 @@ def bar_table(
     )
 
 
+def horizontal_bar_table() -> ColumnTable:
+    """横向柱（`flipped_aes = TRUE`）`setup_data()` 之后的表。
+
+    与夹具的 `stack_horizontal` / `fill_horizontal` 同形：x 是长度（0..4），
+    y 是类别轴（1 / 2 两档，厚度 y ± 0.45），四个 group 各占一行。
+    """
+    return ColumnTable(
+        [
+            ("x", float_column([1.0, 2.0, 3.0, 4.0])),
+            ("y", float_column([1.0, 1.0, 2.0, 2.0])),
+            ("PANEL", Column("str", np.full(4, "1", dtype=object))),
+            ("group", Column("int", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("flipped_aes", Column("bool", np.ones(4, dtype=bool))),
+            ("xmin", float_column([0.0, 0.0, 0.0, 0.0])),
+            ("xmax", float_column([1.0, 2.0, 3.0, 4.0])),
+            ("ymin", float_column([0.55, 0.55, 1.55, 1.55])),
+            ("ymax", float_column([1.45, 1.45, 2.45, 2.45])),
+        ]
+    )
+
+
 def values_of(table: ColumnTable, name: str) -> list[float]:
     column = table.column(name)
     return np.where(column.na_mask, np.nan, column.values.astype(np.float64)).tolist()
@@ -259,6 +280,31 @@ def test_fill_of_a_single_group_is_one() -> None:
     assert values_of(filled, "ymin") == pytest.approx([0.0, 0.0], abs=TOLERANCE)
 
 
+def test_stack_horizontal_writes_the_cumulative_values_to_the_x_family() -> None:
+    """flipped_aes = TRUE：累计值落在 x 族（长度轴），y 族（类别轴）原样保留。
+
+    R: x = (3, 2, 7, 4)、xmin = (2, 0, 4, 0)、y = (1, 1, 2, 2) 不动。
+    """
+    stacked = position("stack").compute_layer(horizontal_bar_table())
+    assert values_of(stacked, "x") == pytest.approx([3.0, 2.0, 7.0, 4.0], abs=TOLERANCE)
+    assert values_of(stacked, "xmin") == pytest.approx([2.0, 0.0, 4.0, 0.0], abs=TOLERANCE)
+    assert values_of(stacked, "xmax") == pytest.approx([3.0, 2.0, 7.0, 4.0], abs=TOLERANCE)
+    assert values_of(stacked, "y") == pytest.approx([1.0, 1.0, 2.0, 2.0], abs=TOLERANCE)
+    assert values_of(stacked, "ymin") == pytest.approx([0.55, 0.55, 1.55, 1.55], abs=TOLERANCE)
+    assert values_of(stacked, "ymax") == pytest.approx([1.45, 1.45, 2.45, 2.45], abs=TOLERANCE)
+
+
+def test_fill_horizontal_normalises_the_x_family_and_keeps_the_category_axis() -> None:
+    """R: x = (1, 2/3, 1, 4/7)、xmin = (2/3, 0, 4/7, 0)、y = (1, 1, 2, 2) 不动。"""
+    filled = position("fill").compute_layer(horizontal_bar_table())
+    assert values_of(filled, "x") == pytest.approx([1.0, 2 / 3, 1.0, 4 / 7], abs=TOLERANCE)
+    assert values_of(filled, "xmin") == pytest.approx([2 / 3, 0.0, 4 / 7, 0.0], abs=TOLERANCE)
+    assert values_of(filled, "xmax") == pytest.approx([1.0, 2 / 3, 1.0, 4 / 7], abs=TOLERANCE)
+    assert values_of(filled, "y") == pytest.approx([1.0, 1.0, 2.0, 2.0], abs=TOLERANCE)
+    assert values_of(filled, "ymin") == pytest.approx([0.55, 0.55, 1.55, 1.55], abs=TOLERANCE)
+    assert values_of(filled, "ymax") == pytest.approx([1.45, 1.45, 2.45, 2.45], abs=TOLERANCE)
+
+
 # ---------------------------------------------------------------------------
 # dodge
 # ---------------------------------------------------------------------------
@@ -404,6 +450,29 @@ def test_dodge2_does_not_add_the_ymax_copy_that_dodge_adds() -> None:
     )
     assert "ymax" not in position("dodge2").compute_layer(table)
     assert "ymax" in position("dodge").compute_layer(table)
+
+
+def test_dodge2_preserve_single_without_x_uses_find_x_overlaps() -> None:
+    """`setup_params()` 在补 x 之前分支：没有 x 时 n 取 find_x_overlaps 的组数。
+
+    R（geom_rect + position_dodge2(preserve = "single")）：两簇重叠区间（2 行 +
+    1 行）→ n = 2，x = (0.175, 0.425, 1.25)；若把补出来的中点 x 当成 `table(x)`
+    就会得到 n = 1，x = (0.05, 0.55, 1.25)。
+    """
+    table = ColumnTable(
+        [
+            ("xmin", float_column([0.0, 0.1, 1.0])),
+            ("xmax", float_column([0.5, 0.6, 1.5])),
+            ("ymin", float_column([0.0, 0.0, 0.0])),
+            ("ymax", float_column([1.0, 1.0, 1.0])),
+            ("PANEL", Column("str", np.full(3, "1", dtype=object))),
+            ("group", Column("int", np.array([1.0, 2.0, 1.0]))),
+        ]
+    )
+    dodged = position("dodge2", preserve="single").compute_layer(table)
+    assert values_of(dodged, "x") == pytest.approx([0.175, 0.425, 1.25], abs=TOLERANCE)
+    assert values_of(dodged, "xmin") == pytest.approx([0.0625, 0.3125, 1.1375], abs=TOLERANCE)
+    assert values_of(dodged, "xmax") == pytest.approx([0.2875, 0.5375, 1.3625], abs=TOLERANCE)
 
 
 # ---------------------------------------------------------------------------

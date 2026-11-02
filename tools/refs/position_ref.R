@@ -243,6 +243,15 @@ horizontal <- data.frame(
   g = c("p", "q", "p", "q")
 )
 points <- data.frame(x = c(1, 1, 2, 2), y = c(1, 2, 3, 4))
+# 只有 xmin/xmax、没有 x 的图层（geom_rect）：dodge2 的 setup_params() 因此
+# 走 find_x_overlaps 分支。两簇重叠区间（2 行 + 1 行）→ n = 2。
+rects <- data.frame(
+  xmin = c(0.0, 0.1, 1.0),
+  xmax = c(0.5, 0.6, 1.5),
+  ymin = c(0, 0, 0),
+  ymax = c(1, 1, 1),
+  g = c("p", "q", "p")
+)
 
 cases <- list(
   record(
@@ -305,6 +314,17 @@ cases <- list(
     args = list(padding = 0.2)
   ),
   record(
+    "dodge2_preserve_single_no_x", "dodge2",
+    "dodge2(preserve = 'single') 且 data 没有 x：n 取 find_x_overlaps 的重叠组数",
+    "ggplot(rects, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = g)) + geom_rect(position = position_dodge2(preserve = 'single'))",
+    quote(
+      ggplot(rects, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = g)) +
+        geom_rect(position = position)
+    ),
+    quote(position_dodge2(preserve = "single")),
+    args = list(preserve = "single")
+  ),
+  record(
     "dodge_horizontal", "dodge",
     "横向 dodge（flipped_aes = TRUE）：位移作用在 y 上，x 是长度",
     "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = position_dodge())",
@@ -313,6 +333,26 @@ cases <- list(
         geom_col(orientation = "y", position = position)
     ),
     quote(position_dodge())
+  ),
+  record(
+    "stack_horizontal", "stack",
+    "横向 stack（flipped_aes = TRUE）：累计值落在 x 族（长度轴），y 仍是类别轴",
+    "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y')",
+    quote(
+      ggplot(horizontal, aes(x = val, y = cat, fill = g)) +
+        geom_col(orientation = "y", position = position)
+    ),
+    quote(position_stack())
+  ),
+  record(
+    "fill_horizontal", "fill",
+    "横向 fill（flipped_aes = TRUE）：归一后的 y 族写回 x 族，y 保持类别",
+    "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = 'fill')",
+    quote(
+      ggplot(horizontal, aes(x = val, y = cat, fill = g)) +
+        geom_col(orientation = "y", position = position)
+    ),
+    quote(position_fill())
   ),
   record(
     "jitter_seed", "jitter",

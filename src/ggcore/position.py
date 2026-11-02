@@ -246,6 +246,26 @@ def _count_per_key(values: np.ndarray, panels: np.ndarray) -> np.ndarray:
     return np.array([counts[key] for key in keys], dtype=np.float64)
 
 
+def _max_overlap_groups(frame: _Frame, panels: np.ndarray) -> float:
+    """`PositionDodge2$setup_params()` 没有 x 时的 n：逐 PANEL 跑 `find_x_overlaps()`。
+
+    上游 `groups <- lapply(split(data, data$PANEL), find_x_overlaps)` +
+    `max(vapply(groups, max, ...))`；`find_x_overlaps()` 给出的是 1..k 的组号，
+    所以 `max` 就是该面板的重叠组数。
+    """
+    xmin = frame.values("xmin")
+    xmax = frame.values("xmax")
+    rows_by_panel: dict[str, list[int]] = {}
+    for index, panel in enumerate(panels.tolist()):
+        rows_by_panel.setdefault(repr(panel), []).append(index)
+    counts = []
+    for rows in rows_by_panel.values():
+        picked = np.asarray(rows, dtype=np.int64)
+        overlaps = _find_x_overlaps(xmin[picked], xmax[picked])
+        counts.append(int(overlaps.max()) if overlaps.size else 0)
+    return float(max(counts, default=1))
+
+
 # ---------------------------------------------------------------------------
 # 实现：identity / stack / fill
 # ---------------------------------------------------------------------------
@@ -342,10 +362,13 @@ def _collide_stack(table: ColumnTable, params: Mapping[str, Any], *, fill: bool)
             ymin[subset] = np.minimum(heights[:-1], heights[1:])
             ymax[subset] = np.maximum(heights[:-1], heights[1:])
 
-    frame.flip(flipped)
+    # 上游在**翻转坐标里**写 ymin/ymax/y，最后才 `flip_data()` 回原朝向：横向
+    # 时这三个名字就是 x 族（长度轴），累计值因此落到 xmin/xmax/x 上，而 y 族
+    # （类别轴）原样保留。先 flip 回来再 set 会把累计值写进类别轴（SIL-692）。
     frame.set("ymin", ymin)
     frame.set("ymax", ymax)
     frame.set("y", (1.0 - vjust) * ymin + vjust * ymax)
+    frame.flip(flipped)
     return frame.table()
 
 
@@ -394,6 +417,10 @@ def _dodge(table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool) -> Co
     if main not in frame and edges not in frame:
         raise _build_error(f"{name} 需要 {main} 或 {edges} 列；已有列：{', '.join(frame.columns)}")
 
+    # 上游 `PositionDodge2$setup_params()` 是 `if ("x" %in% names(data))
+    # table(panel$x) else find_x_overlaps`：分支要在**补 x 之前**定下来，
+    # 否则只有 xmin/xmax 的表会被当成「每行一个 x」，n 恒为 1（SIL-692）。
+    has_x = "x" in frame
     _ensure_x(frame)
     # --- PositionDodge$setup_data()：补 order 列（pos_dodge() 的 groupidx 来源）
     order = _dodge_order(frame, preserve=preserve, reverse=reverse)
@@ -406,8 +433,12 @@ def _dodge(table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool) -> Co
     if preserve == "total":
         n_total: float | None = None
     elif dodge2:
-        # dodge2 的 single：`table(panel$x)`（没有 x 时 find_x_overlaps，见下）。
-        n_total = float(np.max(_count_per_key(frame.values("x"), panel)))
+        # dodge2 的 single：有 x 时 `table(panel$x)`，没有 x 时 `find_x_overlaps`。
+        n_total = (
+            float(np.max(_count_per_key(frame.values("x"), panel)))
+            if has_x
+            else _max_overlap_groups(frame, panel)
+        )
     else:
         xmin = frame.values("xmin") if "xmin" in frame else frame.values("x")
         n_total = _max_groups(xmin, panel, group)

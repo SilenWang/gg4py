@@ -47,7 +47,10 @@ EXPECTED_CASES = (
     "dodge_preserve_single",
     "dodge2_two_groups",
     "dodge2_padding",
+    "dodge2_preserve_single_no_x",
     "dodge_horizontal",
+    "stack_horizontal",
+    "fill_horizontal",
     "jitter_seed",
     "nudge",
 )
@@ -170,8 +173,8 @@ def test_compared_cell_count(reference: dict) -> None:
             continue
         for spec in case["output"]:
             values += len(spec["values"])
-    assert len(EXPECTED_CASES) == 11
-    assert values == 400
+    assert len(EXPECTED_CASES) == 14
+    assert values == 496
 
 
 def test_jitter_envelope_and_determinism(reference: dict) -> None:
