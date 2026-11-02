@@ -1,0 +1,308 @@
+"""组件注册表：一条注册表、两个入口、遍历顺序稳定、替换即生效。"""
+
+from __future__ import annotations
+
+import pytest
+
+from ggcore import plot, registry
+from ggcore.layer import Geom, Layer
+
+EXPECTED = {
+    "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
+    "stat": ("identity", "bin", "count", "boxplot", "smooth", "align"),
+    "scale": (
+        "x_continuous",
+        "y_continuous",
+        "x_discrete",
+        "y_discrete",
+        "x_log10",
+        "y_log10",
+        "colour_continuous",
+        "colour_discrete",
+        "fill_continuous",
+        "fill_discrete",
+        "size_continuous",
+        "shape_discrete",
+        "alpha_continuous",
+    ),
+    "coord": ("cartesian", "fixed"),
+    "facet": ("null", "wrap", "grid"),
+    "guide": ("legend", "colourbar", "none"),
+    "theme": ("grey", "minimal", "void"),
+    "label": ("labs",),
+}
+
+
+def sparkle(**params) -> Layer:
+    return Layer(geom=Geom(name="sparkle"), params=params)
+
+
+def twinkle(**params) -> Layer:
+    return Layer(geom=Geom(name="sparkle", required_aes=("x",)), params=params)
+
+
+@pytest.fixture
+def sparkle_registered():
+    registry.register_geom("sparkle", sparkle)
+    yield
+    if "sparkle" in registry.registered("geom"):
+        registry.unregister("geom", "sparkle")
+
+
+# ---------------------------------------------------------------------------
+# 默认登记
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("kind", list(EXPECTED))
+def test_default_names_are_registered_in_order(kind: str) -> None:
+    assert registry.registered(kind) == EXPECTED[kind]
+
+
+def test_kind_order_is_fixed() -> None:
+    assert registry.KINDS == ("geom", "stat", "scale", "coord", "facet", "guide", "theme", "label")
+
+
+def test_iteration_is_stable_across_calls() -> None:
+    first = {kind: registry.registered(kind) for kind in registry.KINDS}
+    second = {kind: registry.registered(kind) for kind in registry.KINDS}
+    assert first == second
+    # 每个种类都是 tuple（有序），不是 set。
+    assert all(isinstance(names, tuple) for names in first.values())
+
+
+def test_geom_specs_carry_the_ggplot2_contract() -> None:
+    assert registry.GEOM_SPECS["point"].required_aes == ("x", "y")
+    # bar / histogram 的 y 由 stat_count / stat_bin 产出，是 stat 之后的必需列。
+    assert registry.GEOM_SPECS["bar"].required_aes == ("x", "y")
+    assert registry.GEOM_SPECS["histogram"].required_aes == ("x", "y")
+    assert registry.GEOM_SPECS["histogram"].stat == "bin"
+    assert registry.GEOM_SPECS["bar"].stat == "count"
+    assert registry.GEOM_SPECS["bar"].default_aes["width"] == 0.9
+    boxplot = registry.GEOM_SPECS["boxplot"]
+    assert boxplot.required_aes == (
+        "x|y",
+        "lower|xlower",
+        "upper|xupper",
+        "middle|xmiddle",
+        "ymin|xmin",
+        "ymax|xmax",
+    )
+    assert boxplot.default_aes["weight"] == 1
+    assert boxplot.default_aes["width"] == 0.9
+    assert boxplot.default_aes["colour"] == "grey20"
+
+
+def test_required_aes_groups_expands_the_upstream_alternatives() -> None:
+    assert registry.required_aes_groups(("x", "y")) == (("x",), ("y",))
+    groups = registry.required_aes_groups(registry.GEOM_SPECS["boxplot"].required_aes)
+    assert groups == (
+        ("x", "y"),
+        ("lower", "xlower"),
+        ("upper", "xupper"),
+        ("middle", "xmiddle"),
+        ("ymin", "xmin"),
+        ("ymax", "xmax"),
+    )
+
+
+def test_area_uses_stat_align_without_a_default_outline() -> None:
+    area = registry.GEOM_SPECS["area"]
+    assert area.stat == "align"
+    assert area.default_aes["colour"] is None
+    assert registry.STAT_GEOMS["align"] == "area"
+
+    layer = plot.stat_align()
+    assert layer.stat.name == "align"
+    assert layer.geom.name == "area"
+    assert plot.geom_area().stat.name == "align"
+    assert plot.geom_area().geom.default_aes["colour"] is None
+
+
+# ---------------------------------------------------------------------------
+# 两个入口
+# ---------------------------------------------------------------------------
+
+
+def test_every_registered_name_has_both_entry_points() -> None:
+    for kind in registry.KINDS:
+        for name in registry.registered(kind):
+            entry = registry.entry_name(kind, name)
+            assert entry in registry.__all__, entry
+            assert callable(getattr(registry, entry)), entry
+            assert callable(getattr(plot, entry)), entry
+            # 模块级入口是同一个函数对象：没有第二套实现。
+            assert getattr(plot, entry) is getattr(registry, entry), entry
+            # ggplot 上也有同名方法。
+            assert callable(getattr(plot.ggplot, entry)), entry
+
+
+def test_module_entry_point_and_method_construct_the_same_component() -> None:
+    p = plot.ggplot()
+    # 直接比结构：`+` 与方法的产物逐字段相同。
+    via_plus = p + registry.geom_point(size=2)
+    via_method = p.geom_point(size=2)
+    assert via_plus.layers == via_method.layers
+    assert p.layers == []
+    assert registry.scale_x_log10() == p.scale_x_log10().scales["x"]
+    assert registry.theme_grey() == p.theme_grey().theme
+
+
+def test_labels_entry_point_is_labs_without_a_prefix() -> None:
+    assert registry.entry_name("label", "labs") == "labs"
+    assert plot.labs(title="t").values == {"title": "t"}
+    assert (plot.ggplot() + plot.labs(title="t")).labels == plot.ggplot().labs(title="t").labels
+
+
+# ---------------------------------------------------------------------------
+# 报错
+# ---------------------------------------------------------------------------
+
+
+def test_constructing_an_unknown_name_lists_what_exists() -> None:
+    with pytest.raises(LookupError, match="sparkle") as excinfo:
+        registry.construct("geom", "sparkle")
+    assert "point" in str(excinfo.value)
+
+
+def test_unknown_kind_is_rejected() -> None:
+    with pytest.raises(ValueError, match="annotation"):
+        registry.registered("annotation")
+    with pytest.raises(ValueError, match="annotation"):
+        registry.register("annotation", "text", sparkle)
+
+
+def test_register_rejects_a_name_that_is_not_an_identifier() -> None:
+    with pytest.raises(ValueError, match="标识符"):
+        registry.register_geom("not-a-name", sparkle)
+
+
+def test_register_rejects_a_non_callable() -> None:
+    with pytest.raises(TypeError):
+        registry.register_geom("nope", 42)
+
+
+def test_unregistering_an_unknown_name_raises() -> None:
+    with pytest.raises(LookupError, match="sparkle"):
+        registry.unregister("geom", "sparkle")
+
+
+# ---------------------------------------------------------------------------
+# 同源：改注册表项，别名跟着变
+# ---------------------------------------------------------------------------
+
+
+def test_alias_follows_the_registry_without_rebinding(sparkle_registered) -> None:
+    entry = registry.entry_name("geom", "sparkle")
+    p = plot.ggplot()
+
+    # 新登记的名字立刻同时出现在两个入口上。
+    assert callable(getattr(registry, entry))
+    assert callable(getattr(plot, entry))
+    assert callable(getattr(plot.ggplot, entry))
+
+    assert getattr(p, entry)(shiny=True).layers[0].geom.name == "sparkle"
+    assert getattr(registry, entry)(shiny=True).params["shiny"] is True
+
+    # 已经绑定下来的方法也走注册表（不是把构造器闭包进去）。
+    bound_method = getattr(p, entry)
+
+    # 换掉注册项：两个入口（包括已绑定的方法）都跟着变。
+    registry.register_geom("sparkle", twinkle)
+    assert getattr(registry, entry)().geom.required_aes == ("x",)
+    assert getattr(p, entry)().layers[0].geom.required_aes == ("x",)
+    assert bound_method().layers[0].geom.required_aes == ("x",)
+    assert getattr(plot, entry) is getattr(registry, entry)
+
+
+def test_unregister_cleans_up_both_entry_points(sparkle_registered) -> None:
+    assert hasattr(plot.ggplot, "geom_sparkle")
+    registry.unregister("geom", "sparkle")
+    assert "sparkle" not in registry.registered("geom")
+    assert not hasattr(registry, "geom_sparkle")
+    assert not hasattr(plot, "geom_sparkle")
+    assert not hasattr(plot.ggplot, "geom_sparkle")
+
+
+def test_registry_all_tracks_register_and_unregister(sparkle_registered) -> None:
+    # 新登记的名字进 __all__，且 __all__ 里每个名字都真的存在。
+    assert "geom_sparkle" in registry.__all__
+    assert all(hasattr(registry, name) for name in registry.__all__)
+
+    registry.unregister("geom", "sparkle")
+    assert "geom_sparkle" not in registry.__all__
+    assert all(hasattr(registry, name) for name in registry.__all__)
+
+    # 关键回归：unregister 之后 `from ggcore.registry import *` 不能再 AttributeError。
+    namespace: dict[str, object] = {}
+    exec("from ggcore.registry import *", namespace)
+    assert "geom_point" in namespace
+    assert "geom_sparkle" not in namespace
+
+
+def test_reregistering_keeps_the_original_position(sparkle_registered) -> None:
+    before = registry.registered("geom")
+    assert before[-1] == "sparkle"
+    registry.register_geom("sparkle", twinkle)
+    after = registry.registered("geom")
+    assert after == before
+    assert after[-1] == "sparkle"
+
+
+# ---------------------------------------------------------------------------
+# 占位对象的形状
+# ---------------------------------------------------------------------------
+
+
+def test_scale_placeholder_carries_its_aesthetic_and_params() -> None:
+    scale = plot.scale_x_log10()
+    assert scale.name == "x_log10"
+    assert scale.aesthetic == "x"
+    assert scale.key == "x"
+    assert scale.params["trans"] == "log10"
+
+
+def test_theme_coord_facet_guide_placeholders_carry_params() -> None:
+    assert plot.theme_grey().complete is True
+    assert plot.theme_void().name == "void"
+    assert plot.coord_cartesian(ylim=(0, 1)).params["ylim"] == (0, 1)
+    assert plot.facet_wrap(("class",)).params["facets"] == ("class",)
+    guide = plot.guide_colourbar(aesthetic="fill")
+    assert guide.name == "colourbar"
+    assert guide.key == "fill"
+
+
+def test_geom_specs_carry_the_default_position() -> None:
+    assert registry.GEOM_SPECS["bar"].position == "stack"
+    assert registry.GEOM_SPECS["col"].position == "stack"
+    assert registry.GEOM_SPECS["histogram"].position == "stack"
+    assert registry.GEOM_SPECS["area"].position == "stack"
+    assert registry.GEOM_SPECS["boxplot"].position == "dodge2"
+    assert registry.GEOM_SPECS["point"].position == "identity"
+    assert registry.GEOM_SPECS["smooth"].position == "identity"
+
+
+def test_layer_factories_take_position_from_the_spec_unless_overridden() -> None:
+    assert plot.geom_bar().position.name == "stack"
+    assert plot.geom_boxplot().position.name == "dodge2"
+    assert plot.geom_point().position.name == "identity"
+    assert plot.stat_count().position.name == "stack"
+    assert plot.stat_align().position.name == "stack"
+    # 显式传参仍然覆盖 spec 的默认值。
+    assert plot.geom_bar(position="dodge").position.name == "dodge"
+
+
+def test_smooth_carries_a_weight_default() -> None:
+    assert registry.GEOM_SPECS["smooth"].default_aes["weight"] == 1
+
+
+def test_params_route_to_layer_or_stat_only() -> None:
+    # geom 的参数只进 Layer.params，不会偷偷落到 stat 上。
+    geom_layer = plot.geom_histogram(bins=30)
+    assert geom_layer.params["bins"] == 30
+    assert dict(geom_layer.stat.params) == {}
+
+    # stat 的参数只进 Stat.params。
+    stat_layer = plot.stat_count(bins=10)
+    assert dict(stat_layer.params) == {}
+    assert stat_layer.stat.params["bins"] == 10

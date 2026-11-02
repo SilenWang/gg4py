@@ -12,11 +12,13 @@ Python 模块，反之亦然。
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
-| `ggcore.plot` | `R/plot.R:106` | `ggplot()` | 未实现（M0-1 只有占位 scene） |
-| `ggcore.plot` | `R/all-classes.R:322` | `class_ggplot`（S7 类） | 未实现 |
-| `ggcore.layer` | `R/layer.R:99` | `layer()` | 未实现 |
-| `ggcore.aes` | `R/aes.R:93` | `aes()` | 未实现 |
-| `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 未实现 |
+| `ggcore.plot` | `R/plot.R:106` | `ggplot()` | 已实现（M1-1：对象 + `+` + 克隆 + 方法链别名） |
+| `ggcore.plot` | `R/all-classes.R:322` | `class_ggplot`（S7 类） | 已实现（M1-1：字段 `data` / `mapping` / `layers` / `scales` / `guides` / `theme` / `coordinates` / `facet` / `labels`） |
+| `ggcore.layer` | `R/layer.R:99` | `layer()` | 已实现（M1-1：`Layer` / `Geom` / `Stat` / `Position` 骨架，`draw` 留给 M1-7） |
+| `ggcore.aes` | `R/aes.R:93` | `aes()` | 已实现（M1-1：只存原始表达式；解析与求值是 M1-2） |
+| `ggcore.aes` | `R/aes.R:180` | `standardise_aes_names()` | 未实现（M1-2） |
+| `ggcore.registry` | — | 组件注册表（本项目自造，上游靠 export + ggproto） | 已实现（M1-1：一条注册表，模块函数与 `ggplot` 方法两个入口） |
+| `ggcore.components` | — | 非图层组件的占位类（scale / theme / coord / facet / guide / labels） | 已实现（M1-1：名字 + 参数；语义在 M1-4 / M1-5 / M1-6 / M1-10 / M1-11） |
 | `ggcore.aes_eval` | `R/aes-evaluation.R` | 表达式求值（tidy-eval 对等物） | 未实现 |
 | `ggcore.ir` | — | IR（本项目自造，上游无对应） | 已实现（v0：18 种节点 + CBOR，`docs/notes/ir.md`） |
 | `ggcore.plotspec` | `R/plot.R:106`（`ggplot()` 的极小子集）、`R/theme.R:341`（`theme_void()` 口径） | 案例适配层：plot 规格 → grob → IR（M0-9；不是语法层） | 已实现（point / bar / col / text / curve + `size` / `limits` / `palette`） |
