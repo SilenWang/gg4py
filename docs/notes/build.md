@@ -18,17 +18,19 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 | `compute_stat` | `.statistic` | 按 `layer.stat.name` 算统计量（`identity` / `count`） |
 | `map_statistic` | `.mapped` | `after_stat(...)` 与 stat 缺省映射落成美学列 |
 | `compute_position` | `.positioned` | `Geom$setup_data()`（锚点 / `flipped_aes` / line 排序）+ 位置调整 |
-| `map_scales` | `.scaled` | 逐列过 `ScaleSet.map`（identity；离散位置 → 1..n） |
+| `map_scales` | `.scaled` | 逐列过 `ScaleSet.map`（M1-4 真实标度：离散位置 → 1..n、连续位置 → 变换后的值、colour/fill/size/shape/alpha → 调色板 / rescale） |
 | `finish` | `.data` | `default_aes` + geom 字面参数，得到内置数据的最终列序 |
 
 `build_layer(plot, layer, index, scales=None)` 单层构建；`build_plot(plot)` 按层
 顺序构建，并先在所有层上训练同一套 `ScaleSet` 再统一映射。
 
 **阶段 1 与阶段 2 之间还有一次位置标度编码**：上游 `build_ggplot()` 在
-`compute_aesthetics()` 之后立刻 `layout$train_position()` + `layout$map_position()`，
-stat 拿到的 x/y 已经是位置值。`build` 用 `ggcore.build.map_position()` 复现这一步，
-所以 `LayerBuild.aesthetics` / `.statistic` 里的离散 x 已经是 `1..n`（与 R 的
-`$data` 同口径）。
+`compute_aesthetics()` 之后先 `scales$transform_df()`、再
+`layout$train_position()` + `layout$map_position()`，stat 拿到的 x/y 已经是位置值
+（离散 → `1..n`，连续 → 变换后的值）。`build` 用 `transform_scales()` +
+`map_position()` 复现这两步，所以 `LayerBuild.aesthetics` / `.statistic` 里的
+离散 x 已经是 `1..n`、`scale_x_log10()` 的 x 已经是 log10 空间（与 R 的 `$data`
+同口径）。
 
 ## 1. 数据优先级与 mapping 合并
 
@@ -128,29 +130,27 @@ stat 拿到的 x/y 已经是位置值。`build` 用 `ggcore.build.map_position()
 - `dodge` / `dodge2` / `jitter` / `fill` → `BuildError`（boxplot 的缺省 `dodge2`
   目前需要显式 `position="identity"`）。
 
-## 6. ScaleSet（scale 接口先行）
+## 6. ScaleSet（M1-4 起是真实标度）
 
-`ScaleSet.train(values, aesthetic)` / `ScaleSet.map(values, aesthetic)` 是流水线
-接触标度的**唯一**入口，所以 M1-4 换真实现时不需要动 `build.py`（测试用自定义
-子类把 x 乘 2，证明没有写死的线性映射）。
+`ScaleSet.train(values, aesthetic)` / `ScaleSet.map(values, aesthetic)` 仍是流水线
+接触标度的**唯一**入口（`tests/test_build.py` 用自定义子类把 x 乘 2，证明六阶段
+没有写死线性映射）。M1-4 起 `ggcore.build` 里的 `ScaleSet` 就是
+`ggcore.scales.ScaleSet`，口径全文见 `docs/notes/scales.md`，这里只记与本模块的
+接线：
 
-本任务的 identity 口径：
-
-- 非位置美学：原样返回（不做调色板、不做连续变换）；
-- 位置美学（`x/y/xmin/xmax/ymin/ymax/xend/yend`）上的**离散**值：按水平顺序
-  编码成 `1..n`；**NA 占最后一个水平**（`n + 1`），与上游
-  `sort(unique(x), na.last = TRUE)` 一致——所以离散位置的 NA 在内置数据里是
-  一个位置，不是 NA；
-- 离散水平跨层**全局排序**：普通字符列全部升序（不是「先遇到先保留」）；
-  categorical 以第一个 categorical 列的 `Column.levels` 为基底，其余水平升序
-  追加；逻辑值 `False < True`；
-- 连续位置列（含 int / bool 被当作连续时）统一落成 `float`，与 R 的
-  `map_position()` 输出 double 一致；`group` 等非位置美学不动；
-- `dodge2` / 颜色 / 形状等进入内置数据前的值由 M1-4 负责。
-- **两段训练**：上游在 `compute_aesthetics` 之后训练一次、在 `compute_position`
-  之后再训练一次；`build` 也保留了第二段（`build_layer` / `build_plot` 里各
-  调一次 `_train`）。identity 下是幂等的；M1-4 接连续标度时 limits / expand
-  需要第二段数据范围。
+- `build_plot()` / `build_layer()` 用 `ScaleSet(plot.scales)`：`p + scale_*()`
+  的显式标度优先，其余按列类型解析默认标度；
+- `transform_scales()`（新增）= 上游 `scales$transform_df()`：位置数据在训练前
+  先做变换（`scale_x_log10()` 的 x 因此在 log10 空间）；
+- **两段训练**：`compute_aesthetics` 之后一次，`compute_position` 之后再一次；
+  第二段用 **positioned** 数据（含 `xmin/xmax/ymin/ymax`），否则柱子的锚点会被
+  stage 5 的 oob censor 成 NA；
+- `map_position()` 只映射位置美学（上游 `layout$map_position()` 的口径）；
+- 阶段 5 `map_scales()` 映射全部美学：位置 → censor（幂等），
+  colour / fill / size / shape / alpha → 调色板 / rescale；
+- `xmin/xmax/xend` 共用 x 标度、`ymin/ymax/yend` 共用 y 标度；数值列进离散位置
+  标度时原样通过；
+- `ScaleSet.trained` 仍然给「美学 → 离散水平」（M1-3 的测试与夹具在用）。
 
 ## 7. 空层
 
@@ -195,26 +195,24 @@ R。R 侧记录 `ggplot_build(p)$data[[1]]` 的列名、列序、类型与逐行
 
 比较口径：列名与列序必须完全一致；数值 `allclose(rtol=0, atol=1e-9)`；字符串
 精确相等；缺失逐行一致；`column.kind` 与夹具的 `kind` 相等（`float` / `int` /
-`bool` / `str`）——跳过值的列也比 kind，唯一例外是 `categorical_group.colour`
-（我们保留 categorical code，R 的 `$data` 是 character）。规模钉死为 **229 列 / 219 列比值 /
-8859 个值**；`multi_layer_levels` 的第二层另比 17 列 × 3 行。
+`bool` / `str`）——跳过值的列也比 kind。规模钉死为 **229 列 / 223 列比值 /
+8887 个值**；`multi_layer_levels` 的第二层另比 17 列 × 3 行。
 
-九列只比列名与位置、不比值的列，原因都在本任务边界之外：
+M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_interaction.fill`、
+`point_na_colour.colour`、`categorical_group.colour`、`col_negative_stack.fill`）
+已经与 R 逐值相等，不再跳过。只剩主题色那六列只比列名与位置：
 
 | 列 | 为什么 |
 | --- | --- |
 | `count_bar.fill` / `count_na_x.fill` / `col_identity.fill` / `col_width_param.fill` | theme_grey 的 `col_mix(ink, paper, 0.35)` = `#595959FF`；M1-10 才解析主题色，spec 里存语义名 `grey35` |
 | `box_precomputed.colour` | `col_mix(ink, paper, 0.2)` = `#333333FF`；同上，spec 存 `grey20` |
-| `stacked_bar_interaction.fill` | 离散 `fill` 的调色板（M1-4）；identity scale 不做颜色映射 |
-| `point_na_colour.colour` | 离散 `colour` 的调色板 + NA 的 `na.value = "grey50"`（M1-4） |
-| `categorical_group.colour` | 离散 `colour` 的调色板（M1-4）；我们的列保留 categorical code |
 | `multi_layer_levels.fill` | 同上（theme_grey 的默认 fill） |
-| `col_negative_stack.fill` | 同上（theme_grey 的默认 fill） |
 
 ## 10. 不做 / 后续
 
-- 真 scale（M1-4）、coord（M1-5）、gtable / 主题装配（M1-10）、geom 绘制（M1-7）、
-  其余 stat（M1-8）、facet（M1-6）都不在这里。
+- coord（M1-5）、gtable / 主题装配（M1-10）、geom 绘制（M1-7）、其余 stat
+  （M1-8）、facet（M1-6）都不在这里；标度本身见 `docs/notes/scales.md`
+  （M1-4 已接上）。
 - `position` 只到 `identity` / `stack`；`dodge2` 是 boxplot 缺省，暂需显式覆盖。
 - `GeomBoxplot` 的 `outliers` / `varwidth` 分支未实现（预计算路径不需要）。
 - 横向柱状图（只映射 `y`、由 `orientation` 推断）不在本任务范围：`stat_count`

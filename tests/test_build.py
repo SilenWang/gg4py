@@ -444,7 +444,17 @@ def test_na_colour_rows_are_kept_and_grouped_like_r() -> None:
     layer = layer_of(plot)
     assert layer.data.nrows == 5
     assert values_of(layer.data, "group") == [1.0, 2.0, 3.0, 1.0, 2.0]
-    assert layer.data.column("colour").na_mask.tolist() == [False, False, True, False, False]
+    # M1-4 起 colour 走真实的离散标度：NA 落成 na.value（默认 "grey50"），
+    # 与 R 的 `ggplot_build()$data[[1]]$colour` 一致（见 build fixture 的
+    # point_na_colour）；行保留、缺失计数仍是 1。
+    assert layer.data.column("colour").values.tolist() == [
+        "#F8766D",
+        "#00BFC4",
+        "grey50",
+        "#F8766D",
+        "#00BFC4",
+    ]
+    assert not layer.data.column("colour").na_mask.any()
     assert dict(layer.dropped_missing) == {"colour": 1}
 
 
