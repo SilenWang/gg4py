@@ -268,6 +268,7 @@ def test_bar_uses_the_position_columns_not_the_raw_values() -> None:
         + registry.scale_fill_discrete(values={"p": "#4C78A8", "q": "#F58518"})
         + registry.scale_x_continuous(limits=(0, 3), expand=(0, 0))
         + registry.scale_y_continuous(limits=(0, 3), expand=(0, 0))
+        + registry.guide_none("fill")  # M1-11：图例也画矩形，这里只数面板里的柱
         + registry.theme_void()
     )
     scene = scene_from_plot(plot, **SIZE)

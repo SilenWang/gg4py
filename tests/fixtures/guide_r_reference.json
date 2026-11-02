@@ -1,0 +1,427 @@
+{
+  "generator": "tools/refs/guide_ref.R",
+  "ggplot2": "4.0.3",
+  "size_in": [7, 7],
+  "data": {
+    "x": [1.5, 1.8, 2.2000000000000002, 2.6000000000000001, 3, 3.3999999999999999, 3.7999999999999998, 4.2000000000000002, 4.5999999999999996, 5, 5.2999999999999998, 5.5999999999999996],
+    "y": [26, 25, 24.5, 23, 22.5, 21, 20.5, 19.5, 18, 17.5, 16.5, 15],
+    "disp": [120, 140, 160, 180, 200, 220, 240, 260, 280, 300, 320, 340],
+    "cyl": ["4", "4", "4", "6", "6", "6", "8", "8", "8", "4", "6", "8"],
+    "cyl_levels": ["4", "6", "8"],
+    "gear": ["3", "4", "5", "3", "4", "5", "3", "4", "5", "4", "5", "3"],
+    "gear_levels": ["3", "4", "5"]
+  },
+  "cases": {
+    "legend_colour_discrete": {
+      "name": "legend_colour_discrete",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": true,
+        "width": 1.3660386757990868,
+        "height": 16.46095905631659,
+        "guides": [
+          {
+            "width": 1.3660386757990868,
+            "height": 2.7727047869101979
+          }
+        ]
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": {
+        "colour": [
+          {
+            "label": "4",
+            "value": 4,
+            "colour": "#F8766D"
+          },
+          {
+            "label": "6",
+            "value": 6,
+            "colour": "#00BA38"
+          },
+          {
+            "label": "8",
+            "value": 8,
+            "colour": "#619CFF"
+          }
+        ]
+      }
+    },
+    "legend_colour_fill": {
+      "name": "legend_colour_fill",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": true,
+        "width": 1.3660386757990868,
+        "height": 16.46095905631659,
+        "guides": [
+          {
+            "width": 1.3660386757990868,
+            "height": 2.7727047869101979
+          },
+          {
+            "width": 1.3660386757990868,
+            "height": 2.7727047869101979
+          }
+        ]
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": {
+        "colour": [
+          {
+            "label": "4",
+            "value": 4,
+            "colour": "#F8766D"
+          },
+          {
+            "label": "6",
+            "value": 6,
+            "colour": "#00BA38"
+          },
+          {
+            "label": "8",
+            "value": 8,
+            "colour": "#619CFF"
+          }
+        ],
+        "fill": [
+          {
+            "label": "3",
+            "value": 3,
+            "fill": "#F8766D"
+          },
+          {
+            "label": "4",
+            "value": 4,
+            "fill": "#00BA38"
+          },
+          {
+            "label": "5",
+            "value": 5,
+            "fill": "#619CFF"
+          }
+        ]
+      }
+    },
+    "legend_merged": {
+      "name": "legend_merged",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": true,
+        "width": 1.3660386757990868,
+        "height": 16.46095905631659,
+        "guides": [
+          {
+            "width": 1.3660386757990868,
+            "height": 2.7727047869101979
+          }
+        ]
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": {
+        "colour": [
+          {
+            "label": "4",
+            "value": 4,
+            "colour": "#F8766D",
+            "shape": 16
+          },
+          {
+            "label": "6",
+            "value": 6,
+            "colour": "#00BA38",
+            "shape": 17
+          },
+          {
+            "label": "8",
+            "value": 8,
+            "colour": "#619CFF",
+            "shape": 15
+          }
+        ],
+        "shape": [
+          {
+            "label": "4",
+            "value": 4,
+            "colour": "#F8766D",
+            "shape": 16
+          },
+          {
+            "label": "6",
+            "value": 6,
+            "colour": "#00BA38",
+            "shape": 17
+          },
+          {
+            "label": "8",
+            "value": 8,
+            "colour": "#619CFF",
+            "shape": 15
+          }
+        ]
+      }
+    },
+    "colourbar": {
+      "name": "colourbar",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": true,
+        "width": 1.7190986757990867,
+        "height": 16.46095905631659,
+        "guides": [
+          {
+            "width": 1.7190986757990867,
+            "height": 3.9919047869101982
+          }
+        ]
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": {
+        "colour": [
+          {
+            "label": "150",
+            "value": 0.13757575757575757,
+            "colour": "#1B3B59"
+          },
+          {
+            "label": "200",
+            "value": 0.36409090909090908,
+            "colour": "#2A5880"
+          },
+          {
+            "label": "250",
+            "value": 0.59060606060606058,
+            "colour": "#3977A9"
+          },
+          {
+            "label": "300",
+            "value": 0.81712121212121214,
+            "colour": "#4996D3"
+          }
+        ]
+      }
+    },
+    "axis_continuous": {
+      "name": "axis_continuous",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": false
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": []
+    },
+    "axis_discrete": {
+      "name": "axis_discrete",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": false
+      },
+      "x": {
+        "range": [0.40000000000000002, 3.6000000000000001],
+        "breaks": [4, 6, 8],
+        "labels": ["4", "6", "8"]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": []
+    },
+    "axis_log10": {
+      "name": "axis_log10",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 0.52703260273972663,
+        "axis_b": 0.47178760273972714,
+        "ylab_l": 0.4606475570776255,
+        "xlab_b": 0.46064755707762461,
+        "title": 0
+      },
+      "legends": {
+        "present": false
+      },
+      "x": {
+        "range": [0.14748642065815526, 0.77679286540372638],
+        "breaks": [null, 0.3010299956639812, 0.47712125471966244, 0.69897000433601886, null],
+        "labels": [null, "2", "3", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": []
+    },
+    "theme_void": {
+      "name": "theme_void",
+      "structure": {
+        "nrow": 16,
+        "ncol": 13,
+        "regions": ["axis-b", "axis-l", "axis-r", "axis-t", "background", "caption", "guide-box-bottom", "guide-box-inside", "guide-box-left", "guide-box-right", "guide-box-top", "panel", "spacer", "subtitle", "title", "xlab-b", "xlab-t", "ylab-l", "ylab-r"]
+      },
+      "axes": {
+        "axis_l": 5.6516876006082916e-308,
+        "axis_b": 5.6516876006082916e-308,
+        "ylab_l": 0,
+        "xlab_b": 0,
+        "title": 0.62348011415525051
+      },
+      "legends": {
+        "present": true,
+        "width": 0.97943289193302896,
+        "height": 17.156519885844752,
+        "guides": [
+          {
+            "width": 0.97943289193302896,
+            "height": 2.3860990030441398
+          }
+        ]
+      },
+      "x": {
+        "range": [1.2949999999999999, 5.8049999999999997],
+        "breaks": [null, 2, 3, 4, 5, null],
+        "labels": [null, "2", "3", "4", "5", null]
+      },
+      "y": {
+        "range": [14.449999999999999, 26.550000000000001],
+        "breaks": [15, 18, 21, 24, null],
+        "labels": ["15", "18", "21", "24", null]
+      },
+      "guides": {
+        "colour": [
+          {
+            "label": "4",
+            "value": 4,
+            "colour": "#F8766D"
+          },
+          {
+            "label": "6",
+            "value": 6,
+            "colour": "#00BA38"
+          },
+          {
+            "label": "8",
+            "value": 8,
+            "colour": "#619CFF"
+          }
+        ]
+      }
+    }
+  }
+}

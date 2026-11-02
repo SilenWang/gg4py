@@ -81,9 +81,14 @@ float32 缓冲 + CBOR：314 份快照的规模下，逐元素 JSON 的体积与�
 ## 同输入同字节
 
 `check_determinism.py` 用三个不同 `PYTHONHASHSEED` 的解释器进程各编码一次真实
-scene（`ggcore.ir.demo_scene()`：嵌套视口 + path + text + raster blob + zeroGrob），
-比较 stdout（`digest` / `bytes`）。子进程同时自检 `encode(decode(data)) == data`，
-所以“编码 + 解码”合起来也要字节稳定。同一进程内重复调用也在子进程里检查。
+scene，比较 stdout（`digest` / `bytes` / `plot_digest`）。两份载荷：
+
+- `ggcore.ir.demo_scene()`：嵌套视口 + path + text + raster blob + zeroGrob；
+- M1-11 的整页场景（`plot_scene()`）：2×2 分面 + colour 图例 + 标题 + 主轴——
+  图例 key 走 `Geom.draw()`、轴 / 图例尺寸来自主题与内置度量。
+
+子进程同时自检 `encode(decode(data)) == data`，所以“编码 + 解码”合起来也要字节
+稳定；同一进程内重复调用、两次 `build_plot()` 的字节也都检查。
 
 ## 手测一次门禁是否真的会拦
 
