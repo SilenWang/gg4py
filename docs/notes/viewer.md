@@ -100,7 +100,11 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 `pch` 在 IR 里是 grid 的编号，字号是 `size`（pt）。查看器按 R `engine.c` 的常量
 画：符号半径是 `RADIUS × size`（`RADIUS = 0.375`，直径是 `size` 的 3/4），
 **不是** `size / 2`。三角形用 `TRC0/TRC1/TRC2`，菱形 / 方 / 小圆分别用
-`SQRC` / `DMDC` / `SMALL`，与 `src/ggskia/pch.py` 逐项一致。覆盖：
+`SQRC` / `DMDC` / `SMALL`，与 `src/ggskia/pch.py` 逐项一致（`tests/test_viewer.py`
+的 `test_every_pch_matches_ggskia_geometry` 逐顶点守住 0..25）。两处容易混的
+口径：pch 2 / 6 / 17 / 24 / 25 的底边在 `TRC2 × radius`；只有 pch 11 的双三角
+用 `0.5 × (TRC2 + TRC0) × radius` 贴合。pch 14 是普通 `±RADIUS` 三角 + 方，
+不走 `TRC`。覆盖：
 
 **一个 `points` 节点只出一个 `<path>`**：每行一条 `M…Z` 子路径，样式统一写在
 节点元素上（同一节点的 gpar 相同）。`data-kind` / `data-row` 是节点级，
@@ -256,6 +260,10 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 6. **零 wasm**：整页请求里没有 `.wasm`；
 7. **裁剪口径**：两层嵌套视口的 `clip_rect` 原样落成页面矩形（不乘祖先变换）；
 8. **坏 IR**：删掉一个 text 节点的 `size`，页面报错文本含该节点的 id。
+9. **pch 0..25**：26 个 `points` 节点的路径顶点与 `ggskia.pch.symbol()` 逐点
+   一致（圆比紧包围盒，其余比顶点），容差 0.01pt；
+10. **三角形真管线**：`shape` 映射出的 pch 17 散点与图例 key 都在页面上落成
+    与 `ggskia` 一致的三角形（不只是合成 IR 里对）。
 
 `tests/test_viewer_cases.py` 用 `viewer:cases` 跑两条真实案例（col + CJK text），
 断言汇总、gallery 与零 wasm；它和上面的浏览器测试都要求 `viewer:build`。

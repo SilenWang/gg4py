@@ -254,6 +254,29 @@ function squareOps(half = PCH_RADIUS): GlyphOp[] {
 function triangleOps(down: boolean): GlyphOp[] {
   const radius = PCH_RADIUS;
   const r = PCH_TRC0 * radius;
+  // pch 2 / 6 / 17 / 24 / 25：R `engine.c` case 2/6 的普通三角形，底边在
+  // `TRC2 * radius`。`0.5 * (TRC2 + TRC0)` 是 pch 11 专用的贴合位置，别混用。
+  const yc = PCH_TRC2 * radius;
+  const xc = PCH_TRC1 * radius;
+  return down
+    ? [
+        ["M", [0, r]],
+        ["L", [xc, -yc]],
+        ["L", [-xc, -yc]],
+        ["Z", []],
+      ]
+    : [
+        ["M", [0, -r]],
+        ["L", [xc, yc]],
+        ["L", [-xc, yc]],
+        ["Z", []],
+      ];
+}
+
+/** pch 11 的上下双三角：两个三角形在 `0.5 * (TRC2 + TRC0) * radius` 处贴合。 */
+function blendedTriangleOps(down: boolean): GlyphOp[] {
+  const radius = PCH_RADIUS;
+  const r = PCH_TRC0 * radius;
   const yc = 0.5 * (PCH_TRC2 * radius + r);
   const xc = PCH_TRC1 * radius;
   return down
@@ -269,6 +292,17 @@ function triangleOps(down: boolean): GlyphOp[] {
         ["L", [-xc, yc]],
         ["Z", []],
       ];
+}
+
+/** pch 14 的三角形：普通 ±`RADIUS`，不是 `TRC` 三角形（R `engine.c` case 14）。 */
+function halfTriangleOps(): GlyphOp[] {
+  const half = PCH_RADIUS;
+  return [
+    ["M", [0, -half]],
+    ["L", [half, half]],
+    ["L", [-half, half]],
+    ["Z", []],
+  ];
 }
 
 function diamondOps(d = Math.SQRT2 * PCH_RADIUS): GlyphOp[] {
@@ -335,13 +369,17 @@ function glyphFor(pch: number): Glyph {
     case 10:
       return { ops: [...circleOps(PCH_RADIUS), ...plusOps(PCH_RADIUS)], fill: "none", stroke: true };
     case 11:
-      return { ops: [...triangleOps(false), ...triangleOps(true)], fill: "none", stroke: true };
+      return {
+        ops: [...blendedTriangleOps(false), ...blendedTriangleOps(true)],
+        fill: "none",
+        stroke: true,
+      };
     case 12:
       return { ops: [...squareOps(), ...plusOps(PCH_RADIUS)], fill: "none", stroke: true };
     case 13:
       return { ops: [...circleOps(PCH_RADIUS), ...crossOps()], fill: "none", stroke: true };
     case 14:
-      return { ops: [...triangleOps(false), ...squareOps()], fill: "none", stroke: true };
+      return { ops: [...halfTriangleOps(), ...squareOps()], fill: "none", stroke: true };
     case 15:
       return { ops: squareOps(), fill: "col", stroke: false };
     case 16:
