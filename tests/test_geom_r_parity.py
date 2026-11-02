@@ -2,11 +2,12 @@
 
 夹具由 `pixi run -e refs refs:geom`（`tools/refs/geom_ref.R`）生成，跑测试不需要 R：
 
-- **stat 已实现的 7 个 case**（point / point_na / line / path / bar / col / 横向 col）：
-  在 Python 侧重放整条流水线，与 `ggplot_build(p)$data[[1]]` 逐列对拍（列名、
-  列序、kind、值、NA）；
-- **stat 未实现的 4 个 case**（histogram / boxplot / smooth）：把 R 的 `$data`
-  当**绘制输入**喂给 `Geom.draw()`，比节点数与几何（stat 归 M1-8）；
+- **identity / count stat 的 7 个 case**（point / point_na / line / path / bar /
+  col / 横向 col）：在 Python 侧重放整条流水线，与 `ggplot_build(p)$data[[1]]`
+  逐列对拍（列名、列序、kind、值、NA）；
+- **4 个绘制输入 case**（histogram / boxplot / smooth）：把 R 的 `$data` 当
+  **绘制输入**喂给 `Geom.draw()`，比节点数与几何（stat 自己的对拍在
+  `tests/test_stat_r_parity.py`）；
 - **handle_na**：R 的 "Removed N rows" 文案与我们的 warning 逐字对齐。
 """
 
@@ -41,7 +42,7 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
     "boxplot_identity": frozenset({"colour"}),
 }
 
-#: R 在 identity stat 下仍带着 `stat_boxplot` 的残留列（M1-8 的 stat 才产它们）；
+#: R 在 identity stat 下仍带着 position_dodge2 的中间列（`stat_boxplot` 路径才产它们）；
 #: 我们的列序 = R 列序去掉这几列的投影。
 R_ONLY_COLUMNS: dict[str, tuple[str, ...]] = {
     "boxplot_identity": ("xid", "newx", "new_width"),

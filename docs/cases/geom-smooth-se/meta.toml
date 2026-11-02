@@ -4,4 +4,4 @@ ci = true
 title = "smooth：identity stat + se 带"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "method / formula / se 的计算归 M1-8；这里喂好 ymin/ymax 只验绘制层的 ribbon + line。"
+notes = "stat_smooth(loess) 的端到端见 stat-smooth-loess；本用例喂好 ymin/ymax 只验绘制层的 ribbon + line。"

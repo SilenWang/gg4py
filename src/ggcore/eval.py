@@ -758,7 +758,7 @@ def eval_aes(spec: Any, data: ColumnTable, *, nrows: int | None = None) -> np.nd
         raise AesEvalError(
             f"aes 表达式 `{_display_source(resolved.source)}` 标了 after_stat(...)："
             "数据阶段没有这个变量，请在 stat 之后用 eval_after_stat(values) 求值"
-            "（真正的 stat 产出是 M1-8）"
+            "（见 ggcore.stat / build.map_statistic()）"
         )
     ctx = _Context(
         source=resolved.source,

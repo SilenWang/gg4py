@@ -165,10 +165,30 @@ def test_count_stat_keeps_constant_aesthetics_and_orders_them_like_r() -> None:
     )
 
 
+def test_bin_stat_is_the_default_for_geom_histogram() -> None:
+    # geom_histogram 的缺省 stat 就是 bin：数据只有 x，五个 count 类变量全由 stat 产。
+    plot = ggplot(table(), aes(x="displ")) + geom_histogram(bins=5)
+    statistics = compute_stat(plot.layers[0], compute_aesthetics(plot, plot.layers[0]))
+    assert statistics.names[:8] == (
+        "count",
+        "x",
+        "xmin",
+        "xmax",
+        "width",
+        "density",
+        "ncount",
+        "ndensity",
+    )
+    assert statistics.names[-3:] == ("flipped_aes", "PANEL", "group")
+    assert statistics.column("count").size == 5
+
+
 def test_unimplemented_stat_is_rejected_not_silently_identity() -> None:
-    plot = ggplot(table(), aes(x="displ")) + geom_histogram()
+    # M1-8 起 bin / boxplot / smooth / align 都是真的；不认识的 stat 名仍然报错，
+    # 消息里列出已实现的 stat，不静默当成 identity。
+    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(stat="ecdf")
     aesthetics = compute_aesthetics(plot, plot.layers[0])
-    with pytest.raises(BuildError, match="bin"):
+    with pytest.raises(BuildError, match="ecdf"):
         compute_stat(plot.layers[0], aesthetics)
 
 

@@ -157,6 +157,10 @@ r-svglite = ">=2.2,<3"
 # guide / 主轴（M1-11）：8 个 case 的断点 / 标签 / 图例键（get_guide_data）+
 # ggplotGrob() 的 axis / ylab / xlab / title / guide-box 行列尺寸（cm）。
 "refs:guide" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_ref.R"
+# stat（M1-8）：bin / count / boxplot / smooth(loess) / align 共 24 个 case 的
+# ggplot_build(p)$data[[1]] 逐列值 + build/draw 两段 warning。
+# loess 显式用 surface = "direct"（gg4py 的算法口径，见 docs/notes/stat.md）。
+"refs:stat" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/stat_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"

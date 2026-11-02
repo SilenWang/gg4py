@@ -1,0 +1,7 @@
+family = "geom-smooth"
+features = ["aes-mapping", "stat-smooth", "scale-limits"]
+ci = true
+title = "smooth：原始数据 + stat_smooth(loess)"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M1-8 的 stat_smooth(loess) 端到端：拟合值 / se 带都由 stat 算；R 侧显式 surface = direct 与 gg4py 口径一致。"

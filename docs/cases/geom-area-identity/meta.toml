@@ -4,4 +4,4 @@ ci = true
 title = "area：identity stat（ymin = 0）"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "默认 stat = align 归 M1-8；本用例显式 stat = identity 做端到端。"
+notes = "默认 stat = align 的端到端见 stat-area-align；本用例显式 stat = identity 做对照。"

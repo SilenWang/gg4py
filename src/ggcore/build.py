@@ -41,7 +41,6 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 from __future__ import annotations
 
 import ast
-import warnings as _warnings
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
@@ -112,11 +111,13 @@ POSITION_AESTHETICS = frozenset({"x", "y", "xmin", "xmax", "ymin", "ymax", "xend
 _EMPTY = ColumnTable()
 
 #: stat 自己补的缺省映射（上游 `Stat$default_aes`）：aesthetic → stat 输出列。
-#: `stat_count` 的 `x = after_stat(count)` 不在此列：图层的 x 已经映射过了。
-#: stat 的缺省美学映射（上游 `StatCount$default_aes` 同时给了 `x` 与 `y`：
-#: 竖向柱补 `y`，横向柱（`flipped_aes`）补 `x`；缺哪个补哪个，顺序不变）。
+#: `StatCount` / `StatBin` 同时给了 `x` 与 `y`（都指向 `after_stat(count)`）：
+#: 竖向柱补 `y`，横向柱（`flipped_aes`）补 `x`；缺哪个补哪个，顺序不变。
 _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
-    {"count": (("x", "count"), ("y", "count"))}
+    {
+        "count": (("x", "count"), ("y", "count")),
+        "bin": (("x", "count"), ("y", "count")),
+    }
 )
 
 #: `geom_*` 里需要在 finish 阶段派生坐标列的几何（上游 `setup_data()`）。
@@ -420,117 +421,26 @@ def _train(scales: ScaleSet, table: ColumnTable) -> None:
 # ---------------------------------------------------------------------------
 
 
-def compute_stat(layer: Layer, aesthetics: Aesthetics) -> ColumnTable:
-    """阶段 2：按 `layer.stat.name` 算统计量。
+def compute_stat(
+    layer: Layer,
+    aesthetics: Aesthetics,
+    *,
+    scales: Any = None,
+    raw: ColumnTable | None = None,
+) -> ColumnTable:
+    """阶段 2：按 `layer.stat.name` 算统计量（实现见 :mod:`ggcore.stat`）。
 
-    本任务实现 `identity` 与 `count`；`bin` / `boxplot` / `smooth` / `align`
-    留给 M1-8（报错会点名，不静默当成 identity）。
+    `identity` 原样通过；`bin` / `count` / `boxplot` / `smooth` / `align` 交给
+    `ggcore.stat.compute_stat()`。`scales` 是这一面板的 `ScaleSet`（`stat_bin`
+    的断点、`stat_smooth(fullrange = TRUE)` 的范围要用），`raw` 是位置标度映射
+    之前的美学表（横向判定用 `is_mapped_discrete()`）。不认识的名字报错并列出
+    已实现的 stat，不静默当成 identity。
     """
     if aesthetics.empty:
         return _EMPTY
-    name = layer.stat.name
-    if name == "identity":
-        return aesthetics.table
-    if name == "count":
-        return _stat_count(aesthetics.table)
-    raise BuildError(f"stat {name!r} 尚未实现（M1-8）；M1-3 只实现 identity / count")
+    from ggcore.stat import compute_stat as _compute
 
-
-def _stat_count(table: ColumnTable) -> ColumnTable:
-    """`stat_count`：每个分组内按 x 汇总计数（上游 `StatCount$compute_group`）。"""
-    if "x" not in table or "group" not in table:
-        raise BuildError("stat_count 需要 x 与 group 两列（数据阶段没有映射 x？）")
-    x_column = table.column("x")
-    x_values = _column_values(x_column)
-    weight = (
-        _column_values(table.column("weight")).astype(np.float64)
-        if "weight" in table
-        else np.ones(table.nrows, dtype=np.float64)
-    )
-    groups = _column_values(table.column("group")).astype(np.int64)
-
-    frames: list[dict[str, list[Any]]] = []
-    dropped: list[str] = []
-    for group_id in np.unique(groups):
-        rows = np.flatnonzero(groups == group_id)
-        order = rows[_level_order(x_values[rows], x_column)]
-        picked = order[_unique_positions(x_values[order])]
-        group_rows = x_values[rows]
-        counts = np.array(
-            [float(weight[rows][group_rows == x_values[row]].sum()) for row in picked],
-            dtype=np.float64,
-        )
-        total_count = float(np.abs(counts).sum())
-        prop = counts / total_count if total_count else counts
-        frame: dict[str, list[Any]] = {
-            "count": counts.tolist(),
-            "prop": prop.tolist(),
-            "x_rows": picked.tolist(),
-        }
-        # 上游 `Stat$compute_panel` 把组内恒定的其它列各取一行带上；变化的列丢弃。
-        for name, column in _items(table):
-            if name == "x":
-                continue
-            values = _column_values(column)[rows]
-            unique = {repr(item) for item in values.tolist()}
-            if len(unique) <= 1:
-                frame[name] = [values[0] if values.size else None] * int(picked.size)
-            elif name not in ("group", "PANEL"):
-                dropped.append(name)
-        frames.append(frame)
-
-    dropped_names = tuple(dict.fromkeys(dropped))
-    if dropped_names:
-        _warnings.warn(
-            "stat_count 丢弃了组内变化的美学："
-            + "，".join(dropped_names)
-            + "（上游同样会在统计变换时丢弃）",
-            BuildWarning,
-            stacklevel=4,
-        )
-
-    total = sum(len(frame["count"]) for frame in frames)
-    result: list[tuple[str, Column]] = [
-        ("count", Column("float", np.concatenate([np.asarray(f["count"]) for f in frames]))),
-        ("prop", Column("float", np.concatenate([np.asarray(f["prop"]) for f in frames]))),
-    ]
-    if total:
-        picked_all = np.concatenate([np.asarray(f["x_rows"], dtype=np.int64) for f in frames])
-        result.append(("x", _gather_column(x_column, picked_all)))
-    else:
-        result.append(("x", _gather_column(x_column, np.zeros(0, dtype=np.int64))))
-    result.append(("flipped_aes", Column("bool", np.zeros(total, dtype=bool))))
-    for name, column in _items(table):
-        if name == "x" or name not in frames[0]:
-            continue
-        # 常量列取每个组的代表行（组内值相同，取哪一行都一样）。
-        source_rows = np.concatenate(
-            [
-                np.full(len(f["count"]), f["x_rows"][0] if f["x_rows"] else 0, dtype=np.int64)
-                for f in frames
-            ]
-        )
-        result.append((name, _gather_column(column, source_rows)))
-    return ColumnTable(result, nrows=total)
-
-
-def _level_order(values: np.ndarray, column: Column) -> np.ndarray:
-    """离散列按 levels 顺序排行的行号；数值列按值排序。"""
-    if column.is_discrete and column.levels:
-        rank = {level: position for position, level in enumerate(column.levels)}
-        keys = np.array([rank.get(item, len(rank)) for item in values.tolist()], dtype=np.int64)
-    else:
-        keys = np.asarray(values)
-    return np.argsort(keys, kind="stable")
-
-
-def _unique_positions(values: np.ndarray) -> np.ndarray:
-    """有序数组里每个不同值第一次出现的位置。"""
-    if values.size == 0:
-        return np.zeros(0, dtype=np.int64)
-    changed = np.ones(values.size, dtype=bool)
-    changed[1:] = values[1:] != values[:-1]
-    return np.flatnonzero(changed)
+    return _compute(layer, aesthetics, scales=scales, raw=raw)
 
 
 # ---------------------------------------------------------------------------
@@ -952,12 +862,14 @@ def _compute_stages(
     layer: Layer,
     index: int,
     raw: ColumnTable | None = None,
+    scales: Any = None,
 ) -> _Stages:
     """阶段 2–4：输入是已经过位置标度第一次编码的 `Aesthetics`。
 
-    `raw` 是映射前的美学表（同 :func:`compute_position` 的 `raw`）。
+    `raw` 是映射前的美学表（同 :func:`compute_position` 的 `raw`）；`scales` 是
+    stat 需要的面板标度（`stat_bin` 的断点范围）。
     """
-    statistic = compute_stat(layer, aesthetics)
+    statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw)
     mapped = map_statistic(layer, statistic, aesthetics)
     positioned = compute_position(layer, mapped, index, raw)
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
@@ -1031,6 +943,14 @@ def _panel_slices(panels: np.ndarray) -> list[tuple[int, np.ndarray]]:
     return out
 
 
+def _scales_for(scales: Any, panel: int) -> Any:
+    """取面板标度：分面用 `PanelScales.for_panel()`，单面板就是同一个 `ScaleSet`。"""
+    if scales is None:
+        return None
+    for_panel = getattr(scales, "for_panel", None)
+    return for_panel(panel) if callable(for_panel) else scales
+
+
 def _restore_order(table: ColumnTable, order: np.ndarray) -> ColumnTable:
     """拼接后的表按原行序还原（`order` 是拼接顺序里的源行号）。"""
     if order.size == 0 or bool(np.array_equal(order, np.arange(order.size))):
@@ -1082,20 +1002,23 @@ def _compute_panel_stages(
     index: int,
     panels: np.ndarray,
     raw: ColumnTable | None = None,
+    scales: Any = None,
 ) -> _Stages:
     """阶段 2–4：identity stat / position 保持原行序，其余按 PANEL 分组。"""
     if aesthetics.empty:
         return _Stages(index, layer, aesthetics, _EMPTY, _EMPTY, _EMPTY)
     if layer.stat.name == "identity":
-        statistic = compute_stat(layer, aesthetics)
+        statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw)
     else:
         statistic = _concat_tables(
             [
                 compute_stat(
                     layer,
                     replace(aesthetics, table=_slice_table(aesthetics.table, rows), empty=False),
+                    scales=_scales_for(scales, panel),
+                    raw=raw,
                 )
-                for _, rows in _panel_slices(panels)
+                for panel, rows in _panel_slices(panels)
             ]
         )
     mapped = map_statistic(layer, statistic, aesthetics)
@@ -1157,7 +1080,7 @@ def build_layer(
     aesthetics = transform_scales(scales, aesthetics)
     _train(scales, aesthetics.table)
     aesthetics = map_position(scales, aesthetics)
-    stages = _compute_stages(aesthetics, layer, index, raw_table)
+    stages = _compute_stages(aesthetics, layer, index, raw_table, scales)
     # 上游 compute_position 之后再 train 一次：这一次的数据已经包含 geom setup
     # 派生的坐标列（xmin/xmax/ymin/ymax），连续标度要靠它才能把柱子的锚点收进
     # 范围（否则 stage 5 的 oob 会把锚点 censor 成 NA）。
@@ -1190,7 +1113,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         _train(scales, aesthetics.table)
     mapped = [map_position(scales, aesthetics) for aesthetics in raw]
     stages = [
-        _compute_stages(aesthetics, layer, index, raw_tables[index])
+        _compute_stages(aesthetics, layer, index, raw_tables[index], scales)
         for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax），见 build_layer。
@@ -1288,7 +1211,9 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         for index, aesthetics in enumerate(raw)
     ]
     stages = [
-        _compute_panel_stages(aesthetics, layer, index, maps[index].panels, raw_tables[index])
+        _compute_panel_stages(
+            aesthetics, layer, index, maps[index].panels, raw_tables[index], scales
+        )
         for index, (aesthetics, layer) in enumerate(zip(mapped, layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax）。
