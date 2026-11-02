@@ -65,7 +65,9 @@ src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条
   metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   device.py          # 设备协议：open / draw_scene / close（M0-8）
   plotspec.py        # 案例适配层：plot 规格 → grob → IR（M0-9）
+  data.py            # 列式表 ColumnTable / Column：三种输入的归一结果（M1-14）
   cli/               # 命令行辅助（render / diff 的入口在包外）
+src/ggio/            # 输入适配层：pandas / Arrow / dict → ColumnTable（M1-14）
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
 src/ggskia/          # skia 设备（PNG / SVG / PDF）与 `pixi run render`（M0-8）
 src/ggdiff/          # 差分：resvg 统一栅格 + 像素判据 + 报告（M0-9）
@@ -98,3 +100,4 @@ docs/spike/          # M-1 可行性实验与结论
 - grob 口径账本：`docs/notes/grobs.md`
 - 设备口径账本（pt/DPI、文字轮廓、pch 表、曲线求值）：`docs/notes/device.md`
 - 差分管线（R 参考、resvg 统一栅格、2%/1% 判据、JSON 契约）：`docs/notes/diff.md`
+- 输入适配口径（三种输入 / dtype / 分类顺序 / 时间 / 缺失）：`docs/notes/data.md`
