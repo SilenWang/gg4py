@@ -116,7 +116,7 @@ def test_multiline_line_widths_match_r(reference: dict, metrics: ShaperMetrics, 
 def test_multiline_block_height_and_pitch_match_r(
     reference: dict, metrics: ShaperMetrics, index: int
 ) -> None:
-    """整块高度 = (n-1) × 行距 + strheight；行距 = 1.2 × lineheight × fontsize。"""
+    """整块高度 = (n-1) × 行距 + 单行 cap height；行距 = 1.2 × lineheight × fontsize。"""
     sample = reference["multiline"][index]
     measured = (
         metrics.strheight(sample["text"], fontsize=sample["size"], cex=1.0, font=_key(sample))

@@ -68,14 +68,13 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
   序列合成单字形，以及 cmap 覆盖的每个码点的 advance（字体设计单位）。
 - 精度（200 条语料 × 4 字号，`gate:metrics` 每次实测，**只对这份冻结语料成立**）：
   - run 切分与 HarfBuzz **逐条一致（0/800 不一致）**；
-  - 兜底表声明支持的文字（178/200 条）最大相对差 **3.59%**；有差的只有其中 **59 条**，
-    这 59 条的算术平均 **0.43%**，另外 119 条与 HarfBuzz 逐条相同，178 条整体平均
-    **0.14%**。差全部来自 DejaVu 的 kerning（兜底表不建模 kern），典型是 `Total` 的
-    `To` 对：绝对差恒定 **+2.71875 px @16px**（表偏宽，等价于 HarfBuzz 的 kern 修正
-    −2.72 px）；
-  - 相对差随标签变短而放大：`'To'` 单对 **16.14%**、`'Total'` **7.28%**，最差标签
-    `'#️⃣ Total'` 只有 3.59% 是因为前面约 38 px 的 emoji 前缀稀释了分母。
-    **3.59% / 5% 不是误差上界，换一份语料就不再成立**；
+  - 兜底表声明支持的文字（178/200 条）最大相对差 **2.374%**；有差的只有其中 **73 条**，
+    这 73 条的算术平均 **0.38%**，另外 105 条与 HarfBuzz 逐条相同，178 条整体平均
+    **0.1574%**。差来自兜底表不建模 kerning（表偏宽），典型是 `Total` 的 1.584 px @16px
+    （4.53%）；绝对差随字对而变（0.18–1.58 px @16px），不是一个常数；
+  - 相对差随标签变短而放大：`'To'` 单对 **5.84%**、`'Total'` **4.53%**，最差标签
+    `'#️⃣ Total'` 只有 2.374% 是因为前面约 38 px 的 emoji 前缀稀释了分母。
+    **2.374% / 5% 不是误差上界，换一份语料就不再成立**；
   - CJK 子集**完全一致**（advance 恒为 1 em）；
   - **不建模**上下文 shaping：阿拉伯/希伯来/印度诸语/泰文/老挝/藏文/缅文/高棉/
     朝鲜 jamo 一律 `supports() == False`，最大偏差实测 95.8%，**不能**用于布局。
@@ -129,8 +128,8 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 | 双端（uharfbuzz × CanvasKit.Paragraph）最差相对差 | **0.241%** @16px（10/12/24px 为 0.151/0.191/0.191%），判据 0.5% |
 | run 切分布局不一致 | 0 / 200（四个字号都是 0） |
 | 「必须显式切 run」的标签数 | **51 / 200**（CJK 主字族栈；M0-7 的 DejaVu 主字族栈下 132 / 200） |
-| 桌面端 skia-python 逐字形 advance 最大差 | 0.18%（emoji CBDT strike 推导差异，L1） |
-| 兜底表最大差 / 均值（178 条支持子集） | 3.59% / **0.1441%**（仅本语料；均值口径见 M0-7-d，绝对值恒定 +2.71875 px @16px，`To` 单对 16.14%） |
+| 桌面端 skia-python 逐字形 advance 最大差 | **0.2353%** @16px（10/12/24px 为 0.141/0.183/0.183%；emoji CBDT strike 推导差异，L1） |
+| 兜底表最大差 / 均值（178 条支持子集） | **2.374% / 0.1574%**（四档同值；最差行 `L110 "#️⃣ Total"`，绝对差 1.584 px @16px） |
 | 灵敏度：字体栈砍成单字族 | 51 条判红 + 58 条 run-mismatch（最差 289%） → 门禁确实量的是「两端」，不是同一侧 |
 
 注意 **skia-python 腿比的是逐字形 advance**，不是整段宽度：`SkFont.getWidths` 不做
@@ -172,8 +171,9 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
   `lineheight = 1.0` 时 36.0、`2.0` 时 72.0。issue 里「行高 = 1.2 × fontsize」
   是 grid 的 `heightDetails` 口径的一半事实：那一步用的行盒是
   `fontsize × lineheight`，而**画出来的行距再多乘 1.2**。这里按实测对齐。
-- 整块高度 = `(n-1) × 行距 + strheight`，`vjust` 对整块生效；`strheight`
-  是 **cap height × 72.27/72**（见 M1-d），不是 ascent + descent。
+- 整块高度 = `(n-1) × 行距 + 单行 cap height`，`vjust` 对整块生效；cap height 是
+  **cap × 72.27/72**（见 M1-d），不是 ascent + descent。注意别在这里再调一次
+  `ShaperMetrics.strheight(text)`：那个函数内部已经加了 `(n-1) × 行距`。
 - 宽 = 各行的最大推进（R 的 `stringWidth` / `widthDetails` 同口径）；
   `hjust` 对每一行分别作用（R 实测 `text-anchor` 保持 middle、x 按行宽偏移），
   0 / 0.5 / 1 时与「整块对齐」等价。
@@ -197,11 +197,16 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
   U+1F600/U+2764 的单色字形（推进 1.05em），排在前面会让 emoji 永远落不到
   1.25em 的 emoji 字面（R 的口径）；SIL-661 之前只有设备侧改了顺序，共享声明
   仍是 DejaVu 在前，`U+1F600` @20pt 因此 provider 20.85 vs 设备 24.95。
-- 主字族变成 CJK 之后，一个 run 里可能混着拉丁与复杂书写系统：HarfBuzz 的
+- 主字族变成 CJK 之后，一个 run 里可能混着不同书写系统：HarfBuzz 的
   `guess_segment_properties()` 每段只取一个 script，`n=각` 会被整段当
   Latin 排（61.78px vs CanvasKit 32.34px，+91%）。`runs.script_segments()`
-  按复杂书写系统区间切段后再 shape，200 条语料里只有这一条受影响，双端回到
-  0.012%。
+  按**真实 script** 切段后再 shape：script 没变就不切（Hangul 音节 `AC00-D7A3`
+  与 jamo `1100-11FF` 都是 `Hang`），ZWJ / ZWNJ / 组合记号黏在前一段。script
+  表是 `data/scripts.json`（`tools/metrics/build_scripts.py` 从 HarfBuzz 的
+  unicode script 数据冻结，ggcore 仍只依赖标准库）。SIL-663 之前按「复杂/非复杂」
+  二值切段，把 `가`+尾 jamo（29.44 vs 14.72）、`م`+ZWJ+`ر`（17.63 vs 17.40）、
+  `क्‍ष` 切成半截；四条反例钉在 `tests/test_metrics.py`。改完后 200 条语料
+  逐条宽度不变。
 - 两端仍可对拍的理由：**宽度口径接近**。Noto Color Emoji（CBDT strike）在
   20px 下 provider / 兜底表 24.90px、设备 24.95px（R/cairo 25.00，最大偏差
   0.4%），Noto Emoji 轮廓 25.39px（+1.8%）。

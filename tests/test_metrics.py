@@ -18,6 +18,7 @@ import pytest
 from ggcore.metrics import (
     DEFAULT_FONT_STACK,
     RUN_RULES_VERSION,
+    SCRIPT_RANGES,
     TABLE_VERSION,
     FontCatalog,
     FontNotFound,
@@ -27,6 +28,7 @@ from ggcore.metrics import (
     decode_table,
     encode_table,
     is_supported,
+    script_segments,
     split_runs,
     table_path,
 )
@@ -168,6 +170,42 @@ def test_mixed_script_run_is_shaped_per_script(hb: MetricProvider) -> None:
     assert hb.strwidth("\u1100\u1161\u11a8", 16) == pytest.approx(14.72, rel=0.005)
 
 
+def test_script_table_is_sorted_and_non_overlapping() -> None:
+    """`script_of()` 用二分查找，表必须按码点升序且互不重叠。"""
+    previous_high = -1
+    for low, high, tag in SCRIPT_RANGES:
+        assert low > previous_high, (hex(low), hex(previous_high))
+        assert low <= high
+        assert len(tag) == 4 and tag.isalpha(), tag
+        previous_high = high
+
+
+def test_script_segments_keeps_grapheme_clusters_whole() -> None:
+    """按真实 script 切段：script 没变就不许切，粘着码点黏在前一段。"""
+    # Hangul 音节（AC00-D7A3）与朝鲜 jamo（1100-11FF）是同一个 script（Hang）。
+    assert script_segments("\uac00\u11a8") == ("\uac00\u11a8",)
+    assert script_segments("\u1100\u1161\u11a8") == ("\u1100\u1161\u11a8",)
+    # ZWJ / ZWNJ 不新起段：阿拉伯连写、天城文连写都不能被切成半截。
+    assert script_segments("\u0645\u200d\u0631") == ("\u0645\u200d\u0631",)
+    assert script_segments("\u0915\u094d\u200d\u0937") == ("\u0915\u094d\u200d\u0937",)
+    assert script_segments("a\u200d\u0301\u200cb") == ("a\u200d\u0301\u200cb",)
+    # 相邻的两个不同 script 才切段。
+    assert script_segments("n=\u1100\u1161\u11a8") == ("n=", "\u1100\u1161\u11a8")
+    assert script_segments("\u65e5\u672c\u8a9e abc") == ("\u65e5\u672c\u8a9e ", "abc")
+    # Common 码点（空格 / 数字 / 标点 / emoji）跟着前一段走。
+    assert script_segments("Sales 月份 \U0001f331") == ("Sales ", "月份 \U0001f331")
+
+
+def test_grapheme_clusters_measure_as_one_segment(hb: MetricProvider) -> None:
+    """复验反例 @16px：整段 shaping 的宽度（按「复杂/非复杂」切开时全错）。"""
+    # 가 + 尾 jamo：整段合成一个字形 14.72；切成两段会量成 29.44。
+    assert hb.strwidth("\uac00\u11a8", 16) == pytest.approx(14.72, rel=0.005)
+    # م + ZWJ + ر：ZWJ 必须留在阿拉伯段里，17.40；切开会量成 17.63。
+    assert hb.strwidth("\u0645\u200d\u0631", 16) == pytest.approx(17.40, rel=0.005)
+    # 上一轮修好的 32.34 不能回退。
+    assert hb.strwidth("n=\u1100\u1161\u11a8", 16) == pytest.approx(32.34, rel=0.005)
+
+
 def test_advance_scales_linearly_with_font_size(hb: MetricProvider) -> None:
     text = "Sepal Length"
     assert hb.advance(text, 32) == pytest.approx(2 * hb.advance(text, 16), rel=1e-12)
@@ -275,9 +313,9 @@ def test_table_and_harfbuzz_agree_on_the_corpus(hb: MetricProvider, table: Metri
             continue
         reference = hb.advance(text, 16)
         worst = max(worst, abs(table.advance(text, 16) - reference) / reference)
-    # 表不做 kerning：DejaVu 上实测 3.59%，判据 5%（docs/notes/metrics-ledger.md · M0-7）。
-    # 3.59% 只是这份 200 条语料的结果，不是上界：同一 +2.71875 px @16px 的 `To` 字对
-    # 在 `'To'` 单对上就是 16.14%（短标签相对差更大）。
+    # 表不做 kerning：实测最大 2.374%，判据 5%（docs/notes/metrics-ledger.md · M0-7）。
+    # 2.374% 只是这份 200 条语料的结果，不是上界：绝对差 0.18–1.58 px @16px 随字对
+    # 而变，短标签相对差更大（`'To'` 单对 5.84%）。
     assert worst < 0.05, f"fallback table drifts {worst:.2%} from HarfBuzz"
 
 

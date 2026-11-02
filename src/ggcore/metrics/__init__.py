@@ -40,9 +40,12 @@ from ggcore.metrics.provider import (
 from ggcore.metrics.runs import (
     COMPLEX_SCRIPT_RANGES,
     GLUE_RANGES,
+    SCRIPT_RANGES,
     Run,
     clusters,
     is_supported,
+    script_of,
+    script_segments,
     split_runs,
 )
 from ggcore.metrics.table import (
@@ -62,6 +65,7 @@ __all__ = [
     "GLUE_RANGES",
     "MANAGED_FONTS",
     "RUN_RULES_VERSION",
+    "SCRIPT_RANGES",
     "TABLE_VERSION",
     "FontCatalog",
     "FontFace",
@@ -83,6 +87,8 @@ __all__ = [
     "encode_table",
     "is_supported",
     "resolve_face",
+    "script_of",
+    "script_segments",
     "split_runs",
     "table_path",
 ]
