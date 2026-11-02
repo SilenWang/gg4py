@@ -28,3 +28,9 @@ docs/spike/e1_coldstart/static/
 
 # M1-5 等比例测量的运行时产物（`pixi run cases:coord`）
 .coord-aspect/
+# M1-13 浏览器查看器：tsc 产物与手测素材都不入库（`pixi run viewer:build` /
+# `pixi run viewer:sample` 重新生成）
+web/viewer/dist/
+web/viewer/samples/
+# `pixi run viewer:shot` 的截图产物
+.viewer-shot/

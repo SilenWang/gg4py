@@ -71,6 +71,14 @@ diff = "PYTHONPATH=src python -m ggdiff.cli"
 ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
+# M1-13：浏览器查看器（IR → DOM SVG，零 wasm）。tsc 从 npm 装到 node_modules
+# （不入库），产物落 web/viewer/dist（不入库）；`pixi run viewer:sample` 生成
+# 手测 / 截图用的 2×2 分面 + 图例场景。测试要真 Chromium，`viewer:browsers`
+# 把浏览器装进仓库（$HOME 只读，同 spike:e1）。
+"viewer:build" = "npm install --no-save --no-package-lock typescript && npx tsc -p web/viewer"
+"viewer:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
+"viewer:sample" = "PYTHONPATH=src python tools/viewer/export_scene.py"
+"viewer:shot" = "PYTHONPATH=src python tools/viewer/screenshot.py"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
@@ -203,6 +211,8 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 "metrics:advance" = "PYTHONPATH=src python tools/metrics/text_advance_report.py"
 
 check = { depends-on = [
+  "viewer:build",
+  "viewer:browsers",
   "lint",
   "test",
   "gate:imports",

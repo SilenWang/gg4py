@@ -177,6 +177,11 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   旋转 `inherit` 的生效裁剪框在子坐标里不是轴对齐矩形，4 元组表达不了，页面坐标无损。
   消费约束（M0-8）：节点自下而上合成 `transform` 得到页面变换后，**在页面空间**
   裁剪，不要拿它去和子坐标求交。自 v0.2 起，此前“子坐标”的写法作废。
+- **`viewport.name`**：写方填**最深视口名**（`panel-1-1` / `guide-0-key-0` /
+  `axis-x-1`），空串表示没有名字。它不参与几何，是浏览器查看器（M1-13）唯一的分组
+  依据：hover 显示所在视口、图例 key 靠 `*-key-<i>` 认出来。`Scene.to_ir_scene()`
+  按 `(transform, clip, name)` 合并连续指令（`docs/notes/grobs.md` §7），所以同一
+  视口里的连续图元仍然合成一个 `viewport`，不会因为加名字而膨胀。
 - **curve / xspline / bezier**：控制参数是**解析后的语义参数**，曲线由设备按同一公式求值；
   它们还没被展平成折线，因为上游快照的对齐点在曲线形状本身。
 - **取值范围在 IR 里校验，不留给渲染端**：`bezier.control` 的行数必须是 4 的倍数
@@ -334,6 +339,20 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 - **布局信息**（gtable 单元格、null 单位分配结果）：写 IR 前消费掉，不进 IR。
 - **上游 SVG 结构对齐**：IR 不对标 svglite 的 DOM 结构（对齐走像素 diff，见 snapshot-policy）。
 
+### 12.1 查看器需要的字段（缺口表）
+
+M1-13 的浏览器查看器（`docs/notes/viewer.md`）只能在现有字段上做**推断**。下面是
+它想要、但 v0 没有的东西；真要支持就按 §3 加字段升版本，本任务不改 schema：
+
+| 缺的字段 | 查看器现在的做法 | 进 IR 的话 |
+| --- | --- | --- |
+| 节点 id / 稳定标识 | 用索引路径 `0/3/2` 当 id | 节点或容器参数里加 `id` |
+| geom 层名 / layer 序号 | 按图元 kind 推断（`points`→point、`rect`→bar） | `node.layer` 或写方补 `gtree.name` |
+| 原始数据行号 | 显示缓冲行号（`bufs[k]` 的行下标） | 节点带「行 → 原始数据下标」的表 |
+| 图例 entry 归属（key ↔ 标签 ↔ 图层） | 视口名前缀 + 页面包围盒纵向对齐 | guide entry 字段，或把 key/标签合成一个具名容器 |
+| 图例 level → 数据行 | 不做（点图例只隐藏图例组本身） | 同上，需要 level 到行的映射 |
+| `text.lineheight` / 非缺省行距 | 固定 grid 缺省 1.2（§7 已记 M1-b） | `text.lineheight`（minor） |
+
 ## 13. 复现
 
 ```bash
@@ -341,4 +360,5 @@ pixi run test                      # 含 tests/test_ir.py
 pixi run gate:determinism          # 跨进程字节一致（真实 scene）
 pixi run ir:size                   # §10 的体积表
 pixi run bench                     # 编解码基准
+pixi run viewer:build              # 浏览器查看器的 tsc 产物（M1-13）
 ```

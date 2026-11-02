@@ -1549,27 +1549,32 @@ class Scene:
     def to_ir_scene(self) -> ir.Scene:
         """扁平指令 → IR `Scene`（viewtransform 已累积，每条指令一个 `viewport`）。
 
-        连续且**变换与裁剪都相同**的指令合进同一个 `viewport`，`gtree` 不用：
+        连续且**变换、裁剪与视口名都相同**的指令合进同一个 `viewport`，`gtree` 不用：
         扁平序列已经是绘制顺序。IR 的 `viewport.clip_rect` 是页面坐标，正好是
-        :attr:`Instruction.clip`（`docs/notes/ir.md` §4）。
+        :attr:`Instruction.clip`（`docs/notes/ir.md` §4）。视口名取
+        :attr:`Instruction.vp`（视口路径）的**最深一段**——`panel-1-1` /
+        `guide-0-key-0` 这类名字是浏览器查看器唯一的分组依据（M1-13），
+        名字本身不带几何，不影响画出来的东西。
         """
         width, height = self.size_pt
         page = (0.0, 0.0, width, height)
-        groups: list[tuple[tuple[float, ...], tuple[float, ...], list[ir.Node]]] = []
+        groups: list[tuple[tuple[float, ...], tuple[float, ...], str, list[ir.Node]]] = []
         for item in self.instructions:
-            key = (item.transform, item.clip)
-            if groups and groups[-1][0] == key[0] and groups[-1][1] == key[1]:
-                groups[-1][2].append(item.to_node())
+            # `VpPath` 用 `::` 分段，最后一截就是最深视口自己的名字。
+            name = item.vp.rsplit("::", 1)[-1] if item.vp else ""
+            key = (item.transform, item.clip, name)
+            if groups and groups[-1][:3] == key:
+                groups[-1][3].append(item.to_node())
             else:
-                groups.append((key[0], key[1], [item.to_node()]))
+                groups.append((key[0], key[1], key[2], [item.to_node()]))
         children = tuple(
             ir.Node(
                 NodeKind.VIEWPORT,
-                params={"name": "", "clip": True, "transform": transform},
+                params={"name": name, "clip": True, "transform": transform},
                 bufs={"clip_rect": ir.f32([list(clip)])},
                 children=tuple(nodes),
             )
-            for transform, clip, nodes in groups
+            for transform, clip, name, nodes in groups
         )
         root = ir.Node(
             NodeKind.VIEWPORT,
