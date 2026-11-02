@@ -1,0 +1,7 @@
+family = "geom-smooth"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "stat-smooth", "scale-limits"]
+ci = true
+title = "smooth：分组拟合"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "两组各 7 点、方向相反：stat_smooth 按 group 分别 compute_group，se = FALSE 只画线。"

@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "scale：连续 colour 渐变"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "缺省 low = #132B43 / high = #56B1F7，Lab 空间插值；9 个点覆盖 0..1 的取值。"

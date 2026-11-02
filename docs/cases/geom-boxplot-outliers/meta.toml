@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "stat-boxplot", "scale-limits"]
+ci = true
+title = "boxplot：须线与离群点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "b 组 9.0 / c 组 8.5 是离群点（须线截止到 1.5 IQR 内的极值）；colour 显式给 #333333（grey20 的实色）。"

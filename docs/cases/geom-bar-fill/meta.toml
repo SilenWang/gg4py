@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "aes-grouping", "stat-count", "position-fill", "scale-discrete"]
+ci = true
+title = "bar：count + fill（归一化堆叠）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "position_fill 把每根柱子归一到 1（c 组只有 p → 一整根）。"

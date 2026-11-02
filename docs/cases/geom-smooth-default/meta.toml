@@ -1,0 +1,7 @@
+family = "geom-smooth"
+features = ["aes-mapping", "stat-smooth", "scale-limits"]
+ci = true
+title = "smooth：loess 默认口径"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "method/span/se 全用缺省（R 的 surface = interpolate）；fill 显式给 black，避开 from_theme 缺口的干扰。"

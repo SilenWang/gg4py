@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "scale-log10", "scale-limits"]
+ci = true
+title = "scale：x 轴 log10"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "limits = c(1, 1000) 在数据空间给，标度先 log10 再映射；theme_void 下只比点的位置。"

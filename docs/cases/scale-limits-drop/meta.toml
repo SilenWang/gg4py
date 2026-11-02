@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "scale-limits"]
+ci = true
+title = "scale：limits 裁剪观测"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "x = 0.10 与 y = 0.95 / 0.05 / 0.15 共四行落在 limits 外：两边都报 Removed 4 rows 并只画 5 个点。"

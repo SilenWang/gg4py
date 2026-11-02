@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "guide-legend", "scale-limits"]
+ci = true
+title = "guide：单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "只有 colour 进图例；legend.position 用缺省的 right，键与标题都由 M1-11 的 guide 画。"

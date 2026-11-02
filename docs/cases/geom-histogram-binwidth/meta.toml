@@ -1,0 +1,7 @@
+family = "geom-histogram"
+features = ["aes-mapping", "stat-bin", "scale-limits"]
+ci = true
+title = "histogram：binwidth 0.2 + boundary 0"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "boundary 决定箱原点（0, 0.2, …, 1.0），与缺省「按数据范围取整」不同。"

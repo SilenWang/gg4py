@@ -324,6 +324,13 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 
 ## 与后续任务的接口
 
+- **`panel.grid.*` 的绘制还没有接进 `ggcore.geom.scene`**：`_panel_children()` 只装
+  `panel.background` / `panel.border`，`panel.grid.major` / `.minor` 的解析值拿到了
+  但没画。后果是 `theme_grey()` / `theme_minimal()` 的网格线整片缺失（M1-15 的
+  `theme-grey-basic` / `theme-minimal-basic` 因此标 `ci = false`），参考图已入库，
+  接上网格线后把 `ci` 翻成 `true` 即可。次要难点在 minor breaks：`ggcore.scales` /
+  `ggcore.axis` 目前没有 `minor_breaks` 的实现。
+
 - `resolve_theme()` 的结果是只读映射：`resolved["axis.text"]` 拿到具体元素，
   `resolved.size_pt("axis.text")` 直接拿字号（pt），`resolved.is_blank(name)`
   判断是否 blank。
