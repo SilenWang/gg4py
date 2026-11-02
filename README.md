@@ -101,3 +101,4 @@ docs/spike/          # M-1 可行性实验与结论
 - 设备口径账本（pt/DPI、文字轮廓、pch 表、曲线求值）：`docs/notes/device.md`
 - 差分管线（R 参考、resvg 统一栅格、2%/1% 判据、JSON 契约）：`docs/notes/diff.md`
 - 输入适配口径（三种输入 / dtype / 分类顺序 / 时间 / 缺失）：`docs/notes/data.md`
+- aes 表达式口径（字符串解析 / 白名单 / 长度语义 / 自动分组）：`docs/notes/aes.md`
