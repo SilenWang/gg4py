@@ -1,6 +1,6 @@
 """`geom_smooth` 的绘制（M1-7）。
 
-绘制层只消费列（method / formula / se 的计算归 M1-8 的 `stat_smooth`）：
+绘制层只消费列（method / formula / se 的计算在 `ggcore.stat` 的 `_stat_smooth()`）：
 
 - 有 `ymin/ymax` 且 `se != FALSE` 时画 ribbon（多边形，`fill` 吃 alpha，无边）；
 - 再画一条线（`GeomLine$draw_panel()`：`alpha = NA`，线条不吃 alpha）；
