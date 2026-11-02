@@ -67,8 +67,8 @@ from ggcore.facet import (
     PanelScaleSet,
     facet_from_component,
 )
-from ggcore.layer import Layer
-from ggcore.registry import required_aes_groups
+from ggcore.layer import Layer, Position
+from ggcore.registry import construct, registered, required_aes_groups
 from ggcore.scales import ScaleSet
 
 if TYPE_CHECKING:  # 只用于类型标注，避免 build ↔ plot 的运行时环
@@ -579,16 +579,17 @@ def _put(columns: list[tuple[str, Column]], name: str, column: Column) -> list[t
 
 
 def compute_position(layer: Layer, mapped: ColumnTable, index: int = 0) -> ColumnTable:
-    """阶段 4：geom 派生的坐标列 + 位置调整。本任务实现 `identity` 与 `stack`。
+    """阶段 4：geom 派生的坐标列 + 位置调整。
 
     顺序照上游：`required_aes` 校验 → `Geom$setup_data()` → `Position$compute_layer()`。
     `setup_data()` 在 `compute_position()` **之前**，所以 `flipped_aes` /
     `xmin` / `xmax` / `ymin` / `ymax` 的列序与 R 一致；stage 输出
     （`LayerBuild.positioned`）已经包含这些列。
 
-    `stack` 按 x 分组把 y 反向累加（上游 `collide(reverse = FALSE)`：第一个
-    group 在最上面），同时覆盖 `ymin` / `ymax` 并把 `y` 设成 `ymax`；x 没有重复
-    值时和上游一样退化成 identity。
+    位置调整本身在 :mod:`ggcore.position`（`identity` / `stack` / `fill` /
+    `dodge` / `dodge2` / `jitter` / `nudge`）。这里**按名字查注册表**拿到实现，
+    所以 `geom_col(position="dodge")` 与 `p + position_dodge()` 走同一条路：
+    换掉注册项，两条路径同时变（`tests/test_position.py` 守着）。
 
     `line` 的 `setup_data()` 还会按 `(PANEL, group, x)` 重排行序（上游
     `GeomLine$setup_data()`），路径的连接顺序由它决定。
@@ -597,55 +598,33 @@ def compute_position(layer: Layer, mapped: ColumnTable, index: int = 0) -> Colum
         return _EMPTY
     _check_required_aes(layer, mapped, index)
     table = ColumnTable(_geom_setup(layer, mapped), nrows=mapped.nrows)
-    name = layer.position.name
-    if name == "identity":
-        return table
-    if name == "stack":
-        return _position_stack(table, layer.position.params)
-    raise BuildError(
-        f"position {name!r} 尚未实现；M1-3 只实现 identity / stack"
-        '（boxplot 的 dodge2 请显式写 position="identity" 或等后续任务）'
-    )
+    position = _resolve_position(layer.position)
+    return position.compute_layer(table)
 
 
-def _position_stack(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
-    if "y" not in table or "x" not in table:
-        raise BuildError("position_stack 需要 x 与 y 两列")
-    x_values = _column_values(table.column("x"))
-    y_values = _column_values(table.column("y")).astype(np.float64)
-    x_keys = [repr(item) for item in x_values.tolist()]
-    if len(set(x_keys)) == len(x_keys):
-        return table
+def _resolve_position(position: Position) -> Any:
+    """`Position`（名字 + 参数）→ 注册表里的可执行实现。
 
-    group = (
-        _column_values(table.column("group")).astype(np.int64)
-        if "group" in table
-        else np.zeros(table.nrows, dtype=np.int64)
-    )
-    vjust = float(params.get("vjust", 1.0))
-    ymin = np.zeros(table.nrows, dtype=np.float64)
-    ymax = np.zeros(table.nrows, dtype=np.float64)
-    for key in dict.fromkeys(x_keys):
-        rows = np.array([i for i, item in enumerate(x_keys) if item == key], dtype=np.int64)
-        rows = rows[np.argsort(-group[rows], kind="stable")]
-        # 上游 `pos_stack()`：heights = c(0, cumsum(y))，相邻两段取 min/max。
-        # 正负分开堆；NA y 当 0 高度（保留有效坐标，不复刻 R 把 x 也抹成 NA 的
-        # `collide` 副作用）。
-        values = y_values[rows]
-        positive = rows[(values >= 0) | np.isnan(values)]
-        negative = rows[values < 0]
-        for subset in (positive, negative):
-            if subset.size == 0:
-                continue
-            heights = np.concatenate(([0.0], np.cumsum(np.nan_to_num(y_values[subset]))))
-            ymin[subset] = np.minimum(heights[:-1], heights[1:])
-            ymax[subset] = np.maximum(heights[:-1], heights[1:])
-    y = (1.0 - vjust) * ymin + vjust * ymax
-    columns = list(_items(table))
-    columns = _put(columns, "ymin", Column("float", ymin))
-    columns = _put(columns, "ymax", Column("float", ymax))
-    columns = _put(columns, "y", Column("float", y))
-    return ColumnTable(columns, nrows=table.nrows)
+    注册项是 `position_*` 的构造器（返回 :class:`ggcore.position.Position*` 的
+    子类实例），参数在这里重新过一遍构造器：与直接调用 `position_dodge(...)`
+    同源，也顺带做参数校验。
+    """
+    name = position.name
+    try:
+        impl = construct("position", name, **dict(position.params))
+    except LookupError:
+        raise BuildError(
+            f"position {name!r} 未注册；可用：{', '.join(registered('position'))}"
+        ) from None
+    except (TypeError, ValueError) as exc:
+        raise BuildError(f"position {name!r} 的参数不对：{exc}") from exc
+    compute = getattr(impl, "compute_layer", None)
+    if not callable(compute):
+        raise BuildError(
+            f"position {name!r} 的注册项 {type(impl).__name__} 没有 compute_layer()；"
+            "位置实现必须提供 compute_layer(data, params=None)"
+        )
+    return impl
 
 
 # ---------------------------------------------------------------------------
