@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "shape-aes", "scale-discrete", "scale-limits"]
+ci = true
+title = "point：shape + colour 双离散映射"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "shape 与 colour 同映射到一个离散列；size 9pt（mm 口径的 9/.pt）与 R 同值。"

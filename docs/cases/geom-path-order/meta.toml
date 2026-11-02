@@ -1,0 +1,7 @@
+family = "geom-path"
+features = ["aes-mapping", "line-type", "scale-limits"]
+ci = true
+title = "path：保持给定行序的折线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "path 不排序：行序就是连接顺序（与 line 的对照）。"

@@ -136,8 +136,10 @@ class PanelParams:
             low, high = getattr(self, name)
             if not (math.isfinite(low) and math.isfinite(high)):
                 raise CoordError(f"{name} 必须是有限数，收到 {(low, high)!r}")
-        if self.clip not in ("on", "off"):
-            raise CoordError(f"clip 只能是 'on' 或 'off'，收到 {self.clip!r}")
+        # `on` / `off` 是 coord 的取值（R 同）；`inherit` 是 gtable 的第三态，
+        # 供场景装配直接构造 `PanelParams` 时使用（M1-7 的 clip 三态）。
+        if self.clip not in ("on", "off", "inherit"):
+            raise CoordError(f"clip 只能是 'on' / 'off' / 'inherit'，收到 {self.clip!r}")
 
     # -- 范围 ---------------------------------------------------------------
 
@@ -292,6 +294,8 @@ class CoordBase:
     name: str = "cartesian"
 
     def __post_init__(self) -> None:
+        # coord 层只认 R 的两个取值（`on` / `off`）；`inherit` 是 gtable 的第三态，
+        # 只在场景装配直接构造 `PanelParams` 时出现（见 PanelParams）。
         if self.clip not in ("on", "off"):
             raise CoordError(f"clip 只能是 'on' 或 'off'，收到 {self.clip!r}")
         if not _valid_expand(self.expand):

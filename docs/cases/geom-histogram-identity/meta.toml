@@ -1,0 +1,7 @@
+family = "geom-histogram"
+features = ["aes-mapping", "stat-bin", "scale-limits"]
+ci = true
+title = "histogram：identity stat + width 列"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "bins 归 M1-8 的 stat_bin；本用例用 width 列 + identity stat 直接画四个箱。"

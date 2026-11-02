@@ -1106,8 +1106,13 @@ def facet_table(
     layout: FacetLayout,
     facet: FacetBase | None = None,
     theme: Theme | ResolvedTheme | None = None,
+    metrics: Any = None,
 ) -> FacetTable:
-    """布局 → 面板 gtable（panel 行列 + 顶部/右侧 strip + panel.spacing）。"""
+    """布局 → 面板 gtable（panel 行列 + 顶部/右侧 strip + panel.spacing）。
+
+    `metrics` 给出时 strip 的行高 / 列宽用**真实字体度量**（`Metrics.strheight`，
+    M1-7）；不给时退回 `_STRIP_TEXT_EM` 近似（M1-6 的对拍口径）。
+    """
     facet = facet_from_component(facet) if facet is not None else FacetNull()
     resolved = theme if isinstance(theme, ResolvedTheme) else resolve_theme(theme or Theme())
     spacing_x = _unit_cm(resolved, "panel.spacing.x")
@@ -1123,8 +1128,16 @@ def facet_table(
     has_right = facet.kind == "grid" and bool(getattr(facet, "row_vars", ()))
     # 顶部 strip 跟 `strip.text.x`、右侧 strip 跟 `strip.text.y`（尺寸与背景各走
     # 自己的元素；`strip.background.x/.y` 继承自 `strip.background`）。
-    strip_h = _strip_extent(resolved, "strip.text.x", horizontal=False) if has_top else 0.0
-    strip_w = _strip_extent(resolved, "strip.text.y", horizontal=True) if has_right else 0.0
+    strip_h = (
+        _strip_extent(resolved, "strip.text.x", horizontal=False, metrics=metrics)
+        if has_top
+        else 0.0
+    )
+    strip_w = (
+        _strip_extent(resolved, "strip.text.y", horizontal=True, metrics=metrics)
+        if has_right
+        else 0.0
+    )
     top_fill = _strip_fill(resolved, "strip.background.x") if has_top else None
     right_fill = _strip_fill(resolved, "strip.background.y") if has_right else None
     # wrap 的每个面板行上方都有一条 strip；grid 的顶部 strip 只有一行。
@@ -1285,13 +1298,31 @@ def _strip_extent(
     element_name: str = "strip.text.x",
     *,
     horizontal: bool = False,
+    metrics: Any = None,
 ) -> float:
-    """strip 的高/宽（cm）：文本行高 + 上下（左右）margin。空白元素为 0。"""
+    """strip 的高/宽（cm）：文本行高 + 上下（左右）margin。空白元素为 0。
+
+    有 `metrics` 时走 `Metrics.strheight()`（真实 ascent + descent，英寸）；
+    否则用 M1-6 的 `_STRIP_TEXT_EM` 近似（对拍夹具的历史口径）。
+    """
     element = resolved[element_name]
     if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
         return 0.0
     size = float(element.size or 0.0)
-    text_cm = size * _STRIP_TEXT_EM * 2.54 / 72.0
+    if metrics is not None:
+        text_cm = (
+            float(
+                metrics.strheight(
+                    "",
+                    fontsize=size,
+                    cex=1.0,
+                    font=element.family or "sans",
+                )
+            )
+            * 2.54
+        )
+    else:
+        text_cm = size * _STRIP_TEXT_EM * 2.54 / 72.0
     margin = element.margin
     if margin is None:
         return text_cm

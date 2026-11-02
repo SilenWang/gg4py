@@ -15,6 +15,7 @@ IR 的六阶段流水线是 M1-3，`Geom.draw()` 的实现是 M1-7。
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -47,24 +48,66 @@ class Position:
 
 @dataclass(frozen=True, slots=True)
 class Geom:
-    """几何对象基类：只承载名字与 aes 契约。
+    """几何对象：名字 + aes 契约 + 绘制入口。
 
     `required_aes` / `default_aes` 照抄 ggplot2 4.0.3 的 geom 定义，供 M1-3 的
-    流水线决定哪些列必须存在、缺省美学取什么值。`draw` 留给 M1-7（各 geom 的
-    具体类）实现，在骨架阶段调用一律 `NotImplementedError`。
+    流水线决定哪些列必须存在、缺省美学取什么值。`non_missing_aes` /
+    `optional_aes` 与上游同名（`docs/notes/build.md` §2、`Geom$handle_na()`）。
+
+    绘制实现在 :mod:`ggcore.geom`（M1-7），这里只按名字转发——构造路径
+    （`as_geom()` / `geom_*()` 注册表）不变，`Geom` 仍是不可变数据对象。
     """
 
     name: str
     required_aes: tuple[str, ...] = ()
     default_aes: dict[str, Any] = field(default_factory=dict)
+    #: `Geom$non_missing_aes`：`handle_na()` 也看这些列（`NA` 值删行）。
+    non_missing_aes: tuple[str, ...] = ()
+    #: `Geom$optional_aes`：可以映射但不必需的美学（如 smooth 的 `ymin`/`ymax`）。
+    optional_aes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "required_aes", tuple(self.required_aes))
         object.__setattr__(self, "default_aes", frozen_mapping(self.default_aes))
+        object.__setattr__(self, "non_missing_aes", tuple(self.non_missing_aes))
+        object.__setattr__(self, "optional_aes", tuple(self.optional_aes))
 
-    def draw(self, *args: Any, **kwargs: Any) -> Any:
-        """绘制当前图层（M1-7）。骨架阶段没有实现。"""
-        raise NotImplementedError(f"geom_{self.name} 的绘制是 M1-7 的事；M1-1 只负责把图层构造出来")
+    # -- 绘制契约（M1-7）：按名字查 ggcore.geom 的实现 --------------------
+
+    def _renderer(self) -> Any:
+        from ggcore.geom import renderer_for
+
+        return renderer_for(self.name)
+
+    def setup_params(
+        self, data: Any, params: Mapping[str, Any] | None = None, *, raw: Any = None
+    ) -> dict[str, Any]:
+        """`Geom$setup_params()`：解析 `flipped_aes`（横向 geom 的朝向）。"""
+        return self._renderer().setup_params(data, params or {}, raw=raw)
+
+    def setup_data(self, data: Any, params: Mapping[str, Any] | None = None) -> Any:
+        """`Geom$setup_data()`：派生坐标列与行序（列序与 R 一致）。"""
+        return self._renderer().setup_data(data, params or {})
+
+    def handle_na(self, data: Any, na_rm: bool = False) -> Any:
+        """`Geom$handle_na()`：绘制期删行并发出 "Removed N rows" 警告。"""
+        return self._renderer().handle_na(self, data, bool(na_rm))
+
+    def draw(
+        self,
+        build: Any,
+        panel: Any,
+        coord: Any,
+        theme: Any,
+        metrics: Any,
+    ) -> Any:
+        """绘制一个面板的图层数据，返回 grob / gTree（M1-7）。
+
+        `build` 是这一面板的 :class:`ggcore.build.LayerBuild`（`data` 已按
+        `PANEL` 切好、已过 `handle_na()`），`panel` 是该面板的
+        :class:`ggcore.coord.PanelParams`。
+        """
+        return self._renderer().draw(self, build, panel, coord, theme, metrics)
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,12 +159,24 @@ def as_geom(
     default: str,
     required_aes: tuple[str, ...] = (),
     default_aes: dict[str, Any] | None = None,
+    non_missing_aes: tuple[str, ...] = (),
+    optional_aes: tuple[str, ...] = (),
 ) -> Geom:
     """`None` / 名字 / `Geom` 统一成 `Geom`；用名字时按给定契约补齐。"""
+
+    def build(name: str) -> Geom:
+        return Geom(
+            name=name,
+            required_aes=required_aes,
+            default_aes=default_aes or {},
+            non_missing_aes=non_missing_aes,
+            optional_aes=optional_aes,
+        )
+
     if value is None:
-        return Geom(name=default, required_aes=required_aes, default_aes=default_aes or {})
+        return build(default)
     if isinstance(value, Geom):
         return value
     if isinstance(value, str):
-        return Geom(name=value, required_aes=required_aes, default_aes=default_aes or {})
+        return build(value)
     raise TypeError(f"geom 必须是 Geom 或名字，得到 {type(value).__name__}")

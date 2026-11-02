@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "aes-grouping", "stat-count", "position-stack", "scale-discrete"]
+ci = true
+title = "bar：stat_count + 堆叠 fill"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "stat_count 逐个 x 计数，再按 fill 做 stack；x 走离散标度的 0.6 扩张。"

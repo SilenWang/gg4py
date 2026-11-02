@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 from ggcore import plot, registry
@@ -327,7 +329,7 @@ def test_after_stat_only_marks_the_expression() -> None:
     assert aes(y=marker)["y"] == marker
 
 
-def test_geom_constructors_return_layers_and_do_not_draw() -> None:
+def test_geom_constructors_return_layers_and_draw_through_the_registry() -> None:
     layer = plot.geom_point(size=3)
     assert isinstance(layer, Layer)
     assert isinstance(layer.geom, Geom)
@@ -335,7 +337,13 @@ def test_geom_constructors_return_layers_and_do_not_draw() -> None:
     assert layer.geom.required_aes == ("x", "y")
     assert layer.params["size"] == 3
     assert layer.stat.name == "identity"
-    with pytest.raises(NotImplementedError, match="M1-7"):
+    # M1-7 起 draw() 是真绘制：按名字查 ggcore.geom 的实现，不再是 NotImplementedError。
+    from ggcore.geom import renderer_for
+
+    assert renderer_for(layer.geom.name) is renderer_for("point")
+    signature = inspect.signature(layer.geom.draw)
+    assert list(signature.parameters) == ["build", "panel", "coord", "theme", "metrics"]
+    with pytest.raises(TypeError):  # 缺参数是 TypeError，不是“未实现”
         layer.geom.draw()
 
 
