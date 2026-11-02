@@ -190,7 +190,7 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 
 ## 现在有什么
 
-**四张带外部参考的基准图**（`ci = true`，来源全是 `svglite:`）：
+**七张带外部参考的基准图**（`ci = true`，来源全是 `svglite:`）：
 
 | case | 演示什么 |
 | --- | --- |
@@ -198,6 +198,9 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
 | `geom-col-basic/` | 连续 x 上的四根柱子（宽度是数据单位） |
 | `geom-text-cjk/` | 长中文标签（18 字左对齐 + 短标签，Noto Sans CJK SC）；文字宽度 +2% 会红，阈值按 case 收紧到 1.4% |
 | `geom-curve-basic/` | 两条拐弯曲线；设备 curve 的 y 翻转镜像会让它红（SIL-636 回归） |
+| `text-bold-italic/` | 同一字族的 regular / bold / italic / bold-italic 四个真实字面（可变字体 `wght` 轴） |
+| `text-multiline/` | `\n` 三行标签 + 两行居中标签；行距 1.44 × fontsize、整块 vjust |
+| `text-emoji/` | emoji 与中文/拉丁混排；矢量后端回落单色 Noto Emoji 轮廓 |
 
 `pixi run cases:matrix` 对它们真跑 render + diff；`pixi run -e refs refs:cases`
 重生成参考 SVG。正确实现全绿，人为平移 (2, 2) 像素则四张全红——数字与负向验证记录

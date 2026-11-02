@@ -66,4 +66,7 @@ features = [
   "lab-title",
   "rotation",
   "cjk-text",
+  "font-face",
+  "multiline",
+  "emoji-text",
 ]

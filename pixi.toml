@@ -128,6 +128,8 @@ r-svglite = ">=2.2,<3"
 # M0-9 参考图产线：ggplot2 4.0.3 + svglite 出 docs/cases/<case>/expected.svg。
 # 只在换 pin 或有意改口径时重跑；产物入库，CI 不装 R。
 "refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R"
+# 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
+"refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
 
 [feature.dev.tasks]
 test = "pytest -q"
@@ -159,6 +161,8 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # 兜底表由同一脚本从受管字体生成；`--check` 重新生成并比对，CI 里由 gate:metrics 调用。
 "metrics:table" = "python tools/metrics/build_table.py"
 "metrics:check-table" = "python tools/metrics/build_table.py --check"
+# M1-kerning：现有 case 的 hinted vs linear/HarfBuzz 推进差（写 metrics-ledger）。
+"metrics:advance" = "PYTHONPATH=src python tools/metrics/text_advance_report.py"
 
 check = { depends-on = [
   "lint",

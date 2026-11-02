@@ -23,3 +23,5 @@ docs/spike/e1_coldstart/static/
 .cases-matrix/
 # `pixi run gate:pyodide` 的两侧产物（IR 字节 + 元数据），每次重跑覆盖，不入库
 .gate-pyodide/
+# `pixi run metrics:advance` 的 hinted/linear 推进报告（每次重跑覆盖，不入库）
+.metrics-advance/

@@ -1,0 +1,358 @@
+{
+  "locale": "C.UTF-8",
+  "device": {
+    "kind": "svglite",
+    "width_in": 4,
+    "height_in": 3,
+    "units": "pt@72dpi"
+  },
+  "samples": [
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.3643129999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 89.349433593749993,
+      "height": 7.3643129999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 99.183046874999988,
+      "height": 7.3643129999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.8241669999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 107.19736328124999,
+      "height": 8.8241669999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 119.02279296874998,
+      "height": 8.8241669999999992
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.4365829999999988
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 94.650488281249991,
+      "height": 7.4365829999999988
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 102.63343749999999,
+      "height": 7.4365829999999988
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.9253449999999983
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 113.59626953124999,
+      "height": 8.9253449999999983
+    },
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 2,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 123.14757812499998,
+      "height": 8.9253449999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 89.255332031249978,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 100.18679687499998,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 107.10326171874999,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 120.24611328124998,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 96.156113281249986,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 104.49978515624998,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 115.41556640624999,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 125.45306640624999,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 84.487519531249987,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 97.034394531250001,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 101.39443359374998,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 3,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 116.48205078124998,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 10,
+      "text": "中文标签宽度",
+      "width": 60.224999999999994,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 10,
+      "text": "Latin width sample",
+      "width": 90.886425781249983,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 10,
+      "text": "中文 mixed Latin 混排",
+      "width": 101.01802734374999,
+      "height": 7.1619569999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 12,
+      "text": "中文标签宽度",
+      "width": 72.269999999999996,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 12,
+      "text": "Latin width sample",
+      "width": 109.09507812499999,
+      "height": 8.6001299999999983
+    },
+    {
+      "family": "Noto Sans",
+      "font": 4,
+      "size": 12,
+      "text": "中文 mixed Latin 混排",
+      "width": 121.28123046874998,
+      "height": 8.6001299999999983
+    }
+  ],
+  "multiline": [
+    {
+      "family": "Noto Sans CJK SC",
+      "font": 1,
+      "size": 10,
+      "text": "多行文本第一行\n第二行 mixed Latin 文字\n第三行",
+      "lines": [
+        "多行文本第一行",
+        "第二行 mixed Latin 文字",
+        "第三行"
+      ],
+      "line_widths": [
+        70.262499999999989,
+        109.22054687499998,
+        30.112499999999997
+      ],
+      "width": 109.22054687499998,
+      "height": 36.27231299999999,
+      "line_pitch": 14.453999999999995
+    },
+    {
+      "family": "Noto Sans",
+      "font": 1,
+      "size": 12,
+      "text": "one\ntwo\nthree",
+      "lines": [
+        "one",
+        "two",
+        "three"
+      ],
+      "line_widths": [
+        21.533574218749997,
+        21.110117187499998,
+        30.112499999999997
+      ],
+      "width": 30.112499999999997,
+      "height": 43.289729999999984,
+      "line_pitch": 17.344799999999992
+    },
+    {
+      "family": "Noto Sans",
+      "font": 2,
+      "size": 12,
+      "text": "one\ntwo\nthree",
+      "lines": [
+        "one",
+        "two",
+        "three"
+      ],
+      "line_widths": [
+        22.490273437499997,
+        22.976464843749998,
+        32.621874999999996
+      ],
+      "width": 32.621874999999996,
+      "height": 43.289729999999984,
+      "line_pitch": 17.344799999999992
+    }
+  ]
+}

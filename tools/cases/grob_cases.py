@@ -364,10 +364,10 @@ class SkiaMetrics:
     def _font(self, fontsize: float, cex: float) -> skia.Font:
         return skia.Font(self.typeface, max(float(fontsize) * float(cex), 1e-3))
 
-    def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
+    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         return float(self._font(fontsize, cex).measureText(text)) / 72.0
 
-    def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
+    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         metrics = self._font(fontsize, cex).getMetrics()
         return float(-metrics.fAscent + metrics.fDescent) / 72.0
 

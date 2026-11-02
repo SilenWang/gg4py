@@ -1,0 +1,10 @@
+family = "geom-text"
+features = ["emoji-text"]
+ci = true
+title = "geom_text：emoji 与中文/拉丁混排（run 切分）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+notes = """同一段文字的 emoji 与拉丁/中文分属不同字面：按「第一个覆盖该码点的字族」
+切 run。参考图的 <text> 由 diff 管线转轮廓时用单色 Noto Emoji（彩色 CBDT 没有
+矢量轮廓）；我们的 SVG/PDF 后端同一策略，栅格后端仍用彩色位图。宽度口径：
+两端都是 1.25 em/emoji（Noto Color Emoji 24.95px vs Noto Emoji 25.00px @20px，
+0.2%），所以像素仍可对拍。"""

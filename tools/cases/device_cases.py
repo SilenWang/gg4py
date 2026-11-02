@@ -41,12 +41,13 @@ class ShaperMetrics:
     def __init__(self) -> None:
         self.shaper = TextShaper()
 
-    def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
-        runs = self.shaper.runs("sans", text, fontsize * cex)
+    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
+        runs = self.shaper.runs(font, text, fontsize * cex)
         return sum(run.advance for run in runs) / 72.0
 
-    def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
-        metrics = self.shaper.font("NotoSansCJKsc-VF.ttf", fontsize * cex).getMetrics()
+    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
+        face = self.shaper.primary_face(font)
+        metrics = self.shaper.font(face, fontsize * cex).getMetrics()
         return float(-metrics.fAscent + metrics.fDescent) / 72.0
 
 

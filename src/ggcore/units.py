@@ -569,11 +569,16 @@ def _element_at(target: Unit, index: int) -> UnitElement:
 
 @runtime_checkable
 class Metrics(Protocol):
-    """字符串度量注入点（M0-7 的真实实现在包外）。返回英寸。"""
+    """字符串度量注入点（M0-7 的真实实现在包外）。返回英寸。
 
-    def strwidth(self, text: str, *, fontsize: float, cex: float) -> float: ...
+    `font` 是 IR 的字体 key（`族` 或 `族:bold-italic`）：字重/斜体会改变推进，
+    宽度必须按实际字面量（`docs/notes/metrics-ledger.md`）。实现不需要区分字面时
+    可以忽略它。
+    """
 
-    def strheight(self, text: str, *, fontsize: float, cex: float) -> float: ...
+    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float: ...
+
+    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -583,10 +588,10 @@ class FixedMetrics:
     widths: dict[str, float]
     heights: dict[str, float]
 
-    def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
+    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         return float(self.widths[text])
 
-    def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
+    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
         return float(self.heights[text])
 
 

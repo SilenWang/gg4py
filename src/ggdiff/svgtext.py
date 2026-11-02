@@ -54,7 +54,16 @@ def _style(element: ET.Element) -> dict[str, str]:
             continue
         key, _, value = item.partition(":")
         properties[key.strip().lower()] = value.strip()
-    for name in ("font-size", "font-family", "fill", "text-anchor", "opacity", "fill-opacity"):
+    for name in (
+        "font-size",
+        "font-family",
+        "font-weight",
+        "font-style",
+        "fill",
+        "text-anchor",
+        "opacity",
+        "fill-opacity",
+    ):
         if element.get(name) is not None and name not in properties:
             properties[name] = element.get(name, "")
     return properties
@@ -63,6 +72,22 @@ def _style(element: ET.Element) -> dict[str, str]:
 def _font_family(value: str) -> str:
     family = value.strip().strip("'\"").split(",")[0].strip()
     return family or "sans"
+
+
+def _font_key(properties: dict[str, str]) -> str:
+    """svglite 的 `font-family` + `font-weight` + `font-style` → IR 字体 key。
+
+    svglite 会写 `font-weight: bold` / `font-style: italic`（ggplot2 的
+    `fontface = "bold.italic"`），轮廓转换必须按真实字面取字形，否则粗斜体
+    会被画成常规字面（`docs/notes/metrics-ledger.md`）。
+    """
+    family = _font_family(properties.get("font-family", "sans"))
+    weight = properties.get("font-weight", "").strip().lower()
+    style = properties.get("font-style", "").strip().lower()
+    bold = weight in ("bold", "bolder") or (weight.isdigit() and int(weight) >= 600)
+    italic = style in ("italic", "oblique")
+    suffix = "bold-italic" if bold and italic else "bold" if bold else "italic" if italic else ""
+    return f"{family}:{suffix}" if suffix else family
 
 
 def path_to_d(path) -> str:
@@ -118,7 +143,7 @@ def _text_path(element: ET.Element, shaper) -> tuple[str, float, float, str]:
         return "", 0.0, 0.0, "#000000"
     properties = _style(element)
     size = _number(properties.get("font-size"), 12.0) or 12.0
-    family = _font_family(properties.get("font-family", "sans"))
+    font_key = _font_key(properties)
     fill = properties.get("fill", "#000000")
     x = _number(element.get("x"), 0.0) or 0.0
     y = _number(element.get("y"), 0.0) or 0.0
@@ -128,8 +153,8 @@ def _text_path(element: ET.Element, shaper) -> tuple[str, float, float, str]:
     path = skia.Path()
     pen = 0.0
     measured = 0.0
-    for run in shaper.runs(family, text, size):
-        font = shaper.font(run.filename, size)
+    for run in shaper.runs(font_key, text, size):
+        font = shaper.font(run.face, size)
         for gid, offset in zip(run.gids, run.offsets, strict=False):
             glyph = font.getPath(gid)
             if glyph is not None:
@@ -163,7 +188,7 @@ def inline_text_paths(source: Path, target: Path, *, shaper=None) -> int:
     except ET.ParseError as error:
         raise SvgTextError(f"{source} 不是合法 XML：{error}") from error
 
-    shaper = shaper if shaper is not None else TextShaper()
+    shaper = shaper if shaper is not None else TextShaper(emoji="outline")
     parents = {child: parent for parent in root.iter() for child in parent}
     converted = 0
     for element in list(root.iter(_TEXT)):

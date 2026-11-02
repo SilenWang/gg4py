@@ -85,7 +85,10 @@ IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle`
 1. **key → 字体栈**（`ggskia.text.resolve_stack`）：`sans`（grob 的缺省 key，
    `DEFAULT_FONT_KEY`）解析成 `NotoSansCJKsc-VF.ttf`——它同时覆盖拉丁与中日韩，
    CJK 验收靠它；登记过的字族名解析成自己的文件；未知字族回落到 `sans`。
-   粗体/斜体的后缀（`:bold` 等）暂时落到同一份文件（M1 的字体目录再做合成）。
+   `:bold` / `:italic` / `:bold-italic` 后缀经 `FontCatalog.resolve()` 解析成
+   真实字面（Bold / Italic / BoldItalic 文件，可变字体用 HarfBuzz/skia 的
+   `wght` 轴；缺字面报错并列可用字面，不静默回落常规）。三个后端共用这一条
+   路径，口径与实测见 `metrics-ledger.md` · M1-a。
 2. **run 切分**：直接用 M0-7 的 `ggcore.metrics.runs.split_runs()`——两端同一份
    规则（`docs/spike/e2_metrics/report.md` 的 132/200 条就是没切 run 造成的）。
    混排「中文 A」时中文与拉丁各走各的字面；粘着码点不单独起 run。
@@ -94,17 +97,27 @@ IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle`
      直映 `Font.textToGlyphs()`；
    - 需要上下文 shaping 的书写系统（阿拉伯/印度诸语/泰文/高棉…）走 HarfBuzz
      shaping，连写、重排、合字都在那一步发生；
-   - 笔位统一用 skia 的 `Font.getXPos()`，也就是 `drawString()` 自己用的那套
-     hinted 推进。三个后端于是落在同一组位置上，栅格也能逐像素复现旧基线。
-   - **标签原样落字**：不认 `\n`（也没有 `check.overlap`），换行见 §9。
+   - 笔位统一用 skia 的 `Font.getXPos()`；字体对象开 **线性度量**
+     （`setLinearMetrics(True)`），与 R 的 cairo/svglite 同口径。hinted 的整
+     pt 量化在 16px 语料上最大偏 10.61%、现有 case 标签 `right` @10pt 偏
+     8.75%（`metrics-ledger.md` · M1-e）。
+   - **多行**：`\n` 切行，行距 = `1.2 × lineheight × fontsize`（缺省
+     lineheight=1.2 → 1.44×），整块高度 = `(n-1) × 行距 + strheight`，
+     `hjust/vjust` 对整块（`metrics-ledger.md` · M1-b）。
+   - **emoji**：矢量后端把 `Noto Color Emoji`（CBDT 位图）换成单色
+     `Noto Emoji` 轮廓，栅格后端保留彩色位图；同一条文里按 run 切分选字面。
+     宽度接近 1.25 em（24.95 vs 25.39 @20px，+1.8%），对拍理由见
+     `metrics-ledger.md` · M1-c。
 
 **为什么简单文字不绕 HarfBuzz**：Noto Sans CJK 是可变字体，HarfBuzz 在
 `"r0"` 这种串里会把 '0' 换成另一个字形实例（63153），而 skia 的 `drawString()`
 用 cmap 的 17；两者宽度相同、字形不同。M0-7 的度量端与浏览器走 HarfBuzz，但
 对比度量的口径是 advance，不受影响；设备这边要的是「与栅格基线同一张图」，
 所以简单文字按 cmap 直映，复杂文字再上 HarfBuzz。
-`shortcut:` 推进是 hinted 的（整 pt 量化，长标签累计误差 < 1pt）；要线性度量时
-换 `setLinearMetrics(True)`，并同步重录 `docs/cases/grob-*/baseline`。
+M0 的 hinted 推进已经换成线性（SIL-655）：hinted 的整 pt 量化不是「误差 < 1pt」，
+而是按字形累积（`right` @10pt +8.75%、16px 的 `n=ü` −10.61%）。切换时
+`grob-text` / `grob-text-rot` 两张自产基线按修正重录，其余 14 张 grob 与
+2 张 viewport 逐字节不变（`metrics-ledger.md` · M1-e）。
 
 ## 5. `pch`：照 R 的常量，不是「直径 = size」
 
@@ -213,10 +226,11 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
 
 | 行为 | R / 上游 | M0-8 |
 | --- | --- | --- |
-| 粗体 / 斜体 | 字体文件 + 合成 | key 后缀保留，落到同一份常规字面（M1） |
-| 彩色 emoji | CBDT 位图字形 | 矢量后端没有轮廓 → 该字形为空（栅格正常，M1 走位图回退） |
-| 字符间 kerning | HarfBuzz / Cairo | 简单文字用 hinted 推进，不做 kerning（< 0.5%，见 M0-7 账本） |
-| 标签里的 `\n` | `grid.text` 断行 | **不换行**：`\n` 当作普通码点落字，字体没有它的字形就画 `.notdef` 豆腐块（实测 `"a\nb"` 墨迹 194 px，`"ab"` 61 px）。ggplot2 标签里 `\n` 很常见，M1 要在 `text` 进设备前切行（IR 需要带行距/对齐意图） |
+| 粗体 / 斜体 | 字体文件 + 合成 | M1 已落地：真实 Bold/Italic/BoldItalic 字面，可变字体用 `wght` 轴；缺字面报错（`metrics-ledger.md` · M1-a） |
+| 彩色 emoji | CBDT 位图字形 | M1 策略：矢量后端回落单色 Noto Emoji 轮廓，栅格用彩色位图（M1-c） |
+| 字符间 kerning | HarfBuzz / Cairo | 线性推进（与 R 同口径），不建模 kerning；差 < 0.25%（M1-e） |
+| 标签里的 `\n` | `grid.text` 断行 | M1 已支持：行距 1.44×fontsize、整块 vjust（M1-b） |
+| 非默认 `lineheight` | `gpar(lineheight)` | IR 的 `text` 节点没有 lineheight 字段，设备固定按缺省 1.2 画（M1-b 的 IR 缺口） |
 | 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
 | 渐变 / 图案填充 | grid 的 gpar 支持 | IR 的 gpar 只有 RGBA |
 | 透明背景 | 设备相关 | 页面固定白底 |

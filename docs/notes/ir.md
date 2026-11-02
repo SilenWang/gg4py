@@ -255,6 +255,13 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 `hjust` / `vjust` 之类的字段（`tests/test_ir.py::test_text_node_carries_no_measurement_intent`
 逐名断言，加这类字段会红）。逐元素的 hjust/vjust 差异由写 IR 的一方折进 `pos`。
 
+多行（SIL-655）：`texts` 里允许 `\n`，`width` 是**各行的最大推进**，`pos` 与
+`anchor` / `baseline` 对整块。渲染端按 grid 的缺省 `lineheight = 1.2` 切行
+（绘制行距 `1.2 × lineheight × size` = 1.44 × size），整块高度用 R 的
+`strheight`（cap height）。IR 目前**没有** `lineheight` 字段，非缺省行距与
+小数 `hjust/vjust` 表达不了——这是 M1 已知缺口（`metrics-ledger.md` · M1-b）；
+要支持时加字段并升 IR 版本，不在这条节点上偷偷塞参数。
+
 渲染端拿 `width` 做对齐与差分统计；它自己排出来的宽度如果和 IR 里的 `width` 有差
 （不同字体版本、emoji strike），按 `docs/notes/snapshot-policy.md` 的文字容差处理，
 不回写 IR、不做二次测量。

@@ -521,6 +521,9 @@ def _layer_grobs(
         size_pt = _finite_float(params, "size_pt", 11.0)
         hjust = _finite_float(params, "hjust", 0.5)
         vjust = _finite_float(params, "vjust", 0.5)
+        family = _text_param(params, "family", DEFAULT_FAMILY)
+        font = _font_int(_text_param(params, "fontface", "plain"))
+        lineheight = _finite_float(params, "lineheight", 1.2)
         out = []
         for index in range(count):
             out.append(
@@ -531,7 +534,13 @@ def _layer_grobs(
                     hjust=hjust,
                     vjust=vjust,
                     default_units="bigpts",
-                    gp=gpar(col=colours[index], fontsize=size_pt, fontfamily=DEFAULT_FAMILY),
+                    gp=gpar(
+                        col=colours[index],
+                        fontsize=size_pt,
+                        fontfamily=family,
+                        font=font,
+                        lineheight=lineheight,
+                    ),
                 )
             )
         return out
@@ -577,3 +586,31 @@ def _labels(
     else:
         raise PlotSpecError("text layer 需要 `mapping.label` 或 `params.labels`")
     return [str(item) for item in _values(raw, count, "label")]
+
+
+#: ggplot2 的 `fontface` 字符串 → gpar 的 `font` 整数（R `validGP()` 的口径）。
+_FONT_FACES: dict[str, int] = {
+    "plain": 1,
+    "normal": 1,
+    "bold": 2,
+    "italic": 3,
+    "oblique": 3,
+    "bold.italic": 4,
+    "bolditalic": 4,
+}
+
+
+def _text_param(params: Mapping[str, Any], name: str, default: str) -> str:
+    value = params.get(name, default)
+    if not isinstance(value, str) or not value:
+        raise PlotSpecError(f"`{name}` 必须是非空字符串，收到 {value!r}")
+    return value
+
+
+def _font_int(fontface: str) -> int:
+    face = fontface.strip().lower()
+    if face not in _FONT_FACES:
+        raise PlotSpecError(
+            f"`fontface` 必须是 {', '.join(sorted(_FONT_FACES))} 之一，收到 {fontface!r}"
+        )
+    return _FONT_FACES[face]

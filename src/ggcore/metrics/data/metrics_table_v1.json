@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "table_version": 1,
- "run_rules_version": 1,
+ "run_rules_version": 2,
  "format": "GGMT (magic) + zlib，布局见 src/ggcore/metrics/table.py",
  "generator": "tools/metrics/build_table.py",
  "generated_with": {
@@ -50,7 +50,7 @@
   }
  ],
  "table_bytes": 79246,
- "table_sha256": "ac7d37502259a34b5c3f421ea19b8fae2f3ee5df2a6b0d6aa57de724d617f1b0",
+ "table_sha256": "daa44fbd0a016e7c720565146544be4962be4325d2e503b9325be83a4b0d6658",
  "rules": {
   "glue_ranges": [
    [
