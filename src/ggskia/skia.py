@@ -25,6 +25,7 @@ shaping 与笔位（`ggskia.text`），所以三路的位置一致，差的只�
 from __future__ import annotations
 
 import math
+import re
 import warnings
 from collections.abc import Iterator, Sequence
 from typing import Any
@@ -529,6 +530,40 @@ class SkiaRasterDevice(_SkiaDevice):
         return bytes(data.bytes())
 
 
+#: skia 的 SVG 序列化器给 `<clipPath>`（以及以后的渐变 / 图案）发的 id 是
+#: **进程级递增**的：同一进程里第二次画布会从 `cl_3` 接着往下数，所以同一张图
+#: 两次渲染的字节不同。id 只是文档内部的引用名，按出现顺序重编号即可让产物重新
+#: 变成输入的纯函数（M1-12 的「两次 ggsave 逐字节相等」靠它）。
+_SVG_ID = re.compile(r'id="([a-z]+)_([0-9a-f]+)"')
+_SVG_URL = re.compile(r"url\(#([a-z]+_[0-9a-f]+)\)")
+_SVG_HREF = re.compile(r'(xlink:href|href)="#([a-z]+_[0-9a-f]+)"')
+
+
+def _stable_svg_ids(svg: bytes) -> bytes:
+    """把 skia 的进程级 id 按出现顺序重编号（`cl_3` → `cl_0`，引用一并改）。"""
+    text = svg.decode("utf-8")
+    renamed: dict[str, str] = {}
+    counters: dict[str, int] = {}
+
+    def rename(match: re.Match[str]) -> str:
+        prefix, old = match.group(1), match.group(2)
+        key = f"{prefix}_{old}"
+        new = renamed.get(key)
+        if new is None:
+            index = counters.get(prefix, 0)
+            counters[prefix] = index + 1
+            new = f"{prefix}_{index:x}"
+            renamed[key] = new
+        return f'id="{new}"'
+
+    text = _SVG_ID.sub(rename, text)
+    if not renamed:  # pragma: no cover - 空文档 / 没有 id 的画布
+        return svg
+    text = _SVG_URL.sub(lambda m: f"url(#{renamed.get(m.group(1), m.group(1))})", text)
+    text = _SVG_HREF.sub(lambda m: f'{m.group(1)}="#{renamed.get(m.group(2), m.group(2))}"', text)
+    return text.encode("utf-8")
+
+
 class SkiaSvgDevice(_SkiaDevice):
     """SVG 后端：字形全部走轮廓，产物里没有 `<text>` / `@font-face`。"""
 
@@ -563,7 +598,7 @@ class SkiaSvgDevice(_SkiaDevice):
         self.canvas = None
         data = self._stream.detachAsData()
         self._stream = None
-        return bytes(data.bytes())
+        return _stable_svg_ids(bytes(data.bytes()))
 
     def _abort(self) -> None:
         # 画布析构时会把半成品写进 stream；这里先放开画布再放手 stream。

@@ -77,6 +77,11 @@ E3 的结论：CanvasKit 只有栅格后端，PDF 走 HarfBuzz 轮廓）：
 页面底色在 M0 是白的（`clear(WHITE)`），不做透明背景；页眉页脚不参与场景遍历
 （快照工具的说明文字直接画在画布上）。
 
+SVG 产物的 id（skia 给 `<clipPath>` 的 `cl_N`）是进程级递增的，同一进程里第二个
+画布会接着数。`SkiaSvgDevice._finish` 按出现顺序把它们重编号成 `cl_0…` 并同步改
+`url(#…)`，所以同一份 IR 两次出图的字节相同（M1-12 的 `ggsave` 逐字节验收靠它；
+口径见 `docs/notes/io.md` §4.1）。
+
 ## 4. 文字：一个 font key、一条 run 切分规则、一套笔位
 
 IR 的 `text` 只有 `font`（单个已解析 key）、`size`、锚点、`angle` 和一个**最终
@@ -235,7 +240,7 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
 | 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
 | 渐变 / 图案填充 | grid 的 gpar 支持 | IR 的 gpar 只有 RGBA |
 | 透明背景 | 设备相关 | 页面固定白底 |
-| 多页 / 多文档 | PDF 支持 | 一台设备一页（M1 的 `ggsave` 再谈） |
+| 多页 / 多文档 | PDF 支持 | 一台设备一页（M1-12 的 `ggsave` 也只出一页，见 `docs/notes/io.md` §4） |
 
 ## 10. 复现
 

@@ -20,6 +20,7 @@ pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
 | `pixi run bench` | pytest-benchmark 基线（`.benchmarks/`，不入库） |
 | `pixi run render` | M0-8/9 · `--scene <file.ggir.cbor> --out x.png\|svg\|pdf`，或 `render <case-dir> --format svg --out <case>/current` |
 | `pixi run diff` | M0-9 · 参考图 × 实测图：图级差异 + 平均差异 + 热图 + `--json`（`docs/notes/diff.md`） |
+| `pixi run ggsave` | M1-12 · `<module:plot_fn> out.png\|svg\|pdf\|ir.cbor\|ir.json`，`--width/--height/--units/--dpi`（`docs/notes/io.md`） |
 | `pixi run ir:size` | 10k 点 path 的 IR vs 逐元素 JSON 体积（`docs/notes/ir.md` §10） |
 | `pixi run gate:imports` | X1 · ggcore import 白名单 |
 | `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
@@ -65,15 +66,17 @@ src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条
   metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
   device.py          # 设备协议：open / draw_scene / close（M0-8）
   plotspec.py        # 案例适配层：plot 规格 → grob → IR（M0-9）
+  io.py              # ggsave / save_ir / export_ir_json：落盘编排（M1-12）
   data.py            # 列式表 ColumnTable / Column：三种输入的归一结果（M1-14）
   cli/               # 命令行辅助（render / diff 的入口在包外）
 src/ggio/            # 输入适配层：pandas / Arrow / dict → ColumnTable（M1-14）
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
-src/ggskia/          # skia 设备（PNG / SVG / PDF）与 `pixi run render`（M0-8）
+src/ggskia/          # skia 设备（PNG / SVG / PDF）与 render / ggsave 的 CLI（M0-8 / M1-12）
 src/ggdiff/          # 差分：resvg 统一栅格 + 像素判据 + 报告（M0-9）
 tools/gates/         # 横切门禁脚本（X1）
 tools/refs/          # R 侧参考值生成（units / gtable / viewport）
 tools/cases/         # 可视化快照渲染（viewport 快照 M0-4 / grob 快照 M0-6）
+tools/examples/      # 文档与验收用的 plot 模块（`ggsave` 的分面 + 图例图）
 tools/metrics/       # 兜底表生成 + CanvasKit 度量脚本（门禁复用）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
 benchmarks/          # pytest-benchmark 基线
@@ -100,6 +103,7 @@ docs/spike/          # M-1 可行性实验与结论
 - grob 口径账本：`docs/notes/grobs.md`
 - 设备口径账本（pt/DPI、文字轮廓、pch 表、曲线求值）：`docs/notes/device.md`
 - 差分管线（R 参考、resvg 统一栅格、2%/1% 判据、JSON 契约）：`docs/notes/diff.md`
+- 落盘口径（ggsave 的单位 / 缺省值 / 三路设备差异 / IR 与 JSON 视图）：`docs/notes/io.md`
 - 输入适配口径（三种输入 / dtype / 分类顺序 / 时间 / 缺失）：`docs/notes/data.md`
 - aes 表达式口径（字符串解析 / 白名单 / 长度语义 / 自动分组）：`docs/notes/aes.md`
 - 坐标口径账本（面板范围 / expand / clip / 等比例 / 根 native）：`docs/notes/coord.md`

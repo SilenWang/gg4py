@@ -64,6 +64,11 @@ pillow = ">=11, <14"
 [tasks]
 render = "PYTHONPATH=src python -m ggskia.cli.render"
 diff = "PYTHONPATH=src python -m ggdiff.cli"
+# M1-12：一张 ggplot → PNG / SVG / PDF，或 IR（.ggir.cbor / .ir.json）。
+# 形状：`pixi run ggsave <module:plot_fn> <out.png|.svg|.pdf|.cbor|.json>`。
+# 入口在 ggskia（出图要 skia-python，X1 门禁不允许 ggcore import 它；
+# 设备无关的编排在 ggcore.io，见 docs/notes/io.md）。
+ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
