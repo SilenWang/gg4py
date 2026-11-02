@@ -37,7 +37,6 @@ from ggcore.units import UnitContext, convert_height, convert_width
 from ggcore.viewport import NA, gpar
 
 __all__ = [
-    "AXIS_MARGIN_GAP_EM",
     "FALLBACK_CHAR_EM",
     "TEXT_LINE_EM",
     "AxisError",
@@ -63,10 +62,6 @@ TEXT_LINE_EM = 0.955
 #: 没有 `Metrics` 时每字符的宽度（em）。只在布局估算里用，渲染宽度由 IR 文本节点
 #: 自带的 `text.width` 决定；有度量时一律走 `Metrics.strwidth()`。
 FALLBACK_CHAR_EM = 0.6
-
-#: `axis.text` 的默认 margin（2.2pt）之外，刻度与文字之间的那点空隙按像素为 0：
-#: R 把间距放在元素 margin 里，这里同样只认主题值。
-AXIS_MARGIN_GAP_EM = 0.0
 
 _CM_PER_INCH = 2.54
 _POINTS_PER_INCH = 72.0

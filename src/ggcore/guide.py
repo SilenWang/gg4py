@@ -601,7 +601,6 @@ def _key_grob(
     build: PlotBuild,
     layer_index: int,
     values: Mapping[str, Any],
-    box: _Box,
     *,
     override: Mapping[str, Any] | None = None,
 ) -> Any | None:
@@ -992,7 +991,6 @@ def legend_grob(
                 build,
                 layer_index,
                 cell.key.values,
-                key_box,
                 override=_override(guide_build.guide),
             )
             if decor is None:
