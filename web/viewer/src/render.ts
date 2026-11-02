@@ -14,6 +14,7 @@
  *   `canvas.concat()` 口径一致。
  */
 
+import { curvePoints, xsplinePoints } from "./curves.js";
 import { bufValue, nodeRows, paramNumber, paramString } from "./ir.js";
 import type { Color, FloatBuffer, Gpar, IrNode, IrScene } from "./ir.js";
 import { IrError } from "./ir.js";
@@ -212,12 +213,24 @@ function gparOf(node: IrNode): Gpar {
 }
 
 /**
- * 单位空间（半径 0.5）的字形。只用绝对 M / L / C / Z，坐标全部过矩阵，
- * 不用圆弧（`A` 的 rx/ry/flag 不是坐标，套矩阵会写出非法 `d`）。
+ * 字形坐标以 `size` 为单位（R 的 `GESymbol()` 口径，见 `ggskia/pch.py`）：符号
+ * 半径是 `0.375 × size`，直径只有 size 的 3/4。只用绝对 M / L / C / Z，坐标全部
+ * 过矩阵，不用圆弧（`A` 的 rx/ry/flag 不是坐标，套矩阵会写出非法 `d`）。
  */
 type GlyphOp = ["M" | "L" | "C" | "Z", number[]];
 
-function circleOps(radius = 0.5): GlyphOp[] {
+// R `engine.c::GESymbol()` 的常量（与 `ggskia/pch.py` 同一张表，别改成 0.5）。
+const RADIUS = 0.375;
+const SMALL = 0.25;
+const SQRC = 0.886226925452758;
+const DMDC = 1.2533141373155003;
+const TRC0 = 1.5551203015562142;
+const TRC1 = 1.3467736870885984;
+const TRC2 = 0.7775601507781071;
+/** `pch = 46`（`'.'`）：R 画 0.01 inch 的实心方块，与 `size` 无关。 */
+const DOT_HALF_PT = 0.36;
+
+function circleOps(radius = RADIUS): GlyphOp[] {
   const r = radius;
   const k = 0.5523 * r;
   return [
@@ -230,72 +243,112 @@ function circleOps(radius = 0.5): GlyphOp[] {
   ];
 }
 
-const SQUARE_OPS: GlyphOp[] = [
-  ["M", [-0.5, -0.5]],
-  ["L", [0.5, -0.5]],
-  ["L", [0.5, 0.5]],
-  ["L", [-0.5, 0.5]],
-  ["Z", []],
-];
-const TRIANGLE_UP_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0.5, 0.433]],
-  ["L", [-0.5, 0.433]],
-  ["Z", []],
-];
-const TRIANGLE_DOWN_OPS: GlyphOp[] = [
-  ["M", [0, 0.5]],
-  ["L", [0.5, -0.433]],
-  ["L", [-0.5, -0.433]],
-  ["Z", []],
-];
-const DIAMOND_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0.5, 0]],
-  ["L", [0, 0.5]],
-  ["L", [-0.5, 0]],
-  ["Z", []],
-];
-const PLUS_OPS: GlyphOp[] = [
-  ["M", [0, -0.5]],
-  ["L", [0, 0.5]],
-  ["M", [-0.5, 0]],
-  ["L", [0.5, 0]],
-];
-const CROSS_OPS: GlyphOp[] = [
-  ["M", [-0.354, -0.354]],
-  ["L", [0.354, 0.354]],
-  ["M", [0.354, -0.354]],
-  ["L", [-0.354, 0.354]],
-];
-const STAR_VERTS: Array<[number, number]> = [
-  [0, -0.5],
-  [0.118, -0.162],
-  [0.476, -0.155],
-  [0.19, 0.062],
-  [0.294, 0.405],
-  [0, 0.2],
-  [-0.294, 0.405],
-  [-0.19, 0.062],
-  [-0.476, -0.155],
-  [-0.118, -0.162],
-];
-const STAR_OPS: GlyphOp[] = [
-  ["M", STAR_VERTS[0]],
-  ...STAR_VERTS.slice(1).map((point): GlyphOp => ["L", point]),
-  ["Z", []],
-];
+function polygonOps(vertices: Array<[number, number]>): GlyphOp[] {
+  return [
+    ["M", vertices[0]],
+    ...vertices.slice(1).map((point): GlyphOp => ["L", point]),
+    ["Z", []],
+  ];
+}
+
+function lineOps(pairs: Array<[[number, number], [number, number]]>): GlyphOp[] {
+  return pairs.flatMap(([start, end]): GlyphOp[] => [
+    ["M", start],
+    ["L", end],
+  ]);
+}
+
+/** R 的三角形：TRC0/TRC1/TRC2 把等边三角形摆正（坐标已翻成 y 向下）。 */
+function triangleOps(down: boolean): GlyphOp[] {
+  const r = TRC0 * RADIUS;
+  const yc = TRC2 * RADIUS;
+  const xc = TRC1 * RADIUS;
+  return down
+    ? polygonOps([
+        [0, r],
+        [xc, -yc],
+        [-xc, -yc],
+      ])
+    : polygonOps([
+        [0, -r],
+        [xc, yc],
+        [-xc, yc],
+      ]);
+}
+
+const SQUARE_OPS = polygonOps([
+  [-RADIUS, -RADIUS],
+  [RADIUS, -RADIUS],
+  [RADIUS, RADIUS],
+  [-RADIUS, RADIUS],
+]);
+const TRIANGLE_UP_OPS = triangleOps(false);
+const TRIANGLE_DOWN_OPS = triangleOps(true);
+const DIAMOND_OPS = polygonOps([
+  [-RADIUS, 0],
+  [0, -RADIUS],
+  [RADIUS, 0],
+  [0, RADIUS],
+]);
+/** pch 3：加号，臂长 √2 × RADIUS。 */
+const PLUS_OPS = lineOps([
+  [
+    [-Math.SQRT2 * RADIUS, 0],
+    [Math.SQRT2 * RADIUS, 0],
+  ],
+  [
+    [0, -Math.SQRT2 * RADIUS],
+    [0, Math.SQRT2 * RADIUS],
+  ],
+]);
+const CROSS_OPS = lineOps([
+  [
+    [-RADIUS, -RADIUS],
+    [RADIUS, RADIUS],
+  ],
+  [
+    [-RADIUS, RADIUS],
+    [RADIUS, -RADIUS],
+  ],
+]);
+/** pch 5：菱形，顶点距 √2 × RADIUS（比 pch 18 大一圈）。 */
+const BIG_DIAMOND_OPS = polygonOps([
+  [-Math.SQRT2 * RADIUS, 0],
+  [0, -Math.SQRT2 * RADIUS],
+  [Math.SQRT2 * RADIUS, 0],
+  [0, Math.SQRT2 * RADIUS],
+]);
+/** pch 11：上下两个三角（TRC 常量与单三角一致）。 */
+function doubleTriangleOps(): GlyphOp[] {
+  const r = TRC0 * RADIUS;
+  const yc = 0.5 * (TRC2 * RADIUS + r);
+  const xc = TRC1 * RADIUS;
+  return [
+    ...polygonOps([
+      [0, r],
+      [xc, -yc],
+      [-xc, -yc],
+    ]),
+    ...polygonOps([
+      [0, -r],
+      [xc, yc],
+      [-xc, yc],
+    ]),
+  ];
+}
 
 interface Glyph {
   ops: GlyphOp[];
   /** `col` = 用 gpar.col 填充（grid 的实心 pch），`gpar` = 用 gpar.fill 填充（pch 21..25）。 */
   fill: "none" | "col" | "gpar";
   stroke: boolean;
+  /** 坐标已是 pt（`pch = 46`），不再乘 `size`。 */
+  fixed?: boolean;
 }
 
 /**
- * grid `pch` → 单位空间字形。9..14 是“复合”字形（圈里加号等），这里落到最接近的
- * 简单形状；未知编号按 `pch = 1`（空心圆）处理。差异记在 `docs/notes/viewer.md`。
+ * grid `pch` → 字形（R `GESymbol()` 的几何与上色方式，逐条对照
+ * `ggskia/pch.py`）。未知编号按 `pch = 1`（空心圆）处理。
  */
 function glyphFor(pch: number): Glyph {
   switch (pch) {
@@ -306,47 +359,146 @@ function glyphFor(pch: number): Glyph {
     case 2:
       return { ops: TRIANGLE_UP_OPS, fill: "none", stroke: true };
     case 3:
-    case 9:
-    case 12:
       return { ops: PLUS_OPS, fill: "none", stroke: true };
     case 4:
-    case 13:
       return { ops: CROSS_OPS, fill: "none", stroke: true };
     case 5:
-      return { ops: DIAMOND_OPS, fill: "none", stroke: true };
+      return { ops: BIG_DIAMOND_OPS, fill: "none", stroke: true };
     case 6:
       return { ops: TRIANGLE_DOWN_OPS, fill: "none", stroke: true };
     case 7:
-    case 14:
-      return { ops: [...SQUARE_OPS, ...PLUS_OPS], fill: "none", stroke: true };
+      return { ops: [...SQUARE_OPS, ...CROSS_OPS], fill: "none", stroke: true };
     case 8:
-      return { ops: STAR_OPS, fill: "none", stroke: true };
+      return {
+        ops: [
+          ...CROSS_OPS,
+          ...lineOps([
+            [
+              [-Math.SQRT2 * RADIUS, 0],
+              [Math.SQRT2 * RADIUS, 0],
+            ],
+            [
+              [0, -Math.SQRT2 * RADIUS],
+              [0, Math.SQRT2 * RADIUS],
+            ],
+          ]),
+        ],
+        fill: "none",
+        stroke: true,
+      };
+    case 9:
+      return {
+        ops: [
+          ...lineOps([
+            [
+              [-Math.SQRT2 * RADIUS, 0],
+              [Math.SQRT2 * RADIUS, 0],
+            ],
+            [
+              [0, -Math.SQRT2 * RADIUS],
+              [0, Math.SQRT2 * RADIUS],
+            ],
+          ]),
+          ...BIG_DIAMOND_OPS,
+        ],
+        fill: "none",
+        stroke: true,
+      };
     case 10:
-      return { ops: [...circleOps(), ...PLUS_OPS], fill: "none", stroke: true };
+      return {
+        ops: [
+          ...circleOps(),
+          ...lineOps([
+            [
+              [-RADIUS, 0],
+              [RADIUS, 0],
+            ],
+            [
+              [0, -RADIUS],
+              [0, RADIUS],
+            ],
+          ]),
+        ],
+        fill: "none",
+        stroke: true,
+      };
     case 11:
-      return { ops: [...TRIANGLE_UP_OPS, ...TRIANGLE_DOWN_OPS], fill: "none", stroke: true };
+      return { ops: doubleTriangleOps(), fill: "none", stroke: true };
+    case 12:
+      return {
+        ops: [...SQUARE_OPS, ...lineOps([
+          [
+            [-RADIUS, 0],
+            [RADIUS, 0],
+          ],
+          [
+            [0, -RADIUS],
+            [0, RADIUS],
+          ],
+        ])],
+        fill: "none",
+        stroke: true,
+      };
+    case 13:
+      return { ops: [...circleOps(), ...CROSS_OPS], fill: "none", stroke: true };
+    case 14:
+      return { ops: [...triangleOps(false), ...SQUARE_OPS], fill: "none", stroke: true };
     case 15:
       return { ops: SQUARE_OPS, fill: "col", stroke: false };
     case 16:
-    case 19:
-    case 20:
-      return { ops: pch === 20 ? circleOps(0.2) : circleOps(), fill: "col", stroke: false };
+      return { ops: circleOps(), fill: "col", stroke: false };
     case 17:
-    case 24:
-      return {
-        ops: TRIANGLE_UP_OPS,
-        fill: pch === 17 ? "col" : "gpar",
-        stroke: pch !== 17,
-      };
+      return { ops: TRIANGLE_UP_OPS, fill: "col", stroke: false };
     case 18:
-    case 23:
-      return { ops: DIAMOND_OPS, fill: pch === 18 ? "col" : "gpar", stroke: pch !== 18 };
+      return { ops: DIAMOND_OPS, fill: "col", stroke: false };
+    case 19:
+      return { ops: circleOps(), fill: "col", stroke: true };
+    case 20:
+      return { ops: circleOps(SMALL), fill: "col", stroke: true };
     case 21:
       return { ops: circleOps(), fill: "gpar", stroke: true };
-    case 22:
-      return { ops: SQUARE_OPS, fill: "gpar", stroke: true };
+    case 22: {
+      const d = RADIUS * SQRC;
+      return {
+        ops: polygonOps([
+          [-d, -d],
+          [d, -d],
+          [d, d],
+          [-d, d],
+        ]),
+        fill: "gpar",
+        stroke: true,
+      };
+    }
+    case 23: {
+      const d = RADIUS * DMDC;
+      return {
+        ops: polygonOps([
+          [0, -d],
+          [d, 0],
+          [0, d],
+          [-d, 0],
+        ]),
+        fill: "gpar",
+        stroke: true,
+      };
+    }
+    case 24:
+      return { ops: TRIANGLE_UP_OPS, fill: "gpar", stroke: true };
     case 25:
       return { ops: TRIANGLE_DOWN_OPS, fill: "gpar", stroke: true };
+    case 46:
+      return {
+        ops: polygonOps([
+          [-DOT_HALF_PT, -DOT_HALF_PT],
+          [DOT_HALF_PT, -DOT_HALF_PT],
+          [DOT_HALF_PT, DOT_HALF_PT],
+          [-DOT_HALF_PT, DOT_HALF_PT],
+        ]),
+        fill: "col",
+        stroke: false,
+        fixed: true,
+      };
     default:
       return { ops: circleOps(), fill: "none", stroke: true };
   }
@@ -392,6 +544,11 @@ class Renderer {
       "data-size": `${num(scene.size[0])}x${num(scene.size[1])}`,
     });
     this.defs = el("defs");
+    // 导出 outerHTML 时要有命名空间声明：`<svg>` 在 DOM 里属于 SVG 命名空间，
+    // 但 `outerHTML` 不会自动补默认 xmlns；独立文件（resvg / XML 解析器）需要它。
+    this.svg.setAttribute("xmlns", SVG_NS);
+    // resvg 同样要求 `xlink` 前缀有声明（raster 的 `<image>` 仍写 `xlink:href`）。
+    this.svg.setAttribute("xmlns:xlink", XLINK_NS);
     this.svg.append(this.defs);
   }
 
@@ -721,16 +878,39 @@ class Renderer {
         return;
       }
       case "xspline": {
-        const d = xsplinePath(node, matrix, node.params["shape"] as number, node.params["open"] as boolean);
+        // R `xspline.c` 的采样（与桌面设备的 `ggskia.curves` 同一份公式）。
+        const shape = node.params["shape"] as number;
+        const open = node.params["open"] as boolean;
+        const points = node.bufs["points"];
+        const ids = node.bufs["id"] ?? null;
+        const page: [number, number] = [this.scene.size[0], this.scene.size[1]];
+        const subpaths: SubPath[] = [];
+        let start = 0;
+        for (let row = 1; row <= points.rows; row++) {
+          const changed = row === points.rows || (ids !== null && ids.data[row] !== ids.data[start]);
+          if (!changed) continue;
+          const control: Array<[number, number]> = [];
+          for (let index = start; index < row; index++) {
+            control.push([points.data[index * 2] as number, points.data[index * 2 + 1] as number]);
+          }
+          if (control.length >= (open ? 2 : 3)) {
+            const sampled = xsplinePoints(control, shape, { open, page }).map(([x, y]) =>
+              mapPoint(matrix, x, y),
+            );
+            const sub = pushSubPath(subpaths, sampled[0]);
+            for (const point of sampled.slice(1)) {
+              sub.segments.push(["L", [point[0], point[1]]]);
+            }
+          }
+          start = row;
+        }
+        const d = pathData(subpaths, !open);
         this.emit(
           node,
           id,
           parent,
           viewport,
-          el("path", {
-            d,
-            ...styleAttributes(gpar, scale, { fill: node.params["open"] !== true }),
-          }),
+          el("path", { d, ...styleAttributes(gpar, scale, { fill: !open }) }),
           0,
           rows,
           boxOfPathData(d),
@@ -765,41 +945,42 @@ class Renderer {
         return;
       }
       case "curve": {
+        // `curve_points()` 的 `angle` 定义在 R 的 y 向上坐标系里：先翻成 R 坐标
+        // 求值，再把折线翻回页面坐标（`ggskia/skia.py::_draw_curve` 同一口径）。
         const ends = node.bufs["ends"];
-        const curvature = node.params["curvature"] as number;
-        const inflect = node.params["inflect"] as boolean;
+        const open = node.params["open"] as boolean;
+        const height = this.scene.size[1];
+        const page: [number, number] = [this.scene.size[0], this.scene.size[1]];
         const subpaths: SubPath[] = [];
         for (let row = 0; row < ends.rows; row++) {
-          const p1 = mapPoint(matrix, ends.data[row * 4] as number, ends.data[row * 4 + 1] as number);
-          const p2 = mapPoint(matrix, ends.data[row * 4 + 2] as number, ends.data[row * 4 + 3] as number);
-          const dx = p2[0] - p1[0];
-          const dy = p2[1] - p1[1];
-          const length = Math.hypot(dx, dy) || 1;
-          // 弦的法向（页面 y 向下）：grid.curve 的精确公式未实现，见 viewer.md 差异表。
-          const nx = -dy / length;
-          const ny = dx / length;
-          const bulge = (curvature * length) / 2;
-          const sign = inflect ? -1 : 1;
-          const sub = pushSubPath(subpaths, p1);
-          sub.segments.push([
-            "C",
-            [
-              p1[0] + nx * bulge,
-              p1[1] + ny * bulge,
-              p2[0] + nx * bulge * sign,
-              p2[1] + ny * bulge * sign,
-              p2[0],
-              p2[1],
-            ],
-          ]);
+          const x1 = ends.data[row * 4] as number;
+          const y1 = ends.data[row * 4 + 1] as number;
+          const x2 = ends.data[row * 4 + 2] as number;
+          const y2 = ends.data[row * 4 + 3] as number;
+          if (![x1, y1, x2, y2].every(Number.isFinite)) continue;
+          const sampled = curvePoints(x1, height - y1, x2, height - y2, {
+            curvature: node.params["curvature"] as number,
+            angle: node.params["angle"] as number,
+            ncp: node.params["ncp"] as number,
+            shape: node.params["shape"] as number,
+            square: node.params["square"] as boolean,
+            inflect: node.params["inflect"] as boolean,
+            open,
+            page,
+          }).map(([x, y]) => mapPoint(matrix, x, height - y));
+          if (sampled.length < 2) continue;
+          const sub = pushSubPath(subpaths, sampled[0]);
+          for (const point of sampled.slice(1)) {
+            sub.segments.push(["L", [point[0], point[1]]]);
+          }
         }
-        const d = pathData(subpaths, false);
+        const d = pathData(subpaths, !open);
         this.emit(
           node,
           id,
           parent,
           viewport,
-          el("path", { d, ...styleAttributes(gpar, scale, { fill: false }) }),
+          el("path", { d, ...styleAttributes(gpar, scale, { fill: !open }) }),
           0,
           rows,
           boxOfPathData(d),
@@ -820,19 +1001,26 @@ class Renderer {
           attrs["fill"] = col ?? "none";
           if (col !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
         }
-        // 一个 points 节点只出一个 `<path>`：每行一条 `M…Z` 子路径拼进同一个 `d`。
-        // 这是 IR 的 bulk 口径（`docs/notes/ir.md`），10k 行也只占 1 个 DOM 元素；
-        // hover 因此到节点粒度，行范围写在 `data-rows`（逐行命中见 viewer.md §9）。
+        // 半透明的点必须**一行一个元素**：SVG 对一个 `<path>` 只做一次合成，
+        // 两个重叠点半透明时整节点合成一次只算一层，比桌面（逐点绘制）更浅。
+        // 不透明的点仍按 IR 的 bulk 口径合成单个 `<path>`（10k 行 = 1 个 DOM 元素）。
+        const transparent =
+          gpar.alpha < 1 ||
+          (gpar.col !== null && gpar.col[3] < 255) ||
+          (gpar.fill !== null && gpar.fill[3] < 255);
+        // `pch = 46` 的字形坐标是绝对 pt（不吃 size），其余以 size 为单位。
+        const unit = glyph.fixed === true ? 1 : size;
+        const extent = glyph.fixed === true ? DOT_HALF_PT * 2 : size;
+        const half = Math.abs((extent * scale) / 2);
         let d = "";
         let box: Box | null = null;
         for (let row = 0; row < rows; row++) {
           const x = bufValue(node, "points", row, 0);
           const y = bufValue(node, "points", row, 1);
           if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-          const glyphMatrix = compose(matrix, [size, 0, 0, size, x, y]);
-          d += glyphPath(glyph.ops, glyphMatrix);
+          const glyphMatrix = compose(matrix, [unit, 0, 0, unit, x, y]);
+          const glyphD = glyphPath(glyph.ops, glyphMatrix);
           const [px, py] = mapPoint(matrix, x, y);
-          const half = Math.abs((size * scale) / 2);
           const rowBox = { x0: px - half, y0: py - half, x1: px + half, y1: py + half };
           box =
             box === null
@@ -843,8 +1031,14 @@ class Renderer {
                   x1: Math.max(box.x1, rowBox.x1),
                   y1: Math.max(box.y1, rowBox.y1),
                 };
+          if (transparent) {
+            this.emit(node, id, parent, viewport, el("path", { d: glyphD, ...attrs }), row, rows, rowBox);
+          } else {
+            d += glyphD;
+          }
         }
         if (box === null) return;
+        if (transparent) return;
         const element = el("path", { d, ...attrs });
         element.setAttribute("data-rows", rows > 0 ? `0-${rows - 1}` : "0");
         this.emit(node, id, parent, viewport, element, 0, rows, box);
@@ -986,47 +1180,6 @@ function boxOfPathData(d: string): Box {
     };
   }
   return box;
-}
-
-/** xspline：shape=0 等价于 Catmull-Rom（转成三次贝塞尔）；|shape|>0 向直线收拢。 */
-function xsplinePath(node: IrNode, matrix: Matrix, shape: number, open: boolean): string {
-  const points = node.bufs["points"];
-  const ids = node.bufs["id"] ?? null;
-  const tension = Math.max(0, 1 - Math.abs(shape));
-  const subpaths: SubPath[] = [];
-  let start = 0;
-  for (let row = 1; row <= points.rows; row++) {
-    const changed = row === points.rows || (ids !== null && ids.data[row] !== ids.data[start]);
-    if (!changed) continue;
-    const slice: Array<[number, number]> = [];
-    for (let index = start; index < row; index++) {
-      slice.push(
-        mapPoint(matrix, points.data[index * 2] as number, points.data[index * 2 + 1] as number),
-      );
-    }
-    if (slice.length >= 2) {
-      const sub = pushSubPath(subpaths, slice[0]);
-      const at = (index: number): [number, number] =>
-        slice[Math.max(0, Math.min(slice.length - 1, index))];
-      for (let index = 0; index + 1 < slice.length; index++) {
-        const p0 = at(index - 1);
-        const p1 = at(index);
-        const p2 = at(index + 1);
-        const p3 = at(index + 2);
-        const c1: [number, number] = [
-          p1[0] + ((p2[0] - p0[0]) / 6) * tension,
-          p1[1] + ((p2[1] - p0[1]) / 6) * tension,
-        ];
-        const c2: [number, number] = [
-          p2[0] - ((p3[0] - p1[0]) / 6) * tension,
-          p2[1] - ((p3[1] - p1[1]) / 6) * tension,
-        ];
-        sub.segments.push(["C", [...c1, ...c2, ...p2]]);
-      }
-    }
-    start = row;
-  }
-  return pathData(subpaths, !open);
 }
 
 function baselineAttribute(baseline: string): string {

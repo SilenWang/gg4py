@@ -79,6 +79,10 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "viewer:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
 "viewer:sample" = "PYTHONPATH=src python tools/viewer/export_scene.py"
 "viewer:shot" = "PYTHONPATH=src python tools/viewer/screenshot.py"
+# M1-16：61 条 case + grob 快照逐张丢进浏览器查看器，量 DOM / 加载耗时，并用
+# resvg 2× 与 expected.svg 和桌面 SVG 对拍。报告落 .viewer-cases/（不入库），
+# 有红 case 非 0。批量跑不进 `check`（要真 Chromium + 全量光栅化）。
+"viewer:cases" = "PYTHONPATH=src python tools/viewer/cases.py"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"

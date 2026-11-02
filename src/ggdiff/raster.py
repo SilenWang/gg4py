@@ -81,8 +81,14 @@ def rasterize_svg(
     *,
     dpi: int = DEFAULT_DPI,
     background: str | None = None,
+    zoom: float | None = None,
 ) -> Path:
-    """把一张 SVG 光栅化成 PNG，返回输出路径。"""
+    """把一张 SVG 光栅化成 PNG，返回输出路径。
+
+    `dpi` 只作用于带单位的尺寸（`pt`）；skia 的 SVG 设备写 `width="288"` 这种
+    无单位用户单位，`--dpi` 对它是无效的。这类输入要用 `zoom` 显式放大
+    （同一张图 2× 对拍就是 `dpi=144` 对应 viewer、`zoom=2` 对应桌面设备）。
+    """
     source = Path(svg)
     target = Path(out)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -92,6 +98,8 @@ def rasterize_svg(
         command.extend(["--skip-system-fonts", "--use-fonts-dir", str(fonts)])
     if background is not None:
         command.extend(["--background", background])
+    if zoom is not None:
+        command.extend(["--zoom", f"{float(zoom):g}"])
     command.extend([str(source), str(target)])
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not target.is_file():

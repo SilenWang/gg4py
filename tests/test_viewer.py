@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 import http.server
+import json
 import sys
 import threading
 import time
@@ -33,11 +34,18 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 VIEWER = REPO / "web" / "viewer"
 sys.path.insert(0, str(REPO / "tools" / "viewer"))
+sys.path.insert(0, str(REPO / "tools" / "cases"))
 
+import matrix as case_matrix
 import playwright_env
 from facet_legend import facet_legend_scene
 
 from ggcore import ir
+from ggcore.plotspec import build_scene, load_plot
+from ggdiff.image import load_image
+from ggdiff.raster import rasterize_svg
+from ggskia import device_for
+from ggskia.text import ShaperMetrics
 
 # 浏览器目录、LD_LIBRARY_PATH、fontconfig（见 tools/viewer/playwright_env.py）。
 playwright_env.configure()
@@ -260,7 +268,8 @@ def test_10k_points_render_as_one_path(session, tmp_path: Path) -> None:
 
     elements = page.locator('svg.gg-svg [data-kind="points"]').count()
     assert elements == 1
-    dom = page.evaluate("() => document.querySelectorAll('svg.gg-svg *').length")
+    # 整页 DOM（不是只看 SVG 内）：SIL-710 建议 2 —— bulk 口径要连页壳一起数。
+    dom = page.evaluate("() => document.querySelectorAll('*').length")
     assert dom < 100
 
     element = page.locator('svg.gg-svg path[data-kind="points"]')
@@ -356,3 +365,164 @@ def _drop_text_size(node: dict, path: str) -> str | None:
         if found is not None:
             return found
     return None
+
+
+# ---------------------------------------------------------------------------
+# M1-16：真实 case 覆盖、alpha 叠加、批量 runner
+# ---------------------------------------------------------------------------
+
+CASES = REPO / "docs" / "cases"
+
+
+def _case_kinds() -> dict[str, str]:
+    """61 条三文件 case 里出现的 IR kind → 第一张用到它的 case 名。"""
+    first: dict[str, str] = {}
+    metrics = ShaperMetrics()
+    for case in case_matrix.discover(CASES):
+        if not case.valid:
+            continue
+        scene = build_scene(load_plot(case.directory), metrics=metrics)
+        for node in ir.walk(scene.root):
+            first.setdefault(node.kind.value, case.name)
+    return first
+
+
+CASE_KINDS = _case_kinds()
+
+
+def test_case_corpus_is_wide_enough() -> None:
+    """案例库本身：至少要有这些 kind，否则下面的参数化会悄悄少测。"""
+    assert {
+        "viewport",
+        "rect",
+        "points",
+        "text",
+        "polygon",
+        "polyline",
+        "segments",
+        "curve",
+    } <= set(CASE_KINDS), f"案例库 kind 覆盖变窄：{sorted(CASE_KINDS)}"
+
+
+@pytest.mark.parametrize("kind,case", sorted(CASE_KINDS.items()))
+def test_real_case_renders_every_ir_kind(session, tmp_path: Path, kind: str, case: str) -> None:
+    """每种 IR kind 至少有一张**真实 case** 能被查看器加载并产出对应元素。
+
+    这里不手工构造 IR：场景来自 `docs/cases/<case>/plot.py` 的 `build()`，
+    走与桌面同一套 `ggcore.plotspec` 管线。
+    """
+    page, _ = session
+    scene = build_scene(load_plot(CASES / case), metrics=ShaperMetrics())
+    path = tmp_path / f"{case}.ggir.cbor"
+    path.write_bytes(ir.encode(scene))
+    load_scene(page, path)
+
+    elements = page.eval_on_selector_all(
+        f'svg.gg-svg [data-kind="{kind}"]', "elements => elements.map(e => e.localName)"
+    )
+    assert elements, f"{case} 的 IR 有 {kind} 节点，但页面上没有对应元素"
+    tags = set(elements)
+    if kind in TAG_BY_KIND:
+        assert tags <= {TAG_BY_KIND[kind]}, f"{kind} 落到了 {tags}"
+    else:  # 容器：viewport / gtree / null / zero
+        assert tags <= {"g", "clipPath"}, f"{kind} 落到了 {tags}"
+
+
+def alpha_overlap_scene(alpha: int = 128) -> ir.Scene:
+    """一个 points 节点里两个**完全重叠**的半透明点（pch 19）。"""
+    node = ir.Node(
+        ir.NodeKind.POINTS,
+        ir.Gpar(col=(228, 87, 86, alpha), lwd=0.0),
+        params={"pch": 19, "size": 12.0},
+        bufs={"points": ir.f32([[144.0, 108.0], [144.0, 108.0]])},
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "panel-1", "clip": False},
+        children=(node,),
+    )
+    return ir.Scene(root=root, size=(288.0, 216.0))
+
+
+def _center_pixel(svg: str | Path, out: Path, *, zoom: float | None) -> np.ndarray:
+    rasterize_svg(svg, out, dpi=144, background="#ffffff", zoom=zoom)
+    image = load_image(out)
+    return image[image.shape[0] // 2, image.shape[1] // 2]
+
+
+def test_alpha_points_overlap_matches_desktop(session, tmp_path: Path) -> None:
+    """两个重叠的半透明点：viewer 中心像素与桌面同 IR 差 ≤ 4/255（修前差 40+）。
+
+    整节点合成一个 `<path>` 时，半透明重叠只算一层；`gpar.alpha < 1` 或颜色
+    alpha < 255 时查看器回退成逐行 `<path>`，每个点单独合成。
+    """
+    page, _ = session
+    scene = alpha_overlap_scene()
+    path = tmp_path / "alpha-overlap.ggir.cbor"
+    path.write_bytes(ir.encode(scene))
+    load_scene(page, path)
+
+    elements = page.locator('svg.gg-svg path[data-kind="points"]')
+    assert elements.count() == 2, "半透明点必须逐行一个元素，否则重叠处只合成一次"
+    assert elements.first.get_attribute("data-rows") is None
+
+    viewer_svg = tmp_path / "alpha-viewer.svg"
+    viewer_svg.write_text(
+        page.evaluate("() => document.querySelector('svg.gg-svg').outerHTML"), encoding="utf-8"
+    )
+    desktop_svg = tmp_path / "alpha-desktop.svg"
+    desktop_svg.write_bytes(device_for("svg", *scene.size).render(scene))
+
+    viewer = _center_pixel(viewer_svg, tmp_path / "alpha-viewer.png", zoom=None)
+    desktop = _center_pixel(desktop_svg, tmp_path / "alpha-desktop.png", zoom=2)
+    difference = int(np.abs(viewer.astype(np.int16) - desktop.astype(np.int16)).max())
+    print(
+        f"alpha overlap center: viewer={viewer.tolist()} desktop={desktop.tolist()} Δ={difference}"
+    )
+    assert difference <= 4, f"viewer={viewer.tolist()} desktop={desktop.tolist()}"
+
+
+def test_opaque_points_stay_one_element(session, tmp_path: Path) -> None:
+    """alpha = 1 的节点仍合成单个 `<path>`（bulk 口径不能因为修 alpha 丢掉）。"""
+    page, _ = session
+    scene = alpha_overlap_scene(alpha=255)
+    path = tmp_path / "alpha-opaque.ggir.cbor"
+    path.write_bytes(ir.encode(scene))
+    load_scene(page, path)
+    assert page.locator('svg.gg-svg path[data-kind="points"]').count() == 1
+
+
+def test_viewer_cases_runner_smoke(tmp_path: Path) -> None:
+    """批量 runner 冒烟：分面+图例 / raster / 旋转文字 三条代表 case 全绿。"""
+    import os
+    import subprocess
+
+    out = tmp_path / "cases"
+    names = "facet-wrap-2x2,grob-raster,grob-text-rot"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO / "tools" / "viewer" / "cases.py"),
+            "--only",
+            names,
+            "--out",
+            str(out),
+        ],
+        cwd=REPO,
+        env={**os.environ, "PYTHONPATH": "src"},
+        capture_output=True,
+        text=True,
+        timeout=240,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]
+    payload = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert {record["name"] for record in payload["cases"]} == set(names.split(","))
+    assert all(record["status"] == "pass" for record in payload["cases"])
+    assert {record["group"] for record in payload["cases"]} == {"case", "grob"}
+    # 三条代表 case 的产物都在：SVG 导出、浏览器截图、桌面 SVG、报告。
+    for name in names.split(","):
+        assert (out / "svg" / f"{name}.svg").is_file()
+        assert (out / "png" / f"{name}.browser.png").is_file()
+        assert (out / "desktop" / f"{name}.svg").is_file()
+    assert (out / "report.md").is_file()
