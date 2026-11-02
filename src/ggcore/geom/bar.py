@@ -30,6 +30,7 @@ from ggcore.geom.base import (
     POINT_PER_MM,
     GeomRenderer,
     alpha_colour,
+    default_size,
     flip_data,
     lty_value,
     npc_values,
@@ -62,6 +63,16 @@ def _width_column(table: ColumnTable, params: Any, default: float) -> np.ndarray
     return np.full(table.nrows, float(value))
 
 
+def _default_width(data: ColumnTable, params: Any) -> float:
+    """R `compute_data_size(data, default = 0.9, zero = FALSE)`。
+
+    离散位置（`mapped_discrete`）→ 恒为 0.9；连续位置 → `resolution(x) * 0.9`。
+    """
+    if params.get("_discrete_position"):
+        return 0.9
+    return default_size(data, "x")
+
+
 class BarRenderer(GeomRenderer):
     """`geom_bar` / `geom_col`（`histogram` 的绘制与柱相同）。"""
 
@@ -77,7 +88,7 @@ class BarRenderer(GeomRenderer):
         )
         table = ColumnTable(columns, nrows=data.nrows)
         frame = flip_data(table, flip)
-        width = _width_column(frame, params, float(self._default_width(frame)))
+        width = _width_column(frame, params, _default_width(frame, params))
         just = float(params.get("just", 0.5))
         y = table_numeric(frame, "y")
         x = table_numeric(frame, "x")
@@ -90,8 +101,9 @@ class BarRenderer(GeomRenderer):
         return flip_data(ColumnTable(columns, nrows=data.nrows), flip)
 
     @staticmethod
-    def _default_width(data: ColumnTable) -> float:
-        return 0.9
+    def _default_width(data: ColumnTable, params: Any = None) -> float:
+        """R `compute_data_size(data, default = 0.9, zero = FALSE)`（兼容旧调用点）。"""
+        return _default_width(data, params or {})
 
     def draw(self, geom: Any, build: Any, panel: Any, coord: Any, theme: Any, metrics: Any) -> Any:
         data = build.data
@@ -233,21 +245,23 @@ class AreaRenderer(GeomRenderer):
         data = build.data
         if data.nrows == 0:
             return null_grob(name="geom_area")
-        x = npc_values(panel, data, "x", "x")
-        ymin = npc_values(panel, data, "ymin", "y")
-        ymax = npc_values(panel, data, "ymax", "y")
         flip = (
             bool(np.any(np.asarray(data.column("flipped_aes").values)))
             if ("flipped_aes" in data)
             else False
         )
         if flip:
-            # 横向面积：长度轴是 x，分类轴是 y。
-            x, ymin, ymax = (
-                npc_values(panel, data, "y", "y"),
-                npc_values(panel, data, "xmin", "x"),
-                npc_values(panel, data, "xmax", "x"),
-            )
+            # 横向面积：先按纵向语义（along = 类别轴、low/high = 长度轴）拼多边形，
+            # 再照 R 的 `flip_data(positions)` 把 x / y 对调 —— 最终多边形沿长度
+            # 轴 x 从 0 铺到 value、在类别轴 y 上取分类位置。直接把 along 当 x 会
+            # 把两条轴对调（类别轴 ↔ 长度轴）。
+            along = npc_values(panel, data, "y", "y")
+            low = npc_values(panel, data, "xmin", "x")
+            high = npc_values(panel, data, "xmax", "x")
+        else:
+            along = npc_values(panel, data, "x", "x")
+            low = npc_values(panel, data, "ymin", "y")
+            high = npc_values(panel, data, "ymax", "y")
         fill = _values(data, "fill", "grey20")
         colour = _values(data, "colour", None)
         alpha = table_numeric(data, "alpha", default=math.nan)
@@ -265,18 +279,23 @@ class AreaRenderer(GeomRenderer):
         outlines: list[Any] = []
         for key in _keys(groups):
             rows = np.flatnonzero(groups == key)
-            if rows.size < 2:
-                continue
-            ids = _segment_ids(x[rows], ymin[rows], ymax[rows])
-            upper_x, upper_y, upper_id = _positions(x[rows], ymax[rows], ids)
-            lower_x, lower_y, lower_id = _positions(x[rows][::-1], ymin[rows][::-1], ids[::-1])
-            if upper_x.size + lower_x.size < 3:
+            ids = _segment_ids(along[rows], low[rows], high[rows])
+            upper_x, upper_y, upper_id = _positions(along[rows], high[rows], ids)
+            lower_x, lower_y, lower_id = _positions(along[rows][::-1], low[rows][::-1], ids[::-1])
+            # 不按「行数 < 2」丢组：横向面积每组只有一行（类别是分组依据），R 的
+            # `GeomArea$draw_group()` 照样出 2 点退化多边形（= 沿长度轴的线段）。
+            if upper_x.size + lower_x.size == 0:
                 continue
             first = rows[0]
+            poly_x = np.concatenate([upper_x, lower_x])
+            poly_y = np.concatenate([upper_y, lower_y])
+            if flip:
+                # R 的 `flip_data(positions)`：纵向语义拼好的 x / y 在这里对调。
+                poly_x, poly_y = poly_y, poly_x
             polygons.append(
                 polygon_grob(
-                    unit(np.concatenate([upper_x, lower_x]).tolist(), "native"),
-                    unit(np.concatenate([upper_y, lower_y]).tolist(), "native"),
+                    unit(poly_x.tolist(), "native"),
+                    unit(poly_y.tolist(), "native"),
                     id=[int(item) for item in np.concatenate([upper_id, lower_id]).tolist()],
                     default_units="native",
                     gp=gpar(
@@ -288,6 +307,8 @@ class AreaRenderer(GeomRenderer):
             )
             if colour[first] is not None and colour[first] is not NA:
                 for px, py, pid in ((upper_x, upper_y, upper_id), (lower_x, lower_y, lower_id)):
+                    if flip:
+                        px, py = py, px
                     outlines.append(
                         polyline_grob(
                             unit(px.tolist(), "native"),

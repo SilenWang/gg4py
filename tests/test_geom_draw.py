@@ -12,13 +12,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import warnings
 from dataclasses import replace
 
 import numpy as np
 import pytest
 
-from ggcore import registry
+from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import GeomError, registered_renderers, renderer_for
@@ -220,6 +221,15 @@ def test_clip_on_off_and_inherit() -> None:
     assert on_clips and all(rect != page for rect in on_clips)
     assert off_clips and all(rect[2] - rect[0] >= 288.0 for rect in off_clips)
 
+    # clip = "inherit" 从用户入口可用：panel_params 原样记三态，场景沿用父视口
+    # （页面是 clip = "off"，所以与 "off" 一样落在设备外包框上、不裁到面板）。
+    inherit_plot = _facet_plot() + registry.coord_cartesian(clip="inherit")
+    assert build_plot(inherit_plot).panel_params.clip == "inherit"
+    inherit = scene_from_plot(inherit_plot, metrics=METRICS, **SIZE)
+    inherit_clips = _clips_for(inherit, "points")
+    assert inherit_clips
+    assert sorted(inherit_clips) == sorted(off_clips)
+
 
 def test_each_facet_panel_has_its_own_clip_rect() -> None:
     scene = scene_from_plot(_facet_plot(), metrics=METRICS, **SIZE)
@@ -318,6 +328,122 @@ def test_area_draws_fill_polygon_and_outline() -> None:
     assert len(polylines) == 2  # outline.type = "both"
 
 
+def test_boxplot_outlier_size_includes_stroke() -> None:
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0]))),
+            ("ymin", Column("float", np.array([0.1]))),
+            ("lower", Column("float", np.array([0.3]))),
+            ("middle", Column("float", np.array([0.5]))),
+            ("upper", Column("float", np.array([0.7]))),
+            ("ymax", Column("float", np.array([0.9]))),
+            ("outliers", Column("str", np.array(["20"], dtype=object))),
+        ]
+    )
+    plot = (
+        ggplot(
+            table,
+            aes(
+                x="x",
+                ymin="ymin",
+                lower="lower",
+                middle="middle",
+                upper="upper",
+                ymax="ymax",
+                outliers="outliers",
+            ),
+        )
+        + registry.geom_boxplot(stat="identity")
+        + registry.theme_void()
+    )
+    scene = scene_from_plot(plot, **SIZE)
+    points = [node for node in _nodes(scene) if node.kind.value == "points"]
+    assert len(points) == 1
+    # GeomPoint$draw_panel()：fontsize = size * .pt + stroke * .stroke / 2。
+    # R 4.0.3 同图 ggplotGrob() 的 points grob gp$fontsize = 5.212795。
+    expected = 1.5 * 72.27 / 25.4 + 0.5 * (96.0 / 25.4) / 2.0
+    assert float(points[0].params["size"]) == pytest.approx(expected, abs=1e-9)
+    assert float(points[0].params["size"]) == pytest.approx(5.212795, abs=1e-6)
+
+
+def test_default_bar_width_scales_with_resolution() -> None:
+    table = _table(x=[0.0, 10.0, 20.0], y=[1.0, 2.0, 3.0])
+    plot = (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_col()
+        + registry.coord_cartesian(xlim=(0, 20), expand=(0, 0))
+        + registry.theme_void()
+    )
+    data = build_plot(plot).layers[0].data
+    # R 4.0.3：width = resolution(x, zero = FALSE) * 0.9 = 10 * 0.9。
+    assert data.column("xmin").values.tolist() == pytest.approx([-4.5, 5.5, 15.5])
+    assert data.column("xmax").values.tolist() == pytest.approx([4.5, 14.5, 24.5])
+
+
+def test_default_boxplot_width_scales_with_resolution() -> None:
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 5.0]))),
+            ("ymin", Column("float", np.array([0.1, 0.2]))),
+            ("lower", Column("float", np.array([0.3, 0.35]))),
+            ("middle", Column("float", np.array([0.5, 0.5]))),
+            ("upper", Column("float", np.array([0.7, 0.65]))),
+            ("ymax", Column("float", np.array([0.9, 0.8]))),
+        ]
+    )
+    plot = (
+        ggplot(
+            table,
+            aes(x="x", ymin="ymin", lower="lower", middle="middle", upper="upper", ymax="ymax"),
+        )
+        + registry.geom_boxplot(stat="identity")
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    )
+    data = build_plot(plot).layers[0].data
+    # 同上：resolution(c(1, 5)) * 0.9 = 3.6 → 箱宽 ±1.8。
+    assert data.column("xmin").values.tolist() == pytest.approx([-0.8, 3.2])
+    assert data.column("xmax").values.tolist() == pytest.approx([2.8, 6.8])
+
+
+def test_horizontal_area_spans_the_length_axis_and_keeps_categories() -> None:
+    table = _table(cls=["a", "b", "c"], v=[1.0, 2.0, 3.0])
+    plot = (
+        ggplot(table, aes(x="v", y="cls"))
+        + registry.geom_area(stat="identity", orientation="y")
+        + registry.theme_void()
+    )
+    build = build_plot(plot)
+    data = build.layers[0].data
+    # R 4.0.3 的同一张图：x = 类别编码、y = 长度值；xmin = 0、xmax = value。
+    assert data.column("x").values.tolist() == [1.0, 2.0, 3.0]
+    assert data.column("y").values.tolist() == [1.0, 2.0, 3.0]
+    assert data.column("xmin").values.tolist() == [0.0, 0.0, 0.0]
+    assert data.column("xmax").values.tolist() == [1.0, 2.0, 3.0]
+    assert data.column("flipped_aes").values.tolist() == [True, True, True]
+
+    scene = scene_from_plot(plot, **SIZE)
+    polygons = [node for node in _nodes(scene) if node.kind.value == "polygon"]
+    # 每个类别一组（每组一行），R 同样出 3 个 2 点退化多边形。
+    assert len(polygons) == 3
+    x_range = build.panel_params.x_range
+    y_range = build.panel_params.y_range
+
+    def x_npc(value: float) -> float:
+        return (value - x_range[0]) / (x_range[1] - x_range[0])
+
+    for index, node in enumerate(polygons, start=1):
+        points = np.asarray(node.bufs["points"])
+        assert points.shape[0] == 2
+        # 长度轴在 x 上：从 0 铺到 value（不是把类别轴当 x）。
+        assert points[:, 0].tolist() == pytest.approx(
+            [x_npc(float(index)) * 288.0, x_npc(0.0) * 288.0]
+        )
+        # 类别轴在 y 上：面板 npc 0.1875 / 0.5 / 0.8125（IR 的 y 向下）。
+        centre = (float(index) - y_range[0]) / (y_range[1] - y_range[0])
+        assert points[:, 1].tolist() == pytest.approx([(1.0 - centre) * 216.0] * 2)
+
+
 def test_smooth_ribbon_and_line() -> None:
     table = ColumnTable(
         [
@@ -362,3 +488,73 @@ def test_empty_layer_does_not_emit_grobs() -> None:
     assert isinstance(grob, (type(None),)) or grob.__class__.__name__ in ("NullGrob",)
     scene = scene_from_plot(plot, **SIZE)
     assert [node for node in _nodes(scene) if node.kind.value == "points"]
+
+
+# ---------------------------------------------------------------------------
+# 字节稳定：同一输入两次 `scene_from_plot()` → `ir.encode` 的 sha256 相等
+# ---------------------------------------------------------------------------
+
+
+#: 9 个 geom 各一张图（都走 theme_void，避免文字度量引入外部依赖）。
+def _digest_plots() -> dict[str, object]:
+    point = _table(x=[0.2, 0.6], y=[0.3, 0.7], g=["a", "b"])
+    line = _table(
+        x=[0.1, 0.3, 0.5, 0.7, 0.9, 0.1, 0.3, 0.5, 0.7, 0.9],
+        y=[0.2, 0.5, 0.4, 0.7, 0.6, 0.8, 0.6, 0.7, 0.3, 0.4],
+        g=["a"] * 5 + ["b"] * 5,
+    )
+    path = _table(x=[0.15, 0.85, 0.25, 0.9, 0.1], y=[0.2, 0.55, 0.8, 0.25, 0.6])
+    bar = _table(cls=["a", "b", "a", "b"], g=["p", "q", "q", "p"])
+    col = _table(x=[0.5, 1.5, 2.5], y=[0.35, 0.75, 0.55])
+    area = _table(x=[1.0, 2.0, 3.0, 4.0, 5.0], y=[1.0, 3.0, 2.0, 4.0, 3.0])
+    histogram = _table(x=[0.5, 1.5, 2.5], y=[0.2, 0.5, 0.75])
+    boxplot = ColumnTable(
+        [
+            ("x", Column("str", np.array(["a", "b"], dtype=object))),
+            ("ymin", Column("float", np.array([0.1, 0.2]))),
+            ("lower", Column("float", np.array([0.3, 0.35]))),
+            ("middle", Column("float", np.array([0.5, 0.5]))),
+            ("upper", Column("float", np.array([0.7, 0.65]))),
+            ("ymax", Column("float", np.array([0.9, 0.8]))),
+        ]
+    )
+    smooth = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 1.6, 2.1, 2.7]))),
+            ("ymin", Column("float", np.array([0.6, 1.2, 1.7, 2.3]))),
+            ("ymax", Column("float", np.array([1.4, 2.0, 2.5, 3.1]))),
+        ]
+    )
+    return {
+        "point": ggplot(point, aes(x="x", y="y", colour="g")) + registry.geom_point(),
+        "line": ggplot(line, aes(x="x", y="y", colour="g")) + registry.geom_line(),
+        "path": ggplot(path, aes(x="x", y="y")) + registry.geom_path(),
+        "bar": ggplot(bar, aes(x="cls", fill="g")) + registry.geom_bar(),
+        "col": ggplot(col, aes(x="x", y="y")) + registry.geom_col(),
+        "area": ggplot(area, aes(x="x", y="y")) + registry.geom_area(stat="identity"),
+        "histogram": ggplot(histogram, aes(x="x", y="y"))
+        + registry.geom_histogram(stat="identity"),
+        "boxplot": ggplot(
+            boxplot,
+            aes(x="x", ymin="ymin", lower="lower", middle="middle", upper="upper", ymax="ymax"),
+        )
+        + registry.geom_boxplot(stat="identity"),
+        "smooth": ggplot(smooth, aes(x="x", y="y", ymin="ymin", ymax="ymax"))
+        + registry.geom_smooth(stat="identity"),
+    }
+
+
+def test_digest_plots_cover_the_nine_geoms() -> None:
+    assert set(_digest_plots()) == set(registered_renderers())
+
+
+@pytest.mark.parametrize("geom_name", sorted(_digest_plots()))
+def test_scene_encoding_is_byte_stable(geom_name: str) -> None:
+    plot = _digest_plots()[geom_name] + registry.theme_void()
+    first = scene_from_plot(plot, **SIZE)
+    # 图不是空的：除了 viewport 还有实际的几何叶子节点。
+    assert [node for node in _nodes(first) if node.kind.value != "viewport"]
+    one = hashlib.sha256(ir.encode(first)).hexdigest()
+    two = hashlib.sha256(ir.encode(scene_from_plot(plot, **SIZE))).hexdigest()
+    assert one == two

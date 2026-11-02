@@ -294,10 +294,10 @@ class CoordBase:
     name: str = "cartesian"
 
     def __post_init__(self) -> None:
-        # coord 层只认 R 的两个取值（`on` / `off`）；`inherit` 是 gtable 的第三态，
-        # 只在场景装配直接构造 `PanelParams` 时出现（见 PanelParams）。
-        if self.clip not in ("on", "off"):
-            raise CoordError(f"clip 只能是 'on' 或 'off'，收到 {self.clip!r}")
+        # 三态都收：`coord_cartesian(clip = "inherit")` 在 R 4.0.3 是合法入口
+        # （grid 的 viewport clip 也是三态，`inherit` 沿用父视口 = 页面）。
+        if self.clip not in ("on", "off", "inherit"):
+            raise CoordError(f"clip 只能是 'on' / 'off' / 'inherit'，收到 {self.clip!r}")
         if not _valid_expand(self.expand):
             raise CoordError(
                 "expand 只接受 True / False / Expansion / 标量或 1–4 元数值序列"
