@@ -27,10 +27,12 @@ from ggcore.aes import aes
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.plot import ggplot
+from ggcore.theme import element_text, theme
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "facet_r_reference.json"
 REFERENCE = json.loads(FIXTURE.read_text(encoding="utf-8"))
 CASES = {case["name"]: case for case in REFERENCE["cases"]}
+EXTRA = {case["name"]: case for case in REFERENCE["extra"]}
 TOLERANCE = 1e-12
 
 
@@ -71,6 +73,45 @@ BUILDERS = {
     "wrap_free": lambda: base_plot() + registry.facet_wrap(("a",), ncol=2, scales="free"),
 }
 
+EXTRA_BUILDERS = {
+    "wrap_numeric": lambda table: (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    ),
+    "wrap_logical": lambda table: (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    ),
+    "wrap_na_numeric": lambda table: (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    ),
+    "wrap_na_str": lambda table: (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    ),
+    "grid_sparse": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",))
+    ),
+    "wrap_drop_false_unused": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), drop=False)
+    ),
+    "grid_drop_false_unused": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(None, ("a",), drop=False)
+    ),
+    "wrap_multirow": lambda table: (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    ),
+    "grid_strip_text_y_20": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",))
+        + theme(**{"strip.text.y": element_text(size=20)})
+    ),
+}
+
 
 def _records(build) -> list[dict[str, object]]:
     layout = build.layout
@@ -96,9 +137,112 @@ def _as_list(value: object) -> list[object]:
     return value if isinstance(value, list) else [value]
 
 
+def _extra_table(case: dict[str, object]) -> ColumnTable:
+    data = case["data"]
+    types = data["types"]
+    levels = data["levels"]
+    columns: list[tuple[str, Column]] = []
+    for name, raw in data["columns"].items():
+        values = _as_list(raw)
+        missing = np.array([value is None for value in values], dtype=bool)
+        kind = types[name]
+        if kind in ("numeric", "integer"):
+            columns.append(
+                (
+                    name,
+                    Column(
+                        "float",
+                        np.array(
+                            [
+                                0.0 if skip else float(value)
+                                for value, skip in zip(values, missing, strict=True)
+                            ],
+                            dtype=np.float64,
+                        ),
+                        na_mask=missing,
+                    ),
+                )
+            )
+        elif kind == "logical":
+            columns.append(
+                (
+                    name,
+                    Column(
+                        "bool",
+                        np.array(
+                            [
+                                False if skip else bool(value)
+                                for value, skip in zip(values, missing, strict=True)
+                            ],
+                            dtype=bool,
+                        ),
+                        na_mask=missing,
+                    ),
+                )
+            )
+        elif kind == "factor":
+            ordered = tuple(levels[name])
+            index = {level: position for position, level in enumerate(ordered)}
+            columns.append(
+                (
+                    name,
+                    Column(
+                        "categorical",
+                        np.array(
+                            [
+                                0 if skip else index[str(value)]
+                                for value, skip in zip(values, missing, strict=True)
+                            ],
+                            dtype=np.int32,
+                        ),
+                        levels=ordered,
+                        na_mask=missing,
+                    ),
+                )
+            )
+        else:
+            assert kind == "character", kind
+            columns.append(
+                (
+                    name,
+                    Column(
+                        "str",
+                        np.array(
+                            [
+                                "" if skip else str(value)
+                                for value, skip in zip(values, missing, strict=True)
+                            ],
+                            dtype=str,
+                        ),
+                        na_mask=missing,
+                    ),
+                )
+            )
+    return ColumnTable(columns)
+
+
+def _typed_records(build) -> list[dict[str, object]]:
+    layout = build.layout
+    assert layout is not None
+    out: list[dict[str, object]] = []
+    for panel in layout.panel_ids:
+        record: dict[str, object] = {
+            "PANEL": panel,
+            "ROW": layout.row_of(panel),
+            "COL": layout.col_of(panel),
+        }
+        for name in layout.facet_vars:
+            record[name] = layout.value(panel, name)
+        record["SCALE_X"] = layout.scale_x_of(panel)
+        record["SCALE_Y"] = layout.scale_y_of(panel)
+        out.append(record)
+    return out
+
+
 def test_fixture_covers_the_required_cases() -> None:
     assert REFERENCE["ggplot2"] == "4.0.3"
     assert set(BUILDERS) == set(CASES)
+    assert set(EXTRA_BUILDERS) == set(EXTRA)
     assert {"wrap_ncol2", "grid_2x2", "grid_as_table_false", "grid_free"} <= set(CASES)
     assert DATA.column("a").levels == tuple(REFERENCE["data"]["a_levels"])
 
@@ -160,3 +304,85 @@ def test_gtable_strip_extent_matches_r_within_two_percent(name: str) -> None:
         else:
             expected = _cm(strip["width"])
         assert table.strip_height_cm == pytest.approx(expected, rel=0.02)
+
+
+# ---------------------------------------------------------------------------
+# extra：SIL-694 补的分面缺口（数值 / 逻辑 / NA / 空组合 / drop=FALSE /
+# 多行 strip / strip.text.y）
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", sorted(EXTRA_BUILDERS))
+def test_extra_layout_matches_r(name: str) -> None:
+    case = EXTRA[name]
+    build = build_plot(EXTRA_BUILDERS[name](_extra_table(case)))
+    assert _typed_records(build) == case["layout"]
+
+
+@pytest.mark.parametrize("name", sorted(EXTRA_BUILDERS))
+def test_extra_layout_types_and_labels_match_r(name: str) -> None:
+    case = EXTRA[name]
+    build = build_plot(EXTRA_BUILDERS[name](_extra_table(case)))
+    layout = build.layout
+    assert layout is not None
+    kinds = {
+        "numeric": "float",
+        "integer": "float",
+        "logical": "bool",
+        "factor": "str",
+        "character": "str",
+    }
+    for var, r_type in case["layout_types"].items():
+        assert layout.table.column(var).kind == kinds[r_type]
+    labels = [
+        {var: layout.label(panel, var) for var in layout.facet_vars} for panel in layout.panel_ids
+    ]
+    assert labels == case["labels"]
+
+
+@pytest.mark.parametrize("name", sorted(EXTRA_BUILDERS))
+def test_extra_panel_ranges_match_r(name: str) -> None:
+    case = EXTRA[name]
+    build = build_plot(EXTRA_BUILDERS[name](_extra_table(case)))
+    expected = case["panels"]
+    assert [panel.panel for panel in build.panels] == [item["PANEL"] for item in expected]
+    for panel, reference in zip(build.panels, expected, strict=True):
+        assert panel.panel_params.x_range == pytest.approx(
+            tuple(reference["x_range"]), abs=TOLERANCE
+        )
+        assert panel.panel_params.y_range == pytest.approx(
+            tuple(reference["y_range"]), abs=TOLERANCE
+        )
+
+
+def test_wrap_multirow_structure_matches_r() -> None:
+    case = EXTRA["wrap_multirow"]
+    expected = case["structure"]
+    build = build_plot(EXTRA_BUILDERS["wrap_multirow"](_extra_table(case)))
+    table = build.facet_table()
+    panel_rows = sorted({panel[1] for panel in table.panels})
+    tops = [strip for strip in table.strips if strip.side == "top"]
+    assert len(panel_rows) == expected["panel_row_count"]
+    assert len(tops) == expected["top_strip_count"]
+    assert [str(table.gtable.heights[row - 1]) for row in panel_rows] == expected["panel_rows"]
+    placements = {row.name: row for row in table.gtable.layout}
+    assert all(
+        placements[strip.name].t == row_of_panel - 1
+        for strip, row_of_panel in (
+            (strip, next(panel[1] for panel in table.panels if panel[0] == strip.panel))
+            for strip in tops
+        )
+    )
+    heights = [str(value) for value in table.gtable.heights]
+    assert heights.count("5.5points") == expected["panel_spacing_rows"]
+
+
+def test_strip_text_y_width_matches_r() -> None:
+    case = EXTRA["grid_strip_text_y_20"]
+    build = build_plot(EXTRA_BUILDERS["grid_strip_text_y_20"](_extra_table(case)))
+    table = build.facet_table()
+    right_widths = [width for width in case["structure"]["strip_widths"] if width.endswith("cm")]
+    assert right_widths
+    assert table.strip_width_cm == pytest.approx(_cm(right_widths[0]), rel=0.02)
+    # 右 strip 变宽不影响顶部 strip 的高度（strip.text.x 未被改）。
+    assert table.strip_height_cm == pytest.approx(0.6058, abs=5e-4)

@@ -24,7 +24,7 @@ from ggcore.build import BuildError, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
 from ggcore.plot import ggplot
-from ggcore.theme import element_blank, theme
+from ggcore.theme import element_blank, element_rect, element_text, theme
 from ggcore.units import unit
 
 
@@ -216,7 +216,19 @@ def test_facet_wrap_without_facets_falls_back_to_one_panel() -> None:
     assert build.layout.npanels == 1
 
 
-@pytest.mark.parametrize(("levels", "shape"), [(3, (1, 3)), (4, (2, 2)), (5, (2, 3)), (7, (3, 3))])
+@pytest.mark.parametrize(
+    ("levels", "shape"),
+    [
+        (3, (1, 3)),
+        (4, (2, 2)),
+        (5, (2, 3)),
+        (7, (3, 3)),
+        (10, (3, 4)),
+        (13, (4, 4)),
+        (17, (4, 5)),
+        (20, (4, 5)),
+    ],
+)
 def test_facet_wrap_default_dims_follow_n2mfrow(levels: int, shape: tuple[int, int]) -> None:
     names = [f"g{index}" for index in range(levels)]
     table = ColumnTable(
@@ -231,10 +243,8 @@ def test_facet_wrap_default_dims_follow_n2mfrow(levels: int, shape: tuple[int, i
     assert (build.layout.nrow, build.layout.ncol) == shape
 
 
-def test_facet_wrap_drop_false_keeps_unused_combinations() -> None:
-    build = build_plot(grid_plot(drop=False))
-    # a 有 2 个水平、b 有 2 个水平：drop = FALSE 给 2 × 2；这里数据本来就有 4 组。
-    assert build.layout is not None and build.layout.npanels == 4
+def test_facet_grid_drop_true_keeps_empty_combinations() -> None:
+    """SIL-694 #2：grid 是各维已观察水平的笛卡尔积，缺组合保留为空面板。"""
     sparse = ColumnTable(
         [
             ("x", Column("float", np.array([1.0, 2.0, 3.0]))),
@@ -244,8 +254,41 @@ def test_facet_wrap_drop_false_keeps_unused_combinations() -> None:
         ]
     )
     plot = ggplot(sparse, aes(x="x", y="y")) + registry.geom_point()
-    assert build_plot(plot + registry.facet_grid(("b",), ("a",), drop=False)).layout.npanels == 4
-    assert build_plot(plot + registry.facet_grid(("b",), ("a",), drop=True)).layout.npanels == 3
+    build = build_plot(plot + registry.facet_grid(("b",), ("a",)))
+    assert build.layout is not None
+    assert (build.layout.nrow, build.layout.ncol, build.layout.npanels) == (2, 2, 4)
+    # 列顺序跟 levels（q, p），不是出现顺序（p, q）；行同理（v, u）。
+    assert [
+        (record["b"], record["a"], record["ROW"], record["COL"]) for record in layout_records(build)
+    ] == [
+        ("v", "q", 1, 1),
+        ("v", "p", 1, 2),
+        ("u", "q", 2, 1),
+        ("u", "p", 2, 2),
+    ]
+    # v × q 没有数据：面板仍然存在，只是 0 行。
+    mapped = [int(value) for value in build.layers[0].positioned.column("PANEL").values]
+    assert [mapped.count(panel) for panel in build.layout.panel_ids] == [0, 1, 1, 1]
+
+
+def test_drop_false_keeps_unobserved_factor_levels() -> None:
+    """SIL-694 #3：factor 有 a/b/c 三个 levels、数据只出现 a/b → 3 个面板。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("a", categorical(["a", "a", "b"], ("a", "b", "c"))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    wrap = build_plot(plot + registry.facet_wrap(("a",), drop=False))
+    assert wrap.layout is not None and wrap.layout.npanels == 3
+    assert [wrap.layout.label(panel, "a") for panel in wrap.layout.panel_ids] == ["a", "b", "c"]
+    # drop = TRUE 仍然只保留观察到的组合。
+    assert build_plot(plot + registry.facet_wrap(("a",), drop=True)).layout.npanels == 2
+    grid = build_plot(plot + registry.facet_grid(None, ("a",), drop=False))
+    assert grid.layout is not None and grid.layout.npanels == 3
+    assert [grid.layout.label(panel, "a") for panel in grid.layout.panel_ids] == ["a", "b", "c"]
 
 
 def test_facet_wrap_accepts_a_string_or_an_aes_mapping() -> None:
@@ -259,7 +302,8 @@ def test_facet_wrap_accepts_a_string_or_an_aes_mapping() -> None:
     ]
 
 
-def test_numeric_facet_variable_maps_and_labels_like_r() -> None:
+def test_numeric_facet_layout_keeps_numeric_values_and_shows_labels() -> None:
+    """SIL-694 #1：布局列保留 numeric，显示文本单独在 label_table。"""
     table = ColumnTable(
         [
             ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
@@ -269,9 +313,103 @@ def test_numeric_facet_variable_maps_and_labels_like_r() -> None:
     )
     plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
     build = build_plot(plot + registry.facet_wrap(("z",), ncol=2))
-    assert [record["z"] for record in layout_records(build)] == ["1", "2"]
-    assert build.layers[0].data.column("PANEL").values.tolist() == ["2", "2", "1", "1"]
+    layout = build.layout
+    assert layout is not None
+    column = layout.table.column("z")
+    assert column.kind == "float"
+    assert column.values.tolist() == [1.0, 2.0]
+    assert not column.na_mask.any()
+    assert [record["z"] for record in layout_records(build)] == [1.0, 2.0]
+    assert [layout.label(panel, "z") for panel in layout.panel_ids] == ["1", "2"]
     assert [strip.text for strip in build.facet_table().strips] == ["1", "2"]
+    assert build.layers[0].data.column("PANEL").values.tolist() == ["2", "2", "1", "1"]
+
+
+def test_logical_facet_layout_keeps_bools_and_uses_r_labels() -> None:
+    """SIL-694 #1：逻辑分面保留 bool，strip 文本是 TRUE/FALSE。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("g", Column("bool", np.array([True, True, False, False]))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    build = build_plot(plot + registry.facet_wrap(("g",), ncol=2))
+    layout = build.layout
+    assert layout is not None
+    column = layout.table.column("g")
+    assert column.kind == "bool"
+    assert column.values.tolist() == [False, True]
+    assert [layout.label(panel, "g") for panel in layout.panel_ids] == ["FALSE", "TRUE"]
+    assert [strip.text for strip in build.facet_table().strips] == ["FALSE", "TRUE"]
+    assert build.layers[0].data.column("PANEL").values.tolist() == ["2", "2", "1", "1"]
+
+
+@pytest.mark.parametrize(
+    ("column", "kind", "labels"),
+    [
+        (
+            Column(
+                "float",
+                np.array([1.0, 1.0, 0.0, 0.0]),
+                na_mask=np.array([False, False, True, True]),
+            ),
+            "float",
+            ["1", "NA"],
+        ),
+        (
+            Column(
+                "str", np.array(["a", "a", "", ""]), na_mask=np.array([False, False, True, True])
+            ),
+            "str",
+            ["a", "NA"],
+        ),
+    ],
+)
+def test_na_facet_values_get_their_own_panel(column: Column, kind: str, labels: list[str]) -> None:
+    """SIL-694 #1：NA 是独立面板（不是消失），且与字符串 "NA" 不撞键。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("g", column),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    build = build_plot(plot + registry.facet_wrap(("g",), ncol=2))
+    layout = build.layout
+    assert layout is not None and layout.npanels == 2
+    assert layout.table.column("g").kind == kind
+    assert layout.table.column("g").na_mask.tolist() == [False, True]
+    assert layout.value(2, "g") is None
+    assert [layout.label(panel, "g") for panel in layout.panel_ids] == labels
+    assert [strip.text for strip in build.facet_table().strips] == labels
+    assert build.layers[0].data.column("PANEL").values.tolist() == ["1", "1", "2", "2"]
+
+
+def test_na_facet_value_does_not_collide_with_a_literal_na_string() -> None:
+    """真正的缺失值（None）与字符串 "NA" 是两个不同的分面水平。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            (
+                "g",
+                Column(
+                    "str",
+                    np.array(["NA", "NA", "", ""]),
+                    na_mask=np.array([False, False, True, True]),
+                ),
+            ),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    build = build_plot(plot + registry.facet_wrap(("g",)))
+    layout = build.layout
+    assert layout is not None and layout.npanels == 2
+    assert [layout.label(panel, "g") for panel in layout.panel_ids] == ["NA", "NA"]
+    assert build.layers[0].data.column("PANEL").values.tolist() == ["1", "1", "2", "2"]
 
 
 def test_facet_wrap_accepts_a_callable_labeller() -> None:
@@ -460,6 +598,54 @@ def test_facet_table_spacing_comes_from_panel_spacing() -> None:
     assert [str(unit) for unit in taller.gtable.widths] == ["1null", "0.5cm", "1null"]
 
 
+def test_facet_wrap_multirow_puts_a_strip_above_every_panel_row() -> None:
+    """SIL-694 #4：3 行面板 → strip / panel / 间距 / strip / panel / 间距 / strip / panel。"""
+    names = [f"g{index}" for index in range(7)]
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.arange(7.0))),
+            ("y", Column("float", np.arange(7.0))),
+            ("g", categorical(names, tuple(names))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_point() + registry.facet_wrap(("g",))
+    facet_table = build_plot(plot).facet_table()
+    strip_cm = facet_table.strip_height_cm
+    heights = [str(item) for item in facet_table.gtable.heights]
+    assert heights[0].endswith("cm")
+    assert float(heights[0][:-2]) == pytest.approx(strip_cm)
+    assert heights == [heights[0], "1null", "5.5points"] * 2 + [heights[0], "1null"]
+    assert [panel[1] for panel in facet_table.panels] == [2, 2, 2, 5, 5, 5, 8]
+    placements = {row.name: row for row in facet_table.gtable.layout}
+    row_of_panel = {panel: top for panel, top, _, _, _ in facet_table.panels}
+    assert len([strip for strip in facet_table.strips if strip.side == "top"]) == 7
+    for strip in facet_table.strips:
+        if strip.side == "top":
+            assert placements[strip.name].t == row_of_panel[strip.panel] - 1
+
+
+def test_grid_right_strip_follows_strip_text_y_and_strip_background() -> None:
+    """SIL-694 #6：右 strip 尺寸读 strip.text.y；strip.background 真正参与。"""
+    base = build_plot(grid_plot()).facet_table()
+    assert base.strip_width_cm == pytest.approx(0.6058, abs=5e-4)
+    taller = build_plot(
+        grid_plot() + theme(**{"strip.text.y": element_text(size=20)})
+    ).facet_table()
+    # R（ggplot2 4.0.3）同一条主题改法是 0.9710957cm；0.955em 近似差 1.3%。
+    assert taller.strip_width_cm == pytest.approx(0.9711, rel=0.02)
+    assert taller.strip_height_cm == base.strip_height_cm
+
+    assert base.strip_for(1, "top").fill == "#D9D9D9"
+    assert base.strip_for(1, "right").fill == "#D9D9D9"
+    blank = build_plot(grid_plot() + theme(**{"strip.background": element_blank()})).facet_table()
+    assert [strip.fill for strip in blank.strips] == [None] * len(blank.strips)
+    red = build_plot(
+        grid_plot() + theme(**{"strip.background.y": element_rect(fill="#FF0000")})
+    ).facet_table()
+    assert red.strip_for(1, "right").fill == "#FF0000"
+    assert red.strip_for(1, "top").fill == "#D9D9D9"
+
+
 # ---------------------------------------------------------------------------
 # 参数校验
 # ---------------------------------------------------------------------------
@@ -472,6 +658,15 @@ def test_facet_grid_rejects_unimplemented_margins_and_free_space() -> None:
         build_plot(grid_plot(space="free_x"))
     with pytest.raises(FacetError, match="只能出现在 rows 或 cols"):
         build_plot(base_plot() + registry.facet_grid(("a",), ("a",)))
+
+
+def test_facet_wrap_space_is_validated_instead_of_silently_ignored() -> None:
+    """SIL-694 #5：space 不能静默按 fixed 画；未实现的值点名后续任务。"""
+    with pytest.raises(FacetError, match="facet space 的面板尺寸约束"):
+        facet_from_component(registry.facet_wrap(("a",), space="free_x"))
+    with pytest.raises(FacetError, match="space 只能是"):
+        facet_from_component(registry.facet_wrap(("a",), space="banana"))
+    assert facet_from_component(registry.facet_wrap(("a",), space="fixed")).space == "fixed"
 
 
 def test_facet_wrap_rejects_unknown_dir_and_scales() -> None:

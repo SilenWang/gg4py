@@ -40,6 +40,7 @@ from ggcore.gtable import CellBox, GTable, Placement, gtable
 from ggcore.scales import ScaleSet
 from ggcore.theme import (
     ElementBlank,
+    ElementRect,
     ElementText,
     ResolvedTheme,
     Theme,
@@ -92,22 +93,26 @@ class FacetError(ValueError):
 
 
 def _key(value: Any) -> Any:
-    """分面值 → 可哈希、可排序的规范键（NA → None，数值统一成 float）。"""
+    """分面值 → 可哈希、可排序的规范键（NA → None，逻辑值保留 bool）。"""
     if value is None:
         return None
     if isinstance(value, np.generic):
         value = value.item()
+    if isinstance(value, bool):
+        return value
     if isinstance(value, float):
         return None if math.isnan(value) else float(value)
-    if isinstance(value, (int, bool)):
+    if isinstance(value, int):
         return float(value)
     return str(value)
 
 
 def _label(value: Any) -> str:
-    """`label_value` 的文本：NA → "NA"，整数浮点去掉 `.0`（R 的 as.character）。"""
+    """`label_value` 的文本：NA → "NA"，逻辑值 → TRUE/FALSE，整数浮点去掉 `.0`。"""
     if value is None:
         return "NA"
+    if isinstance(value, bool):
+        return "TRUE" if value else "FALSE"
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return str(value)
@@ -180,14 +185,19 @@ def _facet_vars(facets: Any) -> tuple[FacetVar, ...]:
 class FacetLayout:
     """分面布局表（上游 `ggplot_build(p)$layout$layout`）。
 
-    `layout` 的列序：`PANEL / ROW / COL / <facet vars> / SCALE_X / SCALE_Y`。
+    `table` 的列序：`PANEL / ROW / COL / <facet vars> / SCALE_X / SCALE_Y`。
     PANEL 1 起；`SCALE_X` / `SCALE_Y` 指向该面板用的位置标度槽位（固定刻度时
     全是 1，wrap 自由刻度时每个面板一个，grid 自由刻度时每列/每行一个）。
+
+    分面变量列保留**原始类型**（numeric / bool / str + `na_mask`），用于
+    `map_data()` 的逐值匹配；显示文本在 `label_table` 的同类列里（`label_value`
+    的口径），`value()` 读原始值、`label()` 读显示文本。
     """
 
     kind: str
     facet_vars: tuple[str, ...]
     table: ColumnTable
+    label_table: ColumnTable
     nrow: int
     ncol: int
 
@@ -210,8 +220,17 @@ class FacetLayout:
         row = panel - 1
         if not 0 <= row < self.table.nrows:
             raise KeyError(f"没有 PANEL={panel}")
-        value = self.table.column(name).values[row]
+        column = self.table.column(name)
+        if bool(column.na_mask[row]):
+            return None
+        value = column.values[row]
         return value.item() if hasattr(value, "item") else value
+
+    def label(self, panel: int, name: str) -> str:
+        row = panel - 1
+        if not 0 <= row < self.table.nrows:
+            raise KeyError(f"没有 PANEL={panel}")
+        return str(self.label_table.column(name).values[row])
 
     def row_of(self, panel: int) -> int:
         return int(self.value(panel, "ROW"))
@@ -232,36 +251,66 @@ class FacetLayout:
         return tuple(panel for panel in self.panel_ids if self.col_of(panel) == col)
 
     def facet_values(self, panel: int) -> dict[str, str]:
-        return {name: str(self.value(panel, name)) for name in self.facet_vars}
+        """面板的显示文本（`facet_values` 沿用 M1-6 的 `{变量: str}` 契约）。"""
+        return {name: self.label(panel, name) for name in self.facet_vars}
 
 
 def _layout_table(
     kind: str,
     facet_vars: tuple[str, ...],
-    rows: Sequence[tuple[int, int, dict[str, Any]]],
+    rows: Sequence[tuple[int, int, dict[str, Any], dict[str, str]]],
     nrow: int,
     ncol: int,
 ) -> FacetLayout:
-    """行记录 → 布局表；`rows` 每项是 `(ROW, COL, {facet var: value})`。"""
+    """行记录 → 布局表；`rows` 每项是 `(ROW, COL, 原始值, 显示标签)`。"""
     count = len(rows)
     columns: list[tuple[str, Column]] = [
         ("PANEL", Column("int", np.arange(1, count + 1, dtype=np.int64))),
-        ("ROW", Column("int", np.array([row for row, _, _ in rows], dtype=np.int64))),
-        ("COL", Column("int", np.array([col for _, col, _ in rows], dtype=np.int64))),
+        ("ROW", Column("int", np.array([row for row, _, _, _ in rows], dtype=np.int64))),
+        ("COL", Column("int", np.array([col for _, col, _, _ in rows], dtype=np.int64))),
     ]
+    label_columns: list[tuple[str, Column]] = []
     for name in facet_vars:
-        labels = np.array([values[name] for _, _, values in rows], dtype=str)
-        columns.append((name, Column("str", labels)))
-    scale_x = np.array([values["__SCALE_X"] for _, _, values in rows], dtype=np.int64)
-    scale_y = np.array([values["__SCALE_Y"] for _, _, values in rows], dtype=np.int64)
+        columns.append((name, _typed_column([values[name] for _, _, values, _ in rows])))
+        label_columns.append(
+            (name, Column("str", np.array([labels[name] for _, _, _, labels in rows], dtype=str)))
+        )
+    scale_x = np.array([values["__SCALE_X"] for _, _, values, _ in rows], dtype=np.int64)
+    scale_y = np.array([values["__SCALE_Y"] for _, _, values, _ in rows], dtype=np.int64)
     columns.append(("SCALE_X", Column("int", scale_x)))
     columns.append(("SCALE_Y", Column("int", scale_y)))
     return FacetLayout(
         kind=kind,
         facet_vars=facet_vars,
         table=ColumnTable(columns, nrows=count),
+        label_table=ColumnTable(label_columns, nrows=count),
         nrow=nrow,
         ncol=ncol,
+    )
+
+
+def _typed_column(values: Sequence[Any]) -> Column:
+    """分面值 → 保留原始类型的 `Column`（NA 进 `na_mask`）。"""
+    missing = np.array([value is None for value in values], dtype=bool)
+    present = [value for value in values if value is not None]
+    if present and all(isinstance(value, bool) for value in present):
+        return Column(
+            "bool",
+            np.array([False if value is None else bool(value) for value in values], dtype=bool),
+            na_mask=missing,
+        )
+    if present and all(isinstance(value, float) for value in present):
+        return Column(
+            "float",
+            np.array(
+                [0.0 if value is None else float(value) for value in values], dtype=np.float64
+            ),
+            na_mask=missing,
+        )
+    return Column(
+        "str",
+        np.array(["" if value is None else str(value) for value in values], dtype=str),
+        na_mask=missing,
     )
 
 
@@ -296,7 +345,9 @@ class _Levels:
 
     def _ordered(self, name: str) -> tuple[Any, ...]:
         observed = [value for value in self.observed[name] if not _is_missing_key(value)]
-        explicit = [value for value in self.explicit.get(name, ()) if value in observed]
+        # `drop = FALSE` 要把显式 levels 里**没出现**的值也展开成空面板，
+        # 所以显式 levels 原样保留（上游 factor 的 levels 不因数据缺席而缩短）。
+        explicit = list(self.explicit.get(name, ()))
         known = set(explicit)
         rest = [value for value in observed if value not in known]
         if any(isinstance(value, float) for value in rest) and not any(
@@ -582,8 +633,8 @@ class FacetBase:
         return {panel: self._strip_text(layout, panel) for panel in layout.panel_ids}
 
     def _strip_text(self, layout: FacetLayout, panel: int) -> str:
-        values = {name: layout.value(panel, name) for name in layout.facet_vars}
-        labels = _labeller(self.labeller, {name: [str(value)] for name, value in values.items()})
+        values = {name: layout.label(panel, name) for name in layout.facet_vars}
+        labels = _labeller(self.labeller, {name: [value] for name, value in values.items()})
         return "\n".join(labels[name][0] or "" for name in layout.facet_vars)
 
 
@@ -593,7 +644,11 @@ def _map_with_replication(
     vars: Sequence[FacetVar],
     missing: Sequence[FacetVar],
 ) -> PanelMap:
-    """按分面变量找 PANEL；层里缺某变量时按布局的水平复制数据行。"""
+    """按分面变量找 PANEL；层里缺某变量时按布局的水平复制数据行。
+
+    匹配用布局里的**原始值**（numeric / bool / str / NA 的 `na_mask`），
+    不用显示文本——否则字符串 "NA" 会与真正的缺失值撞键。
+    """
     names = [var.name for var in vars]
     key_map = {
         tuple(layout.value(panel, name) for name in names): panel for panel in layout.panel_ids
@@ -612,16 +667,13 @@ def _map_with_replication(
     row_out: list[int] = []
     for index in range(data.nrows):
         for combo in combinations:
-            key = tuple(
-                _label(combo[name]) if name in combo else _label(values[name][index])
-                for name in names
-            )
+            key = tuple(combo[name] if name in combo else values[name][index] for name in names)
             try:
                 panel_out.append(key_map[key])
             except KeyError:
+                shown = {name: _label(value) for name, value in zip(names, key, strict=True)}
                 raise FacetError(
-                    f"分面值 {dict(zip(names, key, strict=True))!r} 不在布局里"
-                    "（drop = FALSE 的分面组合之外的数据无法落面板）"
+                    f"分面值 {shown!r} 不在布局里（drop = FALSE 的分面组合之外的数据无法落面板）"
                 ) from None
             row_out.append(index)
     return PanelMap(
@@ -664,7 +716,7 @@ class FacetNull(FacetBase):
         return _layout_table(
             "null",
             (),
-            [(1, 1, {"__SCALE_X": 1, "__SCALE_Y": 1})],
+            [(1, 1, {"__SCALE_X": 1, "__SCALE_Y": 1}, {})],
             nrow=1,
             ncol=1,
         )
@@ -679,6 +731,7 @@ class FacetWrap(FacetBase):
     dir: str = "lt"
     as_table: bool = True
     strip_position: str = "top"
+    space: str = "fixed"
     kind: str = "wrap"
 
     def __post_init__(self) -> None:
@@ -692,6 +745,18 @@ class FacetWrap(FacetBase):
             raise FacetError(
                 f"strip.position = {self.strip_position!r} 尚未实现；M1-6 只支持 'top'"
             )
+        if self.space not in ("fixed", "free", "free_x", "free_y"):
+            raise FacetError(
+                f"space 只能是 'fixed' / 'free' / 'free_x' / 'free_y'，收到 {self.space!r}"
+            )
+        if self.space != "fixed":
+            # 上游按面板范围给 null 单位分配权重；当前 gtable 只有等宽面板。
+            # 报错而不是静默按 fixed 画（见 docs/notes/facet.md §7 的后续任务）。
+            raise FacetError(
+                f"facet_wrap(space = {self.space!r}) 尚未实现：面板宽高要按数据范围"
+                "分配 null 权重，留给后续任务 M1-6+「facet space 的面板尺寸约束」；"
+                "M1-6 只支持 'fixed'"
+            )
 
     def compute_layout(self, data: Sequence[ColumnTable] | ColumnTable) -> FacetLayout:
         layers = _as_layers(data)
@@ -701,18 +766,19 @@ class FacetWrap(FacetBase):
         combos, labels = _combos(layers, self.facet_vars, self.drop, levels)
         count = len(combos)
         nrow, ncol = _wrap_dims(count, self.nrow, self.ncol)
-        rows: list[tuple[int, int, dict[str, Any]]] = []
-        for index, (_combo, label) in enumerate(zip(combos, labels, strict=True), start=1):
+        rows: list[tuple[int, int, dict[str, Any], dict[str, str]]] = []
+        for index, (combo, label) in enumerate(zip(combos, labels, strict=True), start=1):
             row, col = _wrap_position(index, nrow, ncol, self.dir)
             rows.append(
                 (
                     row,
                     col,
                     {
-                        **label,
+                        **combo,
                         "__SCALE_X": index if self.free_x else 1,
                         "__SCALE_Y": index if self.free_y else 1,
                     },
+                    label,
                 )
             )
         return _layout_table("wrap", tuple(var.name for var in self.facet_vars), rows, nrow, ncol)
@@ -734,6 +800,10 @@ class FacetGrid(FacetBase):
             # TODO(M1-6+)：`margins = TRUE` 要在 base 上 reshape_add_margins()
             # 追加「全部」行/列；M1-6 先支持 FALSE。
             raise FacetError("facet_grid(margins = True) 尚未实现（M1-6 只支持 False）")
+        if self.space not in ("fixed", "free", "free_x", "free_y"):
+            raise FacetError(
+                f"space 只能是 'fixed' / 'free' / 'free_x' / 'free_y'，收到 {self.space!r}"
+            )
         if self.space != "fixed":
             raise FacetError(
                 f"space = {self.space!r} 尚未实现；M1-6 只支持 'fixed'"
@@ -751,40 +821,35 @@ class FacetGrid(FacetBase):
         if not self.facet_vars:
             return FacetNull().compute_layout(layers)
         levels = _Levels(layers, self.facet_vars)
-        combos, labels = _combos(layers, self.facet_vars, self.drop, levels)
         row_names = [var.name for var in self.row_vars]
         col_names = [var.name for var in self.col_vars]
-
-        row_levels = _unique_in_order([tuple(c[name] for name in row_names) for c in combos])
-        col_levels = _unique_in_order([tuple(c[name] for name in col_names) for c in combos])
+        # 上游 facet_grid：每一维是「该维已观察水平」的组合，再取两维的
+        # **笛卡尔积**——缺数据的格子是空面板，不是被删掉。
+        row_levels = _dimension_combos(layers, self.row_vars, self.drop, levels)
+        col_levels = _dimension_combos(layers, self.col_vars, self.drop, levels)
         if not self.as_table:
             row_levels = list(reversed(row_levels))
 
-        rows: list[tuple[int, int, dict[str, Any]]] = []
+        rows: list[tuple[int, int, dict[str, Any], dict[str, str]]] = []
         row_index = {value: index + 1 for index, value in enumerate(row_levels)}
         col_index = {value: index + 1 for index, value in enumerate(col_levels)}
-        label_of = {
-            tuple(combo[var.name] for var in self.facet_vars): label
-            for combo, label in zip(combos, labels, strict=True)
-        }
         for row_value in row_levels:
             for col_value in col_levels:
                 combo = dict(zip(row_names, row_value, strict=True)) if row_names else {}
                 combo.update(dict(zip(col_names, col_value, strict=True)) if col_names else {})
-                key = tuple(combo[var.name] for var in self.facet_vars)
-                if key not in label_of:
-                    continue
                 row = row_index[row_value]
                 col = col_index[col_value]
+                label = {var.name: _label(combo[var.name]) for var in self.facet_vars}
                 rows.append(
                     (
                         row,
                         col,
                         {
-                            **label_of[key],
+                            **combo,
                             "__SCALE_X": col if self.free_x else 1,
                             "__SCALE_Y": row if self.free_y else 1,
                         },
+                        label,
                     )
                 )
         return _layout_table(
@@ -805,25 +870,59 @@ def _as_layers(data: Sequence[ColumnTable] | ColumnTable) -> list[ColumnTable]:
     return layers
 
 
-def _unique_in_order(values: Sequence[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
-    out: list[tuple[Any, ...]] = []
-    for value in values:
-        if value not in out:
-            out.append(value)
-    return out
+def _dimension_combos(
+    layers: Sequence[ColumnTable],
+    vars: Sequence[FacetVar],
+    drop: bool,
+    levels: _Levels,
+) -> list[tuple[Any, ...]]:
+    """一个 grid 维度的取值组合（上游 `facet_grid` 的 row / col 水平）。
+
+    `drop = TRUE` 只取该维度里**观察到的**组合；`drop = FALSE` 取该维度各变量
+    全部 levels 的笛卡尔积（含没出现的 factor level）。
+    """
+    names = [var.name for var in vars]
+    if not names:
+        return [()]
+    if drop:
+        seen: list[tuple[Any, ...]] = []
+        for table in layers:
+            if not all(_has_var(table, var) for var in vars):
+                continue
+            values = {var.name: var.values(table) for var in vars}
+            for index in range(table.nrows):
+                key = tuple(values[name][index] for name in names)
+                if key not in seen:
+                    seen.append(key)
+        if not seen:
+            wanted = "、".join(names)
+            raise FacetError(
+                f"分面变量（{wanted}）在数据里必须至少有一个值；"
+                "请检查列名，或确认至少一层同时含有全部分面变量"
+            )
+        combos = seen
+    else:
+        combos = [tuple(combo[name] for name in names) for combo in _product(levels, names)]
+    return sorted(
+        combos,
+        key=lambda key: tuple(
+            levels.rank[name][value] for name, value in zip(names, key, strict=True)
+        ),
+    )
 
 
 def _wrap_dims(n: int, nrow: int | None, ncol: int | None) -> tuple[int, int]:
     """上游 `wrap_dims()`：两边都不给时用 `n2mfrow()`，然后按需补另一边。"""
     if ncol is None and nrow is None:
-        # grDevices::n2mfrow(n) 返回 (rows, cols)；wrap_dims 交换后使用：
-        #   n ≤ 3 → 1 × n；4–6 → 2 × ceil(n/2)；其余 → 3 × ceil(n/3)。
+        # grDevices::n2mfrow(n) = (rows, cols) = (ceil(sqrt(n)), ceil(n / ceil(sqrt(n)))),
+        # 但 n ≤ 3 时是 (n, 1)；wrap_dims 交换两列后使用：
+        #   n ≤ 3 → 1 × n；其余 → ceil(n / ceil(sqrt(n))) 行 × ceil(sqrt(n)) 列。
+        # 覆盖 1..20：13 → 4 × 4，17 → 4 × 5，20 → 4 × 5（与 R 一致）。
         if n <= 3:
             nrow, ncol = 1, n
-        elif n <= 6:
-            nrow, ncol = 2, (n + 1) // 2
         else:
-            nrow, ncol = 3, (n + 2) // 3
+            ncol = math.ceil(math.sqrt(n))
+            nrow = math.ceil(n / ncol)
     elif ncol is None:
         assert nrow is not None
         ncol = math.ceil(n / nrow)
@@ -914,6 +1013,7 @@ def facet_from_component(component: Facet | FacetBase | None) -> FacetBase:
             dir=direction,
             as_table=as_table,
             strip_position=str(_param(params, "strip_position", "strip.position", default="top")),
+            space=str(params.get("space", "fixed")),
         )
     if name == "grid":
         as_table = bool(_param(params, "as_table", "as.table", default=True))
@@ -944,6 +1044,7 @@ class _Grob:
     text: str | None = None
     panel: int | None = None
     side: str | None = None
+    fill: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -956,6 +1057,8 @@ class FacetStrip:
     panel: int
     row: int
     col: int
+    #: `strip.background.x` / `.y` 的 fill（`element_blank()` 时为 None）。
+    fill: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -968,6 +1071,7 @@ class FacetTable:
     """`(PANEL, t, l, b, r)`，1 起。"""
     strips: tuple[FacetStrip, ...]
     strip_height_cm: float
+    strip_width_cm: float = 0.0
 
     def panel_boxes(
         self,
@@ -1008,7 +1112,6 @@ def facet_table(
     resolved = theme if isinstance(theme, ResolvedTheme) else resolve_theme(theme or Theme())
     spacing_x = _unit_cm(resolved, "panel.spacing.x")
     spacing_y = _unit_cm(resolved, "panel.spacing.y")
-    strip_size = _strip_extent(resolved)
 
     nrow, ncol = layout.nrow, layout.ncol
     if facet.kind == "wrap":
@@ -1018,27 +1121,34 @@ def facet_table(
     else:
         has_top = False
     has_right = facet.kind == "grid" and bool(getattr(facet, "row_vars", ()))
-    strip_h = strip_size if (has_top or has_right) else 0.0
+    # 顶部 strip 跟 `strip.text.x`、右侧 strip 跟 `strip.text.y`（尺寸与背景各走
+    # 自己的元素；`strip.background.x/.y` 继承自 `strip.background`）。
+    strip_h = _strip_extent(resolved, "strip.text.x", horizontal=False) if has_top else 0.0
+    strip_w = _strip_extent(resolved, "strip.text.y", horizontal=True) if has_right else 0.0
+    top_fill = _strip_fill(resolved, "strip.background.x") if has_top else None
+    right_fill = _strip_fill(resolved, "strip.background.y") if has_right else None
+    # wrap 的每个面板行上方都有一条 strip；grid 的顶部 strip 只有一行。
+    strip_each_row = has_top and facet.kind == "wrap"
 
-    # 行：wrap 每个面板行上方一条 strip；grid 只有最上面一条。
     widths: list[Unit] = []
     for col in range(ncol):
         if col:
             widths.append(spacing_x)
         widths.append(unit(1.0, "null"))
     heights: list[Unit] = []
-    if has_top:
-        heights.append(unit(strip_h, "cm"))
-    for row in range(nrow):
-        if row:
+    for row in range(1, nrow + 1):
+        if row > 1:
             heights.append(spacing_y)
+        if has_top and (strip_each_row or row == 1):
+            heights.append(unit(strip_h, "cm"))
         heights.append(unit(1.0, "null"))
     if has_right:
-        widths.append(unit(strip_h, "cm"))
+        widths.append(unit(strip_w, "cm"))
 
     def _row(row: int) -> int:
-        base = 2 * (row - 1) + 1
-        return base + (1 if has_top else 0)
+        base = 2 if has_top else 1
+        stride = 2 + (1 if strip_each_row else 0)
+        return base + stride * (row - 1)
 
     def _col(col: int) -> int:
         return 2 * col - 1
@@ -1070,7 +1180,9 @@ def facet_table(
                     name=strip_name,
                 )
             )
-            grobs.append(_Grob("strip", strip_name, text=text, panel=panel, side="top"))
+            grobs.append(
+                _Grob("strip", strip_name, text=text, panel=panel, side="top", fill=top_fill)
+            )
             strips.append(
                 FacetStrip(
                     name=strip_name,
@@ -1079,6 +1191,7 @@ def facet_table(
                     panel=panel,
                     row=row,
                     col=col,
+                    fill=top_fill,
                 )
             )
 
@@ -1092,7 +1205,16 @@ def facet_table(
             name = f"strip-r-{row}"
             t = _row(row)
             placements.append(Placement(t=t, l=right, b=t, r=right, z=2, clip="off", name=name))
-            grobs.append(_Grob("strip", name, text=text, panel=panels_in_row[0], side="right"))
+            grobs.append(
+                _Grob(
+                    "strip",
+                    name,
+                    text=text,
+                    panel=panels_in_row[0],
+                    side="right",
+                    fill=right_fill,
+                )
+            )
             strips.append(
                 FacetStrip(
                     name=name,
@@ -1101,6 +1223,7 @@ def facet_table(
                     panel=panels_in_row[0],
                     row=row,
                     col=0,
+                    fill=right_fill,
                 )
             )
 
@@ -1118,6 +1241,7 @@ def facet_table(
         panels=tuple(panels),
         strips=tuple(strips),
         strip_height_cm=strip_h,
+        strip_width_cm=strip_w,
     )
 
 
@@ -1142,8 +1266,8 @@ def _label_for(
 ) -> str:
     if not names:
         return ""
-    raw = {name: [str(layout.value(panel, name))] for name in names}
-    labels = _labeller(facet.labeller, raw)
+    values = {name: [layout.label(panel, name)] for name in names}
+    labels = _labeller(facet.labeller, values)
     return "\n".join(labels[name][0] or "" for name in names)
 
 
@@ -1156,9 +1280,14 @@ def _unit_cm(resolved: ResolvedTheme, name: str) -> Unit:
     raise FacetError(f"主题元素 {name!r} 不是单位：{value!r}")
 
 
-def _strip_extent(resolved: ResolvedTheme) -> float:
+def _strip_extent(
+    resolved: ResolvedTheme,
+    element_name: str = "strip.text.x",
+    *,
+    horizontal: bool = False,
+) -> float:
     """strip 的高/宽（cm）：文本行高 + 上下（左右）margin。空白元素为 0。"""
-    element = resolved["strip.text.x"]
+    element = resolved[element_name]
     if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
         return 0.0
     size = float(element.size or 0.0)
@@ -1167,8 +1296,17 @@ def _strip_extent(resolved: ResolvedTheme) -> float:
     if margin is None:
         return text_cm
     ctx = UnitContext()
+    sides = (margin.l, margin.r) if horizontal else (margin.t, margin.b)
     extra = 0.0
-    for side in (margin.t, margin.b):
+    for side in sides:
         if side is not None:
             extra += float(np.asarray(convert_height(side, "cm", ctx=ctx)).sum())
     return text_cm + extra
+
+
+def _strip_fill(resolved: ResolvedTheme, element_name: str) -> str | None:
+    """`strip.background.x/.y` 的 fill；`element_blank()` 或 NA 给 None。"""
+    element = resolved[element_name]
+    if not isinstance(element, ElementRect):
+        return None
+    return element.fill if isinstance(element.fill, str) else None

@@ -35,21 +35,36 @@ FacetLayout ── map_data(layer) ──▶ 每行 PANEL
 1. 源列是 categorical（或带显式 levels 的离散列）→ 用 `Column.levels` 的顺序；
 2. 普通字符串列 → 升序去重（与 `ggcore.data` 的离散 levels 同一口径）；
 3. 数值列 → 数值升序；
-4. NA 排在最后（`drop = TRUE` 时 NA 本身也是一个水平）。
+4. NA 排在最后（NA 本身也是一个水平，`drop` 取两种值都一样）。
 
 `drop = TRUE`（默认）只保留**数据里出现过的组合**，然后按上面的 levels 排序
-编号；`drop = FALSE` 取所有水平的笛卡尔积（上游 `unique_combs()`）。
+编号；`drop = FALSE` 取所有水平的笛卡尔积（上游 `unique_combs()`）。显式
+levels 里没有出现的 factor level 在 `drop = FALSE` 时也会得到一个空面板。
+
+两种分面的「缺失组合」口径不同：
+
+- `facet_wrap` 的 `drop = TRUE` = 所有分面变量**联合**出现过的组合；
+- `facet_grid` 的 `drop = TRUE` = 每一维（rows / cols 各自）出现过的组合，
+  再取两维的笛卡尔积——缺数据的格子保留为空面板（面板数可以多于数据里
+  实际出现的组合数）。
+
+布局表 `FacetLayout.table` 的分面变量列保留**原始类型**（numeric → `float`，
+logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示文本在
+`FacetLayout.label_table` 的同类列里（`label_value` 口径：逻辑值
+`TRUE` / `FALSE`，NA → `"NA"`）。`map_data()` 只用原始值匹配，所以字符串
+`"NA"` 不会和真正的缺失值撞键。
 
 ## 2. facet_wrap：一维面板流折成行列
 
 参数：`facets`（列名 / 列名序列 / `aes(...)`）、`ncol` / `nrow`、
-`dir`、`as.table`、`drop`、`labeller`、`scales`。
+`dir`、`as.table`、`drop`、`labeller`、`scales`、`space`。
 
 - **列名**：`facet_wrap("a")` 与 `facet_wrap(("a", "b"))` 都行；`aes(grp="a")`
   用 `grp` 做布局里的变量名、`a` 做取值列。
-- **行列数**（上游 `wrap_dims()`）：两边都不给时用 `n2mfrow(n)` 再交换
-  （3 个面板 → 1 行 3 列；5 个 → 2 行 3 列）；只给一边时另一边取
-  `ceiling(n / 给定边)`；放不下直接报错。
+- **行列数**（上游 `wrap_dims()`）：两边都不给时用
+  `n2mfrow(n) = (ceil(sqrt(n)), ceil(n / ceil(sqrt(n))))` 再交换
+  （3 个面板 → 1 行 3 列；5 个 → 2 行 3 列；13 个 → 4 × 4；20 个 → 4 × 5，
+  与 R 1..20 全对）；只给一边时另一边取 `ceiling(n / 给定边)`；放不下直接报错。
 - **方向**：`dir = "h"`（默认）→ `as.table` 为真时 `"lt"`（左上起、行优先），
   假时 `"lb"`（左下起）；`dir = "v"` → `tl` / `tr`。也接受上游的 8 个方向
   `lt / tl / lb / bl / rt / tr / rb / br`。
@@ -65,9 +80,9 @@ FacetLayout ── map_data(layer) ──▶ 每行 PANEL
 - PANEL 按「行优先、行内按列」编号；ROW / COL 从 1 起。
 - `as.table = FALSE` **只倒行**（上游 `rev_order()`），列顺序不变。
 - 只有 `rows` 或只有 `cols` 时另一维固定为 1 行 / 1 列。
-- `margins = TRUE` 与 `space = "free"` **尚未实现**：参数能进 `Facet.params`，
-  但 `facet_from_component()` 会报明确的 `FacetError`（TODO 在
-  `FacetGrid.__post_init__`）。这样不会静默画出一张与 R 不同的图。
+- `margins = TRUE` 与任何非 `"fixed"` 的 `space` **尚未实现**：参数能进
+  `Facet.params`，但 `facet_from_component()` 会报明确的 `FacetError`
+  （见 §7；`facet_wrap` 同样校验）。这样不会静默画出一张与 R 不同的图。
 
 ## 4. 自由刻度的分配
 
@@ -117,7 +132,7 @@ FacetLayout ── map_data(layer) ──▶ 每行 PANEL
 - `gtable`：panel 行列（`1null`）、strip 行/列（固定 cm）、
   `panel.spacing.x` / `panel.spacing.y` 分隔行列；
 - `panels`：`(PANEL, t, l, b, r)`，名字沿用上游 `panel-<col>-<row>`；
-- `strips`：`FacetStrip(name, side, text, panel, row, col)`；wrap 的
+- `strips`：`FacetStrip(name, side, text, panel, row, col, fill)`；wrap 的
   `side = "top"`（每个面板行一条），grid 列 strip = `"top"`、行 strip =
   `"right"`；
 - `panel_boxes(width_cm, height_cm)`：从 gtable 行/列解析出的面板矩形
@@ -132,24 +147,33 @@ FacetLayout ── map_data(layer) ──▶ 每行 PANEL
 | 面板间距 | `panel.spacing` → `panel.spacing.x` / `.y`（默认 5.5pt） |
 | 裁剪 | `strip.clip`（默认 `"on"`） |
 
-strip 的行高 / 列宽 = 文本高度 + 上下（左右）margin。M1-6 用
-`0.955em × strip.text.size + margin` 近似 grid 的 `stringHeight()`（R 在
-8.8pt 下量到 8.4pt / 0.6071cm；我们 0.6058cm，差 0.2%）。M1-7 接上
+strip 的行高 / 列宽 = 文本高度 + 上下（左右）margin。顶部 strip 读
+`strip.text.x`，右侧 strip 读 `strip.text.y`（字号改大时右 strip 变宽，
+顶部高度不变）；背景读 `strip.background.x` / `.y`（继承
+`strip.background`），落在 `FacetStrip.fill`，`element_blank()` 时为 None。
+M1-6 用 `0.955em × strip.text.size + margin` 近似 grid 的 `stringHeight()`
+（R 在 8.8pt 下量到 8.4pt / 0.6071cm；我们 0.6058cm，差 0.2%）。M1-7 接上
 `MetricProvider.strheight()` 后替换这个常量，测试容差同时收紧。
 
+wrap 有多个面板行时，行结构是
+`strip / panel / panel.spacing.y / strip / panel / …`——每个面板行上方都有
+自己的 strip；grid 只有最上面一行有 `strip-t-<col>`，行 strip
+`strip-r-<row>` 在右侧与面板行同高。`FacetTable.strip_height_cm` /
+`strip_width_cm` 分别给顶部 strip 行高与右侧 strip 列宽。
+
 完整 grob 绘制（面板背景、网格线、geom 墨迹、坐标轴、图例）不在 M1-6，
-留给 M1-7；这里的占位 grob 只携带 `kind / name / text / panel / side`。
+留给 M1-7；这里的占位 grob 只携带 `kind / name / text / panel / side / fill`。
 
 ## 7. 不支持清单
 
 | 能力 | 现状 | 计划 |
 | --- | --- | --- |
 | `facet_grid(margins = TRUE)` | 报 `FacetError` | M1-6+ |
-| `space = "free_x" / "free_y"` | 报 `FacetError` | 需要真实面板尺寸约束 |
+| `facet_wrap(space = ...)` / `facet_grid(space = ...)` 的非 `"fixed"` 值 | 报 `FacetError`（`"free" / "free_x" / "free_y"` 未实现；非法值同样报错） | 后续任务 **M1-6+「facet space 的面板尺寸约束」**（按范围给 null 权重） |
+| `labeller = "label_both" / "label_context"` | 报 `FacetError` | 未排期（目前只有 `label_value`、`{变量: {值: 标签}}` 映射与函数） |
 | `facet_wrap(strip.position = "bottom"/"left"/"right")` | 报 `FacetError`（只支持 top） | M1-7 |
 | 自由刻度 + `coord_fixed(ratio=…)` | 报错（与上游一致） | — |
 | 完整 grob / 坐标轴 / 图例 | 只给结构 | M1-7 / M1-11 |
-| NA 分面值落在 `drop = FALSE` 的组合之外 | 报 `FacetError` | 上游会落 PANEL=NA 后由 `handle_na` 丢弃 |
 
 ## 8. 验收命令
 
