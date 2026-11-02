@@ -15,7 +15,7 @@ import generate_corpus
 
 # Frozen on purpose: E2 and M0-7 must measure the same strings. Changing the
 # corpus is a deliberate act that moves this digest.
-EXPECTED_SHA256 = "6c93e4143ba1876447c88f31bdb06a9d1500e44dca05f3ef1694f9a4dabedfb1"
+EXPECTED_SHA256 = "51d753eec44afc5cd99478e122e2087c3f967bbc3c6904a602aef5d0781d5689"
 
 
 def test_committed_corpus_is_regenerable() -> None:

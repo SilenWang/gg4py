@@ -3,9 +3,9 @@
  "seed": 20261101,
  "count": 200,
  "font_stack": [
-  "DejaVuSans.ttf",
   "NotoSansCJKsc-VF.ttf",
-  "NotoColorEmoji.ttf"
+  "NotoColorEmoji.ttf",
+  "DejaVuSans.ttf"
  ],
  "font_size_px": 16.0,
  "labels": [

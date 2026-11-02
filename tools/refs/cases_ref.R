@@ -41,6 +41,9 @@ if (!isTRUE(l10n_info()[["UTF-8"]])) {
 
 repo <- normalizePath(".")
 cases_dir <- file.path(repo, "docs", "cases")
+# 可选的 case 过滤：`Rscript tools/refs/cases_ref.R text-multiline` 只重画点名
+# 的 case（新增/改单个 case 时不必整批重写 expected.svg）。不带参数照旧全量。
+only <- commandArgs(trailingOnly = TRUE)
 
 theme_case <- function() {
   theme_void() + theme(legend.position = "none")
@@ -55,6 +58,9 @@ y_fixed <- function(limits) {
 }
 
 save_case <- function(name, plot) {
+  if (length(only) > 0 && !(name %in% only)) {
+    return(invisible(NULL))
+  }
   path <- file.path(cases_dir, name, "expected.svg")
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   svglite(path, width = 4, height = 3)
@@ -119,6 +125,78 @@ df_curve <- data.frame(
 save_case("geom-curve-basic", ggplot(df_curve, aes(x, y, xend = xend, yend = yend, colour = g)) +
   geom_curve(curvature = 0.5, angle = 90, ncp = 5, linewidth = 1 / .pt) +
   scale_colour_manual(values = c(a = "#4C78A8", b = "#E45756")) +
+  axis_fixed(c(0, 1)) +
+  y_fixed(c(0, 1)) +
+  theme_case())
+
+# --- 5. 真实字面：text-bold-italic（M1 文字测量） ----------------------------
+df_faces <- data.frame(
+  x = rep(0.04, 4),
+  y = c(0.84, 0.62, 0.40, 0.18),
+  label = c(
+    "Regular text sample",
+    "Bold text sample",
+    "Italic text sample",
+    "Bold italic sample"
+  ),
+  face = c("plain", "bold", "italic", "bold.italic")
+)
+plot_faces <- ggplot(df_faces, aes(x, y, label = label)) +
+  axis_fixed(c(0, 1)) +
+  y_fixed(c(0, 1)) +
+  theme_case()
+for (i in seq_len(nrow(df_faces))) {
+  plot_faces <- plot_faces +
+    geom_text(
+      data = df_faces[i, , drop = FALSE],
+      size = 12 / .pt,
+      hjust = 0,
+      family = "Noto Sans",
+      fontface = df_faces$face[i]
+    )
+}
+save_case("text-bold-italic", plot_faces)
+
+# --- 6. 多行：text-multiline（M1 文字测量） -----------------------------------
+df_multi <- data.frame(
+  x = c(0.03, 0.55),
+  y = c(0.72, 0.30),
+  label = c(
+    "\u591a\u884c\u6587\u672c\u7b2c\u4e00\u884c\n\u7b2c\u4e8c\u884c mixed Latin \u6587\u5b57\n\u7b2c\u4e09\u884c",
+    "two lines\nsecond line"
+  ),
+  hjust = c(0, 0.5)
+)
+plot_multi <- ggplot(df_multi, aes(x, y, label = label)) +
+  axis_fixed(c(0, 1)) +
+  y_fixed(c(0, 1)) +
+  theme_case() +
+  geom_text(
+    data = df_multi[1, , drop = FALSE],
+    size = 10 / .pt,
+    hjust = 0,
+    family = "Noto Sans CJK SC"
+  ) +
+  geom_text(
+    data = df_multi[2, , drop = FALSE],
+    size = 10 / .pt,
+    hjust = 0.5,
+    family = "Noto Sans CJK SC"
+  )
+save_case("text-multiline", plot_multi)
+
+# --- 7. emoji：text-emoji（M1 文字测量） --------------------------------------
+df_emoji <- data.frame(
+  x = rep(0.04, 3),
+  y = c(0.80, 0.55, 0.30),
+  label = c(
+    "smile \U0001F600",
+    "rocket \U0001F680 check \u2705",
+    "\u4e2d\u6587 \U0001F600 \u6df7\u6392"
+  )
+)
+save_case("text-emoji", ggplot(df_emoji, aes(x, y, label = label)) +
+  geom_text(size = 14 / .pt, hjust = 0, family = "Noto Sans CJK SC") +
   axis_fixed(c(0, 1)) +
   y_fixed(c(0, 1)) +
   theme_case())

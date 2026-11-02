@@ -23,14 +23,24 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from ggcore.metrics.faces import (
+    FAMILY_FACES,
+    FontFaceError,
+    ResolvedFace,
+    available_styles,
+    canonical_family,
+    resolve_face,
+)
 from ggcore.metrics.rules import DEFAULT_FONT_STACK, FONT_FAMILIES
 
 __all__ = [
     "DEFAULT_FONT_STACK",
     "MANAGED_FONTS",
     "FontCatalog",
+    "FontFaceError",
     "FontNotFound",
     "ManagedFont",
+    "ResolvedFace",
     "default_font_dir",
 ]
 
@@ -93,8 +103,40 @@ class FontCatalog:
         managed = MANAGED_FONTS.get(filename)
         if managed is not None:
             return managed.family
+        # 字面文件（-Bold / -Italic …）在 faces.py 里登记，rules.json 只收了一部分
+        # 常用文件名；两条声明都查一遍，避免 catalog.family() 返回文件主干名。
+        for faces in FAMILY_FACES.values():
+            for face in faces:
+                if face.filename == filename:
+                    return face.family
         # 未登记的文件按主干名兜底，保证两端至少拿到同一个名字。
         return Path(filename).stem
+
+    # --- 字面解析（M1 文字测量） -----------------------------------------
+
+    def resolve(
+        self,
+        family: str,
+        weight: int = 400,
+        italic: bool = False,
+        *,
+        strict: bool = True,
+    ) -> ResolvedFace:
+        """字族 + 字重 + 斜体 → 受管字面；文件不在目录里直接报错。"""
+        resolved = resolve_face(family, weight, italic, strict=strict)
+        if not self.exists(resolved.filename):
+            raise FontNotFound(
+                f"managed font missing for {resolved.family} "
+                f"({resolved.style}): {self.root / resolved.filename}"
+            )
+        return resolved
+
+    def styles(self, family: str) -> tuple[str, ...]:
+        """该字族可用的字面名；未登记的字族返回空元组。"""
+        return available_styles(family)
+
+    def is_managed_family(self, family: str) -> bool:
+        return canonical_family(family) is not None
 
     def sha256(self, filename: str) -> str:
         if filename not in self._sha256:

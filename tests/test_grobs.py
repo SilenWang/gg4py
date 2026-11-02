@@ -747,11 +747,11 @@ def test_text_extent_follows_the_inherited_gp() -> None:
     seen: list[float] = []
 
     class SpyMetrics:
-        def strwidth(self, text: str, *, fontsize: float, cex: float) -> float:
+        def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
             seen.append(float(fontsize))
             return 0.5
 
-        def strheight(self, text: str, *, fontsize: float, cex: float) -> float:
+        def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
             return 0.1
 
     tree = ViewportTree(Device(6.0, 4.0), metrics=SpyMetrics())

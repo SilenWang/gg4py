@@ -1,0 +1,9 @@
+family = "geom-text"
+features = ["multiline"]
+ci = true
+title = "geom_text：`\\n` 三行标签 + 两行居中标签"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+notes = """`\\n` 由 grid 的 textGrob 切行，ggplot2 4.0.3 下每个行各写一个 <text>
+（text-anchor 由 hjust 决定）。行距实测 1.2 × lineheight × fontsize（默认
+1.2 → 1.44 × fontsize）；整块高度 = (n-1) × 行距 + 单行 cap height，vjust
+对整块生效。逐行宽度见 tests/fixtures/text_r_reference.json 的对拍。"""

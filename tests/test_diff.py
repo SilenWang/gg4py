@@ -340,7 +340,8 @@ def _render_text_case(scale: float) -> bytes:
     def scaled(key: str, text: str, size: float) -> tuple[GlyphRun, ...]:
         return tuple(
             GlyphRun(
-                run.filename,
+                run.face,
+                run.text,
                 run.gids,
                 tuple(offset * scale for offset in run.offsets),
                 run.advance * scale,

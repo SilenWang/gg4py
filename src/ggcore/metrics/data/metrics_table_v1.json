@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "table_version": 1,
- "run_rules_version": 1,
+ "run_rules_version": 3,
  "format": "GGMT (magic) + zlib，布局见 src/ggcore/metrics/table.py",
  "generator": "tools/metrics/build_table.py",
  "generated_with": {
@@ -10,22 +10,11 @@
   "numpy": "2.5.4"
  },
  "font_stack": [
-  "DejaVuSans.ttf",
   "NotoSansCJKsc-VF.ttf",
-  "NotoColorEmoji.ttf"
+  "NotoColorEmoji.ttf",
+  "DejaVuSans.ttf"
  ],
  "fonts": [
-  {
-   "file": "DejaVuSans.ttf",
-   "family": "DejaVu Sans",
-   "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
-   "upem": 2048,
-   "ascent": 1901,
-   "descent": 483,
-   "notdef_advance": 1229,
-   "ligates_emoji_clusters": false,
-   "covered_codepoints": 5918
-  },
   {
    "file": "NotoSansCJKsc-VF.ttf",
    "family": "Noto Sans CJK SC",
@@ -47,10 +36,21 @@
    "notdef_advance": 2550,
    "ligates_emoji_clusters": true,
    "covered_codepoints": 1467
+  },
+  {
+   "file": "DejaVuSans.ttf",
+   "family": "DejaVu Sans",
+   "sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+   "upem": 2048,
+   "ascent": 1901,
+   "descent": 483,
+   "notdef_advance": 1229,
+   "ligates_emoji_clusters": false,
+   "covered_codepoints": 5918
   }
  ],
- "table_bytes": 79246,
- "table_sha256": "ac7d37502259a34b5c3f421ea19b8fae2f3ee5df2a6b0d6aa57de724d617f1b0",
+ "table_bytes": 79464,
+ "table_sha256": "77876b5fb745f12baa215b5aec20f63290311eef9de9015f1fe51333075c55bf",
  "rules": {
   "glue_ranges": [
    [

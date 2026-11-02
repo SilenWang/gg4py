@@ -1718,11 +1718,19 @@ class _Traverser:
 
     def _visit_leaf(self, grob: Grob) -> None:
         deltas = grob.gps or (Gpar(),)
-        cache: dict[tuple[float, float, float], _Resolved] = {}
+        cache: dict[tuple[float, float, float, str, int], _Resolved] = {}
         for delta, index in _groups(deltas, grob.count):
             with self.tree.temporary_gpar(delta):
                 gpar = self.tree.gpar
-                key = (float(gpar.fontsize), float(gpar.cex), float(gpar.lineheight))
+                # 字体 key 也要进缓存键：同一个 leaf 的向量 gp 可以切粗体/斜体，
+                # 只按字号缓存会把第一档的字面复用到后面的档上。
+                key = (
+                    float(gpar.fontsize),
+                    float(gpar.cex),
+                    float(gpar.lineheight),
+                    gpar.fontfamily,
+                    int(gpar.font),
+                )
                 resolved = cache.get(key)
                 if resolved is None:
                     resolved = self._resolve(grob)
@@ -1896,20 +1904,25 @@ class _Traverser:
                 "（M0-7 的 MetricProvider），否则 IR 的 text.width 无从得出"
             )
         labels = tuple(grob.label[index % len(grob.label)] for index in range(n))
-        sizes = [
-            float(frame.ctx.fontsize) * float(frame.ctx.cex),
-        ]
+        fontsize = float(frame.ctx.fontsize)
+        cex = float(frame.ctx.cex)
+        lineheight = float(frame.ctx.lineheight)
+        font_key = _font_key(frame.gpar) if frame.gpar is not None else DEFAULT_FONT_KEY
+        # 多行：`\n` 切行，宽取各行的最大推进，高 = 行数 × 行高（行高 =
+        # fontsize × lineheight）。IR 的 text 只带一个宽度，所以写进去的就是
+        # 整块的宽（max），锚点也按整块折（docs/notes/metrics-ledger.md）。
         widths = np.asarray(
             [
-                metrics.strwidth(
-                    label, fontsize=float(frame.ctx.fontsize), cex=float(frame.ctx.cex)
-                )
+                metrics.strwidth(label, fontsize=fontsize, cex=cex, font=font_key)
                 * BIGPOINTS_PER_INCH
                 for label in labels
             ],
             dtype=np.float64,
         )
-        height = sizes[0] * float(frame.ctx.lineheight)
+        heights = np.asarray(
+            [label.count("\n") + 1 for label in labels],
+            dtype=np.float64,
+        )
         hjust, vjust = grob.hjust, grob.vjust
         anchor_index = _nearest(_ANCHOR_FRACTIONS, hjust)
         baseline_index = _nearest(_BASELINE_FRACTIONS, 1.0 - vjust)
@@ -1918,7 +1931,8 @@ class _Traverser:
         pos = points.copy()
         # pos 是锚点：把任意 (hjust, vjust) 折进 pos，枚举只表达“锚点指哪一边”。
         pos[:, 0] += (_ANCHOR_FRACTIONS[anchor_index] - hjust) * widths
-        pos[:, 1] += (_BASELINE_FRACTIONS[baseline_index] - (1.0 - vjust)) * height
+        block_heights = heights * fontsize * cex * lineheight
+        pos[:, 1] += (_BASELINE_FRACTIONS[baseline_index] - (1.0 - vjust)) * block_heights
         # 文字角度只放**局部**旋转：视口旋转已经在 `transform` 里（SIL-634）。
         # 视口 20° + `rot = 0` 画成 20°，不是 40°——见 `docs/notes/grobs.md` §7。
         angle = float(grob.rot)
@@ -1926,7 +1940,7 @@ class _Traverser:
         def params(gp: ResolvedGpar, *, label_angle: float = angle) -> dict[str, Any]:
             return {
                 "font": _font_key(gp),
-                "size": float(gp.fontsize) * float(gp.cex),
+                "size": fontsize * cex,
                 "anchor": anchor.value,
                 "baseline": baseline.value,
                 "angle": label_angle,
@@ -2089,14 +2103,18 @@ def _extent_unit(grob: GrobLike, node: VpNode, axis: str, gp: ResolvedGpar) -> U
         if ctx.metrics is None:
             raise GrobError("text 的宽高需要度量（ViewportTree(metrics=...)）")
         labels = item.label
+        font_key = _font_key(inherited)
         widths = [
-            ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex) for label in labels
+            ctx.metrics.strwidth(label, fontsize=ctx.fontsize, cex=ctx.cex, font=font_key)
+            for label in labels
         ]
         if axis == "x":
             # 度量提供者返回英寸；这一层统一折成 bigpts（与下面的高度、以及
             # `_to_absolute_pt` 同一口径），下游再用任何上下文换算都是同一个数。
             return unit(max(widths) * 72.0 if widths else 0.0, "bigpts")
-        return unit(ctx.fontsize * ctx.cex * ctx.lineheight, "bigpts")
+        # heightDetails：行数 × 行高（行高 = fontsize × lineheight）。
+        lines = max((label.count("\n") + 1 for label in labels), default=1)
+        return unit(lines * ctx.fontsize * ctx.cex * ctx.lineheight, "bigpts")
 
     xs, ys = _bbox_points(item, frame)
     if axis == "x":

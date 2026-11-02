@@ -1,17 +1,27 @@
 {
-  "version": 1,
+  "version": 3,
   "note": "M0-7 度量规则的唯一声明：run 切分（字族回退 + 粘着码点）、兜底表不支持的书写字系统、受管字体与默认字体栈。Python（ggcore.metrics）与 CanvasKit 度量脚本（tools/metrics/measure_canvaskit.cjs）都读这一份，改这里必须同时 bump version 并重新生成度量表（pixi run metrics:table）。码点用十六进制字符串表示。",
   "default_font_stack": [
-    "DejaVuSans.ttf",
     "NotoSansCJKsc-VF.ttf",
-    "NotoColorEmoji.ttf"
+    "NotoColorEmoji.ttf",
+    "DejaVuSans.ttf"
   ],
   "fonts": [
     { "file": "DejaVuSans.ttf", "family": "DejaVu Sans" },
+    { "file": "DejaVuSans-Bold.ttf", "family": "DejaVu Sans" },
+    { "file": "DejaVuSans-Oblique.ttf", "family": "DejaVu Sans" },
+    { "file": "DejaVuSans-BoldOblique.ttf", "family": "DejaVu Sans" },
+    { "file": "DejaVuSerif.ttf", "family": "DejaVu Serif" },
+    { "file": "DejaVuSerif-Bold.ttf", "family": "DejaVu Serif" },
+    { "file": "DejaVuSerif-Italic.ttf", "family": "DejaVu Serif" },
+    { "file": "DejaVuSerif-BoldItalic.ttf", "family": "DejaVu Serif" },
     { "file": "NotoSansCJKsc-VF.ttf", "family": "Noto Sans CJK SC" },
+    { "file": "NotoSans-VF.ttf", "family": "Noto Sans" },
+    { "file": "NotoSans-Italic-VF.ttf", "family": "Noto Sans" },
+    { "file": "NotoSerif-VF.ttf", "family": "Noto Serif" },
+    { "file": "NotoSerif-Italic-VF.ttf", "family": "Noto Serif" },
     { "file": "NotoColorEmoji.ttf", "family": "Noto Color Emoji" },
-    { "file": "NotoEmoji-Regular.ttf", "family": "Noto Emoji" },
-    { "file": "NotoSans-VF.ttf", "family": "Noto Sans" }
+    { "file": "NotoEmoji-Regular.ttf", "family": "Noto Emoji" }
   ],
   "glue_ranges": [["200c", "200d"], ["fe00", "fe0f"], ["e0100", "e01ef"]],
   "complex_script_ranges": [

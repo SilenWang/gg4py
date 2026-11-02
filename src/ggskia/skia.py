@@ -36,7 +36,7 @@ from ggcore.device import Device, DeviceError, DeviceWarning
 from ggcore.ir import LineEnd, LineJoin, NodeKind, Scene
 from ggskia.curves import curve_points, xspline_points
 from ggskia.pch import character_pch, symbol
-from ggskia.text import TextShaper
+from ggskia.text import LINE_PITCH, TextShaper
 
 __all__ = ["SkiaPdfDevice", "SkiaRasterDevice", "SkiaSvgDevice"]
 
@@ -55,6 +55,9 @@ _JOINS = {
 class _SkiaDevice(Device):
     """一台 skia 画布 + IR 遍历器。子类只需给画布与编码。"""
 
+    #: emoji 字面策略：栅格用彩色 CBDT 位图，矢量后端用单色 Noto Emoji 轮廓。
+    emoji_mode = "color"
+
     def __init__(
         self,
         width_pt: float,
@@ -64,7 +67,7 @@ class _SkiaDevice(Device):
         shaper: TextShaper | None = None,
     ) -> None:
         super().__init__(width_pt, height_pt, dpi=dpi)
-        self.shaper = shaper if shaper is not None else TextShaper()
+        self.shaper = shaper if shaper is not None else TextShaper(emoji=self.emoji_mode)
         self.canvas: skia.Canvas | None = None
         self.scene: Scene | None = None
 
@@ -351,32 +354,51 @@ class _SkiaDevice(Device):
         font_key: str = "sans",
     ) -> None:
         assert self.canvas is not None
-        runs = self.shaper.runs(font_key, label, size)
-        if not runs:
+        lines = label.split("\n")
+        line_runs = [self.shaper.runs(font_key, line, size) for line in lines]
+        if not any(line_runs):
             return
-        measured = sum(run.advance for run in runs) if width is None else width
-        dx = {"left": 0.0, "center": -measured / 2.0, "right": -measured}[anchor]
-        primary = self.shaper.font(runs[0].filename, size)
+        first = next(runs[0] for runs in line_runs if runs)
+        primary = self.shaper.font(first.face, size)
         metrics = primary.getMetrics()
         ascent = float(-metrics.fAscent)
-        descent = float(metrics.fDescent)
-        shift = {
-            "alphabetic": 0.0,
-            "top": ascent,
-            "middle": (ascent - descent) / 2.0,
-            "bottom": -descent,
+        # R 4.5.3 的 `strheight`（grid 的 textGrob 用它做 vjust/heightDetails）
+        # 实测 = 字体的 cap height × 72.27/72，不是 ascent + descent：
+        # Noto CJK 20pt → 14.714（cap 14.66），Noto Sans 20pt → 14.338
+        # （cap 14.28）；用 (ascent - descent)/2 会在 vjust=0.5 时多偏
+        # 0.03em，落到 1px 字画的抗锯齿边缘上。见 metrics-ledger M1-文字测量。
+        cap = float(metrics.fCapHeight)
+        if cap > 0:
+            cap *= 72.27 / 72.0
+        else:  # 位图字体（CBDT）没有 cap height：退回字面框
+            cap = ascent + float(metrics.fDescent)
+        # 多行：R 4.5.3 实测行距 = 1.2 × lineheight × fontsize（默认 1.44×）；
+        # 整块高度 = (n-1) × 行距 + strheight。
+        block = (len(lines) - 1) * LINE_PITCH * size + cap
+        top = {
+            "alphabetic": -cap,
+            "top": 0.0,
+            "middle": -block / 2.0,
+            "bottom": -block,
         }[baseline]
         self.canvas.save()
         self.canvas.translate(x, y)
         if angle:
             # 局部旋转：视口旋转已经在 `transform` 里。页面 y 向下、IR 角度逆时针。
             self.canvas.rotate(-angle, 0.0, 0.0)
-        pen = dx
-        for run in runs:
-            font = self.shaper.font(run.filename, size)
-            points = [skia.Point(pen + offset, shift) for offset in run.offsets]
-            self._emit_glyphs(font, run.gids, points, paint)
-            pen += run.advance
+        for index, runs in enumerate(line_runs):
+            if not runs:
+                continue
+            line_width = sum(run.advance for run in runs)
+            measured = line_width if width is None or len(lines) > 1 else width
+            dx = {"left": 0.0, "center": -measured / 2.0, "right": -measured}[anchor]
+            baseline_y = top + cap + index * LINE_PITCH * size
+            pen = dx
+            for run in runs:
+                font = self.shaper.font(run.face, size)
+                points = [skia.Point(pen + offset, baseline_y) for offset in run.offsets]
+                self._emit_glyphs(font, run.gids, points, paint)
+                pen += run.advance
         self.canvas.restore()
 
     def _draw_raster(self, node: Any) -> None:
@@ -511,6 +533,7 @@ class SkiaSvgDevice(_SkiaDevice):
     """SVG 后端：字形全部走轮廓，产物里没有 `<text>` / `@font-face`。"""
 
     format = "svg"
+    emoji_mode = "outline"
 
     def _begin(self) -> None:
         self._stream = skia.DynamicMemoryWStream()
@@ -552,6 +575,7 @@ class SkiaPdfDevice(_SkiaDevice):
     """PDF 后端：文字走轮廓，产物没有 `/Font`（CJK 不依赖阅读端字体）。"""
 
     format = "pdf"
+    emoji_mode = "outline"
 
     def _begin(self) -> None:
         self._stream = skia.DynamicMemoryWStream()

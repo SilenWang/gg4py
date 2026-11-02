@@ -1,0 +1,8 @@
+family = "geom-text"
+features = ["font-face"]
+ci = true
+title = "geom_text：regular / bold / italic / bold-italic 四个真实字面"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+notes = """字族是 Noto Sans（regular/bold/italic/bold-italic 都在受管字体里）。
+粗体与斜体必须选到真实字面：粗体落到常规会让每行推进窄 3–4%，左对齐时沿
+字符串累积。可变字体（NotoSans-VF / NotoSans-Italic-VF）用 wght=700 落字重。"""
