@@ -116,7 +116,7 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 - `line`：追加 `flipped_aes`，并按 `(PANEL, group, x)` 重排行序（上游
   `GeomLine$setup_data()`；`geom_path` 保持给定顺序、也没有 `flipped_aes`）。
 
-位置调整：
+位置调整（M1-9 起全部在 `ggcore.position`，口径见 `docs/notes/position.md`）：
 
 - `identity`：不做任何事；
 - `stack`：按 x 分组，组内按 group **降序**（上游 `collide(reverse = FALSE)`：
@@ -127,8 +127,9 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 - `stack` 下 **y = NA** 的行：我们保留有效坐标（x / xmin / xmax 不抹掉），把
   该行当零高度参与累计（`ymin == ymax`，绘制效果与 R 一致）；不复刻上游
   `collide` 按 `xmin` 走 `dapply` 时把整行坐标抹成 `NA` 的副作用。
-- `dodge` / `dodge2` / `jitter` / `fill` → `BuildError`（boxplot 的缺省 `dodge2`
-  目前需要显式 `position="identity"`）。
+- `fill` / `dodge` / `dodge2` / `jitter` / `nudge`：`compute_position()` 按名字
+  查注册表分派（`registry.construct("position", …)`），与 `position_*()` /
+  `p.position_*()` 同源。boxplot 的缺省 `dodge2` 现在开箱可用。
 
 ## 6. ScaleSet（M1-4 起是真实标度）
 
@@ -213,7 +214,8 @@ M1-4 起 colour / fill 走真实标度，原先跳过的四列（`stacked_bar_in
 - coord（M1-5）、gtable / 主题装配（M1-10）、geom 绘制（M1-7）、其余 stat
   （M1-8）、facet（M1-6）都不在这里；标度本身见 `docs/notes/scales.md`
   （M1-4 已接上）。
-- `position` 只到 `identity` / `stack`；`dodge2` 是 boxplot 缺省，暂需显式覆盖。
+- `position` 的七种调整见 `docs/notes/position.md`（M1-9）；横向
+  （`orientation = "y"`）的 `flipped_aes` 检测仍归 geom `setup_data()`，M1-7 补。
 - `GeomBoxplot` 的 `outliers` / `varwidth` 分支未实现（预计算路径不需要）。
 - 横向柱状图（只映射 `y`、由 `orientation` 推断）不在本任务范围：`stat_count`
   与 bar 的 `setup_data` 都假定有 `x`；M1-7 接 orientation 时再补。

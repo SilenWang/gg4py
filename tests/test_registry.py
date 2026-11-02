@@ -10,6 +10,7 @@ from ggcore.layer import Geom, Layer
 EXPECTED = {
     "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
     "stat": ("identity", "bin", "count", "boxplot", "smooth", "align"),
+    "position": ("identity", "stack", "fill", "dodge", "dodge2", "jitter", "nudge"),
     "scale": (
         "x_continuous",
         "y_continuous",
@@ -60,7 +61,17 @@ def test_default_names_are_registered_in_order(kind: str) -> None:
 
 
 def test_kind_order_is_fixed() -> None:
-    assert registry.KINDS == ("geom", "stat", "scale", "coord", "facet", "guide", "theme", "label")
+    assert registry.KINDS == (
+        "geom",
+        "stat",
+        "position",
+        "scale",
+        "coord",
+        "facet",
+        "guide",
+        "theme",
+        "label",
+    )
 
 
 def test_iteration_is_stable_across_calls() -> None:

@@ -167,7 +167,7 @@ def _add_component(component: Any, plot: ggplot) -> ggplot:
     """内层按 component 类型分派（双参数分派的第二半）。"""
     raise TypeError(
         f"不能把 {type(component).__name__} 加到 ggplot 上；"
-        "可加的类型：Layer / Scale / Theme / Coord / Facet / Guide / Labels"
+        "可加的类型：Layer / Scale / Theme / Coord / Facet / Guide / Labels / Position"
     )
 
 
@@ -217,6 +217,20 @@ def _add_guide(component: Guide, plot: ggplot) -> ggplot:
 def _add_labels(component: Labels, plot: ggplot) -> ggplot:
     new = plot.clone()
     new.labels.update(component.values)
+    return new
+
+
+@_add_component.register(Position)
+def _add_position(component: Position, plot: ggplot) -> ggplot:
+    """`p + position_dodge()`：记成 plot 级默认位置调整。
+
+    上游 4.0.3 会直接报「Can't add `position_dodge()` to a <ggplot> object」；
+    gg4py 的 ggplot 对象保留了 `position` 字段（M1-1），注册表的「两个入口」
+    因此对 position 也成立。图层自己的 `Layer.position` 仍是流水线真正读取的
+    那一份（见 docs/notes/position.md「差异面」）。
+    """
+    new = plot.clone()
+    new.position = component
     return new
 
 

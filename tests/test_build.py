@@ -231,11 +231,11 @@ def test_stack_without_duplicate_x_does_not_restack() -> None:
     assert values_of(layer.positioned, "ymax") == [3.0, 1.0, 1.0]
 
 
-def test_unimplemented_position_is_rejected() -> None:
-    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(position="dodge")
+def test_unknown_position_is_rejected() -> None:
+    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(position="sparkle")
     aesthetics = compute_aesthetics(plot, plot.layers[0])
     mapped = map_statistic(plot.layers[0], compute_stat(plot.layers[0], aesthetics), aesthetics)
-    with pytest.raises(BuildError, match="dodge"):
+    with pytest.raises(BuildError, match="sparkle"):
         compute_position(plot.layers[0], mapped)
 
 
