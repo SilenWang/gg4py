@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -26,6 +28,7 @@ from ggcore.plot import (
     scale_x_discrete,
     scale_x_log10,
 )
+from ggcore.registry import SCALE_SPECS
 from ggcore.scales import (
     DISCRETE_EXPANSION,
     Expansion,
@@ -94,9 +97,9 @@ def test_hue_palette_matches_r_byte_for_byte(n: int, expected: list[str]) -> Non
 
 def test_hue_palette_honours_direction_and_start() -> None:
     assert hue_pal(direction=-1)(3) == list(reversed(hue_pal()(3)))
-    shifted = hue_pal(h_start=90)(2)
-    assert shifted == hue_pal()(2) or shifted != hue_pal()(2)  # 只断言可调用且长度对
-    assert len(shifted) == 2
+    # h.start = 90 的整体旋转：R 4.0.3 实测值，逐字节钉住（不是「只要长度对」）。
+    assert hue_pal(h_start=90)(2) == ["#7CAE00", "#C77CFF"]
+    assert hue_pal(h_start=90)(3) == ["#7CAE00", "#00B4F0", "#FF64B0"]
     # h = c(0, 360) 的整圈：n 个色相等距
     ring = hue_pal(h=(0.0, 360.0))(4)
     assert len(ring) == 4 and len(set(ring)) == 4
@@ -319,6 +322,35 @@ def test_log10_breaks_and_labels_are_in_data_space() -> None:
     assert scale.expanded_limits() == pytest.approx((-0.1, 2.1), abs=1e-12)
 
 
+def test_log10_explicit_limits_are_transformed() -> None:
+    """显式 limits 是数据空间的值；R 的 `get_limits()` 存变换后的 (0, 2)。
+
+    回归 SIL-681：之前把 `limits = c(1, 100)` 原样当成变换后的值，于是
+    `expanded = (-3.95, 104.95)`、`breaks = (NA, 18, 40, 62, 84)`、
+    `labels = (NA, "1e+18", …)`，200 也被当成界内值。
+    """
+    scale = scale_from_component(Scale("x_log10", "x", {"limits": [1, 100]}))
+    scale.train(scale.transform(column([1.0, 10.0, 100.0, 200.0])))
+    assert scale.limits() == (0.0, 2.0)
+    assert scale.expanded_limits() == pytest.approx((-0.1, 2.1), abs=1e-12)
+    assert scale.breaks() == (None, 0.0, 1.0, 2.0, None)
+    assert scale.labels() == (None, "1", "10", "100", None)
+    mapped = scale.map(scale.transform(column([1.0, 10.0, 100.0, 200.0])))
+    assert mapped.values.tolist() == [0.0, 1.0, 2.0, 0.0]
+    assert mapped.na_mask.tolist() == [False, False, False, True]
+
+
+def test_log10_single_sided_limits_keep_the_trained_side() -> None:
+    """单侧 None：显式一侧先变换，另一侧取训练范围（已是变换后的值，不再变换）。"""
+    scale = scale_from_component(Scale("x_log10", "x", {"limits": [1, None]}))
+    scale.train(scale.transform(column([1.0, 10.0, 100.0, 200.0])))
+    assert scale.limits() == pytest.approx((0.0, math.log10(200.0)), abs=1e-12)
+
+    upper = scale_from_component(Scale("x_log10", "x", {"limits": [None, 100]}))
+    upper.train(upper.transform(column([1.0, 10.0, 100.0, 200.0])))
+    assert upper.limits() == pytest.approx((0.0, 2.0), abs=1e-12)
+
+
 def test_reverse_check_log10_versus_plain() -> None:
     """反向对照（issue 验收）：1/10/100 → 0/1/2；不写 log10 时值不变。"""
     t = table(x=[1.0, 10.0, 100.0], y=[1.0, 2.0, 3.0])
@@ -464,6 +496,65 @@ def test_manual_values_palette_requires_enough_colours() -> None:
     short.train(column(["a", "b"]))
     with pytest.raises(ScaleError, match="不允许循环补齐"):
         short.map(column(["a", "b"]))
+
+
+def test_manual_values_mapping_is_looked_up_by_level_name() -> None:
+    """`values` 传 dict 时按**水平名**取色（R 的 named manual palette）。
+
+    之前把 dict 当颜色列表迭代 key，`{"a": "red"}` 会静默输出 `"a"`。
+    """
+    scale = scale_from_component(
+        Scale("colour_discrete", "colour", {"values": {"a": "red", "b": "blue"}})
+    )
+    scale.train(column(["a", "b", "c"]))
+    assert scale.map(column(["a", "b", "c"])).values.tolist() == ["red", "blue", "grey50"]
+
+    custom = scale_from_component(
+        Scale(
+            "colour_discrete",
+            "colour",
+            {"values": {"b": "blue"}, "na.value": "black"},
+        )
+    )
+    custom.train(column(["a", "b"]))
+    assert custom.map(column(["a", "b"])).values.tolist() == ["black", "blue"]
+
+    # 名字与水平完全对不上：整列 na.value，并像上游一样发 warning（不静默）。
+    other = scale_from_component(Scale("colour_discrete", "colour", {"values": {"x": "red"}}))
+    other.train(column(["a", "b"]))
+    with pytest.warns(UserWarning, match="没有交集"):
+        assert other.map(column(["a", "b"])).values.tolist() == ["grey50", "grey50"]
+
+
+def test_palette_parameter_accepts_callable_and_sequence() -> None:
+    calls: list[int] = []
+
+    def fixed(n: int) -> list[str]:
+        calls.append(n)
+        return ["#111111", "#222222"][:n]
+
+    callable_scale = scale_from_component(Scale("colour_discrete", "colour", {"palette": fixed}))
+    callable_scale.train(column(["a", "b"]))
+    assert callable_scale.map(column(["a", "b"])).values.tolist() == ["#111111", "#222222"]
+    assert calls == [2]
+
+    sequence_scale = scale_from_component(
+        Scale("colour_discrete", "colour", {"palette": ["#333333", "#444444"]})
+    )
+    sequence_scale.train(column(["a", "b"]))
+    assert sequence_scale.map(column(["b", "a"])).values.tolist() == ["#444444", "#333333"]
+
+
+def test_every_registered_scale_name_has_an_implementation() -> None:
+    """`registry.SCALE_SPECS` 是唯一的名字表：13 个注册名都能建成标度对象。
+
+    回归 SIL-681：`scales.SCALE_NAMES` 曾是第二份名字表且无人使用，已删除；
+    这条断言守住「注册表 ↔ 实现」不漂移。
+    """
+    for name, aesthetic, _defaults in SCALE_SPECS:
+        scale = scale_from_component(Scale(name, aesthetic, {}))
+        assert scale.aesthetic == aesthetic
+        assert scale.discrete is (name.endswith("_discrete"))
 
 
 def test_shape_and_size_palettes() -> None:

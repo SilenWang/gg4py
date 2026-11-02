@@ -37,6 +37,11 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 - `map_scales()`（阶段 5）映射**全部**美学：位置 = censor（幂等），
   colour / fill / size / shape / alpha = 调色板 / rescale。
 
+> `ScaleSet.map` 会被 `map_position()` 与阶段 5 各调一次，所以**自定义的
+> `ScaleSet.map` 必须幂等**（常量映射、censor 都是幂等的；累加 / 有状态的
+> 映射不行）。`tests/test_build.py::test_pipeline_calls_the_scale_set_instead_of_hardcoding`
+> 里注明了这一点。
+
 因此 `scale_x_log10()` 下 `LayerBuild.data$x` 是 log10 空间的值：x = 1 / 10 / 100
 → 0 / 1 / 2；不写 `scale_x_log10()` 时同一张图仍是 1 / 10 / 100（反向对照在
 `tests/test_scales.py::test_reverse_check_log10_versus_plain`）。
@@ -70,7 +75,12 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 两个不同的东西，别混：
 
 - `Scale.limits()` = 上游 `scale$get_limits()`：**训练后的数据范围**（或显式
-  `limits`），**没有** expand；
+  `limits`），**没有** expand；两边都是**变换后**的空间，见下一条；
+- 显式 `limits` 是**数据空间**的值（`scale_x_log10(limits = c(1, 100))` 里的
+  1 / 100 是原始数据），`limits()` 里先过 `trans` 再返回——R 4.0.3 的
+  `get_limits()` 存的也是变换后的值（上例 → `(0, 2)`），`expanded_limits()` /
+  `breaks()` / `map()` 都在这个空间里消费。单侧 `None` 取训练范围（已经是变换
+  后的值，不能再变换一次）；log10 下给 0 / 负值时按模块统一约定落成 NA；
 - `Scale.expanded_limits()` = 上游 `scale$dimension(expand = …)`：面板范围，
   只对**位置**标度有意义（非位置标度返回 `None`）；
 - 模块级 `expand_range(low, high, mult=0.05, add=0)` 是**唯一**的 expand 实现
@@ -97,7 +107,7 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 
 - 连续默认断点 = `labeling::extended(dmin, dmax, n = 5)`（`extended_breaks()` 的
   完整移植：simplicity / coverage / density / legibility 加权打分）。
-  `docs/notes/scales.md` 的实现与 R 在 19 组范围上逐项相等
+  `extended_breaks()` 的实现与 R 在 19 组范围上逐项相等
   （`tests/test_scales.py::test_extended_breaks_match_r`）。
 - `n.breaks = 3` → 用 `n = 3` 调 breaks 函数（Python 关键字可写 `n_breaks` 或
   `n.breaks`）。
@@ -143,8 +153,11 @@ gradient 在 0 / 0.25 / 0.5 / 0.75 / 1 上同样逐字节相等（`#132B43` `#22
 `#336A98` `#448DC6` `#56B1F7`）；容差不需要放宽——Lab 插值与 R 的
 `scales::colour_ramp()` 同一条路径（同一套 D65 / 矩阵 / 伽马）。
 
-`values=`（manual）按水平顺序取色，长度不够时**报错**，不循环补齐（上游 4.0.3
-的 manual scale 同样要求足够长度的 values）。`palette=` 可以给可调用对象或序列。
+`values=`（manual）与 R 的 `scale_*_manual()` 同一套口径：序列按水平顺序取色，
+长度不够时**报错**，不循环补齐（上游 4.0.3 的 manual scale 同样 abort）；**映射
+（dict）按水平名取色**（`values = {"a": "red", "b": "blue"}`），名字对不上的水平
+用 `na.value`，与数据水平完全没交集时发一条 `UserWarning`（上游同样警告）。
+`palette=` 可以给可调用对象（收 n，返回 n 个颜色）或序列（按水平顺序取）。
 
 ## 7. NA / 越界
 

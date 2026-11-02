@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import warnings
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -44,7 +45,6 @@ __all__ = [
     "CONTINUOUS_AESTHETICS",
     "DISCRETE_AESTHETICS",
     "POSITION_AESTHETICS",
-    "SCALE_NAMES",
     "Expansion",
     "ScaleError",
     "ScaleSet",
@@ -66,23 +66,6 @@ CONTINUOUS_AESTHETICS = frozenset({"size", "alpha", "colour", "fill"})
 
 #: 离散标度覆盖的美学。
 DISCRETE_AESTHETICS = frozenset({"shape", "colour", "fill"})
-
-#: `registry.SCALE_SPECS` 里的 13 个注册名（本模块按名字建实现）。
-SCALE_NAMES: tuple[str, ...] = (
-    "x_continuous",
-    "y_continuous",
-    "x_discrete",
-    "y_discrete",
-    "x_log10",
-    "y_log10",
-    "colour_continuous",
-    "colour_discrete",
-    "fill_continuous",
-    "fill_discrete",
-    "size_continuous",
-    "shape_discrete",
-    "alpha_continuous",
-)
 
 _X_ALIASES = frozenset({"xmin", "xmax", "xend"})
 _Y_ALIASES = frozenset({"ymin", "ymax", "yend"})
@@ -1225,24 +1208,39 @@ class PositionDiscreteScale(DiscreteScale):
 
 
 class HueScale(DiscreteScale):
-    """离散 colour / fill：`hue_pal()`（上游 `scale_colour_hue`）。"""
+    """离散 colour / fill：`hue_pal()`（上游 `scale_colour_hue`）。
+
+    `values=` 与 R 的 `scale_colour_manual()` 同一套口径：
+
+    - 序列 → 按**水平顺序**逐位取色，长度不够时报错（上游同样不循环补齐）；
+    - 映射（dict）→ 按**水平名**取色（`values = {"a": "red", "b": "blue"}`），
+      没有对应名字的水平用 `na.value`（上游的 named manual palette）。
+
+    不认识的形态（例如把 dict 当成颜色列表迭代）会静默产出错误颜色，所以这里
+    显式区分，映射按名字查。
+    """
 
     default_na_value = "grey50"
 
     def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
         super().__init__(aesthetic, params)
+        self._values: list[str] | None = None
+        self._value_map: Mapping[str, str] | None = None
+        self._palette: Callable[[int], Sequence[str]] | None = None
         explicit = self._param("values")
         if explicit is not None:
-            self._values = [str(value) for value in explicit]
-            self._palette = None
+            if isinstance(explicit, Mapping):
+                self._value_map = MappingProxyType(
+                    {str(name): str(value) for name, value in explicit.items()}
+                )
+            else:
+                self._values = [str(value) for value in explicit]
         else:
-            self._values = None
             custom = self._param("palette")
             if callable(custom):
                 self._palette = custom
             elif custom is not None:
                 self._values = [str(value) for value in custom]
-                self._palette = None
             else:
                 self._palette = hue_pal(
                     h=self._param("h", (15.0, 375.0)),
@@ -1252,7 +1250,33 @@ class HueScale(DiscreteScale):
                     direction=float(self._param("direction", 1.0)),
                 )
 
+    def colours(self, levels: Sequence[str]) -> list[str | None]:
+        """按水平名给颜色；`None` = 该水平没有颜色（调用方落 `na.value`）。"""
+        if self._value_map is not None:
+            colours = [self._value_map.get(level) for level in levels]
+            if levels and all(colour is None for colour in colours):
+                # 上游同样会警告（「No shared levels found ...」）：名字与数据
+                # 里的水平完全对不上，整列都会是 na.value。
+                warnings.warn(
+                    "values 的名字与数据里的水平没有交集，整列都会用 na.value",
+                    UserWarning,
+                    stacklevel=3,
+                )
+            return colours
+        if self._values is not None:
+            if len(self._values) < len(levels):
+                raise ScaleError(
+                    f"values 里有 {len(self._values)} 个颜色，但需要 {len(levels)} 个"
+                    "（上游 manual scale 不允许循环补齐）"
+                )
+            return list(self._values[: len(levels)])
+        assert self._palette is not None
+        return list(self._palette(len(levels)))
+
     def palette(self, n: int) -> list[str]:
+        """前 n 个水平用的颜色（位置口径；命名 values 按插入序取）。"""
+        if self._value_map is not None:
+            return list(self._value_map.values())[:n]
         if self._values is not None:
             if len(self._values) < n:
                 raise ScaleError(
@@ -1260,19 +1284,21 @@ class HueScale(DiscreteScale):
                     "（上游 manual scale 不允许循环补齐）"
                 )
             return list(self._values[:n])
+        assert self._palette is not None
         return list(self._palette(n))
 
     def map(self, column: Column) -> Column:
         limits = self.limits()
-        colours = self.palette(len([level for level in limits if level is not None]))
+        levels = [level for level in limits if level is not None]
+        colours = self.colours(levels)
         na_value = self._na_value(self.default_na_value)
         codes = self.codes(column, na_as_level=False)
         out: list[str | None] = []
         for code in codes.tolist():
-            if math.isnan(code):
-                out.append(None if na_value is None else str(na_value))
-            else:
-                out.append(colours[int(code) - 1])
+            colour: str | None = None
+            if not math.isnan(code):
+                colour = colours[int(code) - 1]
+            out.append(str(na_value) if colour is None and na_value is not None else colour)
         return _str_column(out)
 
 
@@ -1299,8 +1325,6 @@ class ShapeScale(DiscreteScale):
             else:
                 out[index] = _SHAPE_CODES[int(code) - 1]
         if overflow:
-            import warnings
-
             warnings.warn(
                 "shape 标度最多 6 个离散水平（上游同样只给 6 个），多出来的水平记 NA；"
                 "需要更多形状请显式传 values",

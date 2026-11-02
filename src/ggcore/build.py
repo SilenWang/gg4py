@@ -10,7 +10,7 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
     layer = build.layers[0]
     layer.aesthetics.names      # ("x", "y", "PANEL", "group")
     layer.data.names            # R `ggplot_build()$data[[1]]` 的列名与列序
-    layer.scaled.column("x").values  # 第 5 阶段输出的 x（identity 下不变）
+    layer.scaled.column("x").values  # 第 5 阶段输出的 x（标度变换后的空间）
 
 本模块只做「数据」：不产出 gtable、不画图、不碰 IR（M1-7 才把这里的结果送进 IR）。
 口径全文见 `docs/notes/build.md`，要点：
@@ -620,7 +620,8 @@ def _position_stack(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTabl
 
 
 def map_scales(scales: ScaleSet, positioned: ColumnTable) -> ColumnTable:
-    """阶段 5：逐列过 `ScaleSet.map`（本任务 identity；离散位置 → 1..n）。"""
+    """阶段 5：逐列过 `ScaleSet.map`（连续位置 = trans 空间 + oob censor；
+    离散位置 → 1..n；colour / fill / size / alpha / shape = 调色板 / rescale）。"""
     if positioned.nrows == 0:
         return _EMPTY
     columns: list[tuple[str, Column]] = []

@@ -257,6 +257,8 @@ def test_continuous_position_values_pass_through() -> None:
 
 
 def test_pipeline_calls_the_scale_set_instead_of_hardcoding() -> None:
+    # 注意：`ScaleSet.map` 会被 `map_position()` 与阶段 5 各调一次，所以自定义
+    # map **必须幂等**（这个常量映射就是幂等的；累加 / 有状态的映射不行）。
     class Constant(ScaleSet):
         def map(self, values, aesthetic):
             if aesthetic == "x":
@@ -636,6 +638,20 @@ def test_logical_position_single_level_maps_to_code_one(
     assert build.scales.trained["x"] == levels
     assert build.scales.limits("x") == levels
     assert values_of(build.layers[0].scaled, "x") == [1.0] * len(values)
+
+
+def test_categorical_levels_only_keep_observed_levels() -> None:
+    """factor levels = ("c", "b", "a") 只出现 b / a：位置 1,2、trained ("b", "a")。"""
+    table_partial = ColumnTable(
+        [
+            ("g", Column("categorical", np.array([1, 2]), levels=("c", "b", "a"))),
+            ("y", Column("float", np.array([1.0, 2.0]))),
+        ]
+    )
+    build = build_plot(ggplot(table_partial, aes(x="g", y="y")) + geom_point())
+    assert values_of(build.layers[0].scaled, "x") == [1.0, 2.0]
+    assert build.scales.trained["x"] == ("b", "a")
+    assert build.scales.levels("x") == ("b", "a")
 
 
 def test_constant_aes_params_materialize_required_columns() -> None:
