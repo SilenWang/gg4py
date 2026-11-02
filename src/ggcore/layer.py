@@ -85,9 +85,15 @@ class Geom:
         """`Geom$setup_params()`：解析 `flipped_aes`（横向 geom 的朝向）。"""
         return self._renderer().setup_params(data, params or {}, raw=raw)
 
-    def setup_data(self, data: Any, params: Mapping[str, Any] | None = None) -> Any:
-        """`Geom$setup_data()`：派生坐标列与行序（列序与 R 一致）。"""
-        return self._renderer().setup_data(data, params or {})
+    def setup_data(
+        self, data: Any, params: Mapping[str, Any] | None = None, *, raw: Any = None
+    ) -> Any:
+        """`Geom$setup_data()`：派生坐标列与行序（列序与 R 一致）。
+
+        `raw` 是位置标度映射前的美学表（R 的 `setup_data()` 跑在
+        `map_position()` 之前），供默认尺寸 / 离散性判断使用。
+        """
+        return self._renderer().setup_data(data, params or {}, raw=raw)
 
     def handle_na(self, data: Any, na_rm: bool = False) -> Any:
         """`Geom$handle_na()`：绘制期删行并发出 "Removed N rows" 警告。"""

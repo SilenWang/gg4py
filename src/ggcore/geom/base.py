@@ -38,10 +38,13 @@ __all__ = [
     "GeomError",
     "GeomRenderer",
     "alpha_colour",
+    "compute_data_size",
     "flip_data",
     "flipped_names",
     "lty_value",
     "npc_values",
+    "position_is_discrete",
+    "resolution",
     "row_slice",
     "table_column",
     "table_numeric",
@@ -103,6 +106,82 @@ def row_slice(table: ColumnTable, keep: np.ndarray) -> ColumnTable:
         )
     nrows = int(np.count_nonzero(index)) if index.dtype == bool else int(index.size)
     return ColumnTable(columns, nrows=nrows)
+
+
+# ---------------------------------------------------------------------------
+# 默认尺寸（上游 `resolution()` / `compute_data_size()`）
+# ---------------------------------------------------------------------------
+
+
+def resolution(values: Any, *, zero: bool = True) -> float:
+    """上游 `resolution()`：相邻取值的**最小**间距（没有可用间距时是 1）。
+
+    `zero = TRUE` 把 0 也算进取值集合（R 的缺省）；`GeomBar$setup_data()` /
+    `GeomBoxplot$setup_data()` 走 `zero = FALSE`，只看数据本身。`discrete`
+    参数没有对应物：ggcore 的离散位置在标度映射后已经是 `1..n` 的数值编码，
+    分辨率必然为 1（与 R 的 `is_mapped_discrete()` 分支同一个结果）。
+    """
+    array = np.asarray(values, dtype=np.float64).ravel()
+    array = array[np.isfinite(array)]
+    if array.size == 0:
+        return 1.0
+    if zero:
+        array = np.append(array, 0.0)
+    unique = np.unique(array)
+    if unique.size <= 1:
+        return 1.0
+    differences = np.diff(unique)
+    tolerance = math.sqrt(np.finfo(np.float64).eps)
+    usable = differences[differences > tolerance]
+    if usable.size == 0:
+        return 1.0
+    return float(usable.min())
+
+
+def compute_data_size(
+    table: ColumnTable,
+    params: Mapping[str, Any],
+    *,
+    default: float = 0.9,
+    target: str = "width",
+    discrete: bool = False,
+) -> np.ndarray:
+    """上游 `compute_data_size(target = "width")`：逐行宽度。
+
+    取值顺序与 R 一致：
+
+    1. 数据里已有 `width` 列（映射出来的美学）→ 原样用，**不**再乘分辨率；
+    2. `params$width` 显式给了 → 全表广播；
+    3. 都没有 → `resolution(x, zero = FALSE) * default`；分面时取各面板分辨率的
+       最小值（R 的 `panels = "across"` 缺省）。
+
+    `discrete = True` 对应该位置的标度是离散的：R 的 `setup_data()` 跑在
+    `map_position()` **之前**，那时的 x 是因子（内部整型），`resolution()` 直接
+    返回 1；映射之后 x 是 `1..n` 的全局编码，编码之间的间隔可能大于 1，不能拿
+    它算分辨率。调用方从 `raw`（映射前的美学表）判断 `discrete`。
+
+    `target = "height"` 时读 `y` 族，口径对称（当前没有 geom 用到）。
+    """
+    if target in table:
+        return table_numeric(table, target, default=float(default))
+    explicit = params.get(target)
+    if explicit is not None:
+        return np.full(table.nrows, float(explicit))
+
+    axis = "y" if target == "height" else "x"
+    values = table_numeric(table, axis, default=math.nan)
+    if discrete:
+        span = 1.0
+    elif "PANEL" in table:
+        labels = np.asarray(table.column("PANEL").values)
+        spans = [
+            resolution(values[labels == label], zero=False)
+            for label in dict.fromkeys(labels.tolist())
+        ]
+        span = min(spans) if spans else resolution(values, zero=False)
+    else:
+        span = resolution(values, zero=False)
+    return np.full(table.nrows, span * float(default))
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +258,19 @@ def _is_discrete(column: Column | None) -> bool:
     return column.is_discrete or column.kind == "bool"
 
 
+def position_is_discrete(table: ColumnTable | None, *, flipped: bool = False) -> bool:
+    """映射前的位置列是否离散（`flipped` 时看 y 族）。
+
+    R 的 `Geom$setup_data()` 跑在 `map_position()` 之前：离散位置的 x 还是因子 /
+    字符串，`resolution()` 对因子（内部整型）直接返回 1。默认宽度要按那一刻的
+    口径算，映射之后 `1..n` 编码之间的间隔可能大于 1。
+    """
+    if table is None:
+        return False
+    name = "y" if flipped else "x"
+    return _is_discrete(table.column(name) if name in table else None)
+
+
 class GeomRenderer:
     """一个 geom 的绘制实现。子类至少实现 :meth:`draw`。"""
 
@@ -234,8 +326,15 @@ class GeomRenderer:
         resolved["flipped_aes"] = bool(y_discrete != x_discrete and y_discrete)
         return resolved
 
-    def setup_data(self, data: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
-        """`Geom$setup_data()` 的缺省实现：不改数据。"""
+    def setup_data(
+        self, data: ColumnTable, params: Mapping[str, Any], *, raw: ColumnTable | None = None
+    ) -> ColumnTable:
+        """`Geom$setup_data()` 的缺省实现：不改数据。
+
+        `raw` 是位置标度映射**之前**的美学表（与 :meth:`setup_params` 的 `raw`
+        同源）：R 的 `setup_data()` 跑在 `map_position()` 之前，离散位置那时
+        还是因子 / 字符串，默认宽度 / 朝向等要按那时的口径判断。
+        """
         return data
 
     # -- NA ---------------------------------------------------------------

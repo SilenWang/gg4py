@@ -201,6 +201,14 @@ df_area <- data.frame(
   y = c(1, 3, 2, 4, 3)
 )
 
+# 横向 area：类别在 y 轴、长度在 x 轴。`group = 1` 把三个类别连成一条面积
+# （不加的话 group 由离散的 y 逐类别给出，每类各画一个退化的两点多边形）。
+df_area_h <- data.frame(
+  cls = c("a", "b", "c"),
+  v = c(1, 2, 3),
+  stringsAsFactors = FALSE
+)
+
 df_hist <- data.frame(
   x = c(0.5, 1.5, 2.5, 3.5),
   y = c(0.2, 0.5, 0.75, 0.4),
@@ -250,6 +258,10 @@ fixed_x <- function(limits) scale_x_continuous(limits = limits, expand = c(0, 0)
 fixed_y <- function(limits) scale_y_continuous(limits = limits, expand = c(0, 0))
 
 check_warnings <- function(plot) {
+  # `ggplotGrob()` 会打开默认设备；不显式钉死就会在仓库根留下未跟踪的
+  # Rplots.pdf（NULL 设备只画不落盘，跑完 `git status --porcelain` 仍为空）。
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   messages <- character()
   withCallingHandlers(
     invisible(ggplotGrob(plot)),
@@ -353,6 +365,15 @@ plot_area <- ggplot(df_area, aes(x, y)) +
   fixed_x(c(0, 6)) + fixed_y(c(0, 5)) + theme_case()
 cases$area_identity <- record_case("area_identity", plot_area, "area：identity stat（ymin = 0）")
 svg_cases$`geom-area-identity` <- plot_area
+
+# 8b. area：横向（y 是类别、x 是长度）→ flipped_aes = TRUE；build.data 里
+# 位置仍是 x/y/xmin/xmax（setup_data 翻回来），绘制期再按 flip 对调。
+plot_area_h <- ggplot(df_area_h, aes(x = v, y = cls, group = 1)) +
+  geom_area(stat = "identity", orientation = "y", fill = "#4C78A8") +
+  fixed_x(c(0, 3)) + scale_y_discrete(expand = c(0.6, 0.6)) + theme_case()
+cases$area_horizontal <- record_case(
+  "area_horizontal", plot_area_h, "横向 area：flipped_aes = TRUE"
+)
 
 # 9. histogram：stat_bin 的 R 侧输出（绘制输入夹具）
 plot_hist_stat <- ggplot(df_hist_raw, aes(x)) +

@@ -48,7 +48,8 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 - 越界值**不夹**：`coord_cartesian` 的语义是画到面板外再按 clip 处理。
 - clip 三态（`on` / `off` / `inherit`）落在**面板视口**上，`on` 另加一个
   `ClipPathGrob`（矩形裁剪节点），不是画完再对位图做裁剪。`off` 是 R 的设备
-  外包框（1.5×），`inherit` 沿用父视口（页面）。
+  外包框（1.5×），`inherit` 沿用父视口（页面）。三个取值在 `coord_*()` 构建期
+  都合法（R 4.0.3 原样透传 `clip`），并原样进 `PanelParams`。
 - 每个面板一个 viewport + 自己的一份裁剪矩形；`facet_wrap` 2×2 的场景里有
   4 个互不相同、互不重叠的 `clip_rect`。
 
@@ -57,11 +58,11 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 | geom | 绘制口径（对 R 4.0.3） |
 | --- | --- |
 | `point` | `pointsGrob`；`size`（mm）+ `stroke` 折成 `fontsize = size * .pt + stroke * .stroke/2`；`col=alpha(colour, alpha)`、`fill=fill_alpha(fill, alpha)`；IR 的 `points.size` 是标量，所以逐点尺寸按 `(pch, size)` 分组画多个 `pointsGrob` |
-| `line` / `path` | 每个 group 一条 `polylineGrob`；`line` 在 `setup_data()` 里按 `(PANEL, group, x)` 排序，`path` 保持行序；NA 用 `keep_mid_true()`：组内首尾缺失删掉、中间保留并断成两段；`lwd = linewidth * .pt` |
-| `bar` / `col` | 直接用 M1-9 的 `xmin/xmax/ymin/ymax`，画矩形（`just = c("left","top")`）；`fill` 吃 alpha、`col` 不吃（R 的 `fill_alpha()` 只包 fill） |
+| `line` / `path` | 每个 group 一条 `polylineGrob`；`line` 在 `setup_data()` 里按 `(PANEL, group, x)` 排序，`path` 保持行序；NA 用 `keep_mid_true()`：按 `interaction(group, PANEL)` 分组，组内首尾缺失删掉、中间保留并断成两段；`lwd = linewidth * .pt` |
+| `bar` / `col` | 直接用 M1-9 的 `xmin/xmax/ymin/ymax`，画矩形（`just = c("left","top")`）；默认宽度 = `resolution(x, zero = FALSE) * 0.9`（R 的 `compute_data_size()`），显式 `width` 参数与映射的 `width` 列优先且不再乘分辨率；`fill` 吃 alpha、`col` 不吃（R 的 `fill_alpha()` 只包 fill） |
 | `histogram` | 与柱相同（`stat_bin` 归 M1-8；绘制只消费 `x/xmin/xmax/y/ymin/ymax`） |
-| `area` | `ymin = 0`、`ymax = y`；上沿正向 + 下沿反向拼一个多边形（`fill` 吃 alpha，按 NA 断段），再按 `outline.type = "both"` 画上下两条轮廓线 |
-| `boxplot` | 须线 `(x, upper)→(x, ymax)` / `(x, lower)→(x, ymin)`；箱体 `xmin..xmax × lower..upper`；中位线线宽 `linewidth * fatten`（2）；离群点走 point 的口径；`varwidth` 用 `relvarwidth` 缩放箱宽 |
+| `area` | `ymin = 0`、`ymax = y`；上沿正向 + 下沿反向拼一个多边形（`fill` 吃 alpha，按 NA 断段），再按 `outline.type = "both"` 画上下两条轮廓线。横向（`flipped_aes`）在纵向语义下拼点，再对换坐标并分别按 x / y 轴映射 npc：长度铺 x 轴、类别取 y 轴 |
+| `boxplot` | 须线 `(x, upper)→(x, ymax)` / `(x, lower)→(x, ymin)`，**显式 `alpha = NA`**（映射的 alpha 不折进须线颜色）；箱体 `xmin..xmax × lower..upper`；中位线线宽 `linewidth * fatten`（2）；离群点走 point 的口径（`fontsize = size * .pt + stroke * .stroke/2`）；默认宽度同 bar；`varwidth` 用 `relvarwidth` 缩放箱宽 |
 | `smooth` | `se != FALSE` 且有 `ymin/ymax` 时画 ribbon（填充、无边），再画拟合线（线不吃 alpha）；行序同 `line` |
 
 `flipped_aes`（横向 bar / boxplot）照 R 的 `flip_data()`：先把 x/y 族列名对换，
@@ -117,6 +118,11 @@ pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py -q
 pixi run cases:matrix               # 9 个 geom 用例逐张 render + diff
 pixi run check                      # 全量门禁
 ```
+
+`refs:geom` 全程用 `pdf(NULL)` 包住 `ggplotGrob()`（`check_warnings()`），跑完
+`git status --porcelain` 不应出现 `Rplots.pdf`；夹具重跑两次字节一致。
+9 个 geom 另有「同一输入构建两次 → `ir.encode` 逐字节相等」的断言
+（`test_geom_scene_is_byte_stable_across_two_builds`）。
 
 夹具：`tests/fixtures/geom_r_reference.json`，14 个 case，记录
 `ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 逐值、`panel_params` 的

@@ -12,13 +12,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import warnings
 from dataclasses import replace
 
 import numpy as np
 import pytest
 
-from ggcore import registry
+from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import GeomError, registered_renderers, renderer_for
@@ -198,6 +199,16 @@ def _facet_plot() -> ggplot:
     )
 
 
+def test_coord_clip_inherit_is_accepted_from_the_user_entry() -> None:
+    """`coord_cartesian(clip = "inherit")` 构建期合法，原样进 panel params。"""
+    table = _table(x=[0.1, 0.5], y=[0.2, 0.6])
+    base = ggplot(table, aes(x="x", y="y")) + registry.geom_point()
+    for value in ("on", "off", "inherit"):
+        params = build_plot(base + registry.coord_cartesian(clip=value)).panel_params
+        assert params is not None
+        assert params.clip == value
+
+
 def test_clip_on_off_and_inherit() -> None:
     page = (0.0, 0.0, 288.0, 216.0)
     on = scene_from_plot(
@@ -213,6 +224,16 @@ def test_clip_on_off_and_inherit() -> None:
     )
     outer = [rect for rect in _clips(off) if rect[2] - rect[0] > 288.0]
     assert outer  # R 的 clip = NA 是设备外包框（1.5×）
+
+    # clip = "inherit" 是 gtable 的第三态：面板视口沿用父视口（页面）的裁剪，
+    # 既不额外生成面板矩形，也不像 "off" 那样在图层上另开设备外包框。
+    inherit = scene_from_plot(
+        _facet_plot() + registry.coord_cartesian(clip="inherit"), metrics=METRICS, **SIZE
+    )
+    inherit_clips = _clips_for(inherit, "points")
+    assert inherit_clips
+    assert all(rect[2] - rect[0] >= 288.0 for rect in inherit_clips)
+    assert inherit_clips == _clips_for(off, "points")
 
     # clip = "on" 的图层节点被面板矩形收窄；"off" 时只剩设备外包框。
     on_clips = _clips_for(on, "points")
@@ -268,6 +289,107 @@ def test_bar_uses_the_position_columns_not_the_raw_values() -> None:
         np.asarray(rects[0].bufs["rect"])[0][0]
     )
     assert width == pytest.approx(0.5 / 3.0 * 288.0, abs=1e-3)
+
+
+def test_bar_default_width_scales_with_the_x_resolution() -> None:
+    """R 的 `compute_data_size(default = 0.9)`：宽度 = `resolution(x, zero = FALSE) * 0.9`。
+
+    连续 x `[0, 10, 20]` 的 resolution 是 10，默认宽度 9（不是常数 0.9）。
+    """
+    table = _table(x=[0, 10, 20], y=[1, 2, 3])
+    plot = ggplot(table, aes(x="x", y="y")) + registry.geom_col()
+    built = build_plot(plot).layers[0].data
+    assert built.column("xmin").values.tolist() == pytest.approx([-4.5, 5.5, 15.5])
+    assert built.column("xmax").values.tolist() == pytest.approx([4.5, 14.5, 24.5])
+
+    # 显式 width 参数原样使用（R 的 `data$width %||% params$width`），不再乘分辨率。
+    explicit = (
+        build_plot(ggplot(table, aes(x="x", y="y")) + registry.geom_col(width=2.0)).layers[0].data
+    )
+    assert explicit.column("xmin").values.tolist() == pytest.approx([-1.0, 9.0, 19.0])
+    assert explicit.column("xmax").values.tolist() == pytest.approx([1.0, 11.0, 21.0])
+
+    # 映射出来的 width 列同样优先于分辨率，也不缩放。
+    mapped = (
+        build_plot(
+            ggplot(_table(x=[0, 10, 20], y=[1, 2, 3], w=[2, 2, 2]), aes(x="x", y="y", width="w"))
+            + registry.geom_col()
+        )
+        .layers[0]
+        .data
+    )
+    assert mapped.column("xmax").values.tolist() == pytest.approx([1.0, 11.0, 21.0])
+
+
+def test_boxplot_default_width_scales_with_the_x_resolution() -> None:
+    table = _table(
+        x=[0.0, 10.0, 20.0],
+        ymin=[0.0, 0.0, 0.0],
+        lower=[1.0, 1.0, 1.0],
+        middle=[2.0, 2.0, 2.0],
+        upper=[3.0, 3.0, 3.0],
+        ymax=[4.0, 4.0, 4.0],
+    )
+    frame = renderer_for("boxplot").setup_data(table, {"flipped_aes": False})
+    assert frame.column("xmin").values.tolist() == pytest.approx([-4.5, 5.5, 15.5])
+    assert frame.column("xmax").values.tolist() == pytest.approx([4.5, 14.5, 24.5])
+
+
+def test_boxplot_whiskers_do_not_fold_in_alpha() -> None:
+    """R 的须线显式 `alpha = NA`：映射了 alpha 时须线保持原色，箱体才吃 alpha。"""
+    table = ColumnTable(
+        [
+            ("x", Column("str", np.array(["a", "b"], dtype=object))),
+            ("ymin", Column("float", np.array([0.1, 0.2]))),
+            ("lower", Column("float", np.array([0.3, 0.35]))),
+            ("middle", Column("float", np.array([0.5, 0.5]))),
+            ("upper", Column("float", np.array([0.7, 0.65]))),
+            ("ymax", Column("float", np.array([0.9, 0.8]))),
+        ]
+    )
+    plot = (
+        ggplot(
+            table,
+            aes(x="x", ymin="ymin", lower="lower", middle="middle", upper="upper", ymax="ymax"),
+        )
+        + registry.geom_boxplot(
+            stat="identity", colour="#4C78A8", fill="#4C78A8", alpha=0.4, width=0.6
+        )
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    )
+    scene = scene_from_plot(plot, **SIZE)
+    nodes = _nodes(scene)
+    segments = [node for node in nodes if node.kind.value == "segments"]
+    polygons = [node for node in nodes if node.kind.value == "polygon"]
+    assert len(segments) == 2  # 须线 + 中位线
+    assert len(polygons) == 2
+    # alpha = 0.4 → 箱体是 #4C78A8 + 0x66；须线 / 中位线仍是全不透明的 #4C78A8。
+    assert all(tuple(node.gpar.col)[3] == 255 for node in segments)
+    assert all(tuple(node.gpar.col)[3] < 255 for node in polygons)
+    assert all(tuple(node.gpar.fill)[3] < 255 for node in polygons)
+
+
+def test_line_handle_na_groups_by_panel_like_r() -> None:
+    """`GeomPath$handle_na()` 按 `interaction(group, PANEL)` 做 `keep_mid_true()`。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0]))),
+            ("y", _column([0.0, 2.0, 3.0, 0.0, 5.0, 6.0], [0, 3])),
+            ("f", Column("str", np.array(["a", "a", "a", "b", "b", "b"], dtype=object))),
+        ]
+    )
+    plot = (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_line()
+        + registry.facet_wrap(facets="f", ncol=2)
+        + registry.theme_void()
+    )
+    layer = build_plot(plot).layers[0]
+    # 两个面板各有一个首行 NA：按 PANEL 分开算 → 两行都删（合并成一组只会删一行）。
+    with pytest.warns(BuildWarning, match=r"Removed 2 rows containing missing values"):
+        kept = layer.geom_object.handle_na(layer.data, na_rm=False)
+    assert kept.nrows == 4
 
 
 def test_boxplot_segments_polygons_and_median() -> None:
@@ -362,3 +484,92 @@ def test_empty_layer_does_not_emit_grobs() -> None:
     assert isinstance(grob, (type(None),)) or grob.__class__.__name__ in ("NullGrob",)
     scene = scene_from_plot(plot, **SIZE)
     assert [node for node in _nodes(scene) if node.kind.value == "points"]
+
+
+# ---------------------------------------------------------------------------
+# 字节稳定性：同一份输入构建两次 → `ir.encode` 逐字节相等
+# ---------------------------------------------------------------------------
+
+#: 9 个 geom 各一张最小图（stat 全部用 identity，不依赖 M1-8 的 stat）。
+BYTE_STABLE_PLOTS = {
+    "point": lambda: (
+        ggplot(_table(x=[0.2, 0.6], y=[0.3, 0.7], g=["a", "b"]), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "line": lambda: (
+        ggplot(_table(x=[1, 2, 3], y=[1, 3, 2]), aes(x="x", y="y"))
+        + registry.geom_line()
+        + registry.theme_void()
+    ),
+    "path": lambda: (
+        ggplot(_table(x=[1, 2, 3], y=[2, 1, 3]), aes(x="x", y="y"))
+        + registry.geom_path()
+        + registry.theme_void()
+    ),
+    "bar": lambda: (
+        ggplot(_table(cls=["a", "b", "a", "c"]), aes(x="cls"))
+        + registry.geom_bar()
+        + registry.theme_void()
+    ),
+    "col": lambda: (
+        ggplot(_table(x=[0.5, 1.5, 2.5], y=[1, 2, 3]), aes(x="x", y="y"))
+        + registry.geom_col()
+        + registry.theme_void()
+    ),
+    "area": lambda: (
+        ggplot(_table(x=[1, 2, 3], y=[1, 3, 2]), aes(x="x", y="y"))
+        + registry.geom_area(stat="identity")
+        + registry.theme_void()
+    ),
+    "histogram": lambda: (
+        ggplot(
+            _table(x=[0.5, 1.5, 2.5], y=[0.2, 0.5, 0.7], w=[1, 1, 1]),
+            aes(x="x", y="y", width="w"),
+        )
+        + registry.geom_histogram(stat="identity")
+        + registry.theme_void()
+    ),
+    "boxplot": lambda: (
+        ggplot(
+            ColumnTable(
+                [
+                    ("x", Column("str", np.array(["a", "b"], dtype=object))),
+                    ("ymin", Column("float", np.array([0.1, 0.2]))),
+                    ("lower", Column("float", np.array([0.3, 0.35]))),
+                    ("middle", Column("float", np.array([0.5, 0.5]))),
+                    ("upper", Column("float", np.array([0.7, 0.65]))),
+                    ("ymax", Column("float", np.array([0.9, 0.8]))),
+                ]
+            ),
+            aes(x="x", ymin="ymin", lower="lower", middle="middle", upper="upper", ymax="ymax"),
+        )
+        + registry.geom_boxplot(stat="identity")
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "smooth": lambda: (
+        ggplot(
+            _table(
+                x=[1, 2, 3],
+                y=[1, 2, 3],
+                ymin=[0.5, 1.5, 2.5],
+                ymax=[1.5, 2.5, 3.5],
+            ),
+            aes(x="x", y="y", ymin="ymin", ymax="ymax"),
+        )
+        + registry.geom_smooth(stat="identity")
+        + registry.theme_void()
+    ),
+}
+
+
+@pytest.mark.parametrize("geom_name", list(BYTE_STABLE_PLOTS))
+def test_geom_scene_is_byte_stable_across_two_builds(geom_name: str) -> None:
+    """同一输入构建两次 → `ir.encode` 逐字节相等（9 个 geom 各一条）。"""
+    first = ir.encode(scene_from_plot(BYTE_STABLE_PLOTS[geom_name](), **SIZE))
+    second = ir.encode(scene_from_plot(BYTE_STABLE_PLOTS[geom_name](), **SIZE))
+    assert first == second, f"geom_{geom_name}: 两次构建的 IR 字节不同"
+    assert hashlib.sha256(first).digest() == hashlib.sha256(second).digest()

@@ -136,8 +136,8 @@ class PanelParams:
             low, high = getattr(self, name)
             if not (math.isfinite(low) and math.isfinite(high)):
                 raise CoordError(f"{name} 必须是有限数，收到 {(low, high)!r}")
-        # `on` / `off` 是 coord 的取值（R 同）；`inherit` 是 gtable 的第三态，
-        # 供场景装配直接构造 `PanelParams` 时使用（M1-7 的 clip 三态）。
+        # `on` / `off` / `inherit` 都是 coord 的合法取值（R 4.0.3 原样透传；
+        # `inherit` 让面板视口沿用父视口的裁剪，见 `geom/scene.py`）。
         if self.clip not in ("on", "off", "inherit"):
             raise CoordError(f"clip 只能是 'on' / 'off' / 'inherit'，收到 {self.clip!r}")
 
@@ -294,10 +294,10 @@ class CoordBase:
     name: str = "cartesian"
 
     def __post_init__(self) -> None:
-        # coord 层只认 R 的两个取值（`on` / `off`）；`inherit` 是 gtable 的第三态，
-        # 只在场景装配直接构造 `PanelParams` 时出现（见 PanelParams）。
-        if self.clip not in ("on", "off"):
-            raise CoordError(f"clip 只能是 'on' 或 'off'，收到 {self.clip!r}")
+        # R 4.0.3 的 `coord_*()` 原样接受 `clip`（`CoordCartesian$setup_params()` 不再
+        # 校验），`"inherit"` 是 gtable 的第三态，构建期就合法、直接进 panel params。
+        if self.clip not in ("on", "off", "inherit"):
+            raise CoordError(f"clip 只能是 'on' / 'off' / 'inherit'，收到 {self.clip!r}")
         if not _valid_expand(self.expand):
             raise CoordError(
                 "expand 只接受 True / False / Expansion / 标量或 1–4 元数值序列"

@@ -31,9 +31,11 @@ from ggcore.geom.base import (
     GeomError,
     GeomRenderer,
     alpha_colour,
+    compute_data_size,
     flip_data,
     lty_value,
     npc_values,
+    position_is_discrete,
     table_numeric,
 )
 from ggcore.geom.point import translate_shape
@@ -67,7 +69,9 @@ class BoxplotRenderer(GeomRenderer):
     name = "boxplot"
     detect_flipped = True
 
-    def setup_data(self, data: ColumnTable, params: Any) -> ColumnTable:
+    def setup_data(
+        self, data: ColumnTable, params: Any, *, raw: ColumnTable | None = None
+    ) -> ColumnTable:
         flip = bool(params.get("flipped_aes", False))
         columns = [(name, data.column(name)) for name in data.names]
         columns = _put(
@@ -99,7 +103,9 @@ class BoxplotRenderer(GeomRenderer):
                 Column("float", np.fmax(high, table_numeric(frame, "ymax"))),
             )
             frame = ColumnTable(columns, nrows=frame.nrows)
-        width = _width_column(frame, params, 0.9)
+        width = compute_data_size(
+            frame, params, default=0.9, discrete=position_is_discrete(raw, flipped=flip)
+        )
         x = table_numeric(frame, "x")
         if params.get("varwidth") and "relvarwidth" in frame:
             relative = table_numeric(frame, "relvarwidth", default=1.0)
@@ -178,10 +184,10 @@ class BoxplotRenderer(GeomRenderer):
             unit(np.concatenate([whisker_high, whisker_low]).tolist(), "native"),
             default_units="native",
             gp={
-                "col": [
-                    alpha_colour(colours[i], alpha[i])
-                    for i in np.concatenate([indices, indices]).tolist()
-                ],
+                # R 的须线显式设 `alpha = NA`
+                # （`whiskers <- data_frame0(..., alpha = c(NA_real_, NA_real_))`），
+                # 所以映射了 alpha 时须线也不折进颜色。
+                "col": [colours[i] for i in np.concatenate([indices, indices]).tolist()],
                 "lwd": (linewidth[np.concatenate([indices, indices])] * POINT_PER_MM).tolist(),
                 "lty": lty_value(linetype[0]) if linetype else 1,
                 "lineend": lineend,
@@ -257,7 +263,12 @@ def _outlier_points(panel: Any, data: ColumnTable, flip: bool, across: np.ndarra
                 unit(xs, "native"),
                 unit(ys, "native"),
                 pch=translate_shape(shapes[index]) if shapes else 19,
-                size=unit(float(size[index]) * POINT_PER_MM, "bigpts"),
+                # `GeomPoint$draw_panel()`：`pointsize = size`、`stroke = stroke`，
+                # `pointsGrob` 折成 `fontsize = size * .pt + stroke * .stroke / 2`。
+                size=unit(
+                    float(size[index]) * POINT_PER_MM + float(stroke[index]) * STROKE_PER_MM / 2.0,
+                    "bigpts",
+                ),
                 size_units="bigpts",
                 default_units="native",
                 gp=gpar(
@@ -289,15 +300,6 @@ def _outliers(data: ColumnTable, index: int) -> list[float]:
     text = str(raw)
     numbers = re.findall(r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?", text)
     return [float(item) for item in numbers if math.isfinite(float(item))]
-
-
-def _width_column(table: ColumnTable, params: Any, default: float) -> np.ndarray:
-    if "width" in table:
-        return table_numeric(table, "width", default=default)
-    value = params.get("width")
-    if value is None:
-        return np.full(table.nrows, float(default))
-    return np.full(table.nrows, float(value))
 
 
 def _values(data: ColumnTable, name: str, default: Any) -> list[Any]:

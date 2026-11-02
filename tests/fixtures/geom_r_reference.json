@@ -1,7 +1,7 @@
 {
   "r_version": "4.5.3",
   "ggplot2_version": "4.0.3",
-  "scale": "9 geom / 14 case；data[[1]] 的列名+列序+kind+逐值；panel_params 的 continuous_range；handle_na 的 warning",
+  "scale": "9 geom / 15 case；data[[1]] 的列名+列序+kind+逐值；panel_params 的 continuous_range；handle_na 的 warning",
   "cases": {
     "point_shapes": {
       "description": "point：shape + colour 双离散映射",
@@ -1318,6 +1318,139 @@
         ],
         "discrete_x": false,
         "discrete_y": false
+      },
+      "warnings": []
+    },
+    "area_horizontal": {
+      "description": "横向 area：flipped_aes = TRUE",
+      "stat": "identity",
+      "data": {
+        "rows": 3,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          3
+        ],
+        "y_range": [
+          -0.79999999999999982,
+          4.7999999999999998
+        ],
+        "discrete_x": false,
+        "discrete_y": true
       },
       "warnings": []
     },

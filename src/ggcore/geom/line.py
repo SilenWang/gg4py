@@ -83,7 +83,7 @@ class PathRenderer(GeomRenderer):
             )
         return row_slice(data, keep)
 
-    def setup_data(self, data: Any, params: Any) -> Any:
+    def setup_data(self, data: Any, params: Any, *, raw: Any = None) -> Any:
         return flip_data(data, bool(params.get("flipped_aes", False)))
 
     def draw(self, geom: Any, build: Any, panel: Any, coord: Any, theme: Any, metrics: Any) -> Any:
@@ -151,7 +151,7 @@ class LineRenderer(PathRenderer):
 
     name = "line"
 
-    def setup_data(self, data: Any, params: Any) -> Any:
+    def setup_data(self, data: Any, params: Any, *, raw: Any = None) -> Any:
         flipped = bool(params.get("flipped_aes", False))
         columns: list[tuple[str, Any]] = [(name, data.column(name)) for name in data.names]
         if "flipped_aes" not in data:
@@ -199,12 +199,32 @@ def _break_at_na(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, 
 
 
 def _group_key(data: Any) -> np.ndarray:
-    """分组键：`group` 列（0 起比较），没有就整表一组。"""
+    """分组键：R 的 `interaction(group, PANEL)`（跨面板不并组）。
+
+    `GeomPath/Line$handle_na()` 按 `(group, PANEL)` 做 `keep_mid_true()`：分面时
+    同一 `group` 值在相邻面板里各算一组，面板边界上的缺失行才不会被「中间 NA」
+    规则误留。绘制期数据已经按面板切过，这里带上 PANEL 只是保持同一口径。
+    """
+    nrows = data.nrows
     if "group" in data:
-        values = np.asarray(data.column("group").values, dtype=np.float64)
-        mask = np.asarray(data.column("group").na_mask, dtype=bool)
-        return np.where(mask, -1.0, values)
-    return np.zeros(data.nrows, dtype=np.float64)
+        column = data.column("group")
+        values = np.asarray(column.values, dtype=np.float64)
+        mask = np.asarray(column.na_mask, dtype=bool)
+        groups = np.where(mask, -1.0, values)
+    else:
+        groups = np.zeros(nrows, dtype=np.float64)
+    if "PANEL" in data:
+        panels = [str(value) for value in data.column("PANEL").values.tolist()]
+    else:
+        panels = ["1"] * nrows
+    codes = np.zeros(nrows, dtype=np.float64)
+    seen: dict[tuple[float, str], float] = {}
+    for index in range(nrows):
+        key = (float(groups[index]), panels[index])
+        if key not in seen:
+            seen[key] = float(len(seen))
+        codes[index] = seen[key]
+    return codes
 
 
 def _keys(groups: np.ndarray) -> list[float]:

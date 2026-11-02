@@ -39,8 +39,8 @@ class SmoothRenderer(GeomRenderer):
     detect_flipped = True
     ambiguous_flipped = True
 
-    def setup_data(self, data: Any, params: Any) -> Any:
-        return LineRenderer().setup_data(data, params)
+    def setup_data(self, data: Any, params: Any, *, raw: Any = None) -> Any:
+        return LineRenderer().setup_data(data, params, raw=raw)
 
     def draw(self, geom: Any, build: Any, panel: Any, coord: Any, theme: Any, metrics: Any) -> Any:
         data = build.data

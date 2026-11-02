@@ -132,6 +132,7 @@ def _layer_build(geom_name: str, case: dict) -> LayerBuild:
 _CASE_GEOM = {
     "point_shapes": "point",
     "point_na": "point",
+    "area_horizontal": "area",
     "line_groups": "line",
     "path_basic": "path",
     "bar_stacked": "bar",
@@ -282,6 +283,16 @@ BUILDERS = {
         + registry.scale_y_continuous(limits=(0, 5), expand=(0, 0))
         + registry.theme_void()
     ),
+    "area_horizontal": lambda: (
+        ggplot(
+            _float(cls=["a", "b", "c"], v=[1, 2, 3]),
+            aes(x="v", y="cls", group=1),
+        )
+        + registry.geom_area(stat="identity", orientation="y", fill="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 3), expand=(0, 0))
+        + registry.scale_y_discrete(expand=(0.6, 0.6))
+        + registry.theme_void()
+    ),
     "histogram_identity": lambda: (
         ggplot(
             _float(x=[0.5, 1.5, 2.5, 3.5], y=[0.2, 0.5, 0.75, 0.4], w=[1, 1, 1, 1]),
@@ -349,6 +360,7 @@ def _assert_column_equal(name: str, ours: Column, expected: Column) -> None:
         "col_identity",
         "col_horizontal",
         "area_identity",
+        "area_horizontal",
         "histogram_identity",
         "boxplot_identity",
         "smooth_identity",
@@ -422,6 +434,12 @@ def test_boxplot_stat_fixture_draws_box_whiskers_and_outliers(reference: dict) -
     # 离群点：R 的两组各 1 个（20 / 25）→ 逐行一个 points 节点，共 2 个点。
     points = [node for node in nodes if node.kind.value == "points"]
     assert sum(int(np.asarray(node.bufs["points"]).shape[0]) for node in points) == 2
+    # `GeomPoint$draw_panel()` 把 size / stroke 一起交给 pointsGrob：
+    # `fontsize = size * .pt + stroke * .stroke / 2` = 1.5*.pt + 0.5*.stroke/2
+    # = 5.212795pt（R 同图的 gp$fontsize）。
+    size = float(points[0].params["size"])
+    assert size == pytest.approx(1.5 * 72.27 / 25.4 + 0.5 * 96.0 / 25.4 / 2.0)
+    assert size == pytest.approx(5.212795, abs=1e-6)
 
 
 def test_smooth_stat_fixture_draws_ribbon_and_line(reference: dict) -> None:
@@ -444,3 +462,33 @@ def test_boxplot_identity_centres_the_box_on_the_discrete_axis(reference: dict) 
     # npc = (1 - 0.4) / 2.2 → 页面 288pt 里的 78.545pt。
     centre = float((box[:, 0].min() + box[:, 0].max()) / 2.0)
     assert centre == pytest.approx((1.0 - 0.4) / (2.6 - 0.4) * 288.0, abs=1e-3)
+
+
+def test_horizontal_area_puts_the_length_on_x_and_the_category_on_y(reference: dict) -> None:
+    """`geom_area(orientation = "y")`：x 轴铺 `0..value`，y 轴取类别位置。
+
+    build.data 已在 `test_build_matches_r_column_by_column` 里与 R 逐列对拍
+    （`xmin = 0`、`xmax = x`）；这里钉绘制期**不能**把类别轴与长度轴对调。
+    """
+    case = reference["cases"]["area_horizontal"]
+    nodes = _drawn_nodes("area_horizontal", case)
+    polygons = [node for node in nodes if node.kind.value == "polygon"]
+    assert len(polygons) == 1
+    points = np.asarray(polygons[0].bufs["points"], dtype=np.float64)
+    assert points.shape == (6, 2)  # 上沿 3 点 + 下沿 3 点
+
+    x_low, x_high = case["panel_params"]["x_range"]
+    y_low, y_high = case["panel_params"]["y_range"]
+    expected_x_upper = [(value - x_low) / (x_high - x_low) for value in (1.0, 2.0, 3.0)]
+    expected_y = [(value - y_low) / (y_high - y_low) for value in (1.0, 2.0, 3.0)]
+    # R 的口径：x npc 0 / 1/3 / 2/3 / 1，y npc 0.321 / 0.5 / 0.679（3 个类别）。
+    assert expected_x_upper == pytest.approx([1 / 3, 2 / 3, 1.0])
+    assert expected_y == pytest.approx([0.3214285714285714, 0.5, 0.6785714285714286])
+
+    ours_x = points[:, 0] / 288.0
+    # IR 的场景坐标 y 向下（pt 从页顶算），npc 向上，所以取 1 - y。
+    ours_y = 1.0 - points[:, 1] / 216.0
+    assert ours_x[:3] == pytest.approx(expected_x_upper, abs=1e-9)
+    assert ours_x[3:] == pytest.approx([0.0, 0.0, 0.0], abs=1e-9)  # xmin = 0
+    assert ours_y[:3] == pytest.approx(expected_y, abs=1e-9)
+    assert ours_y[3:] == pytest.approx(expected_y[::-1], abs=1e-9)

@@ -30,9 +30,11 @@ from ggcore.geom.base import (
     POINT_PER_MM,
     GeomRenderer,
     alpha_colour,
+    compute_data_size,
     flip_data,
     lty_value,
     npc_values,
+    position_is_discrete,
     row_slice,
     table_numeric,
 )
@@ -52,16 +54,6 @@ def _put(columns: list[tuple[str, Column]], name: str, column: Column) -> list[t
     return columns
 
 
-def _width_column(table: ColumnTable, params: Any, default: float) -> np.ndarray:
-    if "width" in table:
-        values = table_numeric(table, "width", default=default)
-        return values
-    value = params.get("width")
-    if value is None:
-        return np.full(table.nrows, float(default))
-    return np.full(table.nrows, float(value))
-
-
 class BarRenderer(GeomRenderer):
     """`geom_bar` / `geom_col`（`histogram` 的绘制与柱相同）。"""
 
@@ -69,7 +61,9 @@ class BarRenderer(GeomRenderer):
     non_missing_aes = ("xmin", "xmax", "ymin", "ymax")
     detect_flipped = True
 
-    def setup_data(self, data: ColumnTable, params: Any) -> ColumnTable:
+    def setup_data(
+        self, data: ColumnTable, params: Any, *, raw: ColumnTable | None = None
+    ) -> ColumnTable:
         flip = bool(params.get("flipped_aes", False))
         columns = [(name, data.column(name)) for name in data.names]
         columns = _put(
@@ -77,7 +71,13 @@ class BarRenderer(GeomRenderer):
         )
         table = ColumnTable(columns, nrows=data.nrows)
         frame = flip_data(table, flip)
-        width = _width_column(frame, params, float(self._default_width(frame)))
+        # R 的 `compute_data_size(data, size = params$width, default = 0.9, zero = FALSE)`：
+        # 缺省宽度是 `resolution(x, zero = FALSE) * 0.9`，不是常数 0.9。离散位置在
+        # R 里是因子（`resolution()` 得 1），映射后的 `1..n` 编码间隔可能 >1，
+        # 所以用映射前的 `raw` 判断离散性。
+        width = compute_data_size(
+            frame, params, default=0.9, discrete=position_is_discrete(raw, flipped=flip)
+        )
         just = float(params.get("just", 0.5))
         y = table_numeric(frame, "y")
         x = table_numeric(frame, "x")
@@ -88,10 +88,6 @@ class BarRenderer(GeomRenderer):
         columns = _put(columns, "xmax", Column("float", x + width * (1.0 - just)))
         columns = [(name, column) for name, column in columns if name not in ("width", "just")]
         return flip_data(ColumnTable(columns, nrows=data.nrows), flip)
-
-    @staticmethod
-    def _default_width(data: ColumnTable) -> float:
-        return 0.9
 
     def draw(self, geom: Any, build: Any, panel: Any, coord: Any, theme: Any, metrics: Any) -> Any:
         data = build.data
@@ -207,7 +203,9 @@ class AreaRenderer(GeomRenderer):
         renumbered = ColumnTable(columns, nrows=data.nrows)
         return row_slice(renumbered, keep)
 
-    def setup_data(self, data: ColumnTable, params: Any) -> ColumnTable:
+    def setup_data(
+        self, data: ColumnTable, params: Any, *, raw: ColumnTable | None = None
+    ) -> ColumnTable:
         flip = bool(params.get("flipped_aes", False))
         columns = [(name, data.column(name)) for name in data.names]
         columns = _put(
@@ -233,21 +231,20 @@ class AreaRenderer(GeomRenderer):
         data = build.data
         if data.nrows == 0:
             return null_grob(name="geom_area")
-        x = npc_values(panel, data, "x", "x")
-        ymin = npc_values(panel, data, "ymin", "y")
-        ymax = npc_values(panel, data, "ymax", "y")
         flip = (
             bool(np.any(np.asarray(data.column("flipped_aes").values)))
             if ("flipped_aes" in data)
             else False
         )
-        if flip:
-            # 横向面积：长度轴是 x，分类轴是 y。
-            x, ymin, ymax = (
-                npc_values(panel, data, "y", "y"),
-                npc_values(panel, data, "xmin", "x"),
-                npc_values(panel, data, "xmax", "x"),
-            )
+        # R 的 `GeomArea$draw_group()`：先 `flip_data()` 回到纵向语义，在那里取
+        # `(x, ymin, ymax)` 拼多边形，配好坐标后再把 x / y 对换（`flip_data()`
+        # 对没有 xmin/ymin 的位置表就是 x↔y），**最后**才做坐标变换。横向时
+        # `x` 是类别、`ymin/ymax` 是长度，所以不能先按纵向取列——横向 build
+        # 数据里根本没有 ymin/ymax。
+        frame = flip_data(data, flip)
+        x = table_numeric(frame, "x")
+        ymin = table_numeric(frame, "ymin")
+        ymax = table_numeric(frame, "ymax")
         fill = _values(data, "fill", "grey20")
         colour = _values(data, "colour", None)
         alpha = table_numeric(data, "alpha", default=math.nan)
@@ -268,8 +265,16 @@ class AreaRenderer(GeomRenderer):
             if rows.size < 2:
                 continue
             ids = _segment_ids(x[rows], ymin[rows], ymax[rows])
-            upper_x, upper_y, upper_id = _positions(x[rows], ymax[rows], ids)
-            lower_x, lower_y, lower_id = _positions(x[rows][::-1], ymin[rows][::-1], ids[::-1])
+            upper_a, upper_b, upper_id = _positions(x[rows], ymax[rows], ids)
+            lower_a, lower_b, lower_id = _positions(x[rows][::-1], ymin[rows][::-1], ids[::-1])
+            if flip:
+                # 纵向语义下的 (x=类别, y=长度) → 横向的 (x=长度, y=类别)。
+                upper_a, upper_b = upper_b, upper_a
+                lower_a, lower_b = lower_b, lower_a
+            upper_x = _axis_npc(panel, upper_a, "x")
+            upper_y = _axis_npc(panel, upper_b, "y")
+            lower_x = _axis_npc(panel, lower_a, "x")
+            lower_y = _axis_npc(panel, lower_b, "y")
             if upper_x.size + lower_x.size < 3:
                 continue
             first = rows[0]
@@ -309,6 +314,15 @@ class AreaRenderer(GeomRenderer):
         if len(grobs) == 1:
             return grobs[0]
         return g_tree(*grobs, name="geom_area")
+
+
+def _axis_npc(panel: Any, values: np.ndarray, axis: str) -> np.ndarray:
+    """一列数据坐标 → 该轴的面板 npc（`coord$transform()` 的单轴等价物）。"""
+    low, high = panel.x_range if axis == "x" else panel.y_range
+    span = float(high) - float(low)
+    if span == 0:
+        return np.full(np.shape(values), np.nan)
+    return (np.asarray(values, dtype=np.float64) - float(low)) / span
 
 
 def _segment_ids(*arrays: np.ndarray) -> list[int]:

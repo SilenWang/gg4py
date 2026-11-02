@@ -741,7 +741,7 @@ def _geom_setup(
     判断（横向 bar / boxplot 的 `flipped_aes`）。
     """
     geom_params = layer.geom.setup_params(table, layer.params, raw=raw)
-    data = layer.geom.setup_data(table, geom_params)
+    data = layer.geom.setup_data(table, geom_params, raw=raw)
     return list(_items(data))
 
 

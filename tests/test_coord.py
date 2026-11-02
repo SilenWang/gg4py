@@ -424,9 +424,11 @@ def test_aspect_ratio_with_zero_span_raises_coord_error() -> None:
 def test_clip_is_parsed_and_recorded() -> None:
     params = panel_params(base_plot() + registry.coord_fixed(ratio=1, clip="off"))
     assert params.clip == "off"
-    with pytest.raises(CoordError, match="clip"):
-        coord_from_component(registry.coord_cartesian(clip="inherit"))
+    # R 4.0.3 的 `coord_*()` 原样透传 `clip`（连 `"inherit"` 也构建成功）。
+    assert coord_from_component(registry.coord_cartesian(clip="inherit")).clip == "inherit"
     assert coord_from_component(registry.coord_cartesian(clip="off")).clip == "off"
+    with pytest.raises(CoordError, match="clip"):
+        coord_from_component(registry.coord_cartesian(clip="sometimes"))
 
 
 def test_plus_and_chain_aliases_share_the_registry() -> None:
