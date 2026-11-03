@@ -244,12 +244,17 @@ class _SkiaDevice(Device):
     # -- 箭头（M2-S2） -------------------------------------------------------
 
     def _draw_arrow_heads(
-        self, node: Any, first: tuple[float, float], last: tuple[float, float]
+        self,
+        node: Any,
+        first: tuple[tuple[float, float], tuple[float, float]],
+        last: tuple[tuple[float, float], tuple[float, float]],
     ) -> None:
         """按节点参数画箭头（`grid::arrow` 的标记属性）。
 
-        `first` / `last` 是路径两端的**相邻两点**（端点在前、切向上一点在后），
-        切向由它们给出；箭翼几何与查看器共用 `ggcore.arrow.head_geometry()`。
+        `first` / `last` 各是路径一端的两点：**端点在前、沿路径向内的相邻一点在后**，
+        切向由这对相邻点给出；箭翼几何与查看器共用 `ggcore.arrow.head_geometry()`。
+        两端的切向要各取各的相邻点——拿「另一端」当 back 求的是整条路径的弦方向
+        （曲线两端与切向差很远，SIL-763）。
         """
         ends = node.params.get("arrow", "none")
         if ends == "none":
@@ -266,9 +271,9 @@ class _SkiaDevice(Device):
         assert self.canvas is not None
         tips: list[tuple[tuple[float, float], tuple[float, float]]] = []
         if ends in ("first", "both"):
-            tips.append((first, last))
+            tips.append(first)
         if ends in ("last", "both"):
-            tips.append((last, first))
+            tips.append(last)
         for tip, back in tips:
             b1, b2 = head_geometry(tip[0], tip[1], back[0], back[1], length_pt=length, angle=angle)
             if closed:
@@ -322,7 +327,9 @@ class _SkiaDevice(Device):
             if not all(math.isfinite(float(value)) for value in (x0, y0, x1, y1)):
                 continue
             self.canvas.drawLine(float(x0), float(y0), float(x1), float(y1), stroke)
-            self._draw_arrow_heads(node, (float(x0), float(y0)), (float(x1), float(y1)))
+            start = (float(x0), float(y0))
+            end = (float(x1), float(y1))
+            self._draw_arrow_heads(node, (start, end), (end, start))
 
     def _draw_polyline(self, node: Any) -> None:
         self._stroke_and_fill(node, self._polyline_path(node, closed=False))
@@ -336,7 +343,7 @@ class _SkiaDevice(Device):
             ]
             if len(finite) < 2:
                 continue
-            self._draw_arrow_heads(node, finite[0], finite[-1])
+            self._draw_arrow_heads(node, (finite[0], finite[1]), (finite[-1], finite[-2]))
 
     def _draw_polygon(self, node: Any) -> None:
         self._stroke_and_fill(node, self._polyline_path(node, closed=True))
@@ -580,11 +587,20 @@ class _SkiaDevice(Device):
             )
             sampled = np.column_stack((sampled[:, 0], height - sampled[:, 1]))
             path.addPath(self._polyline_path_from(sampled, closed=not is_open))
-            if not is_open and len(sampled) >= 2:
+            if len(sampled) >= 2:
+                # 两端的切向各取各自的相邻点（`sampled[0] → sampled[1]`、
+                # `sampled[-1] → sampled[-2]`），与查看器 `arrowPath()` 同口径。
+                # 箭头不受 `open` 影响：查看器对开 / 闭曲线都画（SIL-763）。
                 self._draw_arrow_heads(
                     node,
-                    (float(sampled[0, 0]), float(sampled[0, 1])),
-                    (float(sampled[-1, 0]), float(sampled[-1, 1])),
+                    (
+                        (float(sampled[0, 0]), float(sampled[0, 1])),
+                        (float(sampled[1, 0]), float(sampled[1, 1])),
+                    ),
+                    (
+                        (float(sampled[-1, 0]), float(sampled[-1, 1])),
+                        (float(sampled[-2, 0]), float(sampled[-2, 1])),
+                    ),
                 )
         self._stroke_and_fill(node, path, fill=not is_open)
 

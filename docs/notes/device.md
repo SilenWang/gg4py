@@ -58,8 +58,10 @@ device.render(scene)  # 上面三步的简写
 
    R 的 `gpar$lwd` **不是 pt**，是 1/96 inch：`grobs → IR` 那一步按
    `72/96 = 0.75` 折算（`ggcore.grobs._LWD_UNITS_TO_PT`），`lty` 的段长是
-   `lwd` 的倍数，跟着一起折。不折的话所有描边粗 4/3 倍——`lwd = 6` @150 ppi
-   实测 R 是 10 px 墨、设备会是 12 px（SIL-636）。
+   `lwd` 的倍数，跟着一起折——完整口径是 `pattern × max(lwd, 1) × 0.75`
+   （`lwd < 1` 的段长按 1 算，见 `docs/notes/scales.md` 的「lty 串的段长折算」）。
+   不折的话所有描边粗 4/3 倍——`lwd = 6` @150 ppi 实测 R 是 10 px 墨、设备会是
+   12 px（SIL-636）；段长漏乘 0.75 则所有虚线长 4/3 倍（SIL-763）。
 2. **页面尺寸是显式参数**：`draw_scene` 发现 `scene.size != device.size_pt` 直接
    报 `DeviceError`，不替场景改纸、不裁掉多出来的部分。
 3. **顺序与状态**：未 `open` 就 `draw_scene` / 重复 `open` / `close` 两次都报

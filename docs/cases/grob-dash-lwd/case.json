@@ -1,0 +1,67 @@
+{
+  "id": "grob-dash-lwd",
+  "kind": "grob",
+  "title": "grob · dashed 段长与 lwd 的边界（lwd < 1 按 1 算）",
+  "caption": "lty = dashed 的四条线：lwd 0.5 / 0.9 / 1.0 / 2.0；段长 = pattern × max(lwd, 1) × 0.75 pt，前三条同段长",
+  "device": {
+    "width_in": 4.0,
+    "height_in": 2.6,
+    "pixels_per_inch": 150
+  },
+  "viewports": [],
+  "grobs": [
+    {
+      "type": "gTree",
+      "name": "dash-lwd-run",
+      "gp": {
+        "lty": "dashed"
+      },
+      "children": [
+        {
+          "type": "segments",
+          "x0": 0.12,
+          "y0": 0.82,
+          "x1": 0.88,
+          "y1": 0.82,
+          "gp": {
+            "col": "#4C78A8",
+            "lwd": 0.5
+          }
+        },
+        {
+          "type": "segments",
+          "x0": 0.12,
+          "y0": 0.6,
+          "x1": 0.88,
+          "y1": 0.6,
+          "gp": {
+            "col": "#F58518",
+            "lwd": 0.9
+          }
+        },
+        {
+          "type": "segments",
+          "x0": 0.12,
+          "y0": 0.38,
+          "x1": 0.88,
+          "y1": 0.38,
+          "gp": {
+            "col": "#54A24B",
+            "lwd": 1.0
+          }
+        },
+        {
+          "type": "segments",
+          "x0": 0.12,
+          "y0": 0.16,
+          "x1": 0.88,
+          "y1": 0.16,
+          "gp": {
+            "col": "#E45756",
+            "lwd": 2.0
+          }
+        }
+      ]
+    }
+  ]
+}

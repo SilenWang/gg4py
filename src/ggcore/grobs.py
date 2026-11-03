@@ -438,7 +438,10 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
         # 段长 = 模式 × max(lwd, 1)：R 的 `lwd` 是 1/96 inch，参考产线（svglite）
         # 把小于 1 的 lwd 按 1 算段长（`lty = "dashed"` 在 lwd < 1 时恒为 4,4 pt），
         # 用 lwd 本身会在细线上把虚线画密（SIL-737 的 abline 用例）。
-        scale = max(float(gp.lwd), 1.0)
+        # 再乘 72/96：上面算出来的是 lwd 单位（1/96 inch）的段长，IR 的 `lty` 是 pt，
+        # 渲染器随即乘 `DASH_UNIT = 4/3` 换回 lwd 单位写进 `stroke-dasharray`
+        # （`pattern × max(lwd, 1)`，与参考产线同口径；SIL-763）。
+        scale = max(float(gp.lwd), 1.0) * _LWD_UNITS_TO_PT
         pattern = tuple(round(segment * scale, 6) for segment in dashes)
     return ir.Gpar(
         fill=_paint(gp.fill),
