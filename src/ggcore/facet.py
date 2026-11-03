@@ -66,6 +66,7 @@ __all__ = [
     "PanelScaleSet",
     "PanelScales",
     "StripPart",
+    "facet_aspect",
     "facet_from_component",
     "facet_table",
     "label_both",
@@ -1342,8 +1343,10 @@ class StripPart:
 class FacetStrip:
     """一条 strip 单元格：`side` 是 `"top"` / `"right"`。
 
-    `parts` 按变量顺序排列：顶部 strip 自上而下堆叠，右侧 strip 自左向右并排
-    （与 R 的 `weave_tables_row()` / `weave_tables_col()` 一致）。单变量时只有
+    `parts` 按**绘制顺序**排列：顶部 strip 自上而下堆叠（最后一个变量最靠近
+    面板，R 的 `weave_tables_row()`），右侧 strip 自左向右并排、同样最后一个
+    变量最靠近面板（R `build_strip(horizontal = FALSE)` 先 `rev()` 行变量再
+    `weave_tables_col()`，所以 `x + y ~ .` 的右侧第一格是 `y`）。单变量时只有
     一段，`text` 与 `parts[0].text` 相同。
     """
 
@@ -1384,6 +1387,10 @@ class FacetTable:
     #: `strip.placement` 的解析值（`"inside"` / `"outside"`），按 top / right。
     top_placement: str = "inside"
     right_placement: str = "inside"
+    #: grid 的 `respect = TRUE`：null 宽与 null 高取同一物理尺寸（R `init_gtable()`）。
+    respect: bool = False
+    #: `init_gtable()` 的 `aspect_ratio`（已折进行权重）；`respect=False` 时为 None。
+    aspect_ratio: float | None = None
 
     def panel_boxes(
         self,
@@ -1420,11 +1427,24 @@ def facet_table(
     theme: Theme | ResolvedTheme | None = None,
     metrics: Any = None,
     ranges: Mapping[int, tuple[Sequence[float] | None, Sequence[float] | None]] | None = None,
+    *,
+    aspect: float | None = None,
+    right_inside: bool = False,
 ) -> FacetTable:
     """布局 → 面板 gtable（panel 行列 + strip + panel.spacing）。
 
     `ranges` 给出每个面板的 `(x_range, y_range)`（`PanelParams` 的量）时，
     `space = "free"` 的面板按范围差分配 null 权重（上游 `Facet$init_gtable()`）。
+
+    `aspect` 是 R `init_gtable(aspect_ratio =)` 的那个值（**已解析**：`coord_fixed`
+    的 `ratio`，或 `coord$aspect(ranges[[1]])`）。按上游口径折进**行权重**
+    （`heights × |aspect|`），并令 `respect = TRUE`（null 宽 = null 高）；这样
+    `space = "free"` 时每个面板的高/宽自动等于 `ratio × yspan / xspan`，不会被
+    再乘一次范围。`None` = 不等比例（`respect = FALSE`，行列权重都是原值）。
+
+    `right_inside` 把右侧 strip 强制回退成 `"inside"`：右侧有次轴带时
+    `strip.placement = "outside"` 会压到次轴标签上（见 `docs/notes/facet.md` §7）。
+
     strip 的尺寸走 `_strip_extent()`：真实 `stringWidth`（有 `metrics` 时）/ 行高，
     随文字角度与变量个数变化——多变量分面每个变量一条 strip（堆叠/并排）。
     """
@@ -1495,17 +1515,27 @@ def facet_table(
 
     # `space = "free"`：面板宽高按范围差分配（上游 `init_gtable()` 读 ROW==1 /
     # COL==1 的面板范围；wrap 的 space 只能是 free_x / free_y，行列数因此是 1）。
+    # `aspect` 按上游口径折进**行权重**（`heights × |aspect|`）并开 `respect`：
+    # null 宽 = null 高，面板高/宽因此是 `aspect × yspan / xspan`（free 时每列 /
+    # 行权重已是范围差，不能再拿 `aspect_ratio` 乘一次，见 SIL-759）。
     space = str(getattr(facet, "space", "fixed") or "fixed")
+    respect = aspect is not None
+    aspect_scale = 1.0 if aspect is None else abs(float(aspect))
     width_weights = tuple(
         _span_weight(ranges, layout, col=col, axis="x") if space in ("free", "free_x") else 1.0
         for col in range(1, ncol + 1)
     )
     height_weights = tuple(
-        _span_weight(ranges, layout, row=row, axis="y") if space in ("free", "free_y") else 1.0
+        (_span_weight(ranges, layout, row=row, axis="y") if space in ("free", "free_y") else 1.0)
+        * aspect_scale
         for row in range(1, nrow + 1)
     )
     top_placement = str(resolved.get("strip.placement.x") or "inside")
     right_placement = str(resolved.get("strip.placement.y") or "inside")
+    if right_inside and right_names:
+        # 右侧有次轴带时 `outside` 会压到次轴标签上；M2-1 把次轴版式收好之前
+        # 显式回退 inside（strip 占 gtable 列，落在面板与次轴之间，不重叠）。
+        right_placement = "inside"
     # `outside` 的 strip 不占 gtable 行列：它画在轴带之外，空间由整页版式
     # （`plot_layout()`）另算。
     outside_top = bool(top_names) and top_placement == "outside"
@@ -1595,8 +1625,13 @@ def facet_table(
                 continue
             panel = panels_in_row[0]
             labels = right_labels[panel]
+            # R `build_strip(horizontal = FALSE)` 对右侧 strip 先 `rev()` 行变量再
+            # `weave_tables_col()`：最后一个变量在最左（最靠近面板）。顶部堆叠
+            # 不反转（R 的 `horizontal = TRUE` 分支直接 weave）。
             parts = tuple(
-                StripPart(name, labels[name], right_fill) for name in right_names if name in labels
+                StripPart(name, labels[name], right_fill)
+                for name in reversed(right_names)
+                if name in labels
             )
             text = "\n".join(part.text for part in parts)
             name = f"strip-r-{row}"
@@ -1647,7 +1682,35 @@ def facet_table(
         height_weights=height_weights,
         top_placement=top_placement,
         right_placement=right_placement,
+        respect=respect,
+        aspect_ratio=aspect,
     )
+
+
+def facet_aspect(
+    facet: FacetBase | None,
+    coord: Any,
+    params: Any,
+) -> float | None:
+    """`init_gtable()` 的 `aspect_ratio`（R `FacetGrid$draw_panels` 的解析）。
+
+    上游 4.0.3 的顺序：
+
+    - `space` 两维都 free（只有 grid 的 `"free"`）且坐标不自由（`coord_fixed`）：
+      `aspect = coord$ratio`——**不是** `coord$aspect()`，范围差已经由行列权重承担；
+    - 其余情形：`aspect = coord$aspect(ranges[[1]])`，即首个面板的
+      `PanelParams.aspect_ratio`（`ratio × yspan / xspan`；polar 是 1）。
+
+    自由刻度与 `coord_fixed` 的非法组合在 `build._build_plot_facets()` 就报错，
+    这里不重复判定（`params` 为 None 时给 None）。
+    """
+    if facet is None or getattr(facet, "kind", "null") == "null":
+        return params.aspect_ratio if params is not None else None
+    space = str(getattr(facet, "space", "fixed") or "fixed")
+    ratio = getattr(coord, "ratio", None)
+    if ratio is not None and space == "free":
+        return abs(float(ratio))
+    return params.aspect_ratio if params is not None else None
 
 
 def _labels_for(
@@ -1734,8 +1797,9 @@ def _strip_extent(
     `stringWidth`，没有时按 `FALLBACK_CHAR_EM` 估。
 
     SIL-715 #8：旧实现对**列宽**也套 `TEXT_LINE_EM`（7.87pt），而 `theme_void()`
-    的 strip 文字是 angle 0，`stringWidth("t")` 只有 4.89pt——`.facet-grid-ab`
-    的右 strip 列因此偏宽 3pt，面板整体左移。这里按真实宽度量。
+    的 strip 文字是 angle 0，`stringWidth("u")` 只有 4.909pt（R 4.0.3 + svglite；
+    `t` 只有 2.45pt）——`.facet-grid-ab` 的右 strip 列因此偏宽 3pt，面板整体
+    左移。这里按真实宽度量。
     """
     element = resolved[element_name]
     if isinstance(element, ElementBlank) or not isinstance(element, ElementText):

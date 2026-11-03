@@ -38,6 +38,7 @@ import numpy as np
 
 from ggcore import ir
 from ggcore.axis import (
+    DERIVE,
     axis_extent,
     axis_grobs,
     axis_ticks,
@@ -320,12 +321,20 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
 
 
 def _secondary_title(build: PlotBuild, aesthetic: str, scale: Any) -> str | None:
-    """次轴的标题：`sec_axis(name=)` 优先，否则沿用主轴标题（R 的 waiver 口径）。"""
+    """次轴的标题（R `AxisSecondary$make_title()`）。
+
+    - `sec_axis(name="...")`：用这个名字；
+    - `None`（= R 的 `waiver()` / `NULL`，也是 `sec_axis()` 的缺省）：**不显示标题**
+      （R 给零高 `zeroGrob`，顶部不会多出 `xlab-t`）；
+    - `DERIVE`（= R 的 `derive()`，`dup_axis()` 的缺省）：沿用主轴标题。
+    """
     secondary = getattr(scale, "secondary_axis", None)
     name = getattr(secondary, "name", None) if secondary is not None else None
-    if name is not None:
-        return str(name)
-    return _axis_title_text(build, aesthetic)
+    if name is DERIVE:
+        return _axis_title_text(build, aesthetic)
+    if name is None:
+        return None
+    return str(name)
 
 
 def _legend_position(theme: ResolvedTheme) -> str | None:
@@ -463,7 +472,7 @@ def plot_layout(
     elif legend_layouts and position == "bottom":
         content_bottom += conn_h + spacing
 
-    table = build.facet_table(metrics=metrics)
+    table = build.facet_table(metrics=metrics, right_inside=secondary_y)
     # `strip.placement = "outside"`：strip 放到轴的外侧（R 的 `attach_strips()`
     # 里 shift=2）。没有轴的一侧两者视觉等价，这里只在「外侧」时把 strip 块
     # 从面板区里让出来，画在轴带之外。
@@ -598,24 +607,17 @@ def plot_layout(
 
 
 def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:
-    """把面板区收成坐标要求的比例（`Coord$aspect()`），居中放置（M2-1）。
+    """把面板区收成 `respect = TRUE` 要求的等比例（R `Facet$init_gtable()`）。
 
-    R 的 `respect` 作用在**每个 panel 单元格**上：单元格高/宽 = `aspect`，strip /
-    spacing 的尺寸不变，多出来的空间在页面里居中。这里先用真实解析出的面板尺寸
-    反推固定开销（spacing + strip），再按 `aspect` 求最大的单元格，最后居中——
-    单面板与多面板同一套（`polar × facet` 的两块面板各自是正圆）。
+    R 把 aspect 折进行权重（`heights × |aspect|`）后交给 grid 的 `respect`：
+    null 宽与 null 高取**同一物理尺寸**，于是每个面板的高/宽 = 行权重 / 列权重
+    （`space = "free"` 时 = `ratio × yspan / xspan`）。这里只做等比例 null 的
+    最大内接矩形（等价 aspect = 1），多出来的空间居中；不再拿首面板的
+    `aspect_ratio` 去乘范围权重（SIL-759：那会把 `yspan / xspan` 乘两次）。
+
+    `respect = FALSE`（坐标自由）时原样返回。
     """
-    params = None
-    for _, item in _panels(build):
-        params = item
-        break
-    if params is None:
-        return area
-    try:
-        aspect = params.aspect_ratio
-    except Exception:
-        aspect = None
-    if aspect is None:
+    if not table.respect:
         return area
     boxes = table.panel_boxes(area.width_cm, area.height_cm)
     if not boxes:
@@ -629,14 +631,13 @@ def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:
     scale_h = first.height_cm / height_weights[0] if height_weights[0] else first.height_cm
     extra_w = area.width_cm - scale_w * sum(width_weights)
     extra_h = area.height_cm - scale_h * sum(height_weights)
-    # grid 的 `respect = TRUE`：把 null 单位按 aspect 缩放，1 个 null 宽 = aspect 个
-    # null 高。`space = "free"` 时面板权重不等，按权重比求最大的公共缩放。
+    # `respect = TRUE`：1 个 null 宽 = 1 个 null 高，取两块都能放下的公共尺寸。
     cell = min(
         (area.width_cm - extra_w) / sum(width_weights),
-        (area.height_cm - extra_h) / (aspect * sum(height_weights)),
+        (area.height_cm - extra_h) / sum(height_weights),
     )
     used_w = cell * sum(width_weights) + extra_w
-    used_h = cell * aspect * sum(height_weights) + extra_h
+    used_h = cell * sum(height_weights) + extra_h
     if abs(used_w - area.width_cm) < 1e-12 and abs(used_h - area.height_cm) < 1e-12:
         return area
     x = area.x_cm + (area.width_cm - used_w) / 2.0
@@ -1506,7 +1507,8 @@ def _one_strip(
     count = len(parts)
     for index, part in enumerate(parts):
         if strip.side == "top":
-            # 顶部：第一个变量最靠近面板，其余往上叠（R 的 weave_tables_row）。
+            # 顶部：parts 自上而下排列，**最后一个变量最靠近面板**
+            # （R `weave_tables_row()`：`x + y ~ ...` 时 y 贴着面板、x 在最上）。
             slot_h = box.height_cm / count
             part_box = Box(box.x_cm, box.y_cm + (count - 1 - index) * slot_h, box.width_cm, slot_h)
         else:

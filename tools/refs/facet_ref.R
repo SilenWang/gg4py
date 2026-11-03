@@ -364,6 +364,31 @@ discrete_data <- data.frame(
              levels = c("v", "u"))
 )
 
+strip_cells <- function(grob) {
+  # 一条多变量 strip 的内层 gtable：cell 顺序就是绘制顺序（右侧左→右）。
+  # 每个 cell 是 gTree（背景 rect + titleGrob），文字在最里层的 text grob 上。
+  if (!inherits(grob, "gtable")) {
+    return(character())
+  }
+  label_of <- function(node) {
+    if (inherits(node, "text")) {
+      return(as.character(node$label))
+    }
+    for (child in node$children) {
+      found <- label_of(child)
+      if (!is.null(found)) {
+        return(found)
+      }
+    }
+    NULL
+  }
+  labels <- vapply(seq_along(grob$grobs), function(i) {
+    found <- label_of(grob$grobs[[i]])
+    if (is.null(found)) "" else found
+  }, character(1))
+  unname(labels[nzchar(labels)])
+}
+
 full_gtable <- function(plot) {
   grob <- ggplotGrob(plot)
   panels <- grob$layout[grepl("^panel", grob$layout$name), , drop = FALSE]
@@ -373,12 +398,14 @@ full_gtable <- function(plot) {
     panel_rows = as.character(grob$heights[sort(unique(panels$t))]),
     respect = isTRUE(grob$respect),
     strips = lapply(seq_len(nrow(strips)), function(i) {
+      index <- which(grob$layout$name == strips$name[i])[1]
       list(
         name = as.character(strips$name[i]),
         t = as.integer(strips$t[i]),
         l = as.integer(strips$l[i]),
         width = as.character(grob$widths[strips$l[i]]),
-        height = as.character(grob$heights[strips$t[i]])
+        height = as.character(grob$heights[strips$t[i]]),
+        cells = I(strip_cells(grob$grobs[[index]]))
       )
     })
   )
@@ -446,6 +473,36 @@ full <- list(
       geom_point() +
       facet_grid(h ~ g, space = "free", scales = "free"),
     discrete_data
+  ),
+  # SIL-759：`space = "free"` 与 `coord_fixed(ratio)` 同时存在时 `ratio` 折进
+  # 行权重（R `init_gtable()`：heights = 范围差 × |ratio|，`respect = TRUE`），
+  # 面板高/宽 = ratio × yspan / xspan。固定刻度时行权重 = 19.8null（= 2 × 9.9）。
+  describe_full(
+    "grid_space_free_aspect",
+    ggplot(discrete_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(h ~ g, space = "free") +
+      coord_fixed(2),
+    discrete_data
+  ),
+  # 自由刻度 + `facet_grid(space = "free")` 是唯一允许配 ratio 的组合
+  # （行权重按 ratio 缩放：5.5 → 11、8.8 → 17.6）。
+  describe_full(
+    "grid_space_free_aspect_scales_free",
+    ggplot(discrete_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(h ~ g, space = "free", scales = "free") +
+      coord_fixed(2),
+    discrete_data
+  ),
+  # SIL-759：多行变量的右侧 strip 顺序（R `build_strip(horizontal = FALSE)`
+  # 先 rev() 再 weave：最后一个变量最靠近面板）。
+  describe_full(
+    "grid_rows_label_both",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(a + b ~ ., labeller = "label_both"),
+    facet_data
   ),
   describe_full(
     "grid_margins",

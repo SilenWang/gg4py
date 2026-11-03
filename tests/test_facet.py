@@ -20,6 +20,7 @@ import pytest
 
 from ggcore import registry
 from ggcore.aes import aes
+from ggcore.axis import sec_axis
 from ggcore.build import BuildError, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
@@ -501,9 +502,135 @@ def test_facet_grid_one_sided_layouts_keep_a_single_row_or_column() -> None:
     assert [strip.side for strip in rows_only.facet_table().strips] == ["right", "right"]
 
 
-def test_free_scales_reject_coord_fixed_ratio() -> None:
+_FREE_COORD_FIXED_REJECTS = {
+    "wrap_free": lambda: wrap_plot(scales="free"),
+    "grid_free": lambda: grid_plot(scales="free"),
+    "grid_free_x_space_free_x": lambda: grid_plot(scales="free_x", space="free_x"),
+    "grid_free_y_space_free_y": lambda: grid_plot(scales="free_y", space="free_y"),
+    "grid_free_space_free_x": lambda: grid_plot(scales="free", space="free_x"),
+    "grid_free_space_free_y": lambda: grid_plot(scales="free", space="free_y"),
+    "wrap_space_free_x": lambda: wrap_plot(space="free_x", scales="free"),
+    "wrap_space_free_y": lambda: wrap_plot(space="free_y", scales="free"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_FREE_COORD_FIXED_REJECTS))
+def test_free_scales_with_coord_fixed_is_rejected(name: str) -> None:
+    """SIL-759：R 4.0.3 只有 grid + `space = "free"` 允许自由刻度配 ratio。"""
     with pytest.raises(BuildError, match="coord_fixed"):
-        build_plot(wrap_plot(scales="free") + registry.coord_fixed(ratio=2))
+        build_plot(_FREE_COORD_FIXED_REJECTS[name]() + registry.coord_fixed(ratio=2))
+
+
+@pytest.mark.parametrize("scales", ["free", "free_x", "free_y"])
+def test_grid_space_free_allows_free_scales_with_coord_fixed(scales: str) -> None:
+    """两维都 free 时 R 4.0.3 接受自由刻度 + ratio（`respect = TRUE`）。"""
+    build = build_plot(grid_plot(scales=scales, space="free") + registry.coord_fixed(ratio=2))
+    table = build.facet_table()
+    assert table.respect is True
+    assert table.aspect_ratio == pytest.approx(2.0)
+
+
+def test_space_free_with_coord_fixed_folds_ratio_into_row_weights() -> None:
+    """SIL-759：`heights` = 行范围差 × |ratio|，面板高/宽 = ratio × yspan / xspan。"""
+    build = build_plot(grid_plot(scales="free", space="free") + registry.coord_fixed(ratio=2))
+    table = build.facet_table()
+    assert table.respect is True
+
+    def span(panel, axis: str) -> float:
+        params = panel.panel_params
+        low, high = params.x_range if axis == "x" else params.y_range
+        return high - low
+
+    x_spans = [span(next(p for p in build.panels if p.col == col), "x") for col in (1, 2)]
+    y_spans = [span(next(p for p in build.panels if p.row == row), "y") for row in (1, 2)]
+    assert table.width_weights == pytest.approx(tuple(x_spans))
+    assert table.height_weights == pytest.approx(tuple(2.0 * value for value in y_spans))
+
+    layout = plot_layout(build)
+    for panel in build.panels:
+        box = layout.panel_boxes[panel.panel]
+        expected = 2.0 * span(panel, "y") / span(panel, "x")
+        assert box.height_cm / box.width_cm == pytest.approx(expected, rel=1e-9)
+
+
+def test_space_free_fixed_scales_aspect_matches_r_values() -> None:
+    """固定刻度 + `space = "free"` + `coord_fixed(2)`：行权重全是 19.8（R 值）。"""
+    build = build_plot(grid_plot(space="free") + registry.coord_fixed(2))
+    table = build.facet_table()
+    params = build.panels[0].panel_params
+    x_span = params.x_range[1] - params.x_range[0]
+    y_span = params.y_range[1] - params.y_range[0]
+    assert table.width_weights == pytest.approx((x_span,) * 2)
+    assert table.height_weights == pytest.approx((2.0 * y_span,) * 2)
+    boxes = list(plot_layout(build).panel_boxes.values())
+    assert all(
+        box.height_cm / box.width_cm == pytest.approx(2.0 * y_span / x_span, rel=1e-9)
+        for box in boxes
+    )
+
+
+@pytest.mark.parametrize("space", ["free", "free_x", "free_y"])
+def test_polar_with_space_free_raises(space: str) -> None:
+    """R 4.0.3 自己在 `init_gtable()` 里报 `values must be length 1`；这里同口径报错。"""
+    facet = (
+        registry.facet_grid(("b",), ("a",), space=space)
+        if space == "free"
+        else registry.facet_wrap(("a",), space=space)
+    )
+    with pytest.raises(BuildError, match="space"):
+        build_plot(base_plot() + facet + registry.coord_polar())
+
+
+def test_grid_right_strip_puts_the_last_row_variable_next_to_the_panel() -> None:
+    """SIL-759：R `build_strip(horizontal = FALSE)` 先 rev() 行变量，b 贴着面板。"""
+    build = build_plot(base_plot() + registry.facet_grid(("a", "b"), labeller="label_both"))
+    table = build.facet_table()
+    rights = [strip for strip in table.strips if strip.side == "right"]
+    assert rights
+    for strip in rights:
+        assert [part.var for part in strip.parts] == ["b", "a"]
+        assert strip.parts[0].text.startswith("b: ")
+        assert strip.parts[1].text.startswith("a: ")
+    # 顶部（列变量）顺序不反转：第一个变量在上，最后一个贴面板。
+    top = build_plot(
+        base_plot() + registry.facet_grid(cols=("a", "b"), labeller="label_both")
+    ).facet_table()
+    strip = top.strip_for(1, "top")
+    assert strip is not None
+    assert [part.var for part in strip.parts] == ["a", "b"]
+
+
+def test_strip_outside_falls_back_inside_when_a_secondary_axis_is_present() -> None:
+    """SIL-759：右侧次轴带会把 `outside` strip 压住；有次轴时回退 inside。"""
+    plot = (
+        grid_plot()
+        + registry.scale_y_continuous(sec_axis=sec_axis(lambda value: value * 2))
+        + theme(**{"strip.placement.y": "outside"})
+    )
+    build = build_plot(plot)
+    layout = plot_layout(build)
+    table = build.facet_table(right_inside=True)
+    assert layout.secondary_y is True
+    assert table.right_placement == "inside"
+    assert layout.right_strip_band is None
+    # strip 落在 gtable 列里：右缘不超过面板区右边界；次轴带在面板区之外。
+    placement = next(row for row in table.gtable.layout if row.name.startswith("strip-r"))
+    sizes = table.gtable.resolve(layout.panel_area.width_cm, layout.panel_area.height_cm)
+    cell = table.gtable.region_box(
+        placement.t,
+        placement.l,
+        placement.b,
+        placement.r,
+        width_cm=layout.panel_area.width_cm,
+        height_cm=layout.panel_area.height_cm,
+        sizes=sizes,
+    )
+    strip_right = layout.panel_area.x_cm + cell.x_cm + cell.width_cm
+    assert strip_right <= layout.panel_area.right + 1e-9
+    assert layout.panel_area.right + layout.y_axis_right_cm <= layout.width_cm + 1e-9
+    # 没有次轴时仍是 outside（不进 gtable 列，另留 band）。
+    plain = plot_layout(build_plot(grid_plot() + theme(**{"strip.placement.y": "outside"})))
+    assert plain.right_strip_band is not None
 
 
 # ---------------------------------------------------------------------------

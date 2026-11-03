@@ -91,6 +91,10 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 - **`space`**：`"fixed"` / `"free"` / `"free_x"` / `"free_y"`。非 fixed 时
   面板列 / 行的 null 权重 = 该列（`ROW == 1`）/ 行（`COL == 1`）面板的范围差
   （上游 `Facet$init_gtable()`）；离散标度因此按水平数、连续标度按数据跨度分配。
+- **`respect`**：`coord_fixed` / `coord_polar` 等有物理比例的坐标把 aspect
+  **折进行权重**（`heights × |aspect|`）并开 `respect`（null 宽 = null 高），
+  所以 `space = "free"` 与 `coord_fixed(ratio)` 同时存在时每个面板的高/宽
+  仍是 `ratio × yspan / xspan`，不会再把范围乘第二次（SIL-759）。
 
 ## 4. 自由刻度的分配
 
@@ -108,8 +112,11 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 - 实现：`PanelScaleSet` 把位置美学转发到面板槽位、其余转发到共享
   `ScaleSet`。`build_plot()` 先训练全部面板，再统一 `map_position`；
   `compute_position` 之后按上游口径再训练一次。
-- 自由刻度 + `coord_fixed(ratio=…)` 直接报错（上游同样报错：每个面板范围
-  不同，无法共用一个物理比例）。
+- 自由刻度 + `coord_fixed(ratio=…)`：**只有** `facet_grid(space = "free")`（两维
+  都 free）允许（R 4.0.3 实测）；`space = "free_x"` / `"free_y"`、`facet_wrap()`
+  的自由刻度都会报 `can't use free scales with coord_cartesian() with a fixed
+  ratio argument`。允许的组合里 `ratio` 折进**行权重**（`heights × ratio`），
+  面板高/宽 = `ratio × yspan / xspan`。
 
 ## 5. 逐面板流水线
 
@@ -172,13 +179,20 @@ strip 的行高 / 列宽 = 文字的外向尺寸 + 对应 margin。顶部 strip 
 `stringWidth`（缺省 sans 与 svglite 的 Arimo 同度量），没有时按
 `FALLBACK_CHAR_EM` 估。**没有**「无度量时用 0.955em 近似」的分支了——
 SIL-715 #8：旧实现把 `strip.text.y` 的列宽也当成行高（7.87pt），而
-`.facet-grid-ab`（`theme_void()`，angle 0）的 R 值只有 `stringWidth("t")` =
-4.89pt，右 strip 列因此宽 3pt、面板整体左移。
+`.facet-grid-ab`（`theme_void()`，angle 0）的 R 值只有 `stringWidth("u")` =
+4.909pt（R 4.0.3 + svglite；`t` 只有 2.45pt），右 strip 列因此宽 3pt、
+面板整体左移。
 
 **逐变量 strip**：多变量分面在 R 里是每个变量一条 strip（顶部自上而下堆叠、
 右侧自左向右并排），不是一条多行文本。`FacetStrip.parts` 保留变量粒度，
 `strip_height_cm` / `strip_width_cm` 是整块的总尺寸；`label_both` 的两个变量
 因此是 2 × 0.5877cm = 1.1753cm（与 R 逐值一致）。
+
+**变量顺序**：顶部与右侧都是**最后一个变量最靠近面板**。R 的
+`build_strip(horizontal = FALSE)` 对右侧先 `rev()` 行变量再
+`weave_tables_col()`，所以 `facet_grid(a + b ~ ., labeller = "label_both")`
+的 `strip-r-1` 从左到右是 `b: … | a: …`（`b` 贴着面板）；顶部堆叠不反转，
+`a` 在上、`b` 在下。`FacetStrip.parts` 按绘制顺序存放（右侧即逆序）。
 
 **`strip.placement`**：`"inside"`（默认）strip 在面板与轴之间；`"outside"`
 时 `FacetStrip.outside = True`，strip 块不占 facet gtable 行列，由
@@ -204,8 +218,10 @@ wrap 有多个面板行时，行结构是
 | 能力 | 现状 | 计划 |
 | --- | --- | --- |
 | `facet_wrap(strip.position = "bottom"/"left"/"right")` | 报 `FacetError`（只支持 top） | M1-7 |
-| 右侧 strip 的 `strip.placement = "outside"` + 次轴 | 按 inside 画（没有右侧轴时两者视觉等价） | 与次轴版式一起收 |
-| 自由刻度 + `coord_fixed(ratio=…)` | 报错（与上游一致） | — |
+| 右侧 strip 的 `strip.placement = "outside"` + 次轴 | **显式回退 inside**（strip 占 gtable 列、落在面板与次轴之间，不再压住次轴标签）；无右轴时仍按 outside 外置 | 与次轴版式（M2-1）一起收 |
+| 自由刻度 + `coord_fixed(ratio=…)` | 只允许 `facet_grid(space = "free")`（两维 free）；`space="free_x"/"free_y"` 与 `facet_wrap()` 报错（与 R 4.0.3 实测一致） | — |
+| `coord_polar()` / `coord_radial()` + `space = "free…"` | 报错：R 4.0.3 自己在 `init_gtable()` 里报 `values must be length 1`（上游 bug），gg4py 不再静默出非正圆面板 | 上游修复后再对齐 |
+| `theme(aspect.ratio)` | 解析进主题树但不参与版式（单面板与分面都一样）；R 在 `space` 非 fixed 时会直接报 `Free scales cannot be mixed with a fixed aspect ratio.` | M2-1 |
 | 完整 grob / 坐标轴 / 图例 | 只给结构 | M1-7 / M1-11 |
 
 ## 8. 验收命令

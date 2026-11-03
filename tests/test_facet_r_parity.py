@@ -7,8 +7,9 @@ Python 用同一份 8 行数据（factor levels 故意与出现顺序不同）�
   与分面变量；
 - `panel_params[[i]]$x.range` / `y.range`（含 expand，free scales 逐面板）；
 - `ggplotGrob(p)` 的 panel 宽高单位（`1null`）、panel / strip 名字，
-  以及 strip 的行高 / 列宽（cm，容差 2%：M1-6 用 0.955em 近似 `stringHeight`，
-  M1-7 接真实文字度量后收紧）。
+  以及 strip 的行高 / 列宽（cm；M1-7 起用真实 `stringWidth` / `text_line_cm`
+  量，容差 2%）。`respect` / aspect 的 panel 权重按 R `init_gtable()` 的口径
+  逐值比（SIL-759）。
 
 数值断言只认夹具，不重算公式。
 """
@@ -27,6 +28,7 @@ from ggcore.aes import aes
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import labeller
+from ggcore.geom.scene import plot_layout
 from ggcore.plot import coord_polar, ggplot
 from ggcore.theme import element_text, theme
 from ggskia.text import ShaperMetrics
@@ -434,6 +436,23 @@ FULL_BUILDERS = {
         + registry.geom_point()
         + registry.facet_grid(("h",), ("g",), space="free", scales="free")
     ),
+    "grid_space_free_aspect": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("h",), ("g",), space="free")
+        + registry.coord_fixed(2)
+    ),
+    "grid_space_free_aspect_scales_free": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("h",), ("g",), space="free", scales="free")
+        + registry.coord_fixed(2)
+    ),
+    "grid_rows_label_both": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("a", "b"), labeller="label_both")
+    ),
     "grid_margins": lambda table: (
         ggplot(table, aes(x="x", y="y"))
         + registry.geom_point()
@@ -570,7 +589,44 @@ def test_full_strip_extents_match_r(name: str) -> None:
         assert table.strip_width_cm == 0.0
 
 
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_strip_cells_match_r(name: str) -> None:
+    """每条 strip 的内层单元格文字顺序（右侧 = 最后一个变量最靠近面板）。"""
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    table = build.facet_table()
+    strips = {strip.name: strip for strip in table.strips}
+    for reference in case["gtable"]["strips"]:
+        strip = strips.get(reference["name"])
+        assert strip is not None, reference["name"]
+        assert [part.text for part in strip.parts] == [
+            str(item) for item in _as_list(reference["cells"])
+        ]
+
+
+@pytest.mark.parametrize("name", ["grid_space_free_aspect", "grid_space_free_aspect_scales_free"])
+def test_space_free_aspect_panel_ratio_matches_r(name: str) -> None:
+    """SIL-759：`ratio` 折进行权重后，面板高/宽 == ratio × yspan / xspan。"""
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    table = build.facet_table()
+    assert case["gtable"]["respect"] is True
+    assert table.respect is True
+    layout = plot_layout(build)
+    for panel, reference in zip(build.panels, case["panels"], strict=True):
+        box = layout.panel_boxes[panel.panel]
+        x_span = reference["x_range"][1] - reference["x_range"][0]
+        y_span = reference["y_range"][1] - reference["y_range"][0]
+        assert box.height_cm / box.width_cm == pytest.approx(2.0 * y_span / x_span, rel=1e-9)
+
+
 def test_full_fixture_covers_the_required_families() -> None:
     assert set(FULL_BUILDERS) == set(FULL)
     assert {"wrap_free_x", "wrap_free_y", "grid_space_free", "grid_margins"} <= set(FULL)
+    # SIL-759：space=free × coord_fixed 的 geometry，以及多行变量的右侧 strip 顺序。
+    assert {
+        "grid_space_free_aspect",
+        "grid_space_free_aspect_scales_free",
+        "grid_rows_label_both",
+    } <= set(FULL)
     assert any(name.startswith("polar") for name in FULL)
