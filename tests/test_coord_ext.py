@@ -429,14 +429,23 @@ def test_sec_axis_on_x_uses_the_top_slot() -> None:
     )
 
 
-def test_sec_axis_on_polar_is_reported() -> None:
+def test_sec_axis_on_polar_uses_the_radius_rescale() -> None:
+    """SIL-793：极坐标的 r 次轴不再报错——位置 = `r_rescale(r) + 0.5`。"""
     build, params = params_of(
         discrete_plot()
         + registry.coord_polar()
         + registry.scale_y_continuous(sec_axis=sec_axis(lambda v: v * 2))
     )
-    with pytest.raises(AxisError, match="极坐标"):
-        secondary_ticks(build.scales.scale("y"), params, "right")
+    scale = build.scales.scale("y")
+    ticks = secondary_ticks(scale, params, "right")
+    assert ticks.side == "right"
+    assert ticks.positions
+    polar = params.polar
+    assert polar is not None
+    for position in ticks.positions:
+        assert 0.0 <= position <= 1.0
+    # 次轴断点反演回主轴后要落在 r_rescale 的 `+0.5` 位置上（单调递增）
+    assert list(ticks.positions) == sorted(ticks.positions)
 
 
 # ---------------------------------------------------------------------------

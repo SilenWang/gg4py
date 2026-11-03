@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec_axis, independent transformations"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-independent-transformations.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：主轴 `transform_probability("norm", lower.tail = FALSE)`。'

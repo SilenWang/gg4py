@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-limits", "scale-breaks"]
+ci = true
+title = "上游快照：sec_axis, custom transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-custom-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`new_transform()` 自定义变换 + 显式 breaks / limits。"

@@ -85,8 +85,10 @@ __all__ = [
     "hex_to_lab",
     "hue_pal",
     "lab_to_hex",
+    "new_transform",
     "pretty_breaks",
     "scale_from_component",
+    "transform_probability",
 ]
 
 #: 位置美学：x 与 y 两条通道。`xmin/xmax/xend` 共用 x 标度，`ymin/ymax/yend` 共用
@@ -339,18 +341,23 @@ def extended_breaks(dmin: float, dmax: float, m: int = 5) -> tuple[float, ...]:
 
 
 def _decimals_needed(value: float) -> int:
-    """表示一个数至少需要几位小数（按 7 位有效数字的容差）。
+    """表示一个数至少需要几位小数（R `format()` 的 7 位有效数字口径）。
 
-    `log10` 的逆变换会带回浮点尾数（`2.0000000000000004`）：R 的 `format()` 按
-    7 位有效数字印成 "2"，所以 0 位小数也要参与容差比较，不能只看 `is_integer()`。
+    R 的 `format(x)` 缺省 `digits = getOption("digits")` = 7：每个元素按**7 位有效
+    数字**取舍，再按元素修掉尾随 0，最后整组补到最多的小数位。所以
+    `2^c(3.5, 4, 4.5, 5, 5.5)` 印成 `11.31371 / 16.00000 / 22.62742 / …`，而
+    11.313708498984761 的浮点尾数不再多印一位。
+
+    旧实现按 `|value|·1e-7` 的绝对容差逐位试，对 11.313708… 会给出 6 位（多一位），
+    上游 `sec_axis-with-coord-transform` 的断点标签因此宽 0.17cm，面板被挤窄。
     """
     if value == 0:
         return 0
-    tolerance = abs(value) * 1e-7
-    for decimals in range(0, 11):
-        if abs(round(value, decimals) - value) <= tolerance:
-            return decimals
-    return 10
+    exponent = math.floor(math.log10(abs(value)))
+    decimals = max(0, 6 - exponent)
+    while decimals > 0 and round(value, decimals) == round(value, decimals - 1):
+        decimals -= 1
+    return decimals
 
 
 def _scientific_text(value: float) -> str:
@@ -642,6 +649,136 @@ class _Reverse(_Transform):
 
     def label(self, values: Sequence[float | None]) -> list[str | None]:
         return format_numbers(values)
+
+
+class _CallableTransform(_Transform):
+    """`scales::new_transform()`：用户给的 `transform` / `inverse` 两段函数。
+
+    R 的两段都要求矢量化的函数（`Vectorize()` 包一层即可）；`domain` 之外的值
+    按 R 的 `transform()` 口径落成 NA 并在训练时计数。
+    """
+
+    date_kind: str | None = None
+
+    def __init__(
+        self,
+        name: str,
+        transform: Callable[[Any], Any],
+        inverse: Callable[[Any], Any],
+        domain: tuple[float, float] = (-math.inf, math.inf),
+    ) -> None:
+        if not callable(transform) or not callable(inverse):
+            raise ScaleError("new_transform() 的 transform / inverse 都必须是函数")
+        self.name = str(name)
+        self._forward = transform
+        self._backward = inverse
+        self._domain = (float(domain[0]), float(domain[1]))
+
+    @property
+    def domain(self) -> tuple[float, float]:
+        return self._domain
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        values = np.asarray(values, dtype=np.float64)
+        invalid = np.isnan(values) | (values < self._domain[0]) | (values > self._domain[1])
+        out = np.array(values, dtype=np.float64, copy=True)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            try:
+                forward = np.asarray(self._forward(out), dtype=np.float64)
+            except (TypeError, ValueError) as exc:  # pragma: no cover - 用户函数报错
+                raise ScaleError(f"new_transform({self.name!r}) 的 transform 失败：{exc}") from exc
+        out = np.broadcast_to(forward, values.shape).astype(np.float64, copy=True)
+        invalid = invalid | ~np.isfinite(out)
+        out[invalid] = np.nan
+        return out, invalid
+
+    def inverse(self, values: np.ndarray) -> np.ndarray:
+        values = np.asarray(values, dtype=np.float64)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            try:
+                back = np.asarray(self._backward(values), dtype=np.float64)
+            except (TypeError, ValueError) as exc:  # pragma: no cover - 用户函数报错
+                raise ScaleError(f"new_transform({self.name!r}) 的 inverse 失败：{exc}") from exc
+        return np.broadcast_to(back, values.shape).astype(np.float64, copy=True)
+
+
+def new_transform(
+    name: str,
+    transform: Callable[[Any], Any],
+    inverse: Callable[[Any], Any],
+    domain: tuple[float, float] = (-math.inf, math.inf),
+) -> _Transform:
+    """`scales::new_transform(name, transform, inverse, domain)`。
+
+    `scale_x_continuous(transform = new_transform(...))` 就是 R 的自定义变换入口
+    （`sec_axis-custom-transform` 的那条 `magnify_trans_log()`）。
+    """
+    return _CallableTransform(name, transform, inverse, domain)
+
+
+class _NormProbability(_Transform):
+    """`scales::transform_probability("norm", lower.tail = ...)`（=`transform_norm`）。
+
+    `lower_tail=TRUE`：`x → qnorm(x)`（probit）；`FALSE`：`x → qnorm(x, lower.tail=FALSE)`
+    = `-qnorm(x)`，逆变换是 `pnorm(y, lower.tail=...)`。定义域 `[0, 1]`。
+    """
+
+    name = "probability"
+
+    def __init__(self, mean: float = 0.0, sd: float = 1.0, *, lower_tail: bool = True) -> None:
+        if not (sd > 0):
+            raise ScaleError("transform_probability() 的 sd 必须为正")
+        self.mean = float(mean)
+        self.sd = float(sd)
+        self.lower_tail = bool(lower_tail)
+
+    @property
+    def domain(self) -> tuple[float, float]:
+        return (0.0, 1.0)
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        from statistics import NormalDist
+
+        values = np.asarray(values, dtype=np.float64)
+        invalid = np.isnan(values) | (values < 0.0) | (values > 1.0)
+        out = np.full(values.shape, np.nan)
+        valid = ~invalid
+        distribution = NormalDist(mu=self.mean, sigma=self.sd)
+        probabilities = values[valid]
+        if not self.lower_tail:
+            probabilities = 1.0 - probabilities
+        out[valid] = [
+            distribution.inv_cdf(float(p))
+            if 0.0 < float(p) < 1.0
+            else math.copysign(math.inf, float(p) - 0.5)
+            for p in probabilities
+        ]
+        return out, invalid
+
+    def inverse(self, values: np.ndarray) -> np.ndarray:
+        from statistics import NormalDist
+
+        values = np.asarray(values, dtype=np.float64)
+        distribution = NormalDist(mu=self.mean, sigma=self.sd)
+        out = np.array([distribution.cdf(float(v)) for v in values], dtype=np.float64)
+        if not self.lower_tail:
+            out = 1.0 - out
+        return out
+
+
+def transform_probability(
+    distribution: str = "norm",
+    *,
+    mean: float = 0.0,
+    sd: float = 1.0,
+    lower_tail: bool = True,
+) -> _Transform:
+    """`scales::transform_probability()`（目前只有 `distribution = "norm"`）。"""
+    if str(distribution) != "norm":
+        raise ScaleError(
+            f"transform_probability(): 只实现了 distribution='norm'，收到 {distribution!r}"
+        )
+    return _NormProbability(mean, sd, lower_tail=lower_tail)
 
 
 class _DateTransform(_Transform):
@@ -1062,12 +1199,23 @@ class ContinuousScale(ScaleBase):
     def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
         super().__init__(aesthetic, params)
         self.oob = _resolve_oob(self._param("oob", self.default_oob))
-        self.transform_ = _trans_for(self._param("trans", "identity"))
+        self.transform_ = _trans_for(self._trans_request())
         self._range: tuple[float, float] | None = None
         self.non_finite_count = 0
         # `breaks = NULL` / `labels = NULL` 是显式「不要」，不是默认值。
         self.breaks_disabled = self._has_param("breaks") and self._param("breaks") is None
         self.labels_disabled = self._has_param("labels") and self._param("labels") is None
+
+    def _trans_request(self) -> Any:
+        """`trans=` 与 4.0 的 `transform=` 是同一个参数（R 里 `trans` 是弃用别名）。
+
+        显式给出的 `transform` 优先；都没给就是 identity。
+        """
+        if self._has_param("trans"):
+            return self._param("trans")
+        if self._has_param("transform"):
+            return self._param("transform")
+        return "identity"
 
     # -- 训练 -------------------------------------------------------------
 
@@ -2786,6 +2934,11 @@ class ScaleSet:
         self._explicit: dict[str, ScaleBase] = {
             self._canonical(name): scale_from_component(spec) for name, spec in self._specs.items()
         }
+        #: 离散位置标度训练到的**连续**范围（上游 `scale$range_c$range`）：
+        #: `geom_bar()` 的 `xmin` / `xmax` 是 0.55 / 1.45 这样的数值列，离散标度
+        #: 不吃它们训练水平，但面板范围要把这段并进去（见 `docs/notes/coord.md`
+        #: 「离散轴的连续范围」）。
+        self._continuous: dict[str, tuple[float, float]] = {}
 
     # -- 解析 -------------------------------------------------------------
 
@@ -2824,8 +2977,27 @@ class ScaleSet:
     def train(self, values: Any, aesthetic: str) -> None:
         column = values if isinstance(values, Column) else _column_from_array(values)
         scale = self._ensure(aesthetic, column)
-        if scale is not None:
-            scale.train(column)
+        if scale is None:
+            return
+        if getattr(scale, "discrete", False) and not column.is_discrete and column.kind != "bool":
+            # 上游 `ScaleDiscretePosition$train()` 把数值列记进 `range_c`：面板范围
+            # 是「离散水平展开」与这段连续范围的并集（`expand_limits_discrete_trans()`）。
+            numeric = _numeric_values(column)
+            finite = numeric[np.isfinite(numeric)]
+            if finite.size:
+                name = self._canonical(aesthetic)
+                low = float(finite.min())
+                high = float(finite.max())
+                current = self._continuous.get(name)
+                if current is not None:
+                    low = min(low, current[0])
+                    high = max(high, current[1])
+                self._continuous[name] = (low, high)
+        scale.train(column)
+
+    def continuous_range(self, aesthetic: str) -> tuple[float, float] | None:
+        """离散位置标度的连续范围（`scale$range_c$range`）；没有就是 None。"""
+        return self._continuous.get(self._canonical(aesthetic))
 
     def transform(self, values: Any, aesthetic: str) -> Any:
         """先做变换（上游 `scales$transform_df()`）；非连续标度原样返回。"""

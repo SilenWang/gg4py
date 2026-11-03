@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "aes-grouping"]
+ci = true
+title = "上游快照：three-concentric-circles"
+source = "upstream:tests/testthat/_snaps/coord-polar/three-concentric-circles.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar()` 的 r 网格圆按主断点画，theta 辐条由 `panel.grid.major` 控制。"

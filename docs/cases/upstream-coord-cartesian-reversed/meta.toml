@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-cartesian", "scale-limits"]
+ci = true
+title = "上游快照：reversed cartesian coords"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/reversed-cartesian-coords.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_cartesian(reverse=\"xy\", expand=FALSE)` 把两根轴都反过来。"

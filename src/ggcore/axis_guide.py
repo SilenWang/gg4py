@@ -790,7 +790,10 @@ def _guide_extent(
         ) + stack_gap * (len(ticks.children) - 1)
     element = _text_element(theme, side)
     if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
-        return 0.0
+        # `axis.text.* = element_blank()` 只去掉**标签**：R 的 `draw_axis()` 仍把
+        # 刻度线放进轴单元格，列宽 / 行高就是刻度长度（`axis-l` = 2.75pt）。
+        # 早先整条轴返回空，极坐标的 r 轴连刻度都不见了。
+        return _max_tick_length(theme, ticks)
     width, height, _margin_main, margin_cross = _label_box(
         ticks.labels, element, side, ticks.angle, metrics
     )
@@ -940,17 +943,23 @@ def axis_guide_grobs(
     element = _text_element(theme, ticks.side)
     horizontal = _horizontal(ticks.side)
     side = ticks.side
-    if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
-        return []
-    size = float(element.size or 0.0)
-    gp = {
-        "col": paint(element.colour) or "black",
-        "fontsize": size or 11.0,
-        "fontfamily": element.family or "",
-        "font": font_int(element.face),
-        "lineheight": float(element.lineheight or 1.2),
-    }
-    mt, mr, mb, ml = margin_sides_cm(element.margin)
+    blank_text = isinstance(element, ElementBlank) or not isinstance(element, ElementText)
+    size = 0.0 if blank_text else float(element.size or 0.0)
+    gp = (
+        {}
+        if blank_text
+        else {
+            "col": paint(element.colour) or "black",
+            "fontsize": size or 11.0,
+            "fontfamily": element.family or "",
+            "font": font_int(element.face),
+            "lineheight": float(element.lineheight or 1.2),
+        }
+    )
+    if blank_text:
+        mt = mr = mb = ml = 0.0
+    else:
+        mt, mr, mb, ml = margin_sides_cm(element.margin)
     grobs: list[Any] = []
     # 叠放：每一层向外推 offset。
     offset = 0.0
@@ -965,16 +974,23 @@ def axis_guide_grobs(
     else:
         layers = [(ticks, 0.0)]
     for layer_index, (layer, layer_offset) in enumerate(layers):
-        visible = _visible_labels(
-            layer,
-            element,
-            metrics,
-            axis_length_cm=box.width_cm if horizontal else box.height_cm,
+        visible = (
+            []
+            if blank_text
+            else _visible_labels(
+                layer,
+                element,
+                metrics,
+                axis_length_cm=box.width_cm if horizontal else box.height_cm,
+            )
         )
         max_tick = _max_tick_length(theme, layer)
-        width, height, _margin_main, margin_cross = _label_box(
-            layer.labels, element, side, layer.angle, metrics
-        )
+        if blank_text:
+            width = height = margin_cross = 0.0
+        else:
+            width, height, _margin_main, margin_cross = _label_box(
+                layer.labels, element, side, layer.angle, metrics
+            )
         row_size = (height if horizontal else width) + margin_cross
         hjust, vjust = _anchor(layer.angle, side)
         if max_tick < 0:

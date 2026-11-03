@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "scale-discrete"]
+ci = true
+title = "上游快照：rose plot with has equal spacing"
+source = "upstream:tests/testthat/_snaps/coord-polar/rose-plot-with-has-equal-spacing.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar()` 下离散 theta 等分整圆，柱外缘走 `coord_munch()` 的弧。"

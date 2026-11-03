@@ -947,6 +947,11 @@ def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:
         show = layer.params.get("show_legend", layer.params.get("show.legend"))
     if show is False:
         return False
+    if aesthetic in getattr(layer, "params", {}):
+        # 层参数（R 的 `aes_params`）覆盖同名映射：`geom_point(colour = "black")`
+        # 的 colour 不再是映射，因此不产生图例键（上游
+        # `setup_plot_labels()` 用 `setdiff(names(mapping), names(layer$aes_params))`）。
+        return False
     return aesthetic in _layer_mapping(build, index)
 
 
