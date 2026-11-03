@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "stat-identity"]
+ci = true
+title = "stat='identity'"
+source = "upstream:tests/testthat/_snaps/aes/stat-identity.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_bar(stat=\"identity\")` 的柱宽 / 计数语义。"

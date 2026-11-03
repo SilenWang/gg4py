@@ -1,0 +1,7 @@
+family = "geom-smooth"
+features = ["aes-mapping", "colour-aes", "fill-aes", "stat-summary"]
+ci = true
+title = "ribbon turned off in geom_smooth"
+source = "upstream:tests/testthat/_snaps/geom-smooth/ribbon-turned-off-in-geom-smooth.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_smooth(stat = \"summary\", fun.data = mean_se)` 的关带子。"

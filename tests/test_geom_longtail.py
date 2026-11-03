@@ -32,6 +32,7 @@ from ggcore.plot import (
     geom_boxplot,
     geom_errorbar,
     geom_map,
+    geom_path,
     geom_raster,
     geom_ribbon,
     geom_rug,
@@ -409,3 +410,78 @@ def test_scales_are_registered_for_the_new_cases() -> None:
 
 
 _ = scale_x_continuous, scale_y_continuous
+
+
+# ---------------------------------------------------------------------------
+# SIL-795：小簇 A 的几何细节（staples / 逐元素 gp / NA 参数 / 汇总带回分组列）
+# ---------------------------------------------------------------------------
+
+
+def _boxplot_nodes(**params):
+    return _draw(
+        ggplot(
+            _table(cls=["a", "a", "a", "b", "b", "b"], v=[1.0, 2.0, 3.0, 2.0, 4.0, 5.0]),
+            aes(x="cls", y="v", colour="cls"),
+        )
+        + geom_boxplot(**params)
+    )
+
+
+def test_boxplot_staplewidth_draws_two_short_segments_per_box() -> None:
+    plain = [node for node in _boxplot_nodes() if node.kind.value == "segments"]
+    stapled = [node for node in _boxplot_nodes(staplewidth=0.5) if node.kind.value == "segments"]
+    # 须线 2 段 / 箱 + 中位线 1 段；`staplewidth != 0` 再加 ymax / ymin 两段。
+    plain_rows = sum(np.asarray(node.bufs["segments"]).shape[0] for node in plain)
+    stapled_rows = sum(np.asarray(node.bufs["segments"]).shape[0] for node in stapled)
+    assert stapled_rows == plain_rows + 4
+
+
+def test_boxplot_staples_are_narrower_than_the_box() -> None:
+    nodes = _boxplot_nodes(staplewidth=0.5)
+    boxes = [node for node in nodes if node.kind.value == "polygon"]
+    box_width = float(np.ptp(np.asarray(boxes[0].bufs["points"])[:, 0]))
+    widths = [
+        float(np.ptp(np.asarray(node.bufs["segments"])[:, [0, 2]]))
+        for node in nodes
+        if node.kind.value == "segments"
+    ]
+    # 须帽 = `(xmax - x) * staplewidth + x` → 箱宽的一半。
+    assert any(np.isclose(width, box_width * 0.5, rtol=1e-6) for width in widths)
+
+
+def test_boxplot_element_gp_overrides_win_over_the_data_column() -> None:
+    nodes = _boxplot_nodes(whisker_linetype=2, median_colour="red")
+    segments = [node for node in nodes if node.kind.value == "segments"]
+    # 须线的 `lty` 是虚线（dash 数组），不是 data 列里的实线。
+    assert any(node.gpar.lty for node in segments)
+    # 中位线用覆盖色画（红），箱体 / 须线仍是 colour 映射的两档色。
+    assert any(tuple(node.gpar.col) == (255, 0, 0, 255) for node in segments)
+
+
+def test_na_layer_param_drops_rows_with_a_warning() -> None:
+    plot = (
+        ggplot(_table(x=[1.0, 2.0], y=[1.0, 2.0]), aes(x="x", y="y"))
+        + geom_path(linetype=float("nan"))
+        + theme_void()
+    )
+    build = build_plot(plot)
+    data = build.layers[0].data
+    # 数据阶段不删行（`$data` 保留 NA）；删行发生在 `Geom$handle_na()`。
+    assert data.nrows == 2
+    with pytest.warns(UserWarning, match="Removed 2 rows"):
+        kept = build.layers[0].geom_object.handle_na(data, False)
+    assert kept.nrows == 0
+
+
+def test_stat_summary_keeps_columns_constant_within_each_group() -> None:
+    from ggcore.plot import stat_summary
+
+    table = _table(x=[1.0, 1.0, 2.0, 2.0], y=[1.0, 3.0, 2.0, 4.0], g=["a", "a", "b", "b"])
+    build = build_plot(
+        ggplot(table, aes(x="x", y="y", colour="g")) + stat_summary(fun="mean", geom="point")
+    )
+    summary = build.layers[0].statistic
+    # 上游 `summarise_by_x()` 用 `dapply(..., uniquecols)` 把组内恒定的列带回来：
+    # colour 必须在汇总结果里，且逐组不同（否则图例与着色会丢）。
+    assert "colour" in summary.names
+    assert [str(value) for value in summary.column("colour").values] == ["a", "b"]

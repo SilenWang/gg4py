@@ -12,14 +12,19 @@
 回来，所以五个统计量在横向时走 `xmin/xlower/xmiddle/xupper/xmax`，纵向时走
 `ymin/lower/middle/upper/ymax`。
 
-`notch = TRUE` / `staplewidth != 0` 没有 IR 表达 → 明确报错（见
-`docs/notes/geom.md`「未实现清单」）。
+`staplewidth != 0` 时按上游再画须帽：`(xmin - x) * staplewidth + x` 到
+`(xmax - x) * staplewidth + x` 两条短横线（SIL-795）。`whisker.*` / `staple.*` /
+`median.*` / `box.*` / `outlier.*` 的逐元素 gp 覆盖也照 `setup_params()` 的口径
+先覆盖、再回落该行的 data 列。
+
+`notch = TRUE` 没有 IR 表达 → 明确报错（见 `docs/notes/geom.md`「未实现清单」）。
 """
 
 from __future__ import annotations
 
 import math
 import re
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -131,11 +136,18 @@ class BoxplotRenderer(GeomRenderer):
                 "geom_boxplot(notch = TRUE) 没有 IR 表达（缺口多边形），"
                 "见 docs/notes/geom.md「未实现清单」"
             )
-        if float(params.get("staplewidth", 0.0) or 0.0) != 0.0:
-            raise GeomError(
-                "geom_boxplot(staplewidth != 0) 没有 IR 表达（须帽），"
-                "见 docs/notes/geom.md「未实现清单」"
-            )
+        # 逐元素的 gp 覆盖（`geom_boxplot(whisker.linetype=…)` 一族）：R 侧在
+        # `setup_params()` 里拼成 `whisker_gp` / `staple_gp` / `median_gp` /
+        # `box_gp` / `outlier_gp`，绘制时 `defaults(compact(gp), data)`——**非
+        # NULL 的 gp 优先**，否则回落该行的 data 列。
+        whisker_gp = _element_gp(params, "whisker", ("colour", "linetype", "linewidth"))
+        staple_gp = _element_gp(params, "staple", ("colour", "linetype", "linewidth"))
+        median_gp = _element_gp(params, "median", ("colour", "linetype", "linewidth"))
+        box_gp = _element_gp(params, "box", ("colour", "linetype", "linewidth"))
+        outlier_gp = _element_gp(
+            params, "outlier", ("colour", "fill", "shape", "size", "stroke", "alpha")
+        )
+        staplewidth = float(params.get("staplewidth", 0.0) or 0.0)
         data = build.data
         if data.nrows == 0:
             return null_grob(name="geom_boxplot")
@@ -174,6 +186,14 @@ class BoxplotRenderer(GeomRenderer):
         linejoin = str(params.get("linejoin", "mitre"))
         fatten = float(params.get("fatten", 2.0))
 
+        # 须线 / 须帽 / 中位线 / 箱体的 gp：元素覆盖优先，否则用该行的 data 列
+        # （`whisker_gp$colour %||% data$colour`）。
+        whisker_colour = [whisker_gp.get("colour", colours[i]) for i in range(data.nrows)]
+        whisker_lty = lty_value(whisker_gp.get("linetype", linetype[0] if linetype else 1))
+        whisker_lwd = np.asarray(linewidth, dtype=np.float64) * POINT_PER_MM
+        if "linewidth" in whisker_gp:
+            whisker_lwd = np.full(data.nrows, float(whisker_gp["linewidth"]) * POINT_PER_MM)
+
         indices = np.arange(data.nrows)
 
         def axes(
@@ -202,11 +222,11 @@ class BoxplotRenderer(GeomRenderer):
             default_units="native",
             gp={
                 "col": [
-                    alpha_colour(colours[i], alpha[i])
+                    alpha_colour(whisker_colour[i], alpha[i])
                     for i in np.concatenate([indices, indices]).tolist()
                 ],
-                "lwd": (linewidth[np.concatenate([indices, indices])] * POINT_PER_MM).tolist(),
-                "lty": lty_value(linetype[0]) if linetype else 1,
+                "lwd": whisker_lwd[np.concatenate([indices, indices])].tolist(),
+                "lty": whisker_lty,
                 "lineend": lineend,
                 "linejoin": linejoin,
             },
@@ -228,10 +248,10 @@ class BoxplotRenderer(GeomRenderer):
                     unit(ys.tolist(), "native"),
                     default_units="native",
                     gp=gpar(
-                        col=alpha_colour(colours[index], alpha[index]),
+                        col=alpha_colour(box_gp.get("colour", colours[index]), alpha[index]),
                         fill=alpha_colour(fills[index], alpha[index]),
-                        lwd=float(linewidth[index]) * POINT_PER_MM,
-                        lty=lty_value(linetype[index]),
+                        lwd=float(box_gp.get("linewidth", linewidth[index])) * POINT_PER_MM,
+                        lty=lty_value(box_gp.get("linetype", linetype[index])),
                         lineend=lineend,
                         linejoin=linejoin,
                     ),
@@ -247,27 +267,75 @@ class BoxplotRenderer(GeomRenderer):
             unit(my2.tolist(), "native"),
             default_units="native",
             gp={
-                "col": colours,
-                "lwd": (linewidth * fatten * POINT_PER_MM).tolist(),
-                "lty": lty_value(linetype[0]) if linetype else 1,
+                # `middle` 的 alpha 固定为 NA（R: `alpha = NA`），所以颜色不过 alpha。
+                "col": [median_gp.get("colour", colours[i]) for i in range(data.nrows)],
+                "lwd": (
+                    np.full(data.nrows, float(median_gp["linewidth"]) * POINT_PER_MM)
+                    if "linewidth" in median_gp
+                    else (linewidth * fatten * POINT_PER_MM)
+                ).tolist(),
+                "lty": lty_value(median_gp.get("linetype", linetype[0] if linetype else 1)),
                 "lineend": lineend,
                 "linejoin": linejoin,
             },
         )
 
-        grobs: list[Any] = [whiskers, *boxes, median]
-        grobs.extend(_outlier_points(panel, data, flip, across))
+        grobs: list[Any] = [whiskers]
+        if staplewidth != 0.0:
+            # 须帽（`staplewidth`）：在 ymax / ymin 各一条短横线，
+            # 宽度是箱宽的 `staplewidth` 倍（R 的 `(xmin - x) * staplewidth + x`）。
+            half_low = (box_low - across) * staplewidth + across
+            half_high = (box_high - across) * staplewidth + across
+            counts = int(data.nrows)
+            staple_lengths = np.concatenate([whisker_high, whisker_low])
+            sx1, sy1 = axes(np.concatenate([half_low, half_low]), staple_lengths)
+            sx2, sy2 = axes(np.concatenate([half_high, half_high]), staple_lengths)
+            grobs.append(
+                segments_grob(
+                    unit(sx1.tolist(), "native"),
+                    unit(sy1.tolist(), "native"),
+                    unit(sx2.tolist(), "native"),
+                    unit(sy2.tolist(), "native"),
+                    default_units="native",
+                    gp={
+                        "col": [
+                            staple_gp.get("colour", colours[i]) for i in list(range(counts)) * 2
+                        ],
+                        "lwd": (
+                            np.full(counts * 2, float(staple_gp["linewidth"]) * POINT_PER_MM)
+                            if "linewidth" in staple_gp
+                            else np.tile(linewidth, 2) * POINT_PER_MM
+                        ).tolist(),
+                        "lty": lty_value(staple_gp.get("linetype", linetype[0] if linetype else 1)),
+                        "lineend": lineend,
+                        "linejoin": linejoin,
+                    },
+                )
+            )
+        grobs.extend(boxes)
+        grobs.append(median)
+        grobs.extend(_outlier_points(panel, data, flip, across, outlier_gp))
         return g_tree(*grobs, name="geom_boxplot")
 
 
-def _outlier_points(panel: Any, data: ColumnTable, flip: bool, across: np.ndarray) -> list[Any]:
+def _outlier_points(
+    panel: Any,
+    data: ColumnTable,
+    flip: bool,
+    across: np.ndarray,
+    outlier_gp: Mapping[str, Any] | None = None,
+) -> list[Any]:
     """离群点：沿长度轴的值 → npc；colour / shape / size / stroke 走 default aes。
 
     IR 的 points 一个节点只带一份 gp，所以逐行一个 pointsGrob（与 R 逐 group
     调用 `GeomPoint$draw_panel()` 的结构一致）。
+
+    `outlier_gp` 是 `geom_boxplot(outlier.shape=…)` 一族的覆盖：R 侧写
+    `outlier_gp$shape %||% data$shape[1] %||% 19`，`fill` 恒为 `NA`。
     """
     if "outliers" not in data:
         return []
+    overrides = dict(outlier_gp or {})
     shapes = _values(data, "shape", 19.0)
     size = table_numeric(data, "size", default=1.5)
     stroke = table_numeric(data, "stroke", default=0.5)
@@ -281,23 +349,46 @@ def _outlier_points(panel: Any, data: ColumnTable, flip: bool, across: np.ndarra
         along = _npc(panel, np.array(values), "x" if flip else "y")
         xs = along.tolist() if flip else [float(across[index])] * len(values)
         ys = [float(across[index])] * len(values) if flip else along.tolist()
+        shape = overrides.get("shape", shapes[index] if shapes else 19.0)
+        point_size = float(overrides.get("size", size[index]))
+        point_stroke = float(overrides.get("stroke", stroke[index]))
+        point_alpha = overrides.get("alpha", alpha[index])
         # `GeomPoint$draw_panel()`：fontsize = size * .pt + stroke * .stroke / 2。
-        size_pt = float(size[index]) * POINT_PER_MM + float(stroke[index]) * STROKE_PER_MM / 2.0
+        size_pt = point_size * POINT_PER_MM + point_stroke * STROKE_PER_MM / 2.0
         out.append(
             points_grob(
                 unit(xs, "native"),
                 unit(ys, "native"),
-                pch=translate_shape(shapes[index]) if shapes else 19,
+                pch=translate_shape(shape),
                 size=unit(size_pt, "bigpts"),
                 size_units="bigpts",
                 default_units="native",
                 gp=gpar(
-                    col=alpha_colour(colours[index], alpha[index]),
+                    col=alpha_colour(overrides.get("colour", colours[index]), point_alpha),
                     fill=NA,
-                    lwd=float(stroke[index]) * STROKE_PER_MM / 2.0,
+                    lwd=point_stroke * STROKE_PER_MM / 2.0,
                 ),
             )
         )
+    return out
+
+
+def _element_gp(params: Mapping[str, Any], prefix: str, names: tuple[str, ...]) -> dict[str, Any]:
+    """`geom_boxplot(<prefix>.colour = …)` 一族 → `{名字: 值}`。
+
+    R 的参数名是点号（`whisker.linetype`），Python 的关键字写不了点，所以统一走
+    下划线（与 `fun.data` → `fun_data` 同一口径）；美式的 `*.color` 也收。
+    只保留显式给了值的键——`NULL` 表示「继承 data 的性别」。
+    """
+    out: dict[str, Any] = {}
+    for name in names:
+        keys = [f"{prefix}_{name}"]
+        if name == "colour":
+            keys.append(f"{prefix}_color")
+        for key in keys:
+            if params.get(key) is not None:
+                out[name] = params[key]
+                break
     return out
 
 

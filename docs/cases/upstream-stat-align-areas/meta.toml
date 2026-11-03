@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "fill-aes", "stat-align"]
+ci = true
+title = "align two areas"
+source = "upstream:tests/testthat/_snaps/stat-align/align-two-areas.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`stat_align()` 的插值对齐（align two areas）。"

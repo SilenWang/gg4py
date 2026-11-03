@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "colour-aes", "stat-boxplot", "line-type"]
+ci = true
+title = "customised style"
+source = "upstream:tests/testthat/_snaps/geom-boxplot/customised-style.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：逐元素样式（outlier.shape / whisker.linetype / median.colour / box.colour / staple）。"

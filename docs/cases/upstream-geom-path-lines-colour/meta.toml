@@ -1,0 +1,6 @@
+family = "geom-path"
+features = ["aes-mapping", "aes-grouping", "sort-order", "colour-aes"]
+ci = true
+title = "lines, colour"
+source = "upstream:tests/testthat/_snaps/geom-path/lines-colour.svg"
+notes = "SIL-795：colour=item 的默认 hue 色板。"

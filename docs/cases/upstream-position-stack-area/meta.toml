@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "fill-aes", "position-stack", "stat-identity"]
+ci = true
+title = "Area stacking"
+source = "upstream:tests/testthat/_snaps/position-stack/area-stacking.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_area(stat=\"identity\")` 的默认堆叠（含负值分开堆）。"

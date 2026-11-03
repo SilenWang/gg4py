@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "colour-aes", "stat-boxplot"]
+ci = true
+title = "staples"
+source = "upstream:tests/testthat/_snaps/geom-boxplot/staples.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`staplewidth = 0.5` 的须端横线（`GeomSegment` 的两段）。"

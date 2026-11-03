@@ -1,0 +1,7 @@
+family = "geom-hline"
+features = ["aes-mapping", "coord-flip"]
+ci = true
+title = "flipped lines intersect mid-bars"
+source = "upstream:tests/testthat/_snaps/geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`coord_flip()` 下参考线跟着换轴。"

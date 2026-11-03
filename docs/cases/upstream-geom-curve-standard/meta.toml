@@ -1,0 +1,7 @@
+family = "geom-curve"
+features = ["aes-mapping"]
+ci = true
+title = "standard geom_curve"
+source = "upstream:tests/testthat/_snaps/geom-curve/standard-geom-curve.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_curve(arrow = arrow())`。"
