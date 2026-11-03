@@ -97,6 +97,10 @@ vector_json <- function(values) {
   if (is.factor(values)) {
     values <- as.character(values)
   }
+  # ggcore 的日期时间列是「自 epoch 起的天 / 秒」，夹具也按数值记录。
+  if (inherits(values, c("Date", "POSIXct", "POSIXt", "difftime", "hms"))) {
+    values <- as.numeric(values)
+  }
   lapply(seq_along(values), function(i) {
     value <- values[[i]]
     if (length(value) == 0L || (length(value) == 1L && is.na(value))) NULL else unname(value)
@@ -107,6 +111,9 @@ vector_json <- function(values) {
 # log10 的 0 在 R 里是 -Inf（censor 只 censor 有限值），JSON 没有 Infinity，
 # 所以用字符串记下来，Python 侧按 docs/notes/scales.md 的口径明确处理。
 mapped_json <- function(values) {
+  if (inherits(values, c("Date", "POSIXct", "POSIXt", "difftime", "hms"))) {
+    values <- as.numeric(values)
+  }
   lapply(seq_along(values), function(i) {
     value <- values[[i]]
     if (length(value) == 0L || (length(value) == 1L && is.na(value))) {
@@ -135,41 +142,24 @@ param_json <- function(value) {
 # ---------------------------------------------------------------------------
 
 # registry 名（ggcore 的 SCALE_SPECS）→ R 的构造函数。
-# `*_discrete` 在 4.0.3 里是 hue 的别名（`scale_colour_discrete()` 的 palette 由
-# 主题给，实际回退到 pal_hue()）；`*_continuous` 是 gradient 的别名（回退到
-# pal_seq_gradient("#132B43", "#56B1F7")）。这里直接用带调色板的
-# `scale_colour_hue()` / `scale_colour_gradient()`，两者与别名的结果一致
-# （见文件末尾的 selfcheck）。
+# M2-4 A 段起，名字与导出名一一对应（`scale_<name>`），所以直接按名字找；
+# 只有 `values =` 的 manual 形态需要换成 `scale_*_manual()`（与 M1-4 相同）。
 scale_constructor <- function(name, params) {
-  manual <- !is.null(params$values)
-  if (manual) {
+  # `values` 是字符向量才是 manual；gradientn / stepsn 的 values 是颜色停靠位置。
+  manual <- is.character(params$values)
+  if (manual && grepl("^(colour|color|fill)_", name)) {
     aesthetic <- if (startsWith(name, "fill")) "fill" else "colour"
     return(do.call(
       if (aesthetic == "fill") scale_fill_manual else scale_colour_manual,
       params
     ))
   }
-  ctor <- switch(
-    name,
-    x_continuous = scale_x_continuous,
-    y_continuous = scale_y_continuous,
-    x_discrete = scale_x_discrete,
-    y_discrete = scale_y_discrete,
-    x_log10 = scale_x_log10,
-    y_log10 = scale_y_log10,
-    colour_continuous = scale_colour_gradient,
-    colour_discrete = scale_colour_hue,
-    fill_continuous = scale_fill_gradient,
-    fill_discrete = scale_fill_hue,
-    size_continuous = scale_size_continuous,
-    shape_discrete = scale_shape_discrete,
-    alpha_continuous = scale_alpha_continuous,
-    NULL
-  )
-  if (is.null(ctor)) {
+  ctor_name <- paste0("scale_", name)
+  namespace <- asNamespace("ggplot2")
+  if (!exists(ctor_name, envir = namespace, inherits = FALSE)) {
     stop("unknown scale: ", name)
   }
-  do.call(ctor, params)
+  do.call(get(ctor_name, envir = namespace), params)
 }
 
 # 主题解析出来的调色板：size / alpha / shape 的 palette 由 `set_palettes()` 从主题
@@ -188,6 +178,7 @@ palette_from_build <- function(aesthetic, discrete) {
     size = aes(size = v),
     alpha = aes(alpha = v),
     shape = aes(shape = v),
+    linewidth = aes(linewidth = v),
     stop("no palette mapping for aesthetic: ", aesthetic)
   )
   plot <- ggplot(data, aes(x = x, y = y)) + geom_point(mapping)
@@ -208,7 +199,7 @@ ensure_palette <- function(scale, aesthetic) {
 
 position_aesthetics <- c("x", "y", "xmin", "xmax", "ymin", "ymax", "xend", "yend")
 
-record <- function(id, title, scale, params = list(), train, map) {
+record <- function(id, title, scale, params = list(), train, map, json_params = NULL) {
   sc <- scale_constructor(scale, params)
   aesthetic <- sc$aesthetics[[1]]
   # ggplot2 4.0.3 在训练前先过 `scales$transform_df()`：位置数据先做变换，
@@ -235,7 +226,12 @@ record <- function(id, title, scale, params = list(), train, map) {
   expanded <- NULL
   if (is_position) {
     expand <- ggplot2:::default_expansion(sc)
-    expanded <- sc$dimension(expand = expand, limits = limits)
+    # ScaleBinned$dimension() 只收 expand（没有 limits 参数），与
+    # ScaleContinuous$dimension(expand, limits) 的签名不同。
+    expanded <- tryCatch(
+      sc$dimension(expand = expand, limits = limits),
+      error = function(e) sc$dimension(expand = expand)
+    )
   }
 
   breaks <- NULL
@@ -243,7 +239,11 @@ record <- function(id, title, scale, params = list(), train, map) {
   # 位置标度的面板断点按 **expand 之后** 的范围算（ggplot_build 的 view scale 就是
   # 这么走的）；colour / size / alpha / shape 没有面板范围，按 limits 算（guide 的
   # 口径）。两种情况都走 view_scale_primary，所以越界项同样是 NA。
-  view_range <- if (is_position) expanded else sc$dimension(limits = limits)
+  view_range <- if (is_position) {
+    expanded
+  } else {
+    tryCatch(sc$dimension(limits = limits), error = function(e) sc$dimension())
+  }
   view <- tryCatch(
     ggplot2:::view_scale_primary(sc, limits, view_range),
     error = function(e) NULL
@@ -264,7 +264,7 @@ record <- function(id, title, scale, params = list(), train, map) {
     scale = scale,
     aesthetic = aesthetic,
     trans = if (is.null(transformation)) "identity" else transformation$name,
-    params = lapply(params, param_json),
+    params = lapply(if (is.null(json_params)) params else json_params, param_json),
     train = vector_json(train),
     map = vector_json(map),
     limits = vector_json(limits),
@@ -458,6 +458,243 @@ cases <- list(
     "shape_discrete",
     train = c("a", "b", "c"),
     map = c("a", "b", "c")
+  ),
+
+  # --- M2-4 A：sqrt / reverse / 分箱 / 日期时间 --------------------------
+  record(
+    "x_sqrt",
+    "sqrt x：负值 → NA，断点在数据空间",
+    "x_sqrt",
+    train = c(0, 1, 4, 9, 16),
+    map = c(0, 1, 4, 9, 16, -1)
+  ),
+  record(
+    "x_reverse",
+    "reverse x：x → -x，断点在变换后空间倒序",
+    "x_reverse",
+    train = 1:7,
+    map = c(1, 3, 7)
+  ),
+  record(
+    "x_binned",
+    "分箱 x：默认 10 个箱，OOB → 箱号",
+    "x_binned",
+    train = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+    map = c(1, 3.4, 7, 10, 12, -1)
+  ),
+  record(
+    "x_binned_breaks",
+    "分箱 x：显式 breaks（箱边界就是断点）",
+    "x_binned",
+    params = list(breaks = c(2, 4, 6, 8)),
+    train = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+    map = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+  ),
+  record(
+    "x_date_default",
+    "date x：默认 pretty 断点 + ISO 标签",
+    "x_date",
+    train = as.Date(c("2020-01-05", "2021-06-20")),
+    map = as.Date(c("2020-01-05", "2020-06-01", "2021-06-20"))
+  ),
+  record(
+    "x_date_breaks",
+    "date x：date_breaks = 2 months + date_labels",
+    "x_date",
+    params = list(date_breaks = "2 months", date_labels = "%Y-%m", expand = c(0, 0)),
+    train = as.Date(c("2020-01-15", "2020-12-03")),
+    map = as.Date(c("2020-01-15", "2020-07-01", "2020-12-03"))
+  ),
+  record(
+    "x_datetime_breaks",
+    "datetime x：date_breaks = 2 hours",
+    "x_datetime",
+    params = list(date_breaks = "2 hours", date_labels = "%H:%M", expand = c(0, 0)),
+    train = as.POSIXct(c("2020-01-01 00:13:00", "2020-01-01 07:47:00"), tz = "UTC"),
+    map = as.POSIXct(c("2020-01-01 00:13:00", "2020-01-01 03:00:00"), tz = "UTC")
+  ),
+  record(
+    "x_time_breaks",
+    "time x（hms）：date_breaks = 15 min",
+    "x_time",
+    params = list(date_breaks = "15 min", date_labels = "%H:%M:%S", expand = c(0, 0)),
+    train = hms::as_hms(c(0, 3600)),
+    map = hms::as_hms(c(0, 1800, 3600))
+  ),
+
+  # --- M2-4 A：颜色连续 / 分箱 / 渐变 ------------------------------------
+  record(
+    "colour_gradient2",
+    "gradient2：midpoint = 0 落在 0.5，Lab 双向插值",
+    "colour_gradient2",
+    train = c(-1, 0, 1),
+    map = c(-1, -0.5, 0, 0.5, 1)
+  ),
+  record(
+    "colour_gradientn",
+    "gradientn：三色 + values 停靠点",
+    "colour_gradientn",
+    params = list(colours = c("#0000FF", "#FFFFFF", "#FF0000"), values = c(0, 0.4, 1)),
+    train = c(0, 1),
+    map = c(0, 0.2, 0.5, 1)
+  ),
+  record(
+    "colour_steps",
+    "steps：分箱渐变（默认 oob = squish）",
+    "colour_steps",
+    train = c(0, 1),
+    map = c(0, 0.2, 0.5, 1)
+  ),
+  record(
+    "colour_steps_oob",
+    "steps：limits 之外 squish 到端点箱",
+    "colour_steps",
+    params = list(limits = c(0.25, 0.75)),
+    train = c(0, 1),
+    map = c(0, 0.5, 1)
+  ),
+  record(
+    "colour_steps2",
+    "steps2：分箱发散渐变",
+    "colour_steps2",
+    train = c(-1, 1),
+    map = c(-1, -0.5, 0, 0.5, 1)
+  ),
+  record(
+    "colour_stepsn",
+    "stepsn：分箱 n 色渐变",
+    "colour_stepsn",
+    params = list(colours = c("#0000FF", "#FFFFFF", "#FF0000"), breaks = c(0.25, 0.5, 0.75)),
+    train = c(0, 1),
+    map = c(0, 0.2, 0.5, 0.8, 1)
+  ),
+  record(
+    "colour_binned",
+    "colour_binned：默认调色板的分箱色",
+    "colour_binned",
+    train = c(0, 1),
+    map = c(0, 0.25, 0.5, 0.75, 1)
+  ),
+  record(
+    "colour_distiller",
+    "distiller：Brewer Spectral（7 色）→ 连续渐变",
+    "colour_distiller",
+    params = list(palette = "Spectral"),
+    train = c(0, 1),
+    map = c(0, 0.25, 0.5, 0.75, 1)
+  ),
+  record(
+    "colour_fermenter",
+    "fermenter：Brewer 分箱（按箱数取色）",
+    "colour_fermenter",
+    params = list(palette = "Spectral", n.breaks = 4),
+    train = c(0, 1),
+    map = c(0, 0.2, 0.5, 0.8, 1)
+  ),
+  record(
+    "colour_date",
+    "colour_date：日期渐变 + date_breaks",
+    "colour_date",
+    params = list(date_breaks = "1 month", date_labels = "%b", expand = c(0, 0)),
+    train = as.Date(c("2020-01-01", "2020-04-01")),
+    map = as.Date(c("2020-01-01", "2020-02-15", "2020-04-01"))
+  ),
+
+  # --- M2-4 A：alpha / size / linewidth 连续侧 --------------------------
+  record(
+    "alpha_binned",
+    "alpha_binned：分箱 alpha 0.1..1",
+    "alpha_binned",
+    train = c(0, 1),
+    map = c(0, 0.25, 0.5, 0.75, 1)
+  ),
+  record(
+    "size_area",
+    "size_area：rescale_max + abs_area(max_size = 8)",
+    "size_area",
+    params = list(max_size = 8),
+    train = c(1, 2, 3, 4),
+    map = c(1, 2, 3, 4)
+  ),
+  record(
+    "size_binned",
+    "size_binned：分箱面积标度",
+    "size_binned",
+    train = c(0, 4),
+    map = c(0, 1, 2, 3, 4)
+  ),
+  record(
+    "size_binned_area",
+    "size_binned_area：分箱 + rescale_max",
+    "size_binned_area",
+    train = c(0, 4),
+    map = c(0, 1, 2, 3, 4)
+  ),
+  record(
+    "radius",
+    "radius：线性 size 1..6",
+    "radius",
+    train = c(1, 4),
+    map = c(1, 2, 4)
+  ),
+  record(
+    "size_date",
+    "size_date：日期输入的连续 area 标度",
+    "size_date",
+    params = list(date_breaks = "1 year", date_labels = "%Y", expand = c(0, 0)),
+    train = as.Date(c("2019-01-01", "2021-01-01")),
+    map = as.Date(c("2019-01-01", "2020-01-01", "2021-01-01"))
+  ),
+  record(
+    "linewidth_continuous",
+    "linewidth：线性 1..6",
+    "linewidth_continuous",
+    train = c(1, 4),
+    map = c(1, 2, 4)
+  ),
+  record(
+    "linewidth_binned",
+    "linewidth_binned：分箱线性",
+    "linewidth_binned",
+    train = c(1, 4),
+    map = c(1, 2, 3, 4)
+  ),
+  record(
+    "linewidth_date",
+    "linewidth_date：日期输入的线性标度",
+    "linewidth_date",
+    params = list(date_breaks = "1 year", date_labels = "%Y", expand = c(0, 0)),
+    train = as.Date(c("2019-01-01", "2021-01-01")),
+    map = as.Date(c("2019-01-01", "2020-01-01", "2021-01-01"))
+  ),
+
+  # --- M2-4 A：oob 三态 --------------------------------------------------
+  record(
+    "x_oob_squish",
+    "oob = squish：越界值钳到 limits",
+    "x_continuous",
+    params = list(limits = c(2, 6), oob = scales::squish),
+    json_params = list(limits = c(2, 6), oob = "squish"),
+    train = 1:7,
+    map = c(1, 3, 7)
+  ),
+  record(
+    "x_oob_keep",
+    "oob = keep：越界值原样保留",
+    "x_continuous",
+    params = list(limits = c(2, 6), oob = scales::oob_keep),
+    json_params = list(limits = c(2, 6), oob = "keep"),
+    train = 1:7,
+    map = c(1, 3, 7)
+  ),
+  record(
+    "x_oob_squish_infinite",
+    "oob = squish_infinite：只钳 ±Inf，有限越界保留",
+    "x_continuous",
+    params = list(limits = c(2, 6), oob = scales::squish_infinite),
+    json_params = list(limits = c(2, 6), oob = "squish_infinite"),
+    train = 1:7,
+    map = c(1, 3, 7)
   )
 )
 

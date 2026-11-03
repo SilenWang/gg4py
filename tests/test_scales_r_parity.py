@@ -34,29 +34,59 @@ TOLERANCE = 1e-12
 
 #: 夹具里钉死的 case（改夹具就要同时改这里，防止悄悄少比）。
 EXPECTED_CASES = {
+    "alpha_binned",
+    "alpha_continuous",
+    "colour_binned",
+    "colour_date",
+    "colour_distiller",
+    "colour_fermenter",
+    "colour_gradient",
+    "colour_gradient2",
+    "colour_gradient_limits",
+    "colour_gradientn",
+    "colour_hue",
+    "colour_hue_limits",
+    "colour_hue_na_value",
+    "colour_manual",
+    "colour_steps",
+    "colour_steps2",
+    "colour_steps_oob",
+    "colour_stepsn",
     "continuous_default_expand",
     "continuous_expand_zero",
     "continuous_limits_censor",
     "continuous_manual_breaks_labels",
     "continuous_nbreaks",
-    "x_log10",
-    "y_log10",
-    "x_log10_limits",
+    "discrete_drop_false",
     "discrete_levels",
     "discrete_limits",
-    "discrete_drop_false",
     "discrete_na_level",
     "discrete_reverse_limits",
-    "colour_hue",
-    "colour_hue_na_value",
-    "colour_hue_limits",
-    "colour_manual",
     "fill_hue",
-    "colour_gradient",
-    "colour_gradient_limits",
-    "size_continuous",
-    "alpha_continuous",
+    "linewidth_binned",
+    "linewidth_continuous",
+    "linewidth_date",
+    "radius",
     "shape_discrete",
+    "size_area",
+    "size_binned",
+    "size_binned_area",
+    "size_continuous",
+    "size_date",
+    "x_binned",
+    "x_binned_breaks",
+    "x_date_breaks",
+    "x_date_default",
+    "x_datetime_breaks",
+    "x_log10",
+    "x_log10_limits",
+    "x_oob_keep",
+    "x_oob_squish",
+    "x_oob_squish_infinite",
+    "x_reverse",
+    "x_sqrt",
+    "x_time_breaks",
+    "y_log10",
 }
 
 
@@ -79,7 +109,7 @@ def _column(values: list) -> Column:
 
 def _build_scale(case: dict):
     params = dict(case["params"])
-    # 夹具里是 R 的参数名（n.breaks）；Python 的关键字参数用下划线。
+    # 夹具里是 R 的参数名（n.breaks）；`_param()` 两种写法都认，统一成下划线。
     if "n.breaks" in params:
         params["n_breaks"] = params.pop("n.breaks")
     return scale_from_component(Scale(case["scale"], case["aesthetic"], params))
@@ -194,13 +224,16 @@ def test_scale_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """规模钉死：23 个 case、87 个断点 / 标签、75 个映射值、13 个 expand 向量。"""
-    assert len(reference["cases"]) == 23
-    assert sum(len(case["breaks"]) for case in reference["cases"]) == 87
-    assert sum(len(case["labels"]) for case in reference["cases"]) == 87
-    assert sum(len(case["mapped"]) for case in reference["cases"]) == 75
-    assert sum(len(case["limits"]) for case in reference["cases"]) == 54
-    assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 13
+    """规模钉死：53 个 case、218 个断点 / 标签、199 个映射值、24 个 expand 向量。
+
+    M2-4 A 段把连续 / 分箱 / 渐变 / 日期时间四类补进来；规模断言防止悄悄少比。
+    """
+    assert len(reference["cases"]) == 53
+    assert sum(len(case["breaks"]) for case in reference["cases"]) == 218
+    assert sum(len(case["labels"]) for case in reference["cases"]) == 218
+    assert sum(len(case["mapped"]) for case in reference["cases"]) == 199
+    assert sum(len(case["limits"]) for case in reference["cases"]) == 114
+    assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 24
 
 
 def test_parity_has_teeth(reference: dict) -> None:

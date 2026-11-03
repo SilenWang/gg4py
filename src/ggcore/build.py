@@ -1117,6 +1117,8 @@ def build_plot(plot: ggplot) -> PlotBuild:
         for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax），见 build_layer。
+    # 上游在这之前调 `layout$reset_scales()`（分箱位置标度切到 after_stat 语义）。
+    scales.reset()
     for staged in stages:
         _train(scales, staged.positioned)
     builds = tuple(_assemble(staged, scales) for staged in stages)
@@ -1217,6 +1219,10 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         for index, (aesthetics, layer) in enumerate(zip(mapped, layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax）。
+    # 上游在 compute_position() 之后、train_position() 之前调
+    # `layout$reset_scales()`（分箱位置标度把 map 切到 after_stat 语义）。
+    for panel in layout.panel_ids:
+        scales.for_panel(panel).reset()
     for staged in stages:
         panel_ids = _panel_ids_of(staged.positioned)
         for panel, rows in _panel_slices(panel_ids):

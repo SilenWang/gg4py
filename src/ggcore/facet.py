@@ -499,6 +499,18 @@ class PanelScaleSet(ScaleSet):
     def map(self, values: Any, aesthetic: str) -> Any:
         return self._target(aesthetic).map(values, aesthetic)
 
+    def reset(self) -> None:
+        """转发给真实持有的三个集合（共享 + 位置槽位）。
+
+        共享集可能被多个面板重复 reset；各标度的 reset 必须幂等（分箱位置标度
+        只是把 after_stat 置 True）。
+        """
+        self.shared.reset()
+        if self.x_set is not None:
+            self.x_set.reset()
+        if self.y_set is not None:
+            self.y_set.reset()
+
     # -- 查询 -------------------------------------------------------------
 
     def scale(self, aesthetic: str) -> Any:

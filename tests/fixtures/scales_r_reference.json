@@ -1181,6 +1181,1527 @@
         17,
         15
       ]
+    },
+    {
+      "id": "x_sqrt",
+      "title": "sqrt x：负值 → NA，断点在数据空间",
+      "scale": "x_sqrt",
+      "aesthetic": "x",
+      "trans": "sqrt",
+      "params": [],
+      "train": [
+        0,
+        1,
+        4,
+        9,
+        16
+      ],
+      "map": [
+        0,
+        1,
+        4,
+        9,
+        16,
+        -1
+      ],
+      "limits": [
+        0,
+        4
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -0.20000000000000001,
+        4.2000000000000002
+      ],
+      "breaks": [
+        0,
+        2.2360679774997898,
+        3.1622776601683795,
+        3.872983346207417,
+        null
+      ],
+      "labels": [
+        "0",
+        "5",
+        "10",
+        "15",
+        null
+      ],
+      "mapped": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        null
+      ]
+    },
+    {
+      "id": "x_reverse",
+      "title": "reverse x：x → -x，断点在变换后空间倒序",
+      "scale": "x_reverse",
+      "aesthetic": "x",
+      "trans": "reverse",
+      "params": [],
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        -7,
+        -1
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        -7.2999999999999998,
+        -0.69999999999999996
+      ],
+      "breaks": [
+        null,
+        -2,
+        -4,
+        -6,
+        null
+      ],
+      "labels": [
+        null,
+        "2",
+        "4",
+        "6",
+        null
+      ],
+      "mapped": [
+        -1,
+        -3,
+        -7
+      ]
+    },
+    {
+      "id": "x_binned",
+      "title": "分箱 x：默认 10 个箱，OOB → 箱号",
+      "scale": "x_binned",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "map": [
+        1,
+        3.3999999999999999,
+        7,
+        10,
+        12,
+        -1
+      ],
+      "limits": [
+        1,
+        10
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        0.55000000000000004,
+        10.449999999999999
+      ],
+      "breaks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "mapped": [
+        1,
+        4,
+        7,
+        10,
+        11,
+        1
+      ]
+    },
+    {
+      "id": "x_binned_breaks",
+      "title": "分箱 x：显式 breaks（箱边界就是断点）",
+      "scale": "x_binned",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "breaks": [
+          2,
+          4,
+          6,
+          8
+        ]
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "map": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "limits": [
+        1,
+        10
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        0.55000000000000004,
+        10.449999999999999
+      ],
+      "breaks": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "labels": [
+        "2",
+        "4",
+        "6",
+        "8"
+      ],
+      "mapped": [
+        1,
+        1,
+        2,
+        2,
+        3,
+        3,
+        4,
+        4,
+        5,
+        5
+      ]
+    },
+    {
+      "id": "x_date_default",
+      "title": "date x：默认 pretty 断点 + ISO 标签",
+      "scale": "x_date",
+      "aesthetic": "x",
+      "trans": "date",
+      "params": [],
+      "train": [
+        18266,
+        18798
+      ],
+      "map": [
+        18266,
+        18414,
+        18798
+      ],
+      "limits": [
+        18266,
+        18798
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        18239.400000000001,
+        18824.599999999999
+      ],
+      "breaks": [
+        null,
+        18262,
+        18444,
+        18628,
+        18809,
+        null
+      ],
+      "labels": [
+        "2019-07",
+        "2020-01",
+        "2020-07",
+        "2021-01",
+        "2021-07",
+        "2022-01"
+      ],
+      "mapped": [
+        18266,
+        18414,
+        18798
+      ]
+    },
+    {
+      "id": "x_date_breaks",
+      "title": "date x：date_breaks = 2 months + date_labels",
+      "scale": "x_date",
+      "aesthetic": "x",
+      "trans": "date",
+      "params": {
+        "date_breaks": "2 months",
+        "date_labels": "%Y-%m",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        18276,
+        18599
+      ],
+      "map": [
+        18276,
+        18444,
+        18599
+      ],
+      "limits": [
+        18276,
+        18599
+      ],
+      "expand": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "expanded_limits": [
+        18276,
+        18599
+      ],
+      "breaks": [
+        null,
+        18322,
+        18383,
+        18444,
+        18506,
+        18567,
+        null
+      ],
+      "labels": [
+        null,
+        "2020-03",
+        "2020-05",
+        "2020-07",
+        "2020-09",
+        "2020-11",
+        null
+      ],
+      "mapped": [
+        18276,
+        18444,
+        18599
+      ]
+    },
+    {
+      "id": "x_datetime_breaks",
+      "title": "datetime x：date_breaks = 2 hours",
+      "scale": "x_datetime",
+      "aesthetic": "x",
+      "trans": "time",
+      "params": {
+        "date_breaks": "2 hours",
+        "date_labels": "%H:%M",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        1577837580,
+        1577864820
+      ],
+      "map": [
+        1577837580,
+        1577847600
+      ],
+      "limits": [
+        1577837580,
+        1577864820
+      ],
+      "expand": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "expanded_limits": [
+        1577837580,
+        1577864820
+      ],
+      "breaks": [
+        null,
+        1577844000,
+        1577851200,
+        1577858400,
+        null
+      ],
+      "labels": [
+        null,
+        "02:00",
+        "04:00",
+        "06:00",
+        null
+      ],
+      "mapped": [
+        1577837580,
+        1577847600
+      ]
+    },
+    {
+      "id": "x_time_breaks",
+      "title": "time x（hms）：date_breaks = 15 min",
+      "scale": "x_time",
+      "aesthetic": "x",
+      "trans": "hms",
+      "params": {
+        "date_breaks": "15 min",
+        "date_labels": "%H:%M:%S",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        0,
+        3600
+      ],
+      "map": [
+        0,
+        1800,
+        3600
+      ],
+      "limits": [
+        0,
+        3600
+      ],
+      "expand": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "expanded_limits": [
+        0,
+        3600
+      ],
+      "breaks": [
+        0,
+        900,
+        1800,
+        2700,
+        3600
+      ],
+      "labels": [
+        "00:00:00",
+        "00:15:00",
+        "00:30:00",
+        "00:45:00",
+        "01:00:00"
+      ],
+      "mapped": [
+        0,
+        1800,
+        3600
+      ]
+    },
+    {
+      "id": "colour_gradient2",
+      "title": "gradient2：midpoint = 0 落在 0.5，Lab 双向插值",
+      "scale": "colour_gradient2",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        -1,
+        0,
+        1
+      ],
+      "map": [
+        -1,
+        -0.5,
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        -1,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        -1,
+        -0.5,
+        0,
+        0.5,
+        1
+      ],
+      "labels": [
+        "-1.0",
+        "-0.5",
+        "0.0",
+        "0.5",
+        "1.0"
+      ],
+      "mapped": [
+        "#832424",
+        "#C89089",
+        "#FFFFFF",
+        "#A197CC",
+        "#3A3A98"
+      ]
+    },
+    {
+      "id": "colour_gradientn",
+      "title": "gradientn：三色 + values 停靠点",
+      "scale": "colour_gradientn",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "colours": [
+          "#0000FF",
+          "#FFFFFF",
+          "#FF0000"
+        ],
+        "values": [
+          0,
+          0.40000000000000002,
+          1
+        ]
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.20000000000000001,
+        0.5,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        "#0000FF",
+        "#B38BFF",
+        "#FFDFD4",
+        "#FF0000"
+      ]
+    },
+    {
+      "id": "colour_steps",
+      "title": "steps：分箱渐变（默认 oob = squish）",
+      "scale": "colour_steps",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.20000000000000001,
+        0.5,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        "#1B3A57",
+        "#1B3A57",
+        "#2A5A82",
+        "#4D9FDE"
+      ]
+    },
+    {
+      "id": "colour_steps_oob",
+      "title": "steps：limits 之外 squish 到端点箱",
+      "scale": "colour_steps",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          0.25,
+          0.75
+        ]
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        0.25,
+        0.75
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.30000000000000004,
+        0.40000000000000002,
+        0.5,
+        0.60000000000000009,
+        0.70000000000000007
+      ],
+      "labels": [
+        "0.3",
+        "0.4",
+        "0.5",
+        "0.6",
+        "0.7"
+      ],
+      "mapped": [
+        "#16314B",
+        "#2C5D86",
+        "#52AAED"
+      ]
+    },
+    {
+      "id": "colour_steps2",
+      "title": "steps2：分箱发散渐变",
+      "scale": "colour_steps2",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        -1,
+        1
+      ],
+      "map": [
+        -1,
+        -0.5,
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        -1,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        -0.5,
+        0,
+        0.5
+      ],
+      "labels": [
+        "-0.5",
+        "0.0",
+        "0.5"
+      ],
+      "mapped": [
+        "#A75B54",
+        "#A75B54",
+        "#E5C7C3",
+        "#D0CAE5",
+        "#7167B2"
+      ]
+    },
+    {
+      "id": "colour_stepsn",
+      "title": "stepsn：分箱 n 色渐变",
+      "scale": "colour_stepsn",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "colours": [
+          "#0000FF",
+          "#FFFFFF",
+          "#FF0000"
+        ],
+        "breaks": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.20000000000000001,
+        0.5,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        "#7E52FF",
+        "#7E52FF",
+        "#DCC4FF",
+        "#FF6846",
+        "#FF6846"
+      ]
+    },
+    {
+      "id": "colour_binned",
+      "title": "colour_binned：默认调色板的分箱色",
+      "scale": "colour_binned",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        "#1B3A57",
+        "#1B3A57",
+        "#2A5A82",
+        "#3B7BAF",
+        "#4D9FDE"
+      ]
+    },
+    {
+      "id": "colour_distiller",
+      "title": "distiller：Brewer Spectral（7 色）→ 连续渐变",
+      "scale": "colour_distiller",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "palette": "Spectral"
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        "#3288BD",
+        "#C0E596",
+        "#FFFFBF",
+        "#FFB771",
+        "#D53E4F"
+      ]
+    },
+    {
+      "id": "colour_fermenter",
+      "title": "fermenter：Brewer 分箱（按箱数取色）",
+      "scale": "colour_fermenter",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "palette": "Spectral",
+        "n.breaks": 4
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.20000000000000001,
+        0.5,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.5
+      ],
+      "labels": [
+        "0.5"
+      ],
+      "mapped": [
+        "#FFFFBF",
+        "#FFFFBF",
+        "#FFFFBF",
+        "#FC8D59",
+        "#FC8D59"
+      ]
+    },
+    {
+      "id": "colour_date",
+      "title": "colour_date：日期渐变 + date_breaks",
+      "scale": "colour_date",
+      "aesthetic": "colour",
+      "trans": "date",
+      "params": {
+        "date_breaks": "1 month",
+        "date_labels": "%b",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        18262,
+        18353
+      ],
+      "map": [
+        18262,
+        18307,
+        18353
+      ],
+      "limits": [
+        18262,
+        18353
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        18262,
+        18293,
+        18322,
+        18353,
+        null
+      ],
+      "labels": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        null
+      ],
+      "mapped": [
+        "#132B43",
+        "#326997",
+        "#56B1F7"
+      ]
+    },
+    {
+      "id": "alpha_binned",
+      "title": "alpha_binned：分箱 alpha 0.1..1",
+      "scale": "alpha_binned",
+      "aesthetic": "alpha",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        0.21250000000000002,
+        0.21250000000000002,
+        0.4375,
+        0.66249999999999998,
+        0.88749999999999996
+      ]
+    },
+    {
+      "id": "size_area",
+      "title": "size_area：rescale_max + abs_area(max_size = 8)",
+      "scale": "size_area",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": {
+        "max_size": 8
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "map": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        4,
+        5.6568542494923806,
+        6.9282032302755088,
+        8
+      ]
+    },
+    {
+      "id": "size_binned",
+      "title": "size_binned：分箱面积标度",
+      "scale": "size_binned",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        4
+      ],
+      "map": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "limits": [
+        0,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3"
+      ],
+      "mapped": [
+        2.7677669529663689,
+        2.7677669529663689,
+        4.0618621784789726,
+        4.9528470752104745,
+        5.677071733467427
+      ]
+    },
+    {
+      "id": "size_binned_area",
+      "title": "size_binned_area：分箱 + rescale_max",
+      "scale": "size_binned_area",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        4
+      ],
+      "map": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "limits": [
+        0,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3"
+      ],
+      "mapped": [
+        2.1213203435596428,
+        2.1213203435596428,
+        3.6742346141747668,
+        4.7434164902525691,
+        5.6124860801609122
+      ]
+    },
+    {
+      "id": "radius",
+      "title": "radius：线性 size 1..6",
+      "scale": "radius",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        4
+      ],
+      "map": [
+        1,
+        2,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        1,
+        2.6666666666666665,
+        6
+      ]
+    },
+    {
+      "id": "size_date",
+      "title": "size_date：日期输入的连续 area 标度",
+      "scale": "size_date",
+      "aesthetic": "size",
+      "trans": "date",
+      "params": {
+        "date_breaks": "1 year",
+        "date_labels": "%Y",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        17897,
+        18628
+      ],
+      "map": [
+        17897,
+        18262,
+        18628
+      ],
+      "limits": [
+        17897,
+        18628
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        17897,
+        18262,
+        18628,
+        null
+      ],
+      "labels": [
+        "2019",
+        "2020",
+        "2021",
+        null
+      ],
+      "mapped": [
+        1,
+        4.5331147924740431,
+        6
+      ]
+    },
+    {
+      "id": "linewidth_continuous",
+      "title": "linewidth：线性 1..6",
+      "scale": "linewidth_continuous",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        4
+      ],
+      "map": [
+        1,
+        2,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        1,
+        2.6666666666666665,
+        6
+      ]
+    },
+    {
+      "id": "linewidth_binned",
+      "title": "linewidth_binned：分箱线性",
+      "scale": "linewidth_binned",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        4
+      ],
+      "map": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        2,
+        3
+      ],
+      "labels": [
+        "2",
+        "3"
+      ],
+      "mapped": [
+        1.8333333333333333,
+        1.8333333333333333,
+        3.5,
+        5.1666666666666661
+      ]
+    },
+    {
+      "id": "linewidth_date",
+      "title": "linewidth_date：日期输入的线性标度",
+      "scale": "linewidth_date",
+      "aesthetic": "linewidth",
+      "trans": "date",
+      "params": {
+        "date_breaks": "1 year",
+        "date_labels": "%Y",
+        "expand": [
+          0,
+          0
+        ]
+      },
+      "train": [
+        17897,
+        18628
+      ],
+      "map": [
+        17897,
+        18262,
+        18628
+      ],
+      "limits": [
+        17897,
+        18628
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        17897,
+        18262,
+        18628,
+        null
+      ],
+      "labels": [
+        "2019",
+        "2020",
+        "2021",
+        null
+      ],
+      "mapped": [
+        1,
+        3.4965800273597809,
+        6
+      ]
+    },
+    {
+      "id": "x_oob_squish",
+      "title": "oob = squish：越界值钳到 limits",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          2,
+          6
+        ],
+        "oob": "squish"
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        2,
+        6
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        1.8,
+        6.2000000000000002
+      ],
+      "breaks": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "labels": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "mapped": [
+        2,
+        3,
+        6
+      ]
+    },
+    {
+      "id": "x_oob_keep",
+      "title": "oob = keep：越界值原样保留",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          2,
+          6
+        ],
+        "oob": "keep"
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        2,
+        6
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        1.8,
+        6.2000000000000002
+      ],
+      "breaks": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "labels": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "mapped": [
+        1,
+        3,
+        7
+      ]
+    },
+    {
+      "id": "x_oob_squish_infinite",
+      "title": "oob = squish_infinite：只钳 ±Inf，有限越界保留",
+      "scale": "x_continuous",
+      "aesthetic": "x",
+      "trans": "identity",
+      "params": {
+        "limits": [
+          2,
+          6
+        ],
+        "oob": "squish_infinite"
+      },
+      "train": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "map": [
+        1,
+        3,
+        7
+      ],
+      "limits": [
+        2,
+        6
+      ],
+      "expand": [
+        0.050000000000000003,
+        0,
+        0.050000000000000003,
+        0
+      ],
+      "expanded_limits": [
+        1.8,
+        6.2000000000000002
+      ],
+      "breaks": [
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "labels": [
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "mapped": [
+        1,
+        3,
+        7
+      ]
     }
   ]
 }
