@@ -58,7 +58,12 @@ skia-python = ">=144.1, <145"
 cbor2 = ">=6.1.5, <7"
 # `pixi run diff` 的位图读写（PNG 解码 / 差异热图编码），不依赖绘图库。
 pillow = ">=11, <14"
-contourpy = ">=1.4.0, <2"
+# 等值线 / 等值带的 marching-squares 内核（M2-6）。上界 <1.4 不是随手写的：
+# 浏览器侧 pin 的 pyodide@314.0.7 只提供 contourpy 1.3.3 的 wasm 轮子
+# （`docs/spike/e1_coldstart/static/pyodide/pyodide-lock.json`），而 PyPI 的
+# contourpy 不发布 wasm 构建。桌面端必须留在同一个版本线上，否则「CPython 上
+# 对拍的几何」和「浏览器里算出来的几何」是两套实现（SIL-758）。
+contourpy = ">=1.3.3, <1.4"
 
 # `src/` layout without a build backend: the package is imported through
 # PYTHONPATH (pytest.ini carries the same path for the test runner).

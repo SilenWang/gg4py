@@ -20,6 +20,7 @@ import platform
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import mini_plot
 import numpy as np
@@ -100,6 +101,71 @@ def cbor2_version() -> str | None:
         return None
 
 
+def table_digest(table: Any) -> tuple[str, int]:
+    """一张 `ColumnTable` 的稳定摘要：列名 + kind + 逐值字节（NaN 也在 bytes 里）。"""
+    digest = hashlib.sha256()
+    digest.update(str(table.nrows).encode())
+    for name in table.names:
+        column = table.column(name)
+        digest.update(name.encode())
+        digest.update(column.kind.encode())
+        if column.kind == "str":
+            for value in column.values:
+                digest.update(str(value).encode())
+                digest.update(b"\x00")
+        else:
+            values = np.ascontiguousarray(np.asarray(column.values, dtype=np.float64))
+            digest.update(values.tobytes())
+            if column.na_mask is not None:
+                missing = np.ascontiguousarray(np.asarray(column.na_mask, dtype=bool))
+                digest.update(missing.tobytes())
+    return digest.hexdigest(), table.nrows
+
+
+#: 等值线冒烟的网格（与 `tests/test_stat_2d_r_parity.py` 的 `GRID` 同一份数字）。
+CONTOUR_GRID = {
+    "x": [x for _ in range(1, 5) for x in range(1, 6)],
+    "y": [y for y in range(1, 5) for _ in range(1, 6)],
+    "z": [x * 0.5 + y for y in range(1, 5) for x in range(1, 6)],
+}
+
+
+def contour_smoke() -> dict[str, Any]:
+    """M2-6 / SIL-758：等值线路径（含 contourpy 几何）在两端算出同一份表。
+
+    `gate:pyodide` 原来只编码一份手搓 scene，`contourpy` 一个字节都没跑到——
+    而它恰恰是 `ggcore` 里唯一带 C++ 扩展的依赖，也是「内核能进浏览器」最容易
+    出问题的那个点。这里把 `stat_contour` / `stat_contour_filled` 的产物做摘要，
+    两端逐项比：网格是确定的，`contourpy` 的整体几何（顶点顺序、层级编号、分组）
+    只要差一位，摘要就不同。
+
+    桌面端与浏览器端钉的是同一个 contourpy（1.3.3，见 `pixi.toml`），所以这里
+    不是「两套实现对拍」，而是「同一实现的两个运行时」——正是要守的那条线。
+    """
+    import contourpy
+
+    from ggcore import registry
+    from ggcore.build import build_plot
+    from ggcore.data import Column, ColumnTable
+    from ggcore.plot import aes, ggplot
+
+    table = ColumnTable(
+        [
+            (name, Column("float", np.asarray(values, dtype=np.float64)))
+            for name, values in CONTOUR_GRID.items()
+        ]
+    )
+    result: dict[str, Any] = {"contourpy": contourpy.__version__}
+    for name, stat in (
+        ("contour", registry.stat_contour(bins=3)),
+        ("contour_filled", registry.stat_contour_filled(bins=3)),
+    ):
+        built = build_plot(ggplot(table, aes(x="x", y="y", z="z")) + stat).layers[0].data
+        digest, rows = table_digest(built)
+        result[name] = {"rows": rows, "sha256": digest}
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="plot.json -> IR bytes, one runtime.")
     parser.add_argument("--out", type=Path, required=True, help="IR 字节写到哪")
@@ -131,6 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     edge_path = args.out.with_name(args.out.name + ".edge")
     edge_path.write_bytes(edge_data)
 
+    contour_start = time.perf_counter()
+    contour = contour_smoke()
+    contour_ms = (time.perf_counter() - contour_start) * 1000.0
+
     meta = {
         "runtime": runtime_name(),
         "python": ".".join(str(part) for part in sys.version_info[:3]),
@@ -149,6 +219,11 @@ def main(argv: list[str] | None = None) -> int:
         "encode_ms": round(encode_ms, 3),
         "script_ms": round(total_ms, 3),
         "roundtrip": roundtrip,
+        # M2-6 / SIL-758：等值线（contourpy）的产物也要两端逐字节一致。
+        "contourpy": contour["contourpy"],
+        "contour": contour["contour"],
+        "contour_filled": contour["contour_filled"],
+        "contour_ms": round(contour_ms, 3),
     }
     if args.meta is not None:
         args.meta.parent.mkdir(parents=True, exist_ok=True)

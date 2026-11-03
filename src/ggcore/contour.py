@@ -12,7 +12,9 @@ contourpy（M2 排期定的实现）。两者的顶点拓扑**不保证**与 iso
 一致 + 几何自洽」（见 `docs/notes/stat.md` §9）；不逐行比顶点。
 
 `contourpy` 是 `ggcore` 唯一新增的第三方依赖，X1 白名单与 Pyodide 可用性
-记录在 `docs/notes/gates.md`。
+记录在 `docs/notes/gates.md`。它是**惰性加载**的：本模块顶层不 import contourpy，
+只有 `_generator()`（等值线几何）才加载；层级推导（`contour_breaks()` /
+`pretty()`）与其他 2D stat 不依赖它（SIL-758）。
 """
 
 from __future__ import annotations
@@ -21,7 +23,6 @@ import math
 from collections.abc import Sequence
 from typing import Any
 
-import contourpy
 import numpy as np
 
 from ggcore.build import BuildError
@@ -245,6 +246,14 @@ def _grid(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> tuple[np.ndarray, np.n
 
 
 def _generator(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> Any:
+    """构造 contourpy 的串行生成器（**在这里**才加载 contourpy，SIL-758）。
+
+    惰性导入是刻意的：`ggcore.stat2d` 里 `bin_2d` / `bin_hex` / `summary_2d` /
+    `summary_hex` 不碰等值线，缺 contourpy 时也必须能用；只有真正要画等值线 /
+    等值带的路径才付这份加载成本。
+    """
+    import contourpy
+
     xs, ys, raster = _grid(x, y, z)
     masked = np.ma.masked_invalid(raster)
     # isoband 与 contourpy 的差异：`corner_mask=False` 让「四个角里有一个是

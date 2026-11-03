@@ -3,9 +3,12 @@
 M2-6 交付的是 8 个 2D stat；它们的默认 geom（`tile` / `hex` / `contour` /
 `contour_filled` / `density_2d` / `density_2d_filled`）只需要 `setup_data()` 就能
 让 `ggplot_build()` 的 `$data` 与 R 逐列一致（`bin_2d` 的 `xmin/xmax/ymin/ymax`
-就是 `geom_tile` 派生的）。真正的绘制（矩形 / 六边形 / 等值线路径 / 多边形）归
-SIL-735（M2-7 2D 族），所以这些 renderer 的 `draw()` 直接点名后续任务，不静默
-画一个空图。
+就是 `geom_tile` 派生的）。真正的绘制不在这里，`draw()` 直接点名**归属任务**，
+不静默画一个空图：
+
+- `geom_tile` 的绘制在 **SIL-737**（M2-S2 geom 长尾 A，带 `docs/cases/geom-tile`）；
+- 其余 5 个（`hex` / `contour` / `contour_filled` / `density_2d` /
+  `density_2d_filled`）归 **SIL-735**（M2-S2 geom 长尾 B · 2D 族）。
 
 `renderer_for()` 先查可绘制的 `GEOM_RENDERERS`，再查这里的 `BUILD_ONLY_RENDERERS`；
 `registered_renderers()`（「已实现绘制」）不包含它们。
@@ -24,7 +27,10 @@ __all__ = ["BUILD_ONLY_RENDERERS", "BuildOnlyRenderer", "ContourRenderer", "Tile
 
 
 class BuildOnlyRenderer(GeomRenderer):
-    """只有 `setup_data()` 的 geom：`draw()` 明确报「归 SIL-735」。"""
+    """只有 `setup_data()` 的 geom：`draw()` 明确报出绘制归哪个任务。"""
+
+    #: 绘制实现所在的任务（子类按需覆盖；`geom_tile` 在 SIL-737 落地）。
+    followup: ClassVar[str] = "SIL-735（M2-S2 geom 长尾 B · 2D 族）"
 
     def draw(
         self,
@@ -37,15 +43,20 @@ class BuildOnlyRenderer(GeomRenderer):
     ) -> Any:
         raise GeomError(
             f"geom_{self.name} 的绘制实现尚未落地（M2-6 只交付 stat + setup_data）；"
-            "绘制归 SIL-735（M2-7 geom 长尾 B · 2D 族）。"
+            f"绘制归 {self.followup}。"
             "当前可用于 ggplot_build() 的逐列对拍与数据校验。"
         )
 
 
 class TileRenderer(BuildOnlyRenderer):
-    """`geom_tile`：宽度 / 高度 → 四角（上游 `GeomTile$setup_data()`）。"""
+    """`geom_tile`：宽度 / 高度 → 四角（上游 `GeomTile$setup_data()`）。
+
+    绘制已在 SIL-737（M2-S2 geom 长尾 A）实现，所以 `draw()` 的报错指向那里，
+    而不是本任务的后续 2D 族（SIL-735）。
+    """
 
     name: ClassVar[str] = "tile"
+    followup: ClassVar[str] = "SIL-737（M2-S2 geom 长尾 A）"
     non_missing_aes: ClassVar[tuple[str, ...]] = ("xmin", "xmax", "ymin", "ymax")
 
     def setup_data(self, data: ColumnTable, params: dict[str, Any]) -> ColumnTable:
@@ -127,7 +138,7 @@ class Density2dFilledRenderer(BuildOnlyRenderer):
     name: ClassVar[str] = "density_2d_filled"
 
 
-#: 只有 build 级的 geom（`draw()` 点名 SIL-735）。
+#: 只有 build 级的 geom（`draw()` 点名归属任务：`tile` → SIL-737，其余 → SIL-735）。
 BUILD_ONLY_RENDERERS: dict[str, GeomRenderer] = {
     "tile": TileRenderer(),
     "hex": HexRenderer(),

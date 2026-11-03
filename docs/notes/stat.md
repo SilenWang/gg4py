@@ -14,9 +14,9 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
   八个）、`src/ggcore/kde2d.py` / `hexbin.py` / `contour.py`（数值内核）；
   loess 两套面在 `src/ggcore/loess.py`；
   派发在 `src/ggcore/build.py::compute_stat()`；
-- 夹具：`tests/fixtures/stat_r_reference.json`（52 个 case，`pixi run -e refs refs:stat`）；
+- 夹具：`tests/fixtures/stat_r_reference.json`（55 个 case，`pixi run -e refs refs:stat`）；
 - 对拍：`tests/test_stat_r_parity.py`（M1-8 的 30 个 case）与
-  `tests/test_stat_2d_r_parity.py`（M2-6 的 22 个 case）；
+  `tests/test_stat_2d_r_parity.py`（M2-6 的 25 个 case）；
 - 端到端：`docs/cases/stat-{histogram-bin,histogram-horizontal,boxplot-stat,smooth-loess,area-align}`
   （M1-8 的 5 张 SVG）；M2-6 的 2D 族目前是 build 级端到端（见 §10）。
 
@@ -335,7 +335,10 @@ test_bin_2d_boundary_defaults_to_zero` 钉住。
   `high.u.bias = 1.5`、`u5.bias = 2.75`）。
 
 几何用 contourpy（`corner_mask = False`，与 isoband「四角有 NA 的单元整块不算」
-一致）。**它与 isoband 的顶点拓扑不保证相同**：
+一致）。桌面端与浏览器端钉同一个版本（`pixi.toml` 的 `contourpy = ">=1.3.3, <1.4"`
+对齐 `pyodide@314.0.7` 的 1.3.3 wasm 轮子，见 `docs/notes/gates.md`），且
+`ggcore.contour` 是惰性导入的——非 contour 的 2D stat 不加载它（SIL-758）。
+**contourpy 与 isoband 的顶点拓扑不保证相同**：
 
 - 鞍点单元的解析、闭合环的拆分与方向都可能不同，所以顶点数 / 行数不逐行相等；
 - `level == max(z)` 时 isoband 会吐一段两点重合的退化线，contourpy 不给线——
@@ -382,17 +385,20 @@ test_bin_2d_boundary_defaults_to_zero` 钉住。
   （`bin_2d` / `summary_2d` 的列序靠它）；
 - `contour` / `density_2d` 沿用 stat 给的行序（`GeomPath` 不排序，只有
   `geom_line` 会按 `(PANEL, group, x)` 重排）；
-- `draw()` 明确报 `GeomError` 并点名 SIL-735（M2-7 geom 长尾 B · 2D 族）。
+- `draw()` 明确报 `GeomError` 并点名**绘制归属任务**：`geom_tile` → SIL-737
+  （M2-S2 geom 长尾 A，已带 `docs/cases/geom-tile` 三文件 case），其余 5 个
+  （`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled`）
+  → SIL-735（M2-S2 geom 长尾 B · 2D 族）。
 
 所以本任务的「端到端 case」是 **build 级**：`ggplot() + stat_*()` 走完整条
 `ggplot_build()` 流水线，`$data` 的统计列完整（`tests/test_stat_2d_r_parity.py`
-§4 的 `test_every_2d_stat_has_an_end_to_end_case`）。SVG 快照 case 要等
-`geom_{tile,hex,contour,...}()` 的绘制落地，随 SIL-735 补进 `docs/cases/`。
+§4 的 `test_every_2d_stat_has_an_end_to_end_case`）。SVG 快照 case 随绘制落地补：
+`tile` 在 SIL-737，其余 5 个在 SIL-735。
 
 ### 10.7 验收
 
 ```bash
-pixi run -e refs refs:stat                     # 52 case 夹具（旧 30 个零 diff）
+pixi run -e refs refs:stat                     # 55 case 夹具（旧 30 个零 diff）
 pixi run pytest tests/test_stat_2d_r_parity.py -q
 pixi run check                                 # 全量门禁（含 gate:imports 的 contourpy 放行）
 ```
@@ -410,7 +416,7 @@ pixi run check                                 # 全量门禁（含 gate:imports
 
 | 能力 | 现状 | 去向 |
 | --- | --- | --- |
-| 2D geom 的绘制 | `draw()` 报 `GeomError` 并点名 SIL-735；build 级完整 | SIL-735 |
+| 2D geom 的绘制 | `draw()` 报 `GeomError` 并点名归属：`tile` → SIL-737，其余 5 个 → SIL-735；build 级完整 | SIL-737 / SIL-735 |
 | contour 顶点拓扑 | contourpy 与 isoband 不同（鞍点 / 环拆分） | 按层级对拍，不逐顶点比 |
 | `level == max(z)` 的退化线 | isoband 给重合点，contourpy 不给 | 记录为几何差异 |
 | `stat_contour(breaks = <函数>)` | `BuildError` 点名 | 后续 |

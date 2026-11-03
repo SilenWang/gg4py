@@ -8,7 +8,10 @@ contour / contour_filled / density_2d / density_2d_filled。
 
 - 公共流程（`remove_missing()`、`Stat$compute_panel()` 的分组与恒定列）在
   `ggcore.stat`，这里只实现每族的 `compute_group()`；
-- 数值内核在 `ggcore.kde2d` / `ggcore.hexbin` / `ggcore.contour`。
+- 数值内核在 `ggcore.kde2d` / `ggcore.hexbin` / `ggcore.contour`。`ggcore.contour`
+  是**惰性导入**的：只有 contour 族与 `density_2d*` 的 contour 分支需要它（它按需
+  加载 contourpy），所以 `bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` 在缺
+  contourpy 的运行时照样可用（SIL-758）。
 
 两个容易踩的上游细节：
 
@@ -29,16 +32,6 @@ from typing import Any
 import numpy as np
 
 from ggcore.build import BuildError, BuildWarning, _column_values
-from ggcore.contour import (
-    contour_breaks,
-    contour_deduplicate,
-    estimate_contour_angle,
-    iso_band_labels,
-    isobands,
-    isolines,
-    rescale_max,
-    rotate_xy,
-)
 from ggcore.data import Column, ColumnTable
 from ggcore.hexbin import hex_binwidth, hexbin_summarise
 from ggcore.kde2d import kde2d, precompute_2d_bw
@@ -52,6 +45,19 @@ from ggcore.stat import (
 )
 
 __all__ = ["TWO_D_STATS", "compute_2d"]
+
+
+def _contour_module() -> Any:
+    """惰性导入 :mod:`ggcore.contour`（它按需加载 contourpy，SIL-758）。
+
+    只有 `contour` / `contour_filled` 与 `density_2d*` 的 contour 分支需要
+    contourpy；`bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` 在浏览器里
+    缺这个包时仍须可用，所以这些名字不能放模块顶层。
+    """
+    from ggcore import contour
+
+    return contour
+
 
 #: 本模块实现的 stat 名（与 `ggcore.stat._TWO_D_STATS` 同一份清单）。
 TWO_D_STATS: tuple[str, ...] = (
@@ -508,6 +514,7 @@ def _stat_summary_hex(table: ColumnTable, params: Mapping[str, Any], *, scales: 
 
 def _stat_contour(table: ColumnTable, params: Mapping[str, Any], *, filled: bool) -> ColumnTable:
     """`stat_contour` / `stat_contour_filled`（上游 `StatContour[Filled]`）。"""
+    contour = _contour_module()
     z_values = _numeric(table.column("z"))
     finite = z_values[np.isfinite(z_values)]
     if finite.size == 0:
@@ -522,7 +529,7 @@ def _stat_contour(table: ColumnTable, params: Mapping[str, Any], *, filled: bool
     )
     x_values = _numeric(table.column("x"))
     y_values = _numeric(table.column("y"))
-    kept_x, _kept_y, _kept_z, _kept_groups, dropped = contour_deduplicate(
+    kept_x, _kept_y, _kept_z, _kept_groups, dropped = contour.contour_deduplicate(
         x_values, y_values, z_values, group_column
     )
     if dropped:
@@ -548,9 +555,9 @@ def _stat_contour(table: ColumnTable, params: Mapping[str, Any], *, filled: bool
         x = _numeric(sub.column("x"))
         y = _numeric(sub.column("y"))
         z = _numeric(sub.column("z"))
-        rotation = estimate_contour_angle(x, y)
-        rotated_x, rotated_y = rotate_xy(x, y, -rotation)
-        breaks = contour_breaks(
+        rotation = contour.estimate_contour_angle(x, y)
+        rotated_x, rotated_y = contour.rotate_xy(x, y, -rotation)
+        breaks = contour.contour_breaks(
             z_range,
             bins=params.get("bins"),
             binwidth=params.get("binwidth"),
@@ -586,7 +593,8 @@ def _line_rows(
     rotation: float,
 ) -> list[tuple[str, Column]] | None:
     """`iso_to_geom(..., geom = "path")`：`level, x, y, piece, group, nlevel`。"""
-    segments = isolines(x, y, z, breaks.tolist())
+    contour = _contour_module()
+    segments = contour.isolines(x, y, z, breaks.tolist())
     finite = z[np.isfinite(z)]
     zmin = float(finite.min()) if finite.size else float("nan")
     levels: list[float] = []
@@ -611,7 +619,7 @@ def _line_rows(
         return None
     level_values = np.asarray(levels, dtype=np.float64)
     piece, levels_of_group = _factor_codes(labels)
-    x_values, y_values = rotate_xy(
+    x_values, y_values = contour.rotate_xy(
         np.asarray(xs, dtype=np.float64), np.asarray(ys, dtype=np.float64), rotation
     )
     return [
@@ -620,7 +628,7 @@ def _line_rows(
         ("y", _float_column(y_values)),
         ("piece", _int_column(piece)),
         ("group", _strid_column(labels, levels_of_group)),
-        ("nlevel", _float_column(rescale_max(level_values))),
+        ("nlevel", _float_column(contour.rescale_max(level_values))),
     ]
 
 
@@ -633,8 +641,9 @@ def _filled_rows(
     rotation: float,
 ) -> list[tuple[str, Column]] | None:
     """`iso_to_geom(..., geom = "polygon")` 的填充版。"""
-    labels = iso_band_labels(breaks.tolist())
-    bands = isobands(x, y, z, breaks.tolist())
+    contour = _contour_module()
+    labels = contour.iso_band_labels(breaks.tolist())
+    bands = contour.isobands(x, y, z, breaks.tolist())
     level_text: list[str] = []
     xs: list[float] = []
     ys: list[float] = []
@@ -658,7 +667,7 @@ def _filled_rows(
     if not level_text:
         return None
     piece, group_levels = _factor_codes(groups)
-    x_values, y_values = rotate_xy(
+    x_values, y_values = contour.rotate_xy(
         np.asarray(xs, dtype=np.float64), np.asarray(ys, dtype=np.float64), rotation
     )
     low_values = np.asarray(lows, dtype=np.float64)
@@ -673,7 +682,7 @@ def _filled_rows(
         ("level_low", _float_column(low_values)),
         ("level_high", _float_column(high_values)),
         ("level_mid", _float_column(0.5 * (low_values + high_values))),
-        ("nlevel", _float_column(rescale_max(high_values))),
+        ("nlevel", _float_column(contour.rescale_max(high_values))),
     ]
 
 
@@ -756,6 +765,7 @@ def _contour_panel_density(
 ) -> ColumnTable:
     """把密度网格整张送进 contour 的 `compute_panel()`（上游的链式调用）。"""
     stat_name = "contour_filled" if filled else "contour"
+    contour = _contour_module()
     columns = [
         (name, column)
         for name, column in _items(grid)
@@ -771,9 +781,9 @@ def _contour_panel_density(
         x = _numeric(sub.column("x"))
         y = _numeric(sub.column("y"))
         z = _numeric(sub.column("z"))
-        rotation = estimate_contour_angle(x, y)
-        rotated_x, rotated_y = rotate_xy(x, y, -rotation)
-        breaks = contour_breaks(
+        rotation = contour.estimate_contour_angle(x, y)
+        rotated_x, rotated_y = contour.rotate_xy(x, y, -rotation)
+        breaks = contour.contour_breaks(
             z_range,
             bins=params.get("bins"),
             binwidth=params.get("binwidth"),

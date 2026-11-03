@@ -106,7 +106,9 @@ page viewport（整页）
 | 直线坐标以外的 coord | 未注册（M1-5 的范围） | 后续 coord 任务 |
 | 轴标签的 `check.overlap`（重叠时删标签） | 不删 | 后续（`axis.text` 的 `check.overlap`） |
 | boxplot 的 `outliers` 列表列 | `ColumnTable` 没有 list kind；`stat_boxplot` 产 `str` 文本（`c(20)` / `c()`），绘制层解析它 | 加 list kind 时再改（见 `stat.md` §4） |
-| 2D 族的 6 个 geom（`tile` / `hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled`） | **只有 build 级**：`setup_data()` 与默认美学照上游，`ggplot_build()` 的 `$data` 与 R 逐列一致；`draw()` 报 `GeomError` 并点名 SIL-735 | SIL-735（M2-7 2D 族），见 `stat.md` §10.6 |
+| 2D 族的 6 个 geom 在本任务的分支里都**只有 build 级**：`setup_data()` 与默认美学照上游，`ggplot_build()` 的 `$data` 与 R 逐列一致；`draw()` 报 `GeomError` 并点名归属（见下两行） | — |
+| `geom_tile` 的绘制 | `draw()` 点名 SIL-737 | SIL-737（M2-S2 geom 长尾 A），带 `docs/cases/geom-tile`；见 `stat.md` §10.6 |
+| `hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled` 的绘制 | `draw()` 点名 SIL-735 | SIL-735（M2-S2 geom 长尾 B · 2D 族），见 `stat.md` §10.6 |
 
 主题色（`fill = "grey35"` 等语义名）在 `build.data` 里仍是语义名，绘制期的
 `fill_alpha()` 会按 `col2rgb()` 折算 RGB；与 R 的 `#595959FF` 在像素上一致。

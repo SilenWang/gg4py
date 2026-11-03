@@ -615,8 +615,9 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             optional_aes=("ymin", "ymax"),
         ),
         # --- M2-6：2D 族 ------------------------------------------------------
-        # 这 6 个 geom 目前只有 **build 级** 实现（`setup_data()` 与默认美学
-        # 照上游），`draw()` 归 SIL-735（M2-7 2D 族）；见 docs/notes/geom.md。
+        # 这 6 个 geom 在本任务里只有 **build 级** 实现（`setup_data()` 与默认
+        # 美学照上游）；`draw()` 的归属：`tile` → SIL-737，其余 5 个 → SIL-735。
+        # 见 docs/notes/geom.md。
         "tile": GeomSpec(
             ("x", "y"),
             {
