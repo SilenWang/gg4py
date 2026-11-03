@@ -1012,8 +1012,12 @@ _GEOM_KEYS: Mapping[str, Mapping[str, tuple[float, ...]]] = MappingProxyType(
         "qq_line": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
         "quantile": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
         "function": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
-        "bin2d": MappingProxyType({"x": (0.5,), "y": (0.5,), "width": (1.0,), "height": (1.0,)}),
-        "bin_2d": MappingProxyType({"x": (0.5,), "y": (0.5,), "width": (1.0,), "height": (1.0,)}),
+        "bin2d": MappingProxyType(
+            {"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}
+        ),
+        "bin_2d": MappingProxyType(
+            {"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}
+        ),
         "hex": MappingProxyType({"x": (0.5,), "y": (0.5,), "width": (1.0,), "height": (1.0,)}),
         "dotplot": MappingProxyType(
             {"x": (0.5,), "y": (0.5,), "binwidth": (0.5,), "stackpos": (0.0,)}
@@ -1035,6 +1039,53 @@ _GEOM_KEYS: Mapping[str, Mapping[str, tuple[float, ...]]] = MappingProxyType(
         "density2d_filled": MappingProxyType(
             {"x": (0.0, 1.0, 1.0, 0.0), "y": (0.0, 0.0, 1.0, 1.0)}
         ),
+        # --- M2-S2：模板照各 geom 的 `draw_key_*` ---------------------------
+        # 线段族：0.1 → 0.9 的一道横线（R 的 `draw_key_path` / `draw_key_vpath`）。
+        **{
+            name: MappingProxyType({"x": (0.1,), "y": (0.5,), "xend": (0.9,), "yend": (0.5,)})
+            for name in ("abline", "hline", "vline", "segment", "curve", "spoke", "step")
+        },
+        # 矩形族：整个 key 格（R 的 `draw_key_rect` / `draw_key_polygon`）。
+        **{
+            name: MappingProxyType({"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)})
+            for name in ("rect", "tile", "raster")
+        },
+        "polygon": MappingProxyType({"x": (0.0, 0.0, 1.0, 1.0), "y": (0.0, 1.0, 1.0, 0.0)}),
+        "ribbon": MappingProxyType({"x": (0.0, 1.0), "ymin": (0.0, 0.0), "ymax": (0.0, 1.0)}),
+        # 区间族：errorbar 是横线（R 的 `draw_key_errorbar` → `draw_key_vpath`），
+        # linerange 是竖线，pointrange 再加一个中点，crossbar 是一个窄箱。
+        "errorbar": MappingProxyType(
+            {
+                "xmin": (0.1,),
+                "xmax": (0.9,),
+                "x": (0.5,),
+                "ymin": (0.5,),
+                "ymax": (0.5,),
+            }
+        ),
+        "errorbarh": MappingProxyType(
+            {
+                "xmin": (0.1,),
+                "xmax": (0.9,),
+                "x": (0.5,),
+                "ymin": (0.5,),
+                "ymax": (0.5,),
+            }
+        ),
+        "linerange": MappingProxyType({"x": (0.5,), "ymin": (0.1,), "ymax": (0.9,)}),
+        "pointrange": MappingProxyType({"x": (0.5,), "y": (0.5,), "ymin": (0.1,), "ymax": (0.9,)}),
+        "crossbar": MappingProxyType(
+            {
+                "xmin": (0.1,),
+                "xmax": (0.9,),
+                "x": (0.5,),
+                "y": (0.5,),
+                "ymin": (0.25,),
+                "ymax": (0.75,),
+            }
+        ),
+        "rug": MappingProxyType({"x": (0.1, 0.5, 0.9), "y": (0.1, 0.5, 0.9)}),
+        "blank": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
     }
 )
 
@@ -1199,6 +1250,16 @@ class _KeyPanel:
 
     def position_of(self, axis: str, value: float) -> float:
         return float(value)
+
+    def project_xy(self, xs: Any, ys: Any) -> tuple[np.ndarray, np.ndarray]:
+        """`coord_munch()` 的入口：key 的数据坐标就是 npc，原样返回。"""
+        return (
+            np.asarray(xs, dtype=np.float64),
+            np.asarray(ys, dtype=np.float64),
+        )
+
+    def backtransform_range(self) -> dict[str, tuple[float, float]]:
+        return {"x": self.x_range, "y": self.y_range}
 
 
 def _geom_of(layer: LayerBuild) -> Any:

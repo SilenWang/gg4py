@@ -100,7 +100,9 @@ type ParamTag =
   | "transform"
   | "anchor"
   | "baseline"
-  | "fill_rule";
+  | "fill_rule"
+  | "arrow_ends"
+  | "arrow_type";
 
 interface BufferSpec {
   dtype: "f4" | "i4";
@@ -131,6 +133,13 @@ const ID = (): BufferSpec => ({ dtype: "i4", cols: null, required: false });
 const P = (tag: ParamTag, def?: unknown): ParamSpec =>
   def === undefined ? { tag, required: true } : { tag, def };
 const TRANSFORM: ParamSpec = { tag: "transform", def: [1, 0, 0, 1, 0, 0] };
+/** 箭头标记（IR 0.3）：与 `ggcore.ir.nodes._ARROW_PARAMS` 同构。 */
+const ARROW_PARAMS = {
+  arrow: P("arrow_ends", "none"),
+  arrow_length: P("float", 0.0),
+  arrow_angle: P("float", 30.0),
+  arrow_type: P("arrow_type", "open"),
+};
 
 const NODE_SPECS: Record<string, NodeSpec> = {
   viewport: {
@@ -163,10 +172,16 @@ const NODE_SPECS: Record<string, NodeSpec> = {
     gpar: true,
     texts: false,
   },
-  segments: { bufs: { segments: F4(4) }, params: {}, children: false, gpar: true, texts: false },
+  segments: {
+    bufs: { segments: F4(4) },
+    params: { ...ARROW_PARAMS },
+    children: false,
+    gpar: true,
+    texts: false,
+  },
   polyline: {
     bufs: { points: F4(2), id: ID() },
-    params: {},
+    params: { ...ARROW_PARAMS },
     children: false,
     gpar: true,
     texts: false,
@@ -235,6 +250,7 @@ const NODE_SPECS: Record<string, NodeSpec> = {
       square: P("bool", true),
       inflect: P("bool", false),
       open: P("bool", true),
+      ...ARROW_PARAMS,
     },
     children: false,
     gpar: true,
@@ -586,6 +602,16 @@ function checkParam(value: unknown, tag: ParamTag, where: string, id: string): u
       return value;
     case "fill_rule":
       if (value !== "winding" && value !== "evenodd") {
+        throw new IrError(`${where} 不认识 ${JSON.stringify(value)}`, id);
+      }
+      return value;
+    case "arrow_ends":
+      if (value !== "none" && value !== "first" && value !== "last" && value !== "both") {
+        throw new IrError(`${where} 不认识 ${JSON.stringify(value)}`, id);
+      }
+      return value;
+    case "arrow_type":
+      if (value !== "open" && value !== "closed") {
         throw new IrError(`${where} 不认识 ${JSON.stringify(value)}`, id);
       }
       return value;

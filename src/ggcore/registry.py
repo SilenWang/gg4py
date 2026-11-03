@@ -35,8 +35,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
 
+import numpy as np
+
 from ggcore.aes import as_aes, frozen_mapping
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
+from ggcore.data import Column, ColumnTable
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
@@ -524,6 +527,15 @@ _BAR_DEFAULTS = {
     "width": 0.9,
 }
 _LINE_DEFAULTS = {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None}
+#: `geom_rect` / `polygon` / `ribbon` 一族：`colour = NA`、`fill = col_mix(ink, paper, 0.35)`
+#: 在 theme_grey 下是 `grey35`；tile / raster / map 用 0.2 的混合（`grey20`）。
+_RECT_DEFAULTS = {
+    "colour": None,
+    "fill": "grey35",
+    "linewidth": 0.5,
+    "linetype": 1,
+    "alpha": None,
+}
 
 GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
     {
@@ -614,6 +626,100 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "identity",
             optional_aes=("ymin", "ymax"),
         ),
+        # --- M2-S2 长尾 A：线段 / 矩形 / 区间 / 标注族 -----------------------
+        # default_aes 的值是 theme_grey 解析后的静态结果（颜色写成语义名，
+        # 绘制期按 col2rgb 折算；与上游 `from_theme(...)` 的取值一致）。
+        "abline": GeomSpec(("slope", "intercept"), _LINE_DEFAULTS),
+        "hline": GeomSpec(("yintercept",), _LINE_DEFAULTS),
+        "vline": GeomSpec(("xintercept",), _LINE_DEFAULTS),
+        "segment": GeomSpec(
+            ("x", "y", "xend|yend"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "curve": GeomSpec(
+            ("x", "y", "xend|yend"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "spoke": GeomSpec(
+            ("x", "y", "angle", "radius"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "rect": GeomSpec(
+            ("x|width|xmin|xmax", "y|height|ymin|ymax"),
+            _RECT_DEFAULTS,
+        ),
+        "tile": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey20",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "raster": GeomSpec(
+            ("x", "y"),
+            {"fill": "grey20", "alpha": None},
+            non_missing_aes=("fill", "xmin", "xmax", "ymin", "ymax"),
+        ),
+        "polygon": GeomSpec(("x", "y"), {**_RECT_DEFAULTS, "fill": "grey20"}),
+        "ribbon": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {**_RECT_DEFAULTS, "fill": "grey20"},
+        ),
+        "step": GeomSpec(
+            ("x", "y"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "errorbar": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "errorbarh": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "linerange": GeomSpec(("x|y", "ymin|xmin", "ymax|xmax"), _LINE_DEFAULTS),
+        "pointrange": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "size": 0.5,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "shape": 19.0,
+                "fill": None,
+                "alpha": None,
+                "stroke": 1.0,
+            },
+        ),
+        "crossbar": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {"colour": "black", "fill": None, "linewidth": 0.5, "linetype": 1, "alpha": None},
+        ),
+        "blank": GeomSpec((), {}),
+        "rug": GeomSpec((), _LINE_DEFAULTS),
+        "map": GeomSpec(("map_id",), {**_RECT_DEFAULTS, "fill": "grey20"}),
         # -- M2-7 长尾 B：文本 / 点 / 分布 / 2D 族 ---------------------------------
         # 默认美学照 4.0.3 的 `from_theme(...)`：`theme_grey()$geom` 解析后
         # ink = black、paper = white、accent = #3366FF、fontsize = 3.87mm；
@@ -1001,6 +1107,99 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
     return factory
 
 
+#: 参考线三兄弟的「参数即数据」工厂（上游 `geom_abline()` / `geom_hline()` /
+#: `geom_vline()`）：给了截距参数时，它们把参数**做成图层数据**、映射指向同名列、
+#: `inherit.aes = FALSE`、`show.legend = FALSE`——所以 `$data` 的列序是
+#: `intercept, slope, PANEL, group, colour, …`，继承来的美学一律不进这一层。
+_REFERENCE_DATA_AES: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType(
+    {
+        "abline": (("intercept", 0.0), ("slope", 1.0)),
+        "hline": (("yintercept", 0.0),),
+        "vline": (("xintercept", 0.0),),
+    }
+)
+
+
+def _float_sequence(value: Any) -> list[float]:
+    """`slope = c(1, -1)` 这种向量参数：摊平成 float 列表（R 会按最长的一条回收）。"""
+    if isinstance(value, (list, tuple, np.ndarray)):
+        values = [float(item) for item in np.asarray(value, dtype=np.float64).ravel()]
+        if not values:
+            raise ValueError("geom_abline() 的 slope / intercept 不能是空序列")
+        return values
+    return [float(value)]
+
+
+def _reference_layer_factory(
+    name: str, spec: GeomSpec, defaults: tuple[tuple[str, float], ...]
+) -> Callable[..., Layer]:
+    """`geom_abline()` / `geom_hline()` / `geom_vline()` 的参数形态。
+
+    给了截距参数：参数落成图层数据（`data_frame0(...)` 的等价物）并按同名映射，
+    `inherit.aes = False`。没给：退回普通图层（允许 `mapping=aes(yintercept=...)`）。
+    """
+    generic = _geom_layer_factory(name, spec)
+
+    def factory(
+        mapping: Any = None,
+        data: Any = None,
+        *,
+        stat: Stat | str | None = None,
+        position: Position | str | None = None,
+        inherit_aes: bool = True,
+        show_legend: bool | None = None,
+        **params: Any,
+    ) -> Layer:
+        given = [key for key, _ in defaults if params.get(key) is not None]
+        if not given:
+            return generic(
+                mapping,
+                data,
+                stat=stat,
+                position=position,
+                inherit_aes=inherit_aes,
+                show_legend=show_legend,
+                **params,
+            )
+        sequences: list[tuple[str, list[float]]] = []
+        for key, fallback in defaults:
+            value = params.pop(key, None)
+            sequences.append((key, [fallback] if value is None else _float_sequence(value)))
+        nrows = max(len(values) for _, values in sequences)
+        table = ColumnTable(
+            [
+                (
+                    key,
+                    Column(
+                        "float",
+                        np.array([values[index % len(values)] for index in range(nrows)]),
+                    ),
+                )
+                for key, values in sequences
+            ],
+            nrows=nrows,
+        )
+        layer = Layer(
+            geom=Geom(
+                name=name,
+                required_aes=spec.required_aes,
+                default_aes=spec.default_aes,
+                non_missing_aes=spec.non_missing_aes,
+                optional_aes=spec.optional_aes,
+            ),
+            stat=as_stat(stat, spec.stat),
+            position=as_position(position, spec.position),
+            mapping=as_aes({key: key for key, _ in defaults}),
+            data=table,
+            params=params,
+            inherit_aes=False,
+            show_legend=False if show_legend is None else show_legend,
+        )
+        return layer
+
+    return factory
+
+
 def _stat_layer_factory(name: str) -> Callable[..., Layer]:
     """`stat_<name>(...)` 在 ggplot2 里同样是图层快捷方式。
 
@@ -1200,7 +1399,11 @@ def register_label(
 
 def _register_defaults() -> None:
     for name, spec in GEOM_SPECS.items():
-        register_geom(name, _geom_layer_factory(name, spec))
+        defaults = _REFERENCE_DATA_AES.get(name)
+        if defaults is None:
+            register_geom(name, _geom_layer_factory(name, spec))
+        else:
+            register_geom(name, _reference_layer_factory(name, spec, defaults))
     for name in STAT_NAMES:
         register_stat(name, _stat_layer_factory(name))
     for name in POSITION_NAMES:

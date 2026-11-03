@@ -1,0 +1,7 @@
+family = "geom-blank"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_blank + geom_rug：只训练标度 / 面板边上的短刻度"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`geom_blank()` 是 `nullGrob()`；`geom_rug(sides = \"bl\")` 在下边与左边各画一道短刻度。"

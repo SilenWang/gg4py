@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 #
-# M1-7 的 R 对拍产线：生成
+# M1-7 / M2-S2 的 R 对拍产线：生成
 #   - tests/fixtures/geom_r_reference.json   （ggplot_build(p)$data[[1]] 的逐列值）
-#   - docs/cases/geom-*/expected.svg         （9 个 theme_void 全页用例）
+#   - docs/cases/geom-*/expected.svg         （26 个 theme_void 全页用例：M1-7 的 9 个
+#     + M2-S2 长尾 A 的 17 个，含两条横向自动探测 case）
 #
 #   pixi run -e refs refs:geom
 #
@@ -13,9 +14,10 @@
 #   - 还记录 `layout$panel_params[[1]]` 的 x / y continuous_range（绘制期算 npc 用）；
 #   - 还记录 `ggplotGrob(p)` 期间的 warning（`Geom$handle_na()` 的 "Removed N rows"）。
 #
-# 5 个 stat 已实现的 geom（point / line / path / bar / col）在 Python 侧重放整条流水线
-# 逐列对拍；4 个 stat 未实现的 geom（area / histogram / boxplot / smooth）把这里的
-# `$data` 当**绘制输入夹具**（stat 归 M1-8），另用 stat="identity" 的用例做端到端。
+# stat 已实现的 geom 在 Python 侧重放整条流水线逐列对拍；stat 未实现的 geom
+# 把这里的 `$data` 当**绘制输入夹具**，另用 stat="identity" 的用例做端到端。
+# M2-S2 的 20 个长尾 geom 都走 identity stat，全部整条流水线对拍；其中
+# `boxplot_horizontal_auto` / `area_horizontal` 两条专门钉 SIL-715 #4 / #5。
 
 suppressPackageStartupMessages({
   library(ggplot2)
@@ -412,6 +414,239 @@ plot_smooth <- ggplot(df_smooth, aes(x, y, ymin = ymin, ymax = ymax)) +
 cases$smooth_identity <- record_case("smooth_identity", plot_smooth, "smooth：identity stat + se 带")
 svg_cases$`geom-smooth-se` <- plot_smooth
 
+
+# ---------------------------------------------------------------------------
+# M2-S2：长尾 A（线段 / 矩形 / 区间 / 标注族）+ 两条横向自动探测 case
+# ---------------------------------------------------------------------------
+
+df_seg <- data.frame(
+  x = c(0.1, 0.5), y = c(0.2, 0.55),
+  xend = c(0.8, 0.9), yend = c(0.7, 0.25),
+  g = c("a", "b"), stringsAsFactors = FALSE
+)
+df_spoke <- data.frame(
+  x = c(0.3, 0.6), y = c(0.3, 0.6),
+  ang = c(0, pi / 4), rad = c(0.2, 0.25)
+)
+df_rect <- data.frame(
+  xmin = c(0.1, 0.5), xmax = c(0.4, 0.8),
+  ymin = c(0.1, 0.2), ymax = c(0.5, 0.6)
+)
+df_tile <- data.frame(
+  x = c(0.25, 0.75, 0.25, 0.75), y = c(0.25, 0.25, 0.75, 0.75),
+  f = c("p", "q", "q", "p"), stringsAsFactors = FALSE
+)
+df_poly <- data.frame(
+  x = c(0.1, 0.4, 0.35, 0.7, 0.85, 0.5),
+  y = c(0.1, 0.15, 0.5, 0.55, 0.9, 0.6),
+  g = c(rep("a", 3), rep("b", 3)), stringsAsFactors = FALSE
+)
+df_ribbon <- data.frame(
+  x = c(0.1, 0.3, 0.5, 0.7, 0.9),
+  lo = c(0.1, 0.2, 0.15, 0.3, 0.25),
+  hi = c(0.4, 0.5, 0.45, 0.6, 0.55)
+)
+df_step <- data.frame(
+  x = c(0.1, 0.3, 0.5, 0.7, 0.9),
+  y = c(0.2, 0.5, 0.35, 0.7, 0.6)
+)
+df_int <- data.frame(
+  x = c(0.3, 0.7), y = c(0.5, 0.45),
+  lo = c(0.2, 0.3), hi = c(0.8, 0.7)
+)
+df_rug <- data.frame(x = c(0.2, 0.5, 0.8), y = c(0.3, 0.6, 0.9))
+df_map <- data.frame(map_id = c("a", "b"), stringsAsFactors = FALSE)
+map_tbl <- data.frame(
+  x = c(0, 0.4, 0.4, 0, 0.5, 0.9, 0.9, 0.5),
+  y = c(0, 0, 0.4, 0.4, 0.5, 0.5, 0.9, 0.9),
+  id = rep(c("a", "b"), each = 4), stringsAsFactors = FALSE
+)
+
+# 15. segment：两端闭合箭头
+plot_segment <- ggplot(df_seg, aes(x, y, xend = xend, yend = yend, colour = g)) +
+  geom_segment(
+    linewidth = 1.1 / .pt,
+    arrow = arrow(length = unit(0.15, "inches"), ends = "both", type = "closed")
+  ) +
+  scale_colour_manual(values = c(a = "#4C78A8", b = "#E45756")) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$segment_arrow <- record_case("segment_arrow", plot_segment, "segment：两端闭合箭头")
+svg_cases$`geom-segment-arrow` <- plot_segment
+
+# 16. curve：弯曲 + 单端箭头
+plot_curve <- ggplot(df_seg, aes(x, y, xend = xend, yend = yend)) +
+  geom_curve(
+    curvature = -0.4, angle = 90, ncp = 5, linewidth = 1.1 / .pt,
+    colour = "#4C78A8",
+    arrow = arrow(length = unit(0.12, "inches"), ends = "last", type = "open")
+  ) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$curve_arrow <- record_case("curve_arrow", plot_curve, "curve：curvature = -0.4 + 单端箭头")
+svg_cases$`geom-curve-arrow` <- plot_curve
+
+# 17. spoke：角度 / 半径映射
+plot_spoke <- ggplot(df_spoke, aes(x, y, angle = ang, radius = rad)) +
+  geom_spoke(linewidth = 1.2 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$spoke_basic <- record_case("spoke_basic", plot_spoke, "spoke：angle / radius 映射")
+svg_cases$`geom-spoke` <- plot_spoke
+
+# 18. rect：两个矩形
+plot_rect <- ggplot(df_rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)) +
+  geom_rect(fill = "#4C78A8", colour = "#333333", linewidth = 0.8 / .pt, alpha = 0.6) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$rect_basic <- record_case("rect_basic", plot_rect, "rect：两个带 alpha 的矩形")
+svg_cases$`geom-rect` <- plot_rect
+
+# 19. abline / hline / vline：参考线（各自一条独立 fixture case）
+plot_abline <- ggplot(df_rect) +
+  geom_abline(slope = 1, intercept = 0.1, linewidth = 1.0 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$abline_basic <- record_case("abline_basic", plot_abline, "abline：y = x + 0.1")
+plot_hline <- ggplot(df_rect) +
+  geom_hline(yintercept = 0.75, linetype = "dashed", linewidth = 0.9 / .pt, colour = "#E45756") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$hline_basic <- record_case("hline_basic", plot_hline, "hline：y = 0.75")
+plot_vline <- ggplot(df_rect) +
+  geom_vline(xintercept = 0.6, linewidth = 0.9 / .pt, colour = "#54A24B") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$vline_basic <- record_case("vline_basic", plot_vline, "vline：x = 0.6")
+
+# 一张组合图：矩形 + 三条参考线（expected.svg 用）
+plot_refs <- ggplot(df_rect, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax)) +
+  geom_rect(fill = "#DDDDDD", colour = "#333333", linewidth = 0.6 / .pt) +
+  geom_abline(slope = 1, intercept = 0.1, linewidth = 1.0 / .pt, colour = "#4C78A8") +
+  geom_hline(yintercept = 0.75, linetype = "dashed", linewidth = 0.9 / .pt, colour = "#E45756") +
+  geom_vline(xintercept = 0.6, linewidth = 0.9 / .pt, colour = "#54A24B") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+svg_cases$`geom-abline-hline-vline` <- plot_refs
+
+# 20. tile：2×2 小方块 + fill 映射
+plot_tile <- ggplot(df_tile, aes(x, y, fill = f)) +
+  geom_tile() +
+  scale_fill_manual(values = c(p = "#4C78A8", q = "#F58518")) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$tile_basic <- record_case("tile_basic", plot_tile, "tile：默认 width / height = 1")
+svg_cases$`geom-tile` <- plot_tile
+
+# 21. raster：同一份数据走位图路径（interpolate = FALSE）
+plot_raster <- ggplot(df_tile, aes(x, y, fill = f)) +
+  geom_raster(interpolate = FALSE) +
+  scale_fill_manual(values = c(p = "#4C78A8", q = "#F58518")) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$raster_basic <- record_case("raster_basic", plot_raster, "raster：像素矩阵 + 不插值")
+svg_cases$`geom-raster` <- plot_raster
+
+# 22. polygon：两个三角形
+plot_poly <- ggplot(df_poly, aes(x, y, group = g, fill = g)) +
+  geom_polygon(colour = "#333333", linewidth = 0.8 / .pt, alpha = 0.8) +
+  scale_fill_manual(values = c(a = "#4C78A8", b = "#F58518")) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$polygon_basic <- record_case("polygon_basic", plot_poly, "polygon：两个分组三角")
+svg_cases$`geom-polygon` <- plot_poly
+
+# 23. ribbon：outline.type = "upper"
+plot_ribbon <- ggplot(df_ribbon, aes(x, ymin = lo, ymax = hi)) +
+  geom_ribbon(
+    fill = "#4C78A8", colour = "#333333", alpha = 0.5,
+    linewidth = 0.9 / .pt, outline.type = "upper"
+  ) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$ribbon_upper <- record_case("ribbon_upper", plot_ribbon, "ribbon：outline.type = upper")
+svg_cases$`geom-ribbon-outline` <- plot_ribbon
+
+# 24. step：direction = "hv"
+plot_step <- ggplot(df_step, aes(x, y)) +
+  geom_step(direction = "hv", linewidth = 1.2 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$step_basic <- record_case("step_basic", plot_step, "step：direction = hv")
+svg_cases$`geom-step` <- plot_step
+
+# 25. errorbar：两根误差棒
+plot_errorbar <- ggplot(df_int, aes(x, y, ymin = lo, ymax = hi)) +
+  geom_errorbar(width = 0.2, linewidth = 0.9 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$errorbar_basic <- record_case("errorbar_basic", plot_errorbar, "errorbar：width = 0.2")
+svg_cases$`geom-errorbar` <- plot_errorbar
+
+# 26. errorbarh：横向误差棒（xmin / xmax 映射，height 换名成 width）
+plot_errorbarh <- ggplot(df_int, aes(y = x, x = y, xmin = lo, xmax = hi)) +
+  geom_errorbarh(height = 0.2, linewidth = 0.9 / .pt, colour = "#E45756") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$errorbarh_basic <- record_case("errorbarh_basic", plot_errorbarh, "errorbarh：height → width")
+svg_cases$`geom-errorbarh` <- plot_errorbarh
+
+# 27. linerange + pointrange（各自一条 fixture case，共用一张 expected.svg）
+plot_linerange <- ggplot(df_int, aes(x, y, ymin = lo, ymax = hi)) +
+  geom_linerange(linewidth = 1.5 / .pt, colour = "#54A24B") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$linerange_basic <- record_case("linerange_basic", plot_linerange, "linerange：竖线")
+plot_pointrange <- ggplot(df_int, aes(x, y, ymin = lo, ymax = hi)) +
+  geom_pointrange(size = 1.4, linewidth = 0.9 / .pt, colour = "#333333") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$pointrange_basic <- record_case("pointrange_basic", plot_pointrange, "pointrange：竖线 + 中点")
+plot_ranges <- ggplot(df_int, aes(x, y, ymin = lo, ymax = hi)) +
+  geom_linerange(linewidth = 1.5 / .pt, colour = "#54A24B") +
+  geom_pointrange(size = 1.4, linewidth = 0.9 / .pt, colour = "#333333") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+svg_cases$`geom-linerange-pointrange` <- plot_ranges
+
+# 28. crossbar：箱体 + 中位线
+plot_crossbar <- ggplot(df_int, aes(x, y, ymin = lo, ymax = hi)) +
+  geom_crossbar(width = 0.3, fill = "#F58518", colour = "#333333", linewidth = 0.8 / .pt) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$crossbar_basic <- record_case("crossbar_basic", plot_crossbar, "crossbar：箱体 + 中位线")
+svg_cases$`geom-crossbar` <- plot_crossbar
+
+# 29. blank / rug（blank 只训练标度，rug 画短刻度）
+plot_rug <- ggplot(df_rug, aes(x, y)) +
+  geom_rug(sides = "bl", length = unit(0.04, "npc"), linewidth = 0.8 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$rug_basic <- record_case("rug_basic", plot_rug, "rug：bl 三条短刻度")
+plot_blank_rug <- ggplot(df_rug, aes(x, y)) +
+  geom_blank() +
+  geom_rug(sides = "bl", length = unit(0.04, "npc"), linewidth = 0.8 / .pt, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+svg_cases$`geom-blank-rug` <- plot_blank_rug
+
+# 30. map：map 表 + map_id
+plot_map <- ggplot(df_map, aes(map_id = map_id)) +
+  geom_map(map = map_tbl, fill = "#4C78A8", colour = "#333333", linewidth = 0.8 / .pt) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$map_basic <- record_case("map_basic", plot_map, "map：两份 map 多边形")
+svg_cases$`geom-map` <- plot_map
+
+# 31. SIL-715 #5：boxplot 横向自动方向探测（两边都不写 orientation）
+df_box_auto <- data.frame(
+  cls = rep(c("a", "b"), each = 6),
+  v = c(1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 0.5, 1.0, 1.5, 2.0, 2.5, 5.0),
+  stringsAsFactors = FALSE
+)
+plot_box_auto <- ggplot(df_box_auto, aes(y = cls, x = v)) +
+  geom_boxplot(fill = "#F58518", colour = "#333333", width = 0.6) +
+  scale_x_continuous(limits = c(0, 6), expand = c(0, 0)) + theme_case()
+cases$boxplot_horizontal_auto <- record_case(
+  "boxplot_horizontal_auto", plot_box_auto,
+  "boxplot：y 离散、x 连续，未写 orientation（自动 flipped_aes）", "boxplot"
+)
+svg_cases$`geom-boxplot-horizontal-auto` <- plot_box_auto
+
+# 32. SIL-715 #4：横向 area（上游 `has_flipped_aes(ambiguous = TRUE)` 不自动探测，
+#     横向必须写 orientation = "y"；R 的 stat_align 在 y 离散时输出 0 行）
+df_area_h <- data.frame(
+  cls = c("a", "b", "c", "d", "e"),
+  v = c(1.0, 2.5, 1.8, 3.2, 2.2),
+  stringsAsFactors = FALSE
+)
+plot_area_h <- ggplot(df_area_h, aes(y = cls, x = v)) +
+  geom_area(stat = "identity", orientation = "y", fill = "#4C78A8") +
+  scale_x_continuous(limits = c(0, 4), expand = c(0, 0)) + theme_case()
+cases$area_horizontal <- record_case(
+  "area_horizontal", plot_area_h,
+  "area：横向（orientation = y，上游 area 不做自动探测）"
+)
+svg_cases$`geom-area-horizontal` <- plot_area_h
+
 # ---------------------------------------------------------------------------
 # M2-7 长尾 B：文本 / 点 / 分布 / 2D 族（SIL-735）
 #
@@ -707,7 +942,7 @@ fixture <- list(
   r_version = paste(R.version$major, R.version$minor, sep = "."),
   ggplot2_version = as.character(packageVersion("ggplot2")),
   scale = paste0(
-    "9 geom / ", length(cases), " case；data[[1]] 的列名+列序+kind+逐值；",
+    "29 geom / ", length(cases), " case；data[[1]] 的列名+列序+kind+逐值；",
     "panel_params 的 continuous_range；handle_na 的 warning"
   ),
   cases = cases

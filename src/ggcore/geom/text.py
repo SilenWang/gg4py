@@ -58,7 +58,7 @@ from ggcore.geom.base import (
     table_numeric,
     table_strings,
 )
-from ggcore.grobs import g_tree, null_grob, rect_grob, text_grob
+from ggcore.grobs import g_tree, null_grob, polygon_grob, rect_grob, text_grob
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
@@ -187,7 +187,7 @@ def _compute_just(value: Any, a: float, b: float, angle: float) -> float:
 
 
 def compute_just(values: Any, a: Any, b: Any, angle: Any) -> np.ndarray:
-    """`compute_just()` 的向量版（逐行；`a` / `b` 是数据坐标）。"""
+    """`compute_just()` 的向量版（逐行；`a` / `b` 是 `coord$transform()` 之后的 npc）。"""
     a_values = np.asarray(a, dtype=np.float64).ravel()
     b_values = np.asarray(b, dtype=np.float64).ravel()
     angles = np.asarray(angle, dtype=np.float64).ravel()
@@ -380,11 +380,11 @@ class TextRenderer(GeomRenderer):
         x = npc_values(panel, data, "x", "x")
         y = npc_values(panel, data, "y", "y")
         labels = _strings(data, "label")
-        x_data = table_numeric(data, "x", default=math.nan)
-        y_data = table_numeric(data, "y", default=math.nan)
         angle = table_numeric(data, "angle", default=0.0)
-        hjust = compute_just(_raw_just(data, "hjust"), x_data, y_data, angle)
-        vjust = compute_just(_raw_just(data, "vjust"), y_data, x_data, angle)
+        # `compute_just()` 的 a / b 是 `coord$transform()` 之后的 npc（SIL-765）：
+        # 与 0.5 比较的是画布位置，不是数据坐标（limits 不是 0..1 时方向会反）。
+        hjust = compute_just(_raw_just(data, "hjust"), x, y, angle)
+        vjust = compute_just(_raw_just(data, "vjust"), y, x, angle)
         size_pt = _text_pt(table_numeric(data, "size", default=3.87), build.params)
         colours = _values(data, "colour", "black")
         alpha = table_numeric(data, "alpha", default=math.nan)
@@ -498,6 +498,64 @@ def _line_value(raw: Any, default: float) -> float:
     return default
 
 
+def _rotated_label(
+    label: str,
+    panel: Any,
+    anchor_x: float,
+    anchor_y: float,
+    box_w: float,
+    box_h: float,
+    h: float,
+    v: float,
+    descent_in: float,
+    angle: float,
+    box_gp: Any,
+    text_gp: Any,
+) -> tuple[Any, Any]:
+    """`labelGrob()` 的旋转形态：box + text 绕锚点一起转 `angle`（度，逆时针）。
+
+    npc 的 y 向上，角度按数学正向旋转（与 `textGrob(rot=)` 的视觉方向一致）。
+    四个角先在**未旋转**的矩形里算，再整体旋到 npc；文字走同一刚体变换——锚点
+    跟着转、`rot` 保持 `angle`，所以旋转后的长标签仍落在背景框里（SIL-765）。
+    """
+    panel_w = _panel_size(panel, "x")
+    panel_h = _panel_size(panel, "y")
+    rad = math.radians(angle)
+    cos, sin = math.cos(rad), math.sin(rad)
+    centre_x = (0.5 - h) * box_w
+    centre_y = (0.5 - v) * box_h
+    corners_x: list[float] = []
+    corners_y: list[float] = []
+    for dx, dy in ((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)):
+        offset_x = centre_x + dx * box_w / 2.0
+        offset_y = centre_y + dy * box_h / 2.0
+        corners_x.append(anchor_x + (offset_x * cos - offset_y * sin) / panel_w)
+        corners_y.append(anchor_y + (offset_x * sin + offset_y * cos) / panel_h)
+    text_offset_x = 0.0
+    text_offset_y = (1.0 - v) * descent_in
+    text_x = anchor_x + (text_offset_x * cos - text_offset_y * sin) / panel_w
+    text_y = anchor_y + (text_offset_x * sin + text_offset_y * cos) / panel_h
+    box = polygon_grob(
+        x=corners_x,
+        y=corners_y,
+        default_units="native",
+        gp=box_gp,
+        name="label-box",
+    )
+    text = text_grob(
+        label,
+        unit(text_x, "native"),
+        unit(text_y, "native"),
+        hjust=h,
+        vjust=v,
+        rot=angle,
+        default_units="native",
+        gp=text_gp,
+        name="label-text",
+    )
+    return box, text
+
+
 class LabelRenderer(GeomRenderer):
     """`geom_label`：矩形背景 + 文字（`labelGrob()` 的几何）。"""
 
@@ -510,11 +568,10 @@ class LabelRenderer(GeomRenderer):
         x = npc_values(panel, data, "x", "x")
         y = npc_values(panel, data, "y", "y")
         labels = _strings(data, "label")
-        x_data = table_numeric(data, "x", default=math.nan)
-        y_data = table_numeric(data, "y", default=math.nan)
         angle = table_numeric(data, "angle", default=0.0)
-        hjust = compute_just(_raw_just(data, "hjust"), x_data, y_data, angle)
-        vjust = compute_just(_raw_just(data, "vjust"), y_data, x_data, angle)
+        # 与 `geom_text` 同一口径：`inward` / `outward` 按 npc 判断半区（SIL-765）。
+        hjust = compute_just(_raw_just(data, "hjust"), x, y, angle)
+        vjust = compute_just(_raw_just(data, "vjust"), y, x, angle)
         size_pt = _text_pt(table_numeric(data, "size", default=3.87), build.params)
         colours = _values(data, "colour", "black")
         fills = _values(data, "fill", "white")
@@ -550,50 +607,68 @@ class LabelRenderer(GeomRenderer):
             h, v = float(hjust[index]), float(vjust[index])
             anchor_x = float(x[index])
             anchor_y = float(y[index])
-            text_y = anchor_y + (1.0 - v) * _inches_to_npc(descent_in, panel, "y")
-            box_y = anchor_y + (0.5 - v) * _inches_to_npc(box_h, panel, "y")
             fill = fills[index]
             border = border_colour if border_colour is not None else colours[index]
-            grobs.append(
-                g_tree(
-                    rect_grob(
-                        unit(anchor_x, "native"),
-                        unit(box_y, "native"),
-                        width=unit(box_w, "inches"),
-                        height=unit(box_h, "inches"),
-                        just=(h, 0.5),
-                        default_units="native",
-                        gp=gpar(
-                            fill=alpha_colour(fill, alpha[index]),
-                            col=alpha_colour(border, None),
-                            lwd=float(linewidth[index]) * POINT_PER_MM,
-                            lty=lty_value(linetypes[index]),
-                        ),
-                        name="label-box",
-                    ),
-                    text_grob(
-                        label,
-                        unit(anchor_x, "native"),
-                        unit(text_y, "native"),
-                        hjust=h,
-                        vjust=v,
-                        rot=float(angle[index]),
-                        default_units="native",
-                        gp=gpar(
-                            col=alpha_colour(
-                                text_colour if text_colour is not None else colours[index],
-                                alpha[index],
-                            ),
-                            fontsize=fontsize,
-                            fontfamily=families[index],
-                            font=faces[index],
-                            lineheight=lineheight,
-                        ),
-                        name="label-text",
-                    ),
-                    name="geom_label",
-                )
+            box_gp = gpar(
+                fill=alpha_colour(fill, alpha[index]),
+                col=alpha_colour(border, None),
+                lwd=float(linewidth[index]) * POINT_PER_MM,
+                lty=lty_value(linetypes[index]),
             )
+            text_gp = gpar(
+                col=alpha_colour(
+                    text_colour if text_colour is not None else colours[index],
+                    alpha[index],
+                ),
+                fontsize=fontsize,
+                fontfamily=families[index],
+                font=faces[index],
+                lineheight=lineheight,
+            )
+            rot = float(angle[index])
+            if rot == 0.0:
+                text_y = anchor_y + (1.0 - v) * _inches_to_npc(descent_in, panel, "y")
+                box_y = anchor_y + (0.5 - v) * _inches_to_npc(box_h, panel, "y")
+                box = rect_grob(
+                    unit(anchor_x, "native"),
+                    unit(box_y, "native"),
+                    width=unit(box_w, "inches"),
+                    height=unit(box_h, "inches"),
+                    just=(h, 0.5),
+                    default_units="native",
+                    gp=box_gp,
+                    name="label-box",
+                )
+                text = text_grob(
+                    label,
+                    unit(anchor_x, "native"),
+                    unit(text_y, "native"),
+                    hjust=h,
+                    vjust=v,
+                    rot=0.0,
+                    default_units="native",
+                    gp=text_gp,
+                    name="label-text",
+                )
+            else:
+                # R 的 `labelGrob()` 把 box + text 放进带 `angle` 的 viewport 一起
+                # 旋转（SIL-765）：在英寸坐标里绕锚点旋转四个角，文字按刚体变换
+                # 移到旋转后的锚点 —— 长标签不会溢出背景框。
+                box, text = _rotated_label(
+                    label,
+                    panel,
+                    anchor_x,
+                    anchor_y,
+                    box_w,
+                    box_h,
+                    h,
+                    v,
+                    descent_in,
+                    rot,
+                    box_gp,
+                    text_gp,
+                )
+            grobs.append(g_tree(box, text, name="geom_label"))
         del radius  # 圆角矩形没有 IR 节点，背景是方角矩形（见模块文档）
         if not grobs:
             return null_grob(name="geom_label")

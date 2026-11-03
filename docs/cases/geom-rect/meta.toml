@@ -1,0 +1,7 @@
+family = "geom-rect"
+features = ["aes-mapping", "alpha-aes"]
+ci = true
+title = "geom_rect：两个带 alpha 的矩形"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`colour = NA`、`fill` 吃 alpha；`xmin/xmax/ymin/ymax` 直接进 `rectGrob`。"
