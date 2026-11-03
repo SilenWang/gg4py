@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "guide-legend", "guide-multi", "scale-limits"]
+ci = true
+title = "guide：两张图例并存（order 排序）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "colour 与 fill 映射不同变量 → 两张图例竖排，`legend.spacing.y` 隔开；`guide_legend(order=)` 小的在上（fill=1 在 colour=2 之上），M2-2 SIL-738。"

@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "guide-legend", "guide-inside", "scale-limits"]
+ci = true
+title = "guide：图例在 inside"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`legend.position = \"inside\"` + `legend.position.inside = c(0.72, 0.78)`：图例按 `legend.justification.inside`（默认 center）锚在面板内，不占版面（M2-2 SIL-738）。"
