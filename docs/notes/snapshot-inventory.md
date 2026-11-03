@@ -6,7 +6,7 @@
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
 - 已纳管：**200**（`expected.svg` 与上游快照逐字节相同）
 - 已知缺口：**111**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **88** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 缺口归属：`m2-closeout` **78** 条（M3 开工前归零） / `m3` **33** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -20,10 +20,10 @@
 | `labels` | m2-closeout | 6 | 0 | 6 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
 | `geom-path` | m2-closeout | 5 | 0 | 5 |
-| `coord-polar` | m2-closeout | 11 | 7 | 4 |
+| `coord-polar` | m3 | 11 | 7 | 4 |
 | `draw-key` | m2-closeout | 6 | 2 | 4 |
 | `facet-` | m2-closeout | 4 | 0 | 4 |
-| `patterns` | m2-closeout | 4 | 0 | 4 |
+| `patterns` | m3 | 4 | 0 | 4 |
 | `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
 | `geom-hex` | m2-closeout | 3 | 0 | 3 |
 | `stat-align` | m2-closeout | 3 | 0 | 3 |
@@ -38,7 +38,7 @@
 | `facet-layout` | m2-closeout | 1 | 0 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-label` | m2-closeout | 1 | 0 | 1 |
-| `geom-text` | m2-closeout | 1 | 0 | 1 |
+| `geom-text` | m3 | 1 | 0 | 1 |
 | `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
@@ -300,7 +300,7 @@
 
 </details>
 
-### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m3
 
 SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。
 
@@ -310,7 +310,7 @@ SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)
 
 </details>
 
-### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m3
 
 SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。
 
@@ -320,7 +320,7 @@ SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_a
 
 </details>
 
-### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m3
 
 SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。
 
@@ -330,7 +330,7 @@ SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`gui
 
 </details>
 
-### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m3
 
 SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。
 
@@ -411,13 +411,22 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 </details>
 
-### `facet-labels` — 2 条 · SIL-715 · m2-closeout
+### `facet-labels` — 1 条 · SIL-715 · m2-closeout
 
 `labeller` 的 plotmath 解析与 outside 对齐未复刻。
 
 <details><summary>快照</summary>
 
 - `facet-labels/outside-justified-labels.svg`
+
+</details>
+
+### `facet-labels` — 1 条 · SIL-715 · m3
+
+`labeller` 的 plotmath 解析与 outside 对齐未复刻。
+
+<details><summary>快照</summary>
+
 - `facet-labels/parsed-facet-labels.svg`
 
 </details>
@@ -556,7 +565,7 @@ munched polygon（`coord_munch` 后的闭合多边形）未复刻。
 
 </details>
 
-### `geom-text` — 1 条 · SIL-715 · m2-closeout
+### `geom-text` — 1 条 · SIL-715 · m3
 
 plotmath 表达式标签（`expression()`）未支持。
 
@@ -751,7 +760,7 @@ key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key
 
 </details>
 
-### `patterns` — 4 条 · SIL-715 · m2-closeout
+### `patterns` — 4 条 · SIL-715 · m3
 
 pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。
 
