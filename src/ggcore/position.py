@@ -90,7 +90,7 @@ _ORIENTATION_SWAP: Mapping[str, str] = MappingProxyType(
 )
 
 #: 参与位置计算、按 float64 读写的列（其余列（colour/fill/…）原样带过）。
-_NUMERIC_KINDS = frozenset({"float", "int", "datetime", "timedelta"})
+_NUMERIC_KINDS = frozenset({"float", "int", "datetime", "date", "timedelta"})
 
 #: 上游 `pos_stack()` 里判断「总量够大才归一」的阈值：`sqrt(.Machine$double.eps)`。
 _EPS = float(np.sqrt(np.finfo(np.float64).eps))

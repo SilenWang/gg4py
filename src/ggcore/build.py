@@ -169,7 +169,7 @@ class BuildWarning(UserWarning):
 
 def _column_values(column: Column) -> np.ndarray:
     """列 → 计算用 ndarray：数值缺失写 NaN，离散缺失写 None（只读副本）。"""
-    if column.kind in ("float", "int", "datetime", "timedelta"):
+    if column.kind in ("float", "int", "datetime", "date", "timedelta"):
         values = np.array(column.values, copy=True)
         if column.na_mask.any():
             values[column.na_mask] = np.nan

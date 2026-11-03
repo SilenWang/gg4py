@@ -5566,8 +5566,9 @@ vdiffr 名：dates along x, default breaks。
 `set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
 （`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
 
-R 测试里隐含的默认标度（`scale_x_date()`）显式写出：本仓还没有
-「Date 列 → `scale_*_date()`」的隐式标度解析，图本身与 R 一致。
+R 测试里没写标度：Date 列走默认的 `scale_x_date()`。这里显式写出同一份默认值
+（SIL-800 起默认标度解析已认出 Date，见 `scale-date-implicit-default-breaks`），
+保留显式写法是为了与上游快照逐字节对齐。
 
 expected.svg 是上游那份，未改写。
 """
@@ -5717,8 +5718,9 @@ vdiffr 名：dates along y, default breaks。
 `set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
 （`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
 
-R 测试里隐含的默认标度（`scale_y_date()`）显式写出：本仓还没有
-「Date 列 → `scale_*_date()`」的隐式标度解析，图本身与 R 一致。
+R 测试里没写标度：Date 列走默认的 `scale_y_date()`。这里显式写出同一份默认值
+（SIL-800 起默认标度解析已认出 Date，见 `scale-date-implicit-default-breaks`），
+保留显式写法是为了与上游快照逐字节对齐。
 
 expected.svg 是上游那份，未改写。
 """

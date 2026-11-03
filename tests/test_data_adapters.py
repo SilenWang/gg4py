@@ -174,8 +174,30 @@ def test_timezone_aware_values_are_converted_to_utc() -> None:
 
 def test_python_date_is_days_since_epoch() -> None:
     column = from_dict({"d": [dt.date(1970, 1, 3), dt.date(2020, 1, 1)]}).column("d")
-    assert column.kind == "datetime"
+    # Date 与 POSIXct 的日历单位不同（天 / 秒），kind 必须分开：默认标度靠这一位
+    # 选 trans = "date"（SIL-800）。
+    assert column.kind == "date"
     assert column.values.tolist() == [2.0, 18262.0]
+
+
+def test_date_inputs_agree_across_the_three_routes() -> None:
+    """python date / pandas object 列 / arrow date32 都落成同一条 `date` 列。"""
+    values = [dt.date(2012, 2, 29), dt.date(2012, 6, 8), None]
+    from_dict_table = from_dict({"d": values})
+    from_pandas_table = to_column_table(pd.DataFrame({"d": values}))
+    from_arrow_table = to_column_table(pa.table({"d": pa.array(values, type=pa.date32())}))
+    column = from_dict_table.column("d")
+    assert column.kind == "date"
+    assert column.values.tolist() == [15399.0, 15499.0, 0.0]
+    assert column.na_mask.tolist() == [False, False, True]
+    assert from_dict_table == from_pandas_table == from_arrow_table
+
+
+def test_all_missing_arrow_date_keeps_the_date_kind() -> None:
+    table = to_column_table(pa.table({"d": pa.array([None, None], type=pa.date32())}))
+    column = table.column("d")
+    assert column.kind == "date"
+    assert column.na_mask.tolist() == [True, True]
 
 
 def test_timedelta_becomes_seconds() -> None:

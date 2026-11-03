@@ -220,6 +220,9 @@ r-quantreg = ">=6.1,<7"
 # 第二个脚本生成色板取值表 `src/ggcore/palette_data.py`（brewer 逐 n 表 + viridis
 # 8 档映射）与色板夹具 `tests/fixtures/palettes_r_reference.json`。
 "refs:scales" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/scales_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/palettes_ref.R"
+# SIL-800：Date 列**不写** `scale_x_date()` 的参考图（默认标度解析）。独立脚本是
+# 刻意的：`refs:cases` 会重写全部历史 expected.svg，这里只产一条新 case。
+"refs:date-default" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/date_scale_ref.R"
 # 分面（M1-6）：layout 的 PANEL/ROW/COL、free scales 的逐面板范围、
 # ggplotGrob() 的 panel 宽高与 strip 位置。
 "refs:facet" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/facet_ref.R"

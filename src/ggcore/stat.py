@@ -390,7 +390,7 @@ def _remove_missing(
             continue
         column = table.column(name)
         missing |= np.asarray(column.na_mask, dtype=bool)
-        if finite and column.kind in ("float", "int", "datetime", "timedelta"):
+        if finite and column.kind in ("float", "int", "datetime", "date", "timedelta"):
             missing |= ~np.isfinite(np.asarray(column.values, dtype=np.float64))
     if not missing.any():
         return table
