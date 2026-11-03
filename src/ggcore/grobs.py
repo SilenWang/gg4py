@@ -435,10 +435,12 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
     lwd = float(gp.lwd) * _LWD_UNITS_TO_PT
     pattern: tuple[float, ...] = ()
     if dashes is not None:
-        # 段长 = 模式 × max(lwd, 1)：R 的 `lwd` 是 1/96 inch，参考产线（svglite）
-        # 把小于 1 的 lwd 按 1 算段长（`lty = "dashed"` 在 lwd < 1 时恒为 4,4 pt），
-        # 用 lwd 本身会在细线上把虚线画密（SIL-737 的 abline 用例）。
-        scale = max(float(gp.lwd), 1.0)
+        # 段长 = 模式 × max(lwd, 1) 的 **pt** 口径：R 的 `lwd` 是 1/96 inch，
+        # 参考产线（svglite）把小于 1 的 lwd 按 1 算段长（`lty = "dashed"` 在
+        # lwd < 1 时恒为 4,4 pt），用 lwd 本身会在细线上把虚线画密（SIL-737 的
+        # abline 用例）。`lwd >= 1` 时与 M2-12 的 `segment * lwd_pt` 完全一致
+        # （SIL-765：原来漏了 0.75 的换算，lwd = 1 的虚线会变长 1/3）。
+        scale = max(float(gp.lwd), 1.0) * _LWD_UNITS_TO_PT
         pattern = tuple(round(segment * scale, 6) for segment in dashes)
     return ir.Gpar(
         fill=_paint(gp.fill),

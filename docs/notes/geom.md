@@ -85,7 +85,7 @@ M2-6 的 stat 任务；geom 只消费 stat 输出的列。stat 落地前，case 
 | geom | 绘制口径（对 R 4.0.3） |
 | --- | --- |
 | `text` | `textGrob`：`compute_just()` 的 `left/centre/right/bottom/middle/top` 与 `inward/outward`；`size`（mm）× `size.unit`；`angle` / `hjust` / `vjust` 在 IR 里是单值，按 `(hjust, vjust, angle)` 分组画多个 text grob；`nudge_x` / `nudge_y` 折进数据坐标；`check_overlap` 用面板尺寸 + 真实度量算旋转后 bbox，按行序删重叠 |
-| `label` | `labelGrob()`：`padding[1]=max(padding, descent)`、`padding[3]=max(padding-descent,0)`；背景宽 = 文字宽 + 左右内边距 + rotated descent，高同理；IR 无 roundrect，背景用方角矩形（`label.r` 默认 0.15 lines ≈ 2pt） |
+| `label` | `labelGrob()`：`padding[1]=max(padding, descent)`、`padding[3]=max(padding-descent,0)`；背景宽 = 文字宽 + 左右内边距 + rotated descent，高同理；`angle != 0` 时 box + text 作为刚体绕锚点一起旋转（背景是 4 点 `polygonGrob`），IR 无 roundrect，圆角仍退化成方角（`label.r` 默认 0.15 lines ≈ 2pt） |
 | `jitter` | 绘制同 `geom_point`；`width` / `height` → `position_jitter(width=, height=)`（两者与 `position=` 同时给是上游的显式错误） |
 | `count` | 绘制同 `geom_point`；`size` 来自 `stat_sum` 的 `n`（`_STAT_DEFAULT_AES` 的 `sum → size`） |
 | `bin2d` / `bin_2d` | `x/y/width/height → xmin/xmax/ymin/ymax`（`GeomTile`），画矩形；非线性坐标按 `coord_munch` 细分 |
@@ -181,7 +181,7 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 | `geom_boxplot(staplewidth != 0)` | 无 IR 表达（须帽）→ `GeomError` | 后续 |
 | 逐点 `size` / 逐点 `pch` | IR 的 `points.size` / `pch` 是标量；绘制层按 `(pch,size)` 分组画多个节点 | 视觉等价，节点数更多 |
 | 逐行 `angle` / `hjust` / `vjust`（text） | IR 的 text 参数是单值；按 `(hjust, vjust, angle)` 分组画多个 text grob | 视觉等价，节点数更多 |
-| `geom_label` 的圆角（`label.r`） | IR 没有 roundrect 节点 → 方角矩形（默认 0.15 lines ≈ 2pt） | 后续 IR schema 扩展 |
+| `geom_label` 的圆角（`label.r`） | IR 没有 roundrect 节点 → 方角矩形（默认 0.15 lines ≈ 2pt）；`angle != 0` 时背景随 box + text 一起旋转（SIL-765） | 后续 IR schema 扩展 |
 | `geom_hex` 的矢量 gp | 一个 path 节点只有一份 gpar；按 `(colour, fill, alpha, linewidth, linetype)` 分组 | 视觉等价，节点数更多 |
 | 未映射的 data 列 | 我们的 `compute_aesthetics` 只留 mapped 列（R 保留整个 data.frame）；`stat = "identity"` 要喂 `width` / `height` / `subgroup` 这类列时必须 `aes()` 映射 | 与 M1-3 的列口径一致；stat 落地后由 stat 输出携带 |
 | `geom_dotplot(binaxis = "y")` | 支持；`binaxis` 非 `x` 时圆半径按 y 轴换算（`CircleGrob.r_axis`） | — |
@@ -198,17 +198,17 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 ## 6. 对拍与验收
 
 ```bash
-pixi run -e refs refs:geom          # 夹具 + 58 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
+pixi run -e refs refs:geom          # 夹具 + 49 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
 pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py tests/test_geom_long_tail_b.py -q
-pixi run cases:matrix               # 全部 geom 用例逐张 render + diff
+pixi run cases:matrix               # 全部 128 个三文件 case 逐张 render + diff
 pixi run check                      # 全量门禁
 ```
 
-M2-S2 的 20 个 geom 另有 18 条 case（`geom-segment-arrow` … `geom-area-horizontal`）
-与 22 条 R 夹具 case（`tests/test_geom_r_parity.py` 的 `NEW_BUILDERS`），逐列对拍
-`ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 值；像素对拍全部 < 2% / < 1%。
+M2-S2 的两组长尾 geom 各新增 22 条 R 夹具 case（`tests/test_geom_r_parity.py` 的
+`NEW_BUILDERS`），逐列对拍 `ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 值；
+像素对拍全部 < 2% / < 1%。
 
-夹具：`tests/fixtures/geom_r_reference.json`，59 个 case，记录
+夹具：`tests/fixtures/geom_r_reference.json`，58 个 case，记录
 `ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 逐值、`panel_params` 的
 `continuous_range`，以及 `ggplotGrob()` 期间的 warning（`handle_na` 的
 "Removed N rows"）。stat 已实现的 case 在 Python 侧重放整条流水线逐列对拍；
@@ -216,7 +216,7 @@ stat 未实现的部分（M1 的 histogram / boxplot / smooth，M2-7 的 2D / �
 把 R 的 `$data`（或 stat 形状的列）当绘制输入。
 
 M2-7 的 22 条新 case（`docs/cases/geom-*`）走 `stat = "identity"` + stat 形状
-的列，实测全部在图级 < 2% / 均值 < 1% 的阈值内（`pixi run cases:matrix` 100/100
+的列，实测全部在图级 < 2% / 均值 < 1% 的阈值内（`pixi run cases:matrix` 128/128
 pass）；文本三条（对齐 / 旋转 / 换行）与 label 一条也在阈值内，残余差异来自
 字体度量的亚像素，见 `docs/notes/metrics-ledger.md` M2-b。
 
@@ -240,6 +240,7 @@ pass）；文本三条（对齐 / 旋转 / 换行）与 label 一条也在阈值
 
 | 日期 | 任务 | 改动 | 原因 |
 | --- | --- | --- | --- |
+| 2026-11-03 | SIL-765 | PR #62 三项必修：① `inward` / `outward` 改用 `coord$transform()` 后的 npc（原来拿数据坐标与 0.5 比，limits 不是 0..1 时方向整个反）；② `_GEOM_KEYS` 的 `bin2d` / `bin_2d` 补 `xmin/xmax/ymin/ymax`（原来只在画图例 key 时 `KeyError`）；③ `geom_label(angle != 0)` 的背景框改成 4 点 `polygonGrob`，与文字一起绕锚点旋转（长标签不再溢出背景框）。顺带修 `lty` 段长的 pt 换算（`max(lwd, 1) × 0.75`）：SIL-737 的 `max(lwd, 1)` 漏了 0.75，`lwd = 1` 的虚线变长 1/3、`viewer-linetype-all` 超出阈值。测试：`_digest_plots()` 覆盖全部 49 个 geom；20 个新 geom 逐个真正 draw 一次图例 key；补 inward / outward 与旋转背景框的数值回归。 | SIL-756 对 PR #62 的必修 3 条，以及 rebase 到 #61 之后的合并面。 |
 | 2026-11-03 | SIL-737 / M2-S2 | 长尾 A：20 个 geom（线段 / 矩形 / 区间 / 标注族）+ IR 0.3 的箭头标记属性（`segments` / `polyline` / `curve`）+ `geom_raster` 的位图路径（`ggcore.png`）+ lty 段长按 `max(lwd, 1)` 折算（参考产线口径）。`geom_abline` / `hline` / `vline` 改成上游的「参数即图层数据」形态（`inherit_aes = FALSE`、`unique0(data)`）。 | M2 长尾补齐；SIL-715 #4/#5 结案。 |
 | 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |
 | 2026-11-03 | SIL-735 | 新增 20 个 geom 注册名（18 个导出 + `bin_2d` / `density2d` / `density2d_filled` 别名）与两套绘制实现：`geom/text.py`（text / label）、`geom/dist.py`（density / violin / dotplot / hex / bin2d / contour(_filled) / density_2d(_filled) / qq(_line) / quantile / function / count / jitter）。`AreaRenderer` 支持 `outline.type`；`CircleGrob` 支持 `r_axis`；`compute_position()` 保留 `setup_data()` 改变后的行数（dotplot 按 count 展开）；`PanelParams` 增加面板尺寸（text 的 `check_overlap` / label 的内边距换算）。 | M2-7 长尾 B：文本 / 点 / 分布 / 2D 族补齐；22 条新 case（文本 3 + label 1 + 其余每族 1–2 条）走 `stat = "identity"` + stat 形状的列，`cases:matrix` 100/100 通过。 |

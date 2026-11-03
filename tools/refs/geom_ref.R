@@ -942,7 +942,7 @@ fixture <- list(
   r_version = paste(R.version$major, R.version$minor, sep = "."),
   ggplot2_version = as.character(packageVersion("ggplot2")),
   scale = paste0(
-    "29 geom / ", length(cases), " case；data[[1]] 的列名+列序+kind+逐值；",
+    "49 geom / ", length(cases), " case；data[[1]] 的列名+列序+kind+逐值；",
     "panel_params 的 continuous_range；handle_na 的 warning"
   ),
   cases = cases

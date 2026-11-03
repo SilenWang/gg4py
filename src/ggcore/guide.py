@@ -1012,9 +1012,7 @@ _GEOM_KEYS: Mapping[str, Mapping[str, tuple[float, ...]]] = MappingProxyType(
         "qq_line": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
         "quantile": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
         "function": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
-        "bin2d": MappingProxyType(
-            {"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}
-        ),
+        "bin2d": MappingProxyType({"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}),
         "bin_2d": MappingProxyType(
             {"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}
         ),
@@ -1250,13 +1248,6 @@ class _KeyPanel:
 
     def position_of(self, axis: str, value: float) -> float:
         return float(value)
-
-    def project_xy(self, xs: Any, ys: Any) -> tuple[np.ndarray, np.ndarray]:
-        """`coord_munch()` 的入口：key 的数据坐标就是 npc，原样返回。"""
-        return (
-            np.asarray(xs, dtype=np.float64),
-            np.asarray(ys, dtype=np.float64),
-        )
 
     def backtransform_range(self) -> dict[str, tuple[float, float]]:
         return {"x": self.x_range, "y": self.y_range}

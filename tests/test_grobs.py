@@ -655,18 +655,29 @@ def test_transparent_and_na_paint_nothing() -> None:
     "lty,expected",
     [
         (1, ()),
-        # dashed (4,4) × max(lwd, 1)：R 的参考产线（svglite）按 gpar 的 lwd 换算段长，
-        # 小于 1 的 lwd 记作 1（细线的虚线不会退化成实线）。lwd = 2 → 8pt。
-        (2, (8.0, 8.0)),
-        ("dashed", (8.0, 8.0)),
-        ("44", (8.0, 8.0)),
-        ((1, 2, 3), (2.0, 4.0, 6.0)),
+        (2, (6.0, 6.0)),  # dashed (4,4) × lwd 1.5pt（R 的 lwd 2 = 2/96 in）
+        ("dashed", (6.0, 6.0)),
+        ("44", (6.0, 6.0)),
+        ((1, 2, 3), (1.5, 3.0, 4.5)),
     ],
 )
 def test_lty_is_folded_into_pt_dashes(lty, expected) -> None:
     tree = make_tree()
     instruction = only(scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lty=lty, lwd=2)), tree))
     assert instruction.gpar.lty == expected
+
+
+def test_thin_lines_keep_the_pt_dash_length() -> None:
+    """`lwd < 1` 时段长按 1 个 R lwd 算（SIL-737）：细线虚线不会画密。
+
+    R 的 `lwd` 单位是 1/96 inch；参考产线 svglite 对 lwd < 1 仍按 1 折算段长
+    （`lty = "dashed"` 恒为 4,4 × 0.75pt）。
+    """
+    tree = make_tree()
+    instruction = only(
+        scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lty="dashed", lwd=0.5)), tree)
+    )
+    assert instruction.gpar.lty == (3.0, 3.0)
 
 
 def test_lwd_is_converted_from_r_units_to_pt() -> None:
