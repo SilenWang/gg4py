@@ -1005,17 +1005,33 @@ class ContinuousScale(ScaleBase):
         return tuple(out)
 
     def minor_breaks(self) -> tuple[float, ...]:
-        """次断点 = 相邻主断点的中点（R 的 `get_breaks_minor()` 缺省口径）。
+        """次断点 = 相邻主断点的中点（R 的 `regular_minor_breaks()`，n = 2）。
+
+        口径照 `get_breaks_minor()`：喂进去的是**未 censor** 的主断点全序列
+        （R 的注释 "major breaks are not censored"），不是 :meth:`breaks` 过滤后
+        剩下的那截——先按 :meth:`breaks` 过滤会让最外两个半区间整个丢掉。R 还会
+        在 limits 超出主断点两端时各补一个 `bd` 宽的端点（`regular_minor_breaks`
+        的 "Allow minor breaks to extend outside major breaks towards limits"），
+        让次断点能贴到面板边界；中点取完再按面板范围过滤，范围外的不画。
 
         位置在主断点同一个（变换后的）空间里，所以 `scale_x_log10()` 的次网格
-        落在对数空间的中点，与 R 一致；越界主断点先按 :meth:`breaks` 的规则剔除。
+        落在对数空间的中点，与 R 一致。SIL-725。
         """
-        values = [value for value in self.breaks() if value is not None]
+        low, high = sorted(self.expanded_limits() or self.limits())
+        low, high = float(low), float(high)
+        if _zero_range(low, high):
+            return ()
+        values = [float(value) for value in self._raw_breaks() if math.isfinite(float(value))]
         if len(values) < 2:
             return ()
-        return tuple(
-            (float(first) + float(second)) / 2.0 for first, second in itertools.pairwise(values)
-        )
+        # 主断点间距取第一段的宽度（R：`bd <- diff(b)[1]`），两端按 limits 补齐。
+        step = values[1] - values[0]
+        if low < values[0]:
+            values.insert(0, values[0] - step)
+        if high > values[-1]:
+            values.append(values[-1] + step)
+        midpoints = ((first + second) / 2.0 for first, second in itertools.pairwise(values))
+        return tuple(value for value in midpoints if low <= value <= high)
 
     def labels(self) -> tuple[str | None, ...]:
         breaks = self.breaks()

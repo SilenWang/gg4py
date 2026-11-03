@@ -152,8 +152,12 @@ strip 的行高 / 列宽 = 文本高度 + 上下（左右）margin。顶部 stri
 顶部高度不变）；背景读 `strip.background.x` / `.y`（继承
 `strip.background`），落在 `FacetStrip.fill`，`element_blank()` 时为 None。
 M1-6 用 `0.955em × strip.text.size + margin` 近似 grid 的 `stringHeight()`
-（R 在 8.8pt 下量到 8.4pt / 0.6071cm；我们 0.6058cm，差 0.2%）。M1-7 接上
-`MetricProvider.strheight()` 后替换这个常量，测试容差同时收紧。
+（R 在 8.8pt 下量到 8.4pt / 0.6071cm；我们 0.6058cm，差 0.2%），无度量时保留
+这个历史口径。**真实渲染路径**（有 `metrics`）走设备口径：行高 = `TEXT_LINE_EM`
+（0.894em = R 的 `stringHeight()` + `font_descent()`，见 `docs/notes/guide.md`），
+8.8pt 下整行 16.67pt，与 svglite 的 16.66pt 对齐；早先误用
+`Metrics.strheight()`（只有 cap height，0.735em）会矮 1.4pt，分面的面板行因此
+高 1.4pt、竖向图例中心偏 0.7pt（SIL-725 修复）。
 
 wrap 有多个面板行时，行结构是
 `strip / panel / panel.spacing.y / strip / panel / …`——每个面板行上方都有

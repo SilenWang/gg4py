@@ -39,3 +39,6 @@ web/viewer/samples/
 
 # `pixi run viewer:cases` 的 gallery 资产（卡片链接按 viewer 根目录解析）
 web/viewer/gallery/
+
+# M1 出口复现件（`scripts/exit_report.py` / `.R`）的产物：随用随生成，不入库
+dist/

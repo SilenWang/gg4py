@@ -143,6 +143,13 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 `test_page_layout_covers_the_r_gtable_regions` 断言我们实现了同一组），但**行列数
 不同**——像素级差异来自各区域的尺寸（上面那张表），不是表格行数。
 
+**竖向图例的纵向位置**：R 的 guide 列挂在**面板行**上（strip 在 gtable 里是独立
+行，`guide-box-right` 的 `t`/`b` 只跨 panel 行），所以居中区 = 所有面板单元格的
+并集，顶部 / 底部 strip 带不算；分面时图例比整个 `panel_area` 的中心低半个 strip
+（2×2 + `theme_grey` 的 R 报告图：strip 16.66pt，中心 112.28 vs 103.95）。
+`tests/test_guide.py::test_vertical_legend_is_centred_on_the_panel_rows` 钉 ±0.1pt，
+单面板（没有 strip，panel 行 == `panel_area`）不许因此移动。SIL-725。
+
 ## 5. 轴
 
 - **断点 / 标签**取该面板自己的标度：`scale.breaks()` 给的是**变换后的空间**

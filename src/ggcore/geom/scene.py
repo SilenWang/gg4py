@@ -456,6 +456,16 @@ def plot_layout(
         caption_width = inner.width_cm if caption_position else panel_area.width_cm
         caption_box = Box(caption_x, inner.y_cm, caption_width, caption_cm)
 
+    # 竖向图例的居中区是**panel 单元格的并集**，不是整个 `panel_area`。
+    # R 里 facet 的 strip 是 gtable 的独立行，guide 列只跨 panel 行：顶部 /
+    # 底部 strip 带不算进去（行间的 strip 与 panel.spacing 夹在 panel 之间，
+    # 取并集时自然落在里面，不影响包围盒）。SIL-725。
+    panel_rows = panel_area
+    if panel_boxes:
+        rows_bottom = min(box.y_cm for box in panel_boxes.values())
+        rows_top = max(box.top for box in panel_boxes.values())
+        panel_rows = Box(panel_area.x_cm, rows_bottom, panel_area.width_cm, rows_top - rows_bottom)
+
     legend_boxes: list[Box] = []
     if legend_layouts:
         legend_boxes = _place_legends(
@@ -463,6 +473,7 @@ def plot_layout(
             position=position,
             inner=inner,
             panel_area=panel_area,
+            panel_rows=panel_rows,
             content_top=content_top,
             spacing=spacing,
             caption_cm=caption_cm,
@@ -503,6 +514,7 @@ def _place_legends(
     position: str | None,
     inner: Box,
     panel_area: Box,
+    panel_rows: Box,
     content_top: float,
     spacing: float,
     caption_cm: float,
@@ -512,15 +524,17 @@ def _place_legends(
 ) -> list[Box]:
     """图例盒的页面矩形。
 
-    竖向（right / left）在**面板区**里垂直居中（R 把 guide-box 挂在 panel 行上的
-    0.5null 里）；横向（top / bottom）贴着内容区的上/下边缘：top 在副标题行之下
+    竖向（right / left）在**panel 行**（`panel_rows`，所有面板单元格的并集）里
+    垂直居中：R 把 guide-box 挂在 panel 行上的 0.5null 里，facet 的顶部 / 底部
+    strip 带不在这一行，所以分面时图例比整个 `panel_area` 的中心低半个 strip。
+    横向（top / bottom）贴着内容区的上/下边缘：top 在副标题行之下
     （`content_top` 已经扣掉了 `legend.box.spacing`），bottom 在注脚之上。
     """
     gap = _legend_gap(theme)
     boxes: list[Box] = []
     if position in ("right", "left"):
         union_x = inner.right - conn_w if position == "right" else inner.x_cm
-        top = panel_area.y_cm + (panel_area.height_cm + conn_h) / 2.0
+        top = panel_rows.y_cm + (panel_rows.height_cm + conn_h) / 2.0
         for index, item in enumerate(layouts):
             y = top - sum(previous.height_cm for previous in layouts[:index]) - gap * index
             y -= item.height_cm
@@ -659,7 +673,8 @@ def _grid_positions(
     """一个面板的网格位置（npc 0..1），断点口径与 `axis_ticks()` 同源。
 
     major 用该面板标度的主断点，minor 用 `scale.minor_breaks()`（连续标度是相邻
-    主断点的中点）；离散标度没有次要网格。越界断点（`None`）不画。
+    主断点的中点，越界端点也算，取完再按面板范围过滤）；离散标度没有次要网格。
+    越界断点（`None`）不画。
     """
     if scale is None:
         return ()

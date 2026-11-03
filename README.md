@@ -79,6 +79,7 @@ tools/cases/         # 可视化快照渲染（viewport 快照 M0-4 / grob 快�
 tools/examples/      # 文档与验收用的 plot 模块（`ggsave` 的分面 + 图例图）
 tools/metrics/       # 兜底表生成 + CanvasKit 度量脚本（门禁复用）
 tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
+scripts/             # 出口复现件：exit_report.py / exit_report.R（同一张报告图，M1 验收用）
 benchmarks/          # pytest-benchmark 基线
 tests/               # 单元测试 + 门禁自测
 docs/notes/          # 口径与对照表：upstream / upstream-map / snapshot-policy / gates

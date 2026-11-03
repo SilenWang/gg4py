@@ -588,6 +588,33 @@ def test_facet_table_uses_labeller_and_theme_elements() -> None:
     assert blank.strip_height_cm == 0.0
 
 
+def test_strip_row_height_uses_the_device_text_line_caliber() -> None:
+    """有 metrics（真实渲染）时 strip 行高 = `TEXT_LINE_EM`，与 R 的 16.66pt 对齐。
+
+    R 的 strip 行 = `stringHeight()`（cap height）+ `font_descent()` + 上下 margin；
+    本项目的设备口径就是 `TEXT_LINE_EM`（0.894em，见 docs/notes/guide.md）。
+    8.8pt strip → 7.87pt 文字 + 8.8pt margin = 16.67pt。早先用
+    `Metrics.strheight()`（只有 cap height，0.735em）是 15.25pt，分面的面板行
+    因此比 R 高 1.4pt、竖向图例中心偏 0.7pt（SIL-725）。
+    """
+
+    class Metrics:
+        def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
+            del font
+            return 0.5 * float(fontsize) * float(cex) * len(text) / 72.0
+
+        def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
+            del text, font
+            return 0.735 * float(fontsize) * float(cex) / 72.0
+
+    plot = base_plot() + registry.facet_wrap(("a",), ncol=2)
+    table = build_plot(plot).facet_table(metrics=Metrics())
+    strip_pt = table.strip_height_cm * 72.0 / 2.54
+    assert strip_pt == pytest.approx(16.67, abs=0.05)
+    # 无度量时仍是 M1-6 的历史口径（0.955em），两套口径各自的用途都钉住。
+    assert build_plot(plot).facet_table().strip_height_cm == pytest.approx(0.6058, abs=5e-4)
+
+
 def test_facet_table_spacing_comes_from_panel_spacing() -> None:
     table = build_plot(wrap_plot(ncol=2)).facet_table()
     spacing = [str(unit) for unit in table.gtable.widths]

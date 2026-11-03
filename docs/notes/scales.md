@@ -119,8 +119,13 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 - `breaks = c(2, 4, 6)` 手动断点优先；`trans = "log10"` 时用
   `breaks_log()`（整十次幂，不够时走 `log_sub_breaks`）。
 - **次断点**（`panel.grid.minor` 的位置）由 `ScaleBase.minor_breaks()` 给：
-  连续标度 = 相邻主断点的中点（`None` 先剔除，log10 的中点也在对数空间）；
-  离散标度没有次网格（返回空）。SIL-723。
+  连续标度 = **未 censor 的主断点序列**（`extended_breaks` 的全序列，含越界端点）
+  的相邻中点，取完再按面板范围过滤；limits 超出主断点两端时先照 R 的
+  `regular_minor_breaks()` 各补一个 `bd` 宽的端点，次网格才能贴到面板边界。
+  log10 的中点也在对数空间；离散标度没有次网格（返回空）。SIL-723 / SIL-725。
+  修前先按 `breaks()` 过滤再求中点，最外两个半区间整个丢掉：x `[2, 30]` 只剩
+  15/25（R 是 5/15/25，35 在面板外不画），y `[2.34, 5.50]` 只剩 3.5/4.5
+  （R 是 2.5/3.5/4.5/5.5）。
 - 断点在**变换后**的空间里；`labels()` 反向变换回数据空间再格式化。
 - **越界断点记 `None`**（R 的 `NA`）：面板范围 expand 之后，`get_breaks()` 里
   落在外面的项会被 censor——`scale_x_log10()` 的默认断点是
