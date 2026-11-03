@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-quickmap", "aes-mapping"]
+ci = true
+title = "coord_quickmap：经纬度的等距圆柱近似"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "aspect = (y 跨度 / x 跨度) / cos(面板中心纬度)；面板在 4×3 页面里收成居中矩形。"

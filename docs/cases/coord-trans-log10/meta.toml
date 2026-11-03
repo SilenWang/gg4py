@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-trans", "aes-mapping"]
+ci = true
+title = "coord_trans：x 轴 log10 变换"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "范围先在变换后空间 expand（上游 expand_limits_continuous_trans），断点 10/100 落在对数位置。"

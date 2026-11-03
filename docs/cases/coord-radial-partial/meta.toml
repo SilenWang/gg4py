@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "aes-mapping"]
+ci = true
+title = "coord_radial：半圆（partial theta）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "arc = [-π/2, π/2]，bbox 由上游 `polar_bbox()` 给出（x 0..1、y 0.45..1）；面板高/宽 = 0.55。"

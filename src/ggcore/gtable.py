@@ -92,6 +92,14 @@ class CellBox:
     width_cm: float
     height_cm: float
 
+    @property
+    def right(self) -> float:
+        return self.x_cm + self.width_cm
+
+    @property
+    def top(self) -> float:
+        return self.y_cm + self.height_cm
+
 
 @dataclass(frozen=True, slots=True)
 class Placement:

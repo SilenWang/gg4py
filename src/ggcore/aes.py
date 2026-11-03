@@ -33,17 +33,67 @@ if TYPE_CHECKING:  # 仅用于类型标注；解析本身在 ggcore.eval，AesSp
     import ast
 
 __all__ = [
+    "X_AES",
+    "Y_AES",
     "Aes",
     "AesSpec",
     "AfterStat",
     "aes",
     "after_stat",
     "as_aes",
+    "flipped_names",
     "frozen_mapping",
     "frozen_value",
     "standardise_aes_name",
     "standardise_aes_names",
 ]
+
+#: ggplot2 的 `ggplot_global$x_aes` / `y_aes`（4.0.3）。两个表按位对应：
+#: `flipped_names()` 用它做 x 族 ↔ y 族的对换。放在这里而不是 `geom.base`，
+#: 因为 coord（`coord_flip` / 极坐标）与 geom 的横向逻辑都要用同一份名字表。
+X_AES: tuple[str, ...] = (
+    "x",
+    "xmin",
+    "xmax",
+    "xend",
+    "xintercept",
+    "xmin_final",
+    "xmax_final",
+    "xlower",
+    "xmiddle",
+    "xupper",
+    "x0",
+)
+Y_AES: tuple[str, ...] = (
+    "y",
+    "ymin",
+    "ymax",
+    "yend",
+    "yintercept",
+    "ymin_final",
+    "ymax_final",
+    "lower",
+    "middle",
+    "upper",
+    "y0",
+)
+
+
+def flipped_names(flip: bool = True) -> dict[str, str]:
+    """`switch_orientation()`：x 族 ↔ y 族的**对换**（两个方向都在表里）。
+
+    对换是自反的，所以同一个映射既能翻过去也能翻回来——与 R 的
+    `names(data) <- switch_orientation(names(data))` 一致。`flip=False` 时
+    返回空映射（调用方可以直接 `names.get(name, name)`）。
+    """
+    if not flip:
+        return {}
+    mapping: dict[str, str] = {}
+    for x_name, y_name in zip(X_AES, Y_AES, strict=True):
+        mapping[x_name] = y_name
+        mapping[y_name] = x_name
+    return mapping
+
 
 #: 上游 `.base_to_ggplot`（R/ggplot-global.R:31）：旧 R 名 → ggplot 名。
 #: 整名匹配；`color` → `colour` 的子串替换在 :func:`standardise_aes_name` 里做

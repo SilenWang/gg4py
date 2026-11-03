@@ -38,7 +38,6 @@ import numpy as np
 
 from ggcore import ir
 from ggcore.axis import (
-    AxisError,
     axis_extent,
     axis_grobs,
     axis_ticks,
@@ -57,6 +56,7 @@ from ggcore.grobs import (
     ZeroGrob,
     clip_path,
     g_tree,
+    polyline_grob,
     rect_grob,
     scene,
     segments_grob,
@@ -169,6 +169,13 @@ class PlotLayout:
     legend_layouts: tuple[Any, ...]
     legend_boxes: tuple[Box, ...]
     guides: tuple[GuideBuild, ...]
+    #: 次轴（M2-1）：top / right 两条 gtable 槽的占位与是否启用。
+    x_axis_top_cm: float = 0.0
+    y_axis_right_cm: float = 0.0
+    x_title_top_cm: float = 0.0
+    y_title_right_cm: float = 0.0
+    secondary_x: bool = False
+    secondary_y: bool = False
 
     @property
     def legend_width_cm(self) -> float:
@@ -309,6 +316,15 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
     return None
 
 
+def _secondary_title(build: PlotBuild, aesthetic: str, scale: Any) -> str | None:
+    """次轴的标题：`sec_axis(name=)` 优先，否则沿用主轴标题（R 的 waiver 口径）。"""
+    secondary = getattr(scale, "secondary_axis", None)
+    name = getattr(secondary, "name", None) if secondary is not None else None
+    if name is not None:
+        return str(name)
+    return _axis_title_text(build, aesthetic)
+
+
 def _legend_position(theme: ResolvedTheme) -> str | None:
     value = theme.get("legend.position")
     if value is None:
@@ -368,13 +384,48 @@ def plot_layout(
 
     x_axis = 0.0
     y_axis = 0.0
+    x_axis_top = 0.0
+    y_axis_right = 0.0
+    x_title_top = 0.0
+    y_title_right = 0.0
+    secondary_x = False
+    secondary_y = False
     for panel, params in _panels(build):
-        scale_x = _panel_scale(build, panel, "x")
-        scale_y = _panel_scale(build, panel, "y")
-        ticks_x = axis_ticks(scale_x, params, "bottom")
-        ticks_y = axis_ticks(scale_y, params, "left")
-        x_axis = max(x_axis, axis_extent(theme, ticks_x, metrics=metrics))
+        ticks_x = axis_ticks(
+            _panel_scale(build, panel, params.scale_key("bottom")), params, "bottom"
+        )
+        ticks_y = axis_ticks(_panel_scale(build, panel, params.scale_key("left")), params, "left")
+        if params.polar is None:
+            x_axis = max(x_axis, axis_extent(theme, ticks_x, metrics=metrics))
         y_axis = max(y_axis, axis_extent(theme, ticks_y, metrics=metrics))
+        top_scale = _panel_scale(build, panel, params.scale_key("top"))
+        right_scale = _panel_scale(build, panel, params.scale_key("right"))
+        if top_scale is not None and getattr(top_scale, "secondary_axis", None) is not None:
+            secondary_x = True
+            ticks_top = axis_ticks(top_scale, params, "top", secondary=True)
+            x_axis_top = max(x_axis_top, axis_extent(theme, ticks_top, metrics=metrics))
+            x_title_top = max(
+                x_title_top,
+                axis_title_extent(
+                    theme,
+                    "top",
+                    _secondary_title(build, params.scale_key("top"), top_scale),
+                    metrics=metrics,
+                ),
+            )
+        if right_scale is not None and getattr(right_scale, "secondary_axis", None) is not None:
+            secondary_y = True
+            ticks_right = axis_ticks(right_scale, params, "right", secondary=True)
+            y_axis_right = max(y_axis_right, axis_extent(theme, ticks_right, metrics=metrics))
+            y_title_right = max(
+                y_title_right,
+                axis_title_extent(
+                    theme,
+                    "right",
+                    _secondary_title(build, params.scale_key("right"), right_scale),
+                    metrics=metrics,
+                ),
+            )
     x_title = axis_title_extent(theme, "bottom", _axis_title_text(build, "x"), metrics=metrics)
     y_title = axis_title_extent(theme, "left", _axis_title_text(build, "y"), metrics=metrics)
 
@@ -411,11 +462,13 @@ def plot_layout(
 
     panel_bottom = content_bottom + x_axis + x_title
     panel_left = content_left + y_axis + y_title
+    panel_right = content_right - y_axis_right - y_title_right
+    panel_top = content_top - x_axis_top - x_title_top
     panel_area = Box(
         panel_left,
         panel_bottom,
-        content_right - panel_left,
-        content_top - panel_bottom,
+        panel_right - panel_left,
+        panel_top - panel_bottom,
     )
     if panel_area.width_cm <= 0 or panel_area.height_cm <= 0:
         raise ValueError(
@@ -423,8 +476,8 @@ def plot_layout(
             f"面板区 {panel_area.width_cm:.3f}×{panel_area.height_cm:.3f}cm"
             "（页太小，或主题里的 spacing 过大）"
         )
-
     table = build.facet_table(metrics=metrics)
+    panel_area = _aspect_panel_area(build, panel_area, table)
     facet_boxes = table.panel_boxes(panel_area.width_cm, panel_area.height_cm)
     panel_boxes = {
         panel: Box(
@@ -505,7 +558,51 @@ def plot_layout(
         legend_layouts=legend_layouts,
         legend_boxes=tuple(legend_boxes),
         guides=guides,
+        x_axis_top_cm=x_axis_top,
+        y_axis_right_cm=y_axis_right,
+        x_title_top_cm=x_title_top,
+        y_title_right_cm=y_title_right,
+        secondary_x=secondary_x,
+        secondary_y=secondary_y,
     )
+
+
+def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:
+    """把面板区收成坐标要求的比例（`Coord$aspect()`），居中放置（M2-1）。
+
+    R 的 `respect` 作用在**每个 panel 单元格**上：单元格高/宽 = `aspect`，strip /
+    spacing 的尺寸不变，多出来的空间在页面里居中。这里先用真实解析出的面板尺寸
+    反推固定开销（spacing + strip），再按 `aspect` 求最大的单元格，最后居中——
+    单面板与多面板同一套（`polar × facet` 的两块面板各自是正圆）。
+    """
+    params = None
+    for _, item in _panels(build):
+        params = item
+        break
+    if params is None:
+        return area
+    try:
+        aspect = params.aspect_ratio
+    except Exception:
+        aspect = None
+    if aspect is None:
+        return area
+    boxes = table.panel_boxes(area.width_cm, area.height_cm)
+    if not boxes:
+        return area
+    width, height = next(iter(boxes.values())).width_cm, next(iter(boxes.values())).height_cm
+    ncol = max(1, table.layout.ncol)
+    nrow = max(1, table.layout.nrow)
+    extra_w = area.width_cm - ncol * width
+    extra_h = area.height_cm - nrow * height
+    cell = min(width, (area.height_cm - extra_h) / (nrow * aspect))
+    used_w = ncol * cell + extra_w
+    used_h = nrow * aspect * cell + extra_h
+    if abs(used_w - area.width_cm) < 1e-12 and abs(used_h - area.height_cm) < 1e-12:
+        return area
+    x = area.x_cm + (area.width_cm - used_w) / 2.0
+    y = area.y_cm + (area.height_cm - used_h) / 2.0
+    return Box(x, y, used_w, used_h)
 
 
 def _place_legends(
@@ -632,11 +729,17 @@ def _panel_children(
 
     # 网格线顺序照 ggplot2 的 panel gtable：major 在 minor 之下，两者都在面板
     # 边框 / 图层之下（R 4.0.3 的 guide_grid() 只由主题元素给颜色、线型与线宽）。
-    for kind in ("major", "minor"):
-        for axis in ("x", "y"):
-            grid = _grid_grob(build, panel, params, theme, kind=kind, axis=axis)
-            if grid is not None:
-                children.append(grid)
+    # 极坐标 / 径向坐标换成「辐条 + 同心圆」（`CoordPolar$render_bg()` /
+    # `guide_grid()` 的极坐标形态）。
+    if params.polar is not None:
+        for kind in ("major", "minor"):
+            children.extend(_polar_grid_grobs(build, panel, params, theme, kind=kind))
+    else:
+        for kind in ("major", "minor"):
+            for axis in ("x", "y"):
+                grid = _grid_grob(build, panel, params, theme, kind=kind, axis=axis)
+                if grid is not None:
+                    children.append(grid)
 
     element = theme.get("panel.border")
     if isinstance(element, ElementRect):
@@ -678,10 +781,6 @@ def _grid_positions(
     """
     if scale is None:
         return ()
-    low, high = params.x_range if axis == "x" else params.y_range
-    span = float(high) - float(low)
-    if span == 0:
-        raise AxisError(f"{axis} 轴的面板范围跨度为 0（{low!r} == {high!r}）")
     values = scale.minor_breaks() if minor else scale.breaks()
     discrete = bool(getattr(scale, "discrete", False))
     levels = tuple(scale.levels) if discrete else ()
@@ -698,7 +797,7 @@ def _grid_positions(
             number = float(value)
             if not math.isfinite(number):
                 continue
-        position = (number - float(low)) / span
+        position = params.position_of(axis, number)
         if not math.isfinite(position):
             continue
         if -1e-9 <= position <= 1.0 + 1e-9:
@@ -723,7 +822,7 @@ def _grid_grob(
     colour = paint(element.colour)
     if colour is None:
         return None
-    scale = _panel_scale(build, panel, axis)
+    scale = _panel_scale(build, panel, params.scale_key(axis))
     positions = _grid_positions(scale, params, axis, minor=kind == "minor")
     if not positions:
         return None
@@ -753,6 +852,115 @@ def _grid_grob(
         gp=gp,
         name=name,
     )
+
+
+def _polar_grid_grobs(
+    build: PlotBuild,
+    panel: int,
+    params: PanelParams,
+    theme: ResolvedTheme,
+    *,
+    kind: str,
+) -> list[Any]:
+    """极坐标的网格：theta 辐条（中心 → 0.45）+ r 同心圆（100 点折线）。
+
+    几何逐条照 `CoordPolar$render_bg()`：辐条从 `(0.5, 0.5)` 到
+    `0.45·sin/cos + 0.5`；圆在 `r_rescale(r.major) + 0.45` 处（外圈额外的 0.45
+    也画）。径向坐标走 `guide_grid()` 的极坐标形态：辐条从内半径起、圆只按 r
+    断点（major / minor 各取自己那套）。颜色 / 线型 / 线宽取
+    `panel.grid.<kind>.<theta|r>`。
+    """
+    polar = params.polar
+    assert polar is not None  # 调用点已判过
+    theta_scale = _panel_scale(build, panel, polar.theta_axis)
+    r_scale = _panel_scale(build, panel, polar.r_axis)
+    grobs: list[Any] = []
+
+    theta_element = theme.get(f"panel.grid.{kind}.{polar.theta_axis}")
+    colour = paint(getattr(theta_element, "colour", None))
+    if isinstance(theta_element, ElementLine) and colour is not None and theta_scale is not None:
+        values = theta_scale.minor_breaks() if kind == "minor" else theta_scale.breaks()
+        angles: list[float] = []
+        for value in values:
+            if value is None:
+                continue
+            number = _value_code(theta_scale, value)
+            if number is None:
+                continue
+            angles.append(float(polar.theta_angle(np.array([number]))[0]))
+        if angles:
+            outer = 0.4 if polar.radial else 0.45
+            inner = polar.inner_radius[0] if polar.radial else 0.0
+            x0, y0 = polar.point(np.array(angles), np.full(len(angles), inner))
+            x1, y1 = polar.point(np.array(angles), np.full(len(angles), outer))
+            xs = np.empty(len(angles) * 2)
+            ys = np.empty(len(angles) * 2)
+            xs[0::2], xs[1::2] = x0, x1
+            ys[0::2], ys[1::2] = y0, y1
+            grobs.append(
+                segments_grob(
+                    xs.tolist(),
+                    ys.tolist(),
+                    xs.tolist(),
+                    ys.tolist(),
+                    default_units="npc",
+                    gp=_grid_gpar(theta_element, colour),
+                    name=f"panel.grid.{kind}.{polar.theta_axis}",
+                )
+            )
+
+    r_element = theme.get(f"panel.grid.{kind}.{polar.r_axis}")
+    colour = paint(getattr(r_element, "colour", None))
+    if isinstance(r_element, ElementLine) and colour is not None and r_scale is not None:
+        values = r_scale.minor_breaks() if kind == "minor" else r_scale.breaks()
+        radii: list[float] = []
+        for value in values:
+            if value is None:
+                continue
+            number = _value_code(r_scale, value)
+            if number is None:
+                continue
+            radii.append(float(polar.radius(np.array([number]))[0]))
+        if not polar.radial:
+            radii.append(0.45)
+        angles = np.linspace(0.0, 2.0 * math.pi, 100)
+        for radius in radii:
+            xs, ys = polar.point(angles, np.full(angles.size, radius))
+            grobs.append(
+                polyline_grob(
+                    xs.tolist(),
+                    ys.tolist(),
+                    default_units="npc",
+                    gp=_grid_gpar(r_element, colour),
+                    name=f"panel.grid.{kind}.{polar.r_axis}",
+                )
+            )
+    return grobs
+
+
+def _grid_gpar(element: Any, colour: str) -> Any:
+    return gpar(
+        col=colour,
+        lwd=_mm_to_pt(element.linewidth),
+        lty=element.linetype if element.linetype is not None else 1,
+        lineend="butt",
+        linejoin="round",
+    )
+
+
+def _value_code(scale: Any, value: Any) -> float | None:
+    """断点值 → 数值（离散按水平序号 1..n）；不认识 / 非有限给 None。"""
+    discrete = bool(getattr(scale, "discrete", False))
+    if discrete:
+        try:
+            return float(tuple(scale.levels).index(str(value)) + 1)
+        except ValueError:
+            return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _panel_rows(data: ColumnTable, panel: int) -> ColumnTable | None:
@@ -844,11 +1052,38 @@ def _axis_grobs(
         if box is None:  # pragma: no cover
             continue
         cell = CellBox(1, 1, 1, 1, box.x_cm, box.y_cm, box.width_cm, box.height_cm)
-        ticks_x = axis_ticks(_panel_scale(build, panel, "x"), params, "bottom")
-        ticks_y = axis_ticks(_panel_scale(build, panel, "y"), params, "left")
+        scale_bottom = _panel_scale(build, panel, params.scale_key("bottom"))
+        scale_left = _panel_scale(build, panel, params.scale_key("left"))
+        scale_top = _panel_scale(build, panel, params.scale_key("top"))
+        scale_right = _panel_scale(build, panel, params.scale_key("right"))
+        ticks_x = axis_ticks(scale_bottom, params, "bottom")
+        ticks_y = axis_ticks(scale_left, params, "left")
         grobs.extend(axis_grobs(theme, ticks_x, cell, metrics=metrics, name=f"axis-x-{panel}"))
         grobs.extend(axis_grobs(theme, ticks_y, cell, metrics=metrics, name=f"axis-y-{panel}"))
         grobs.extend(_axis_line_grobs(theme, cell, name=f"axis-line-{panel}"))
+        # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推。
+        if scale_top is not None and getattr(scale_top, "secondary_axis", None) is not None:
+            grobs.extend(
+                axis_grobs(
+                    theme,
+                    axis_ticks(scale_top, params, "top", secondary=True),
+                    cell,
+                    metrics=metrics,
+                    name=f"axis-x-sec-{panel}",
+                )
+            )
+        if scale_right is not None and getattr(scale_right, "secondary_axis", None) is not None:
+            grobs.extend(
+                axis_grobs(
+                    theme,
+                    axis_ticks(scale_right, params, "right", secondary=True),
+                    cell,
+                    metrics=metrics,
+                    name=f"axis-y-sec-{panel}",
+                )
+            )
+        if params.polar is not None:
+            grobs.extend(_polar_theta_grobs(build, panel, params, theme, cell, metrics))
     area = layout.panel_area
     if x_title:
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
@@ -876,7 +1111,90 @@ def _axis_grobs(
         )
         if grob is not None:
             grobs.append(grob)
+    if layout.secondary_x or layout.secondary_y:
+        for panel, params in _panels(build):
+            box = layout.panel_boxes.get(panel)
+            if box is None:
+                continue
+            fake = CellBox(1, 1, 1, 1, box.x_cm, box.y_cm, box.width_cm, box.height_cm)
+            if layout.secondary_x:
+                scale = _panel_scale(build, panel, params.scale_key("top"))
+                title = _secondary_title(build, params.scale_key("top"), scale)
+                grob = axis_title_grob(
+                    theme,
+                    "top",
+                    title,
+                    fake,
+                    labels_extent_cm=layout.x_axis_top_cm,
+                    metrics=metrics,
+                    name="axis-title-x-sec",
+                )
+                if grob is not None:
+                    grobs.append(grob)
+            if layout.secondary_y:
+                scale = _panel_scale(build, panel, params.scale_key("right"))
+                title = _secondary_title(build, params.scale_key("right"), scale)
+                grob = axis_title_grob(
+                    theme,
+                    "right",
+                    title,
+                    fake,
+                    labels_extent_cm=layout.y_axis_right_cm,
+                    metrics=metrics,
+                    name="axis-title-y-sec",
+                )
+                if grob is not None:
+                    grobs.append(grob)
     return grobs
+
+
+def _polar_theta_grobs(
+    build: PlotBuild,
+    panel: int,
+    params: PanelParams,
+    theme: ResolvedTheme,
+    box: CellBox,
+    metrics: Any,
+) -> list[Any]:
+    """极坐标的 theta 标签（画在面板里、半径 0.45 处，`hjust = vjust = 0.5`）。
+
+    与 R `CoordPolar$render_fg()` 同口径：标签用 `axis.text.x` 的样式，位置
+    `0.45·sin/cos + 0.5`；首尾重合时上游已把文字合并成 `"a/b"`（见
+    `ggcore.axis.polar_theta_ticks`）。
+    """
+    from ggcore.axis import polar_theta_ticks
+
+    polar = params.polar
+    assert polar is not None
+    scale = _panel_scale(build, panel, polar.theta_axis)
+    entries = polar_theta_ticks(scale, params)
+    if not entries:
+        return []
+    from ggcore.axis import _text_element
+
+    element = _text_element(theme, "bottom")
+    if not isinstance(element, ElementText):
+        return []
+    gp = gpar(
+        col=paint(element.colour) or "black",
+        fontsize=float(element.size or 8.8),
+        fontfamily=element.family or "",
+        font=_font_int(element.face),
+        lineheight=float(element.lineheight or 1.2),
+    )
+    return [
+        text_grob(
+            text,
+            box.x_cm + x_npc * box.width_cm,
+            box.y_cm + y_npc * box.height_cm,
+            hjust=0.5,
+            vjust=0.5,
+            default_units="cm",
+            gp=gp,
+            name=f"axis-theta-{panel}-{index}",
+        )
+        for index, (x_npc, y_npc, text) in enumerate(entries)
+    ]
 
 
 def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[Any]:

@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "facet-wrap", "aes-mapping"]
+ci = true
+title = "coord_polar × facet_wrap：两块正圆面板"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "重点回归：`aspect = 1` 作用在每个 panel 单元格上，spacing / strip 不变，整块居中（R 的 respect）。"

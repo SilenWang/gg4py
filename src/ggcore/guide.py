@@ -24,7 +24,8 @@
   行：标题 / key 行
 ```
 
-未实现（明确报错、点名）：`guide_bins`、`legend.position="inside"`、secondary axis
+未实现（明确报错、点名）：`guide_bins`、`legend.position="inside"`（secondary axis 由
+M2-1 的 `ggcore.axis.secondary_ticks()` 实现，不在本模块）
 （轴在 `ggcore.axis` 报）、`legend.frame` 以外的高级图例盒子主题。
 """
 
@@ -723,12 +724,24 @@ class _KeyPanel:
     x_limits = (0.0, 1.0)
     y_limits = (0.0, 1.0)
 
+    #: 线性 / 不翻转 / 不极坐标：geom 的 `npc_values()` 需要的三个能力。
+    flipped = False
+    polar = None
+    trans: Mapping[str, Any] = {}
+
     def transform(self, column: Column, aesthetic: str = "x") -> Column:
         values = np.asarray(column.values, dtype=np.float64)
         mask = np.asarray(column.na_mask, dtype=bool)
         out = values.copy()
         out[mask] = 0.0
         return Column("float", out, na_mask=mask)
+
+    def transform_column(self, table: Any, name: str, axis: str) -> Column:
+        """key 数据坐标本来就是 0..1，直接原样返回（`PanelParams` 的对等物）。"""
+        return self.transform(table.column(name), axis)
+
+    def position_of(self, axis: str, value: float) -> float:
+        return float(value)
 
 
 def _geom_of(layer: LayerBuild) -> Any:

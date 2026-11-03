@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-trans", "scale-discrete"]
+ci = true
+title = "coord_trans：y 轴 sqrt（x 是离散轴）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "离散 x 不参与 y 的变换；面板 y 范围 = sqrt 空间的 base 再 expand。"

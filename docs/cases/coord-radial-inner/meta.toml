@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "aes-mapping"]
+ci = true
+title = "coord_radial：内半径 0.3（甜甜圈）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`r_rescale()` 的 donut = inner_radius × 0.4 .. 0.4；r 轴位置也随之抬高。"

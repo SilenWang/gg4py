@@ -445,8 +445,10 @@ def test_plus_and_chain_aliases_share_the_registry() -> None:
 
 
 def test_unknown_coord_and_param_are_rejected() -> None:
+    # M2-1 起 polar / flip / trans / radial / sf / map / quickmap / equal 都已实现；
+    # 这里只剩「注册表里根本没有的名字」。
     with pytest.raises(CoordError, match="尚未实现"):
-        coord_from_component(Coord("polar"))
+        coord_from_component(Coord("triangular"))
     with pytest.raises(CoordError, match="不认识参数"):
         build_plot(base_plot() + registry.coord_cartesian(foo=1))
     with pytest.raises(CoordError, match="不认识参数"):

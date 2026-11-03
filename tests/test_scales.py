@@ -734,19 +734,23 @@ def test_minor_breaks_log10_midpoints_are_in_log_space() -> None:
     assert 10.0**0.5 not in minor and 1.0 not in minor
 
 
-def test_sec_axis_is_rejected_on_both_entry_points() -> None:
-    """`sec.axis` 不再静默：`+` 入口与方法链入口都点名报错（修前两条都静默）。"""
+def test_sec_axis_is_accepted_and_validated() -> None:
+    """M2-1 起 `sec.axis` 是正式入口：两条写法都收，非 `SecondaryAxis` 报错。"""
+    from ggcore.axis import SecondaryAxis, dup_axis, sec_axis
+
     table = ColumnTable(
         [("x", Column("float", np.array([1.0, 2.0]))), ("y", Column("float", np.array([1.0, 2.0])))]
     )
     plot = ggplot(table, aes(x="x", y="y")) + geom_point()
-    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
+    plus = plot + scale_x_continuous(**{"sec.axis": sec_axis(lambda v: v * 2)})
+    chain = plot.scale_x_continuous(**{"sec.axis": sec_axis(lambda v: v * 2)})
+    assert isinstance(plus.scales["x"].params["sec.axis"], SecondaryAxis)
+    assert isinstance(chain.scales["x"].params["sec.axis"], SecondaryAxis)
+    dup = plot.scale_y_continuous(**{"sec_axis": dup_axis()})
+    assert dup.scales["y"].params["sec_axis"].is_identity
+    # 不是 sec_axis() / dup_axis() 的结果 → 在同一条解析路径上报错。
+    with pytest.raises(ScaleError, match=r"sec[._]axis"):
         plot + scale_x_continuous(**{"sec.axis": "x"})
-    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
-        plot.scale_x_continuous(**{"sec.axis": "x"})
-    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
-        plot.scale_y_continuous(**{"sec_axis": 1})
-    # 直接构造组件也要在同一条解析路径上报错（plotspec / 反序列化入口）。
     with pytest.raises(ScaleError, match=r"sec[._]axis"):
         scale_from_component(Scale("x_continuous", "x", {"sec.axis": "x"}))
 

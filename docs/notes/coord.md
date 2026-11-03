@@ -164,26 +164,175 @@ M0 交接的遗留口径在本任务收口：
 
 测试：`tests/test_viewport.py::test_root_native_units_are_device_inches`。
 
-## 6. 不支持清单（本任务明确不做）
+## 6. M2-1：`coord_*` 全量（12 个导出）
+
+4.0.3 NAMESPACE 的 12 个 `coord_*` 导出全部落地（`coord_munch` 是函数，不是
+坐标系构造器）：
+
+| 导出 | 实现 | 关键口径 |
+| --- | --- | --- |
+| `coord_cartesian` | `CartesianCoord` | 范围 / `xlim` / `expand` / `clip` / `reverse` / `ratio` |
+| `coord_fixed` | `FixedCoord` | `aspect = ratio × y 跨度 / x 跨度` |
+| `coord_equal` | `EqualCoord` | 就是 `coord_cartesian(ratio = 1)`（上游同） |
+| `coord_flip` | `FlipCoord` | 见 §7；**不是**交换 x/y 映射 |
+| `coord_trans` / `coord_transform` | `TransCoord` | 见 §8；`coord_trans()` 在 4.0.3 已弃用，仍导出 |
+| `coord_polar` | `PolarCoord` | 见 §9；`theta` / `start` / `direction` / `clip` |
+| `coord_radial` | `RadialCoord` | 见 §9；partial arc / `inner.radius` / `reverse` / `r.axis.inside` |
+| `coord_sf` / `coord_map` / `coord_quickmap` | `SfCoord` / `MapCoord` / `QuickmapCoord` | 见 §11（最小可用） |
+| `coord_munch` | `ggcore.coord.coord_munch()` | 见 §10（非线性坐标的逐边细分） |
+
+`PanelParams` 新增（都有默认值，旧调用点不受影响）：
+
+- `flipped`：`coord_flip` 的屏幕轴 ↔ 数据轴对调；
+- `trans`：`{axis: CoordTransform}`（`coord_trans`）；
+- `cont_ranges`：上游的 `continuous_range`（标度空间的 expand 结果；断点与
+  次轴用它，`coord_cartesian(xlim=)` 下与 `ranges` 不同）；
+- `polar`：`PolarGeometry`（theta / r 范围、`arc`、`inner_radius`、`bbox`、
+  `axis_rotation`）；
+- `reverse`：`{axis: bool}`（只翻转映射 `1 - t`，不改范围）。
+
+两个入口（`+` 与方法链）由注册表统一生成；**位置参数**按上游签名落位：
+`coord_polar("y")`、`coord_fixed(2)`、`coord_transform("log10")`、
+`coord_radial(inner_radius=0.3)`（点号名在 Python 侧折成下划线）。
+
+## 7. `coord_flip`
+
+上游（`CoordFlip`）做的是三件事，这里逐条落实、geom 里**不判断 coord 名字**：
+
+1. `flip_axis_labels(data)`：`transform_column()` 读对侧列（`x` ← `y`，
+   `xmin` ← `ymin` …；表在 `ggcore.aes.flipped_names()`）；
+2. `flip_axis_labels(panel_params)`：`x_range` / `y_range`、`*_limits`、
+   `cont_ranges`、`discrete` 全部对调；
+3. `setup_layout()` 交换 `SCALE_X` / `SCALE_Y`：底部轴用原 y 标度（位置按
+   `x_range`），左侧轴用原 x 标度——`PanelParams.scale_key("bottom")` 给出这一点。
+
+所以 `geom_col() + coord_flip()` 就是横向柱：柱的数据列不变，屏幕坐标在
+`transform_column()` 里换边。`coord_flip` 接受 `xlim` / `ylim` / `ratio` /
+`reverse`（上游继承 `CoordCartesian`）。
+
+## 8. `coord_trans` / `coord_transform`
+
+- 变换在**标度空间之后**再作用一次（上游 `CoordTransform$transform()`）：
+  `data$x` 已经是标度变换后的值，`coord_trans` 再套一次 `trans$x$transform`。
+- 面板范围：`expand(trans(base))`，**先变换再 expand**（上游
+  `expand_limits_continuous_trans()`）。例：identity 标度 + `x = "log10"`、
+  数据 1.513..5.424 → `log10` 空间 0.180..0.734 → 面板 `0.152..0.762`。
+  `continuous_range` 是反变换回标度空间的结果（断点用它）。
+- 刻度位置：`rescale(trans(break), range)`；标签仍是未变换的断点文本。
+- 已实现的名字：`identity` / `log` / `log2` / `log10` / `log1p` / `exp` /
+  `sqrt` / `reciprocal` / `reverse`，也接受函数（函数没有逆变换，涉及反演时
+  报 `CoordError`）。其余（`boxcox` / `logit` / `probit` …）点名报错。
+- 定义域外（`log10` 的 0 / 负值）在范围计算阶段就报错，不静默画 NaN。
+
+## 9. `coord_polar` / `coord_radial`
+
+范围与上游 `CoordPolar$setup_panel_params()` 一致：
+
+| 轴 | 展开 |
+| --- | --- |
+| theta（`coord_polar`） | 离散 `add = 0.5`（**不是** 0.6）、连续不展开 |
+| r（`coord_polar`） | 不展开 |
+| theta / r（`coord_radial`） | 标度默认展开（连续 5% / 离散 add 0.6），`expand = FALSE` 关闭 |
+
+映射：`theta_rescale()`（弧度，`start` + `direction`，`%% 2π`）与
+`r_rescale()`（默认 donut `0..0.4`，radial 用 `inner.radius·0.4 .. 0.4`），
+`x = r·sin θ + 0.5`、`y = r·cos θ + 0.5`；partial arc（`start` / `end`）再按
+上游 `polar_bbox()` 的包围盒缩放。`coord_radial` 默认 `clip = "off"`，
+`coord_polar` 是 `"on"`。
+
+渲染（`ggcore.geom.scene`）：
+
+- 背景网格换成「theta 辐条 + r 同心圆」：辐条 `0 → 0.45`（radial 从内半径
+  到 0.4），圆按 `r` 断点采样 100 点（polar 额外画 0.45 外圈）；
+- theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
+  0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
+- r 轴在 `left` 槽，位置 `r_rescale(r) + 0.5`（`r.axis.inside` 时不上槽）；
+- `aspect = 1`（polar）或 `diff(bbox$y)/diff(bbox$x)`（radial）作用在**每个
+  panel 单元格**上：spacing / strip 不变，整块居中（R 的 `respect`）。
+  `coord-polar-facet` 的 141.26pt 面板宽度与 R 逐像素一致。
+
+**已知差异（theme 带的轴）**：R 的 `CoordPolar$render_axis_h()` 返回
+`draw_axis(NA, "", "bottom")`，在 gtable 里给底部轴留了约 0.147cm（8.8pt
+主题）的空行；我们按 0 处理，所以带轴的 polar 图比 R 高约 7px。coord 案例
+统一用 `theme_void()`，几何逐像素对拍；轴本身的断点 / 标签由 R 夹具对拍。
+
+## 10. `coord_munch()`
+
+非线性坐标（polar / radial / 非 identity 的 `coord_trans`）下，rect / polygon
+的边不能只变换端点（会变成弦）。`coord_munch(panel, table, ...)`：
+
+- 线性坐标直接 `project_xy()`（与上游 `if (coord$is_linear())` 同）；
+- 非线性坐标按**数据空间**的归一化距离（除以面板跨度）细分（默认
+  `segment_length = 0.01`），再逐点投影；`is_closed=True` 先闭合成多边形。
+
+geom 侧唯一的分支点是 `panel.is_linear`（能力判断，不是 coord 名字）：
+`geom_bar` / `geom_col` / `geom_histogram` 走 `_munch_rects()`，
+`geom_area` 走 `_munch_area()`。玫瑰图（`coord-polar-bar`）因此逐像素通过。
+
+## 11. `coord_sf` / `coord_map` / `coord_quickmap`（最小可用）
+
+真正的空间能力（投影 / graticule / sf 几何）归 **M3-2**。M2-1 的范围：
+
+- `coord_sf()` 无参数可用（identity），`aspect = (y 跨度 / x 跨度) / cos(中纬度)`
+  的经纬度修正**没有**做（需要 CRS）；给 `crs` / `default_crs` / `datum`
+  直接报 `CoordError` 并点名 M3-2。
+- `coord_map()` 只有 `projection = "identity"` 可用；默认的 `"mercator"`
+  需要 mapproj，同样点名报错。
+- `coord_quickmap()` 可用：`aspect = (y/x) / cos(面板中心纬度)`，与上游
+  `CoordQuickmap$aspect()` 同式；`coord-quickmap` 案例逐像素对拍（0.14%）。
+
+## 12. 次轴（`sec_axis()` / `dup_axis()`）
+
+- `scale_y_continuous(sec.axis = sec_axis(~ . * 2, name = "double"))`：断点 /
+  标签由 `ggcore.axis.secondary_ticks()` 推出（上游
+  `AxisSecondary$break_info()` 的移植）：主轴 `continuous_range` 上取 1000 个
+  样点 → 变换 → `extended_breaks()` → `np.interp()` 反演回主轴值 → npc。
+  变换必须严格单调，否则报 `AxisError`。
+- `dup_axis()` 是 `sec_axis(identity)`：位置 / 标签与主轴完全相同。
+- 次轴画在 **top / right** 槽（R 的 axis-t / axis-r），主轴仍是 bottom / left；
+  两边的占位分别计算（`x_axis_top_cm` / `y_axis_right_cm` +
+  `x_title_top_cm` / `y_title_right_cm`），次轴不会把主轴槽撑大。
+- 极坐标 / 径向坐标下的次轴（`r.sec` / `theta.sec`）明确报
+  `AxisError`（M2-1 未做）。
+- `sec_axis()` 的 `breaks` 目前只接受 2 元范围（R 的 `c(lo, hi)` 形式）；
+  自定义函数 / 标签照上游支持。
+
+## 13. 不支持清单（M2-1 之后仍缺）
 
 | 能力 | 现状 | 计划 |
 | --- | --- | --- |
-| `coord_polar` / `coord_flip` / `coord_trans` / `coord_sf` | 未注册；`coord_from_component` 报「尚未实现」 | 后续 coord 任务 |
-| facet free scales（每个 panel 一套范围） | 只有一张 panel | M1-6 |
-| secondary axis（`sec_axis`） | 不支持 | M1-11 之后 |
-| coord 级别的刻度 / guide 绘制 | 不做；只给范围 | M1-11 |
-| 反向坐标（`reverse`） | 不支持 | 后续 |
-| `clip = "off"` 的实际裁剪行为 | 只记录参数 | M1-7 的 geom 绘制 |
-| 非矩形 clipPath / mask | 不支持 | 见 `docs/notes/viewport.md` |
+| polar / radial 的 `theta.sec` / `r.sec` 次轴 | 明确报错 | 后续 coord 任务 |
+| polar 带轴时的空轴行（≈0.147cm，见 §9） | 不占位 | 与 theme 口径一起收 |
+| 非矩形 clipPath（radial 的扇形裁剪） | 只有矩形裁剪；数据在 arc 外不会被裁掉 | IR 多边形 clip 接入后 |
+| `coord_sf` 的真实投影 / graticule | 明确报错（M3-2） | M3-2 |
+| `coord_map` 的 mapproj 投影 | 明确报错（M3-2） | M3-2 |
+| facet free scales × `coord_trans` | 每面板范围独立，但断点仍共用一个 `continuous_range` | 后续 |
+| 离散标度的显式 `limits` 里没有数据的水平 | `levels` 不含它（M1-4 缺口），轴断点会少一个 | SIL-715 同族 |
 
-`coord_cartesian` / `coord_fixed` 的参数集合是封闭的：不认识的参数直接报错
-（与 R 的 unused argument 一致），不会静默吞掉。
+`coord_*` 的参数集合是封闭的：不认识的参数直接报错（与 R 的 unused argument
+一致），不会静默吞掉。
 
-## 7. 验收命令
+## 14. 验收命令
 
 ```bash
 pixi run check                       # 全量门禁（含 gate:imports / gate:determinism）
 pixi run -e refs refs:coord          # 重新生成 R 夹具（产物入库，CI 不装 R）
+pixi run -e refs refs:cases          # 重画 docs/cases/*/expected.svg（含 coord 族）
 pixi run cases:coord                 # PNG / SVG 等比例测量，产物在 .coord-aspect/
-pixi run pytest tests/test_coord.py tests/test_coord_r_parity.py tests/test_coord_aspect.py -q
+pixi run pytest tests/test_coord.py tests/test_coord_ext.py \
+  tests/test_coord_r_parity.py tests/test_coord_aspect.py -q
 ```
+
+coord 族的案例（`docs/cases/coord-*`，12 条，全部 `ci = true`）：
+
+| case | 演示 |
+| --- | --- |
+| `coord-flip-points` / `coord-flip-bar` | flip 的点 / 横向柱 |
+| `coord-trans-log10` / `coord-trans-sqrt` | 逐轴变换 |
+| `coord-equal` | 等比例面板 |
+| `coord-polar-bar` | 玫瑰图（munch 弧边） |
+| `coord-polar-facet` | polar × facet（每块面板正圆） |
+| `coord-polar-theta-y` | theta = y |
+| `coord-radial-partial` / `coord-radial-inner` | partial arc / 甜甜圈 |
+| `coord-sec-axis` | 右侧次轴 + 标题 |
+| `coord-quickmap` | 经纬度的等距圆柱近似 |
