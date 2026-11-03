@@ -1670,6 +1670,12 @@ def _stat_ydensity(
         ]
         if quantiles is not None and quantiles.size:
             order.append("quantile")
+        # `width` 只在 geom 需要时保留（上游 `omit = "width"` 把这个参数从 stat 里
+        # 去掉）。R 的 `compute_group()` 把它按行展开，分位线那几行也带同一份宽度，
+        # 所以长度必须跟着**合并后**的列走，不能再用单个分组的密度网格长度。
+        if width is not None:
+            order.append("width")
+            columns["width"] = np.full(np.asarray(columns["y"]).size, float(width))
         # 有分位线时 R 的 `vec_c()` 把 n 抬成 double（分位行是插值出来的）；没有
         # 分位线时 `n` 保持 integer。
         has_quantiles = quantiles is not None and quantiles.size > 0
@@ -1680,9 +1686,6 @@ def _stat_ydensity(
                 output.append((name, Column("int", np.asarray(values, dtype=np.float64))))
             else:
                 output.append((name, _float_column(values)))
-        # `width` 只在 geom 需要时保留（上游 `omit = "width"` 把这个参数从 stat 里去掉）。
-        if width is not None:
-            output.append(("width", _float_column([float(width)] * dens_y.size)))
         return output
 
     result = _compute_panel(work, group_fn, stat="ydensity")

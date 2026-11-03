@@ -456,6 +456,59 @@ def test_violin_uses_violinwidth_and_closes_the_polygon() -> None:
     assert points[3][0] - points[2][0] > 1.0
 
 
+def test_violin_quantile_lines_use_the_quantile_gp_params() -> None:
+    """`quantile.*` 落到分位线：缺省 `linetype = 0` 一条不画，显式给了才画。
+
+    4.0.3 的 `GeomViolin$draw_group()` 在 `all(quantile_gp$linetype == 0)` 时早退，
+    默认 `quantile.linetype = 0L` 就是这条；`quantile.colour` / `quantile.linewidth`
+    覆盖的是分位线自己的画笔，不是数据的美学列（SIL-794 的 styled quantiles 快照）。
+    """
+    rng = np.random.default_rng(4)
+    data = to_column_table({"x": ["a"] * 40, "y": rng.normal(size=40).tolist()})
+
+    plain = _scene(ggplot(data, aes(x="x", y="y")) + registry.geom_violin())
+    assert _kinds(plain, "polyline") == []
+
+    styled = _scene(
+        ggplot(data, aes(x="x", y="y"))
+        + registry.geom_violin(
+            **{
+                "quantile.colour": "red",
+                "quantile.linetype": "dotted",
+                "quantile.linewidth": 2,
+            }
+        )
+    )
+    lines = _kinds(styled, "polyline")
+    assert len(lines) == 3  # 默认 quantiles = c(0.25, 0.5, 0.75)
+    for line in lines:
+        assert line.gpar.col == (255, 0, 0, 255)
+        dash = tuple(float(segment) for segment in line.gpar.lty)
+        assert len(dash) == 2
+        assert dash[1] / dash[0] == pytest.approx(3.0)  # dotted = c(1, 3)
+        assert line.gpar.lwd > 2 * 0.5  # 默认 linewidth = 0.5
+        points = np.asarray(line.bufs["points"])
+        assert points.shape == (2, 2)
+        assert points[0][1] == pytest.approx(points[1][1])  # 每个分位一条横线
+        assert points[1][0] > points[0][0]
+
+
+def test_violin_width_column_spans_every_quantile_row() -> None:
+    """`stat_ydensity` 的 `width` 列按**合并后**的行数展开（分位线那几行也要带）。
+
+    `geom_violin(width = 0.5)` 会把 `width` 参数交给 stat；R 的 `compute_group()`
+    把它逐行写进输出。SIL-794 之前这里用的是单个分组的密度网格长度（512），
+    和合并后的 1545 行对不上，`ColumnTable` 直接抛「列 width 有 512 行」。
+    """
+    rng = np.random.default_rng(7)
+    data = to_column_table({"x": ["a"] * 30 + ["b"] * 30, "y": rng.normal(size=60).tolist()})
+    layer = build_plot(ggplot(data, aes(x="x", y="y")) + registry.geom_violin(width=0.5))
+    statistic = layer.layers[0].statistic
+    width = np.asarray(statistic.column("width").values)
+    assert width.size == statistic.nrows
+    assert np.allclose(width, 0.5)
+
+
 def test_dotplot_expands_count_and_stacks_upwards() -> None:
     data = to_column_table(
         {

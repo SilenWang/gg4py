@@ -219,6 +219,14 @@ class ViolinRenderer(GeomRenderer):
         lineend = str(build.params.get("lineend", "butt"))
         linejoin = str(build.params.get("linejoin", "round"))
         linemitre = float(build.params.get("linemitre", 10.0))
+        # `geom_violin()` 在 4.0.3 里把 `quantile.*` 收成 `quantile_gp` 塞进图层
+        # 参数（`quantile.color` 优先于 `quantile.colour`，`linetype` 缺省 0 =
+        # 不画分位线）。绘制层拿到的是图层参数，所以在这里解析同一口径。
+        quantile_colour = build.params.get("quantile.color")
+        if quantile_colour is None:
+            quantile_colour = build.params.get("quantile.colour")
+        quantile_linetype = build.params.get("quantile.linetype", 0)
+        quantile_linewidth = build.params.get("quantile.linewidth")
 
         grobs: list[Any] = []
         for _key, rows in _group_rows(frame):
@@ -258,9 +266,7 @@ class ViolinRenderer(GeomRenderer):
                     ),
                 )
             )
-            quantile_gp = build.params.get("quantile_gp") or {}
-            linetype_q = quantile_gp.get("linetype", 0)
-            if "quantile" in frame and linetype_q not in (0, "blank", None):
+            if "quantile" in frame and quantile_linetype not in (0, "blank", None):
                 grobs.extend(
                     _violin_quantiles(
                         frame,
@@ -270,9 +276,9 @@ class ViolinRenderer(GeomRenderer):
                         right,
                         ys,
                         flip,
-                        colour=quantile_gp.get("colour"),
-                        linetype=linetype_q,
-                        linewidth=quantile_gp.get("linewidth"),
+                        colour=quantile_colour,
+                        linetype=quantile_linetype,
+                        linewidth=quantile_linewidth,
                     )
                 )
         if not grobs:

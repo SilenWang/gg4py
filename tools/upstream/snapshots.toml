@@ -119,9 +119,9 @@ owner = "m2-closeout"
 reason = "munched polygon（`coord_munch` 后的闭合多边形）未复刻。"
 
 [groups."geom-raster"]
-issue = "SIL-715"
+issue = "SIL-794"
 owner = "m2-closeout"
-reason = "`geom_raster()` 的 just / limits / 离散轴组合（12 条）未逐条复刻。"
+reason = "geom_raster 的 12 条已全部纳管（SIL-794）；新增快照先落到本组再补 case。"
 
 [groups."geom-sf"]
 issue = "SIL-715"
@@ -139,9 +139,9 @@ owner = "m2-closeout"
 reason = "plotmath 表达式标签（`expression()`）未支持。"
 
 [groups."geom-violin"]
-issue = "SIL-715"
+issue = "SIL-794"
 owner = "m2-closeout"
-reason = "`geom_violin()` 的 dodge / quantile / scale=area（14 条）未逐条复刻。"
+reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先落到本组再补 case。"
 
 [groups."guide-axis"]
 issue = "SIL-715"
@@ -773,3 +773,84 @@ reason = "G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reord
 
 [snapshots."guide-axis/align-facet-labels-facets-vertical.svg"]
 reason = "G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇。"
+# --- G4（SIL-794）：geom-violin 14 条 -----------------------------------------
+
+[snapshots."geom-violin/basic.svg"]
+case = "upstream-geom-violin-basic"
+
+[snapshots."geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg"]
+case = "upstream-geom-violin-continuous-x-axis-many-groups"
+
+[snapshots."geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg"]
+case = "upstream-geom-violin-continuous-x-axis-single-group"
+
+[snapshots."geom-violin/coord-flip.svg"]
+case = "upstream-geom-violin-coord-flip"
+
+[snapshots."geom-violin/coord-polar.svg"]
+case = "upstream-geom-violin-coord-polar"
+
+[snapshots."geom-violin/dodging-and-coord-flip.svg"]
+case = "upstream-geom-violin-dodging-and-coord-flip"
+
+[snapshots."geom-violin/dodging.svg"]
+case = "upstream-geom-violin-dodging"
+
+[snapshots."geom-violin/grouping-on-x-and-fill-dodge-width-0-5.svg"]
+case = "upstream-geom-violin-grouping-on-x-and-fill-dodge-width"
+
+[snapshots."geom-violin/grouping-on-x-and-fill.svg"]
+case = "upstream-geom-violin-grouping-on-x-and-fill"
+
+[snapshots."geom-violin/narrower-width-5.svg"]
+case = "upstream-geom-violin-narrower-width"
+
+[snapshots."geom-violin/scale-area-to-sample-size-c-is-smaller.svg"]
+case = "upstream-geom-violin-scale-area-to-sample-size"
+
+[snapshots."geom-violin/styled-quantiles.svg"]
+case = "upstream-geom-violin-styled-quantiles"
+
+[snapshots."geom-violin/with-smaller-bandwidth-and-points.svg"]
+case = "upstream-geom-violin-with-smaller-bandwidth-and-points"
+
+[snapshots."geom-violin/with-tails-and-points.svg"]
+case = "upstream-geom-violin-with-tails-and-points"
+
+# --- G4（SIL-794）：geom-raster 12 条 ----------------------------------------
+
+[snapshots."geom-raster/1-x-3-just-0-0.svg"]
+case = "upstream-geom-raster-1-x-3-just-0-0"
+
+[snapshots."geom-raster/1-x-3-set-limits.svg"]
+case = "upstream-geom-raster-1-x-3-set-limits"
+
+[snapshots."geom-raster/1-x-3.svg"]
+case = "upstream-geom-raster-1-x-3"
+
+[snapshots."geom-raster/3-x-1-just-0-0.svg"]
+case = "upstream-geom-raster-3-x-1-just-0-0"
+
+[snapshots."geom-raster/3-x-1-set-limits.svg"]
+case = "upstream-geom-raster-3-x-1-set-limits"
+
+[snapshots."geom-raster/3-x-1.svg"]
+case = "upstream-geom-raster-3-x-1"
+
+[snapshots."geom-raster/3-x-2-just-0-0.svg"]
+case = "upstream-geom-raster-3-x-2-just-0-0"
+
+[snapshots."geom-raster/3-x-2-set-limits.svg"]
+case = "upstream-geom-raster-3-x-2-set-limits"
+
+[snapshots."geom-raster/3-x-2.svg"]
+case = "upstream-geom-raster-3-x-2"
+
+[snapshots."geom-raster/discrete-positions.svg"]
+case = "upstream-geom-raster-discrete-positions"
+
+[snapshots."geom-raster/irregular-categorical.svg"]
+case = "upstream-geom-raster-irregular-categorical"
+
+[snapshots."geom-raster/rectangle-fallback.svg"]
+case = "upstream-geom-raster-rectangle-fallback"

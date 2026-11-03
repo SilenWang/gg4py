@@ -24,6 +24,7 @@ shaping 与笔位（`ggskia.text`），所以三路的位置一致，差的只�
 
 from __future__ import annotations
 
+import base64
 import math
 import re
 import warnings
@@ -100,6 +101,11 @@ class _SkiaDevice(Device):
         self.shaper = shaper if shaper is not None else TextShaper(emoji=self.emoji_mode)
         self.canvas: skia.Canvas | None = None
         self.scene: Scene | None = None
+        #: SVG 后端按绘制顺序记下的位图（`_rewrite_svg_rasters()` 用它替回
+        #: skia SVGCanvas 自己嵌的那份，见 `_draw_raster()` 的说明）：(bytes,
+        #: 是否 `interpolate = FALSE`, mime)。第三项让 `interpolate = TRUE` 的
+        #: JPEG 之类原样保留，不会被改写成 PNG 的 mime。
+        self._svg_rasters: list[tuple[bytes, bool, str]] = []
 
     # -- 子类钩子 -----------------------------------------------------------
 
@@ -659,7 +665,17 @@ class _SkiaDevice(Device):
             # resvg 默认对缩放后的图做平滑插值，2×2 的像素格会糊成一团。参考产线
             # （svglite）把位图先按设备像素铺好再嵌进 SVG，这里照做——最近邻放大到
             # 目标尺寸，`<image>` 与目标矩形 1:1，后续光栅化不再重采样。
-            image = self._prescale_nearest(image, max(1, round(x1 - x0)), max(1, round(y1 - y0)))
+            #
+            # 像素尺寸按**单元**向上取整（每个格点占 ceil(目标/格数) 像素），这是
+            # svglite 的口径：10×10 的 raster 铺进 558.66×474.84 pt 时它给的是
+            # 560×480（56×10 / 48×10），不是 559×475。差一个像素就会让棋盘格
+            # 错半格（SIL-794 的 irregular categorical 就是被这个卡住的）。
+            width = _cell_aligned(image.width(), round(x1 - x0))
+            height = _cell_aligned(image.height(), round(y1 - y0))
+            image, encoded = self._prescale_nearest(image, width, height)
+            self._svg_rasters.append((encoded, True, "image/png"))
+        elif self.format == "svg":
+            self._svg_rasters.append((bytes(blob.data), False, blob.mime))
         sampling = (
             skia.SamplingOptions(skia.FilterMode.kLinear)
             if interpolate
@@ -670,10 +686,17 @@ class _SkiaDevice(Device):
         )
 
     @staticmethod
-    def _prescale_nearest(image: skia.Image, width: int, height: int) -> skia.Image:
-        """最近邻放大到位图的最终像素尺寸（`interpolate = FALSE` 的 SVG 路径）。"""
+    def _prescale_nearest(image: skia.Image, width: int, height: int) -> tuple[skia.Image, bytes]:
+        """最近邻放大到位图的最终像素尺寸（`interpolate = FALSE` 的 SVG 路径）。
+
+        返回（放大后的图, 编码好的 PNG）；后者由 `_rewrite_svg_rasters()` 写回 SVG。
+        """
         if image.width() == width and image.height() == height:
-            return image
+            encoded = _encode_png(image)
+            scaled = skia.Image.MakeFromEncoded(encoded)
+            if scaled is None:  # pragma: no cover - 自己写的 PNG 一定能解码
+                raise DeviceError("位图重编码失败")
+            return scaled, encoded
         # skia-python 的 `toarray()` 是 BGRA，`ggcore.png` 写的是 RGBA。
         pixels = np.asarray(image.toarray(), dtype=np.uint8)[:, :, [2, 1, 0, 3]]
         ys = np.repeat(np.arange(pixels.shape[0]), -(-height // pixels.shape[0]))[:height]
@@ -683,7 +706,7 @@ class _SkiaDevice(Device):
         scaled_image = skia.Image.MakeFromEncoded(encoded)
         if scaled_image is None:  # pragma: no cover - 自己写的 PNG 一定能解码
             raise DeviceError("位图放大后编码失败")
-        return scaled_image
+        return scaled_image, encoded
 
     def _draw_xspline(self, node: Any) -> None:
         points = node.bufs["points"]
@@ -1001,6 +1024,7 @@ class SkiaSvgDevice(_SkiaDevice):
         # 画到画布上的渐变 fill，按笔刷创建顺序记一份：序列化之后靠它把 skia 写反的
         # 几何和丢掉的 `spreadMethod` 更正回来（`_rewrite_svg_gradients`）。
         self._svg_fills: list[Any] = []
+        self._svg_rasters = []
 
     def _note_gradient_fill(self, fill: Any) -> None:
         self._svg_fills.append(fill)
@@ -1028,6 +1052,7 @@ class SkiaSvgDevice(_SkiaDevice):
         data = self._stream.detachAsData()
         self._stream = None
         svg = _stable_svg_ids(bytes(data.bytes()))
+        svg = _rewrite_svg_rasters(svg, self._svg_rasters)
         return _rewrite_svg_gradients(svg, self._svg_fills)
 
     def _abort(self) -> None:
@@ -1035,6 +1060,62 @@ class SkiaSvgDevice(_SkiaDevice):
         self.canvas = None
         self._stream = None
         self._svg_fills = []
+        self._svg_rasters = []
+
+
+_SVG_IMAGE_TAG = re.compile(
+    r"(<image\b[^>]*?)((?:xlink:href|href)=)(['\"])"
+    r"(data:image/[A-Za-z0-9.+-]+;base64,)[A-Za-z0-9+/=]*\3"
+)
+
+
+def _encode_png(image: Any) -> bytes:
+    """`skia.Image` → PNG（`toarray()` 是 BGRA，`encode_rgba` 吃 RGBA）。"""
+    pixels = np.asarray(image.toarray(), dtype=np.uint8)[:, :, [2, 1, 0, 3]]
+    return encode_rgba(image.width(), image.height(), np.ascontiguousarray(pixels))
+
+
+def _cell_aligned(cells: int, target: int) -> int:
+    """每个格点分配 `ceil(target / cells)` 像素——svglite 的 raster 像素口径。"""
+    cells = max(1, int(cells))
+    target = max(1, int(target))
+    return -(-target // cells) * cells
+
+
+def _rewrite_svg_rasters(svg: bytes, rasters: list[tuple[bytes, bool, str]]) -> bytes:
+    """把 skia SVGCanvas 嵌的位图换回我们自己编码的那份。
+
+    三件事必须在这里做，交给 skia 都做不到：
+
+    - **字节**：`SVGCanvas` 序列化 `drawImageRect()` 时会把位图重编码一遍，尺寸一大
+      就写坏（实测 569×475 的图只有一部分行不透明，见 SIL-794 的 raster 快照）。
+    - **`preserveAspectRatio`**：svglite 写的是 `none`，skia 不写；缺省值 `xMidYMid`
+      会按原图长宽比在目标框里留白，宽高比不一致的图（3×1 的 raster）会被压扁。
+    - **`image-rendering`**：svglite 对 `interpolate = FALSE` 的图写 `pixelated`；
+      少了它，resvg / 浏览器会对 0.999 倍的缩放做平滑，棋盘格边缘会糊。
+
+    `<image>` 元素的顺序 = 绘制顺序，所以直接按 `rasters` 逐个替换。
+    """
+
+    if not rasters:
+        return svg
+    queue = iter(rasters)
+
+    def replace(match: re.Match[str]) -> str:
+        entry = next(queue, None)
+        if entry is None:
+            return match.group(0)
+        payload, pixelated, mime = entry
+        tag = match.group(1)
+        if "preserveAspectRatio" not in tag:
+            tag += " preserveAspectRatio='none' "
+        if pixelated and "image-rendering" not in tag:
+            tag += " image-rendering='pixelated' "
+        encoded = base64.b64encode(payload).decode("ascii")
+        quote = match.group(3)
+        return f"{tag}{match.group(2)}{quote}data:{mime};base64,{encoded}{quote}"
+
+    return _SVG_IMAGE_TAG.sub(replace, svg.decode("utf-8")).encode("utf-8")
 
 
 class SkiaPdfDevice(_SkiaDevice):
