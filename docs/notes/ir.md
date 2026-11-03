@@ -108,6 +108,11 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   或改 `bufs[k].dtype` 的值域。
 - 已知一个 minor 升上去也会被严格拒绝的例外：`bufs[k].dtype` 必须是本实现认识的
   `f4` / `i4`。新增 dtype 属于 major 变更。
+- **0.2 → 0.3 记账（判 minor，纯加字段）**：`segments` / `polyline` / `curve` 各加了
+  四个带缺省值的参数（§4.1 的 `arrow*`）。没有改任何既有字段的语义、必需性或
+  `bufs` 的 dtype；缺省值不写进线格式（编码只写非缺省），所以 v0.2 的 scene
+  编码字节完全不变。旧读方（minor 0.2 ≤ 自己的实现）遇到这四个键会按上表报错
+  ——这是预期的“读不懂就拒绝”，不是回归。
 - **0.1 → 0.2 记账（判 minor，决定性事实是资格 A）**：`viewport.clip_rect` 的坐标系
   从“子坐标”改成“页面坐标”，按普通规则属于“改语义”。逐条对判据（`25b3575` 是
   IR v0 那个提交，下面每条都能用 `git show 25b3575:<path>` 复算）：
@@ -126,10 +131,6 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
   故按资格 A 判 minor。若 v0.1 已有渲染端按子坐标读它、或仓库外有实现/发布物按
   语义读过它，这次就是 major。
-- **0.2 → 0.3 记账（PR #61，判 minor，只加字段）**：`segments` / `polyline` / `curve`
-  各加四个带缺省值的 `arrow*` 参数（`arrow` / `arrow_length` / `arrow_angle` /
-  `arrow_type`）。缺省值按「只写非缺省」省略，所以不带箭头的场景**节点 / bulk 字节
-  不变，只有 `ir_version` 标记变了**。口径见 #61 的文档改动，本 PR 不改它。
 - **0.3 → 0.4 记账（判 minor，只加字段）**：新增 `gpar.fill` 的三种非纯色分支
   （`linear` / `radial` / `pattern`，§6.1）。纯色的线格式**一个字节没动**（仍是
   不带 `kind` 的 `[r, g, b, a]`），`GPAR_FIELDS` 的字段集合也没变——`fill` 只是从
@@ -145,8 +146,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   两类各有一条路：读方是 0.3（不认识 `kind`）时，文件里的 `fill` 映射按「必须是
   四元组」报错；读方用 `decode(..., reader_version=(0, 3))` 时，`_FILL_MINOR`
   直接报 `IRVersionError`（渐变 / 图案 fill 引入于 0.4，跳过未知键等于画成不填充）。
-  两条都由 `tests/test_ir_fill.py::test_v0_4_gradient_file_is_rejected_by_a_v0_3_reader`
-  与 `::test_v0_3_reader_cannot_read_v0_4_gradient_file` 覆盖。
+  都由 `tests/test_ir_fill.py::test_v0_4_gradient_file_is_rejected_by_a_v0_3_reader`
+  覆盖（同一个用例里对纯色再断言一次「0.3 读方照常读」）。
 
 ## 4. 节点类型表
 
@@ -169,8 +170,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 | `rect` | 矩形 | `rect` f4 (n,4) | — |
 | `circle` | 圆 | `circle` f4 (n,3) = (cx, cy, r) | — |
 | `lines` | 折线组 | `points` f4 (n,2)；`id` i4 (n,) 可选 | — |
-| `segments` | 独立线段 | `segments` f4 (n,4) | — |
-| `polyline` | 单条/多条折线 | `points` f4 (n,2)；`id` 可选 | — |
+| `segments` | 独立线段 | `segments` f4 (n,4) | `arrow`="none" 等（见 §4.1） |
+| `polyline` | 单条/多条折线 | `points` f4 (n,2)；`id` 可选 | `arrow`="none" 等（见 §4.1） |
 | `polygon` | 多边形 | `points` f4 (n,2)；`id` 可选 | — |
 | `path` | 多条子路径 + 填充规则 | `points` f4 (n,2)；`id` 可选 | `rule`="winding" |
 | `points` | 散点 | `points` f4 (n,2) | `pch`=1、`size`=1.0（pt） |
@@ -178,9 +179,30 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 | `raster` | 位图 | `rect` f4 (1,4) | `blob`、`width` ≥1、`height` ≥1 必填；`interpolate`=true |
 | `xspline` | xspline | `points` f4 (n,2)；`id` 可选 | `shape`=0.0（-1..1）、`open`=true |
 | `bezier` | 三次贝塞尔段 | `control` f4 (4n,2)，每 4 行一段 | — |
-| `curve` | grid.curve | `ends` f4 (n,4) = (x1,y1,x2,y2) | `curvature`=1、`angle`=90、`ncp`=1、`shape`=0.5、`square`=true、`inflect`=false、`open`=true |
+| `curve` | grid.curve | `ends` f4 (n,4) = (x1,y1,x2,y2) | `curvature`=1、`angle`=90、`ncp`=1、`shape`=0.5、`square`=true、`inflect`=false、`open`=true；另有 §4.1 的箭头参数 |
 | `null` | nullGrob：不画、不占位 | — | — |
 | `zero` | zeroGrob：不画，参与布局 | — | — |
+
+### 4.1 箭头（v0.3）
+
+`segments` / `polyline` / `curve` 三个节点多了四个**标记属性**（M2-S2）：
+
+| 参数 | 取值 | 缺省 | 含义 |
+| --- | --- | --- | --- |
+| `arrow` | `none` / `first` / `last` / `both` | `none` | 箭头画在哪个端点（`grid::arrow(ends =)`） |
+| `arrow_length` | pt（≥0） | 0 | 每条箭翼的长度（`arrow(length =)` 已换算成 pt） |
+| `arrow_angle` | 0..90 度 | 30 | 箭翼与轴线的夹角 |
+| `arrow_type` | `open` / `closed` | `open` | 两条边 / 填色三角（填充用 gpar 的 `fill`） |
+
+箭翼的**几何不进 IR**：切向由设备按端点相邻点求（曲线的切向要按 `curvature` /
+`ncp` 采样，只有设备算得出）。公式只有一行，两边共用：从端点 `tip` 沿
+`back → tip` 的方向退 `arrow_length`，再左右各转 `arrow_angle`，得到两个底点；
+`open` 画 `tip→b1`、`tip→b2` 两条线，`closed` 画 `tip,b1,b2` 的三角。Python 侧的
+`ggcore.arrow.head_geometry()` 是这句的参考实现，TS 侧逐行移植。
+
+不带箭头时四个参数都等于缺省值，编码按“只写非缺省”省略——所以 v0.2 的 scene
+字节不变（0.2 → 0.3 是加字段的 minor）。旧读方遇到未知参数会按 §3 的口径拒绝
+（minor ≤ 自己时）或忽略（minor 更新时）。
 
 细则：
 

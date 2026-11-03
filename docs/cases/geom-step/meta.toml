@@ -1,0 +1,7 @@
+family = "geom-step"
+features = ["aes-mapping", "line-type"]
+ci = true
+title = "geom_step：direction = \"hv\""
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`stairstep()` 逐 group 展开成阶梯折线，再交给 `GeomPath`。"

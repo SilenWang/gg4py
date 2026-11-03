@@ -1,0 +1,7 @@
+family = "geom-raster"
+features = ["aes-mapping", "colour-aes", "scale-discrete"]
+ci = true
+title = "geom_raster：像素矩阵（interpolate = FALSE）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "像素在写 IR 之前折成一张 RGBA PNG（`ggcore.png`），IR 只带 blob id + 目标矩形 + interpolate。"

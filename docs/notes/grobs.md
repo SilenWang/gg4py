@@ -232,7 +232,8 @@ ggplot2 的 `geom_path` 是按组传标量 gp 的，碰不到这条。
 
 `to_ir_scene()` 同时是**单位口径的收口**：R 的 `gpar$lwd` 是 1/96 inch，IR 的
 `gpar.lwd` 是 pt，所以写 IR 时按 `72/96 = 0.75` 折算，`lty` 的段长（`lwd` 的
-倍数）跟着一起折（`ggcore.grobs._LWD_UNITS_TO_PT`，SIL-636）；其余几何字段在
+倍数，`lwd < 1` 时按 1 算：`pattern × max(lwd, 1) × 0.75`）跟着一起折
+（`ggcore.grobs._LWD_UNITS_TO_PT`，SIL-636 / SIL-763）；其余几何字段在
 遍历期就已经是 pt 了。
 
 ### 7.3 `clip` 没有“空值”：零面积就是裁掉一切

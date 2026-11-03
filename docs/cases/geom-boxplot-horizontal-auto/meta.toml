@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "orientation-horizontal", "stat-boxplot"]
+ci = true
+title = "geom_boxplot：横向自动方向探测（不写 orientation，SIL-715 #5）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "y 离散、x 连续时 `has_flipped_aes()` 从列类型推出 `flipped_aes = TRUE`；两侧都没有 `orientation`。"

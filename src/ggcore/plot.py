@@ -30,6 +30,7 @@ from ggcore import registry
 from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
+from ggcore.arrow import arrow as arrow
 from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Guides, Labels, Scale, Theme
@@ -306,6 +307,7 @@ def _export_registry_entries() -> list[str]:
     names = [
         "aes",
         "after_stat",
+        "arrow",
         "ggplot",
         "gg_add",
         "guides",

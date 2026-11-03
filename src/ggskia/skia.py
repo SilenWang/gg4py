@@ -34,6 +34,7 @@ from typing import Any
 import numpy as np
 import skia
 
+from ggcore.arrow import head_geometry
 from ggcore.device import Device, DeviceError, DeviceWarning
 from ggcore.ir import (
     Extend,
@@ -45,6 +46,7 @@ from ggcore.ir import (
     Scene,
     TilePattern,
 )
+from ggcore.png import encode_rgba
 from ggskia.curves import curve_points, xspline_points
 from ggskia.pch import character_pch, symbol
 from ggskia.text import LINE_PITCH, TextShaper
@@ -382,6 +384,55 @@ class _SkiaDevice(Device):
             path.close()
         return path
 
+    # -- 箭头（M2-S2） -------------------------------------------------------
+
+    def _draw_arrow_heads(
+        self,
+        node: Any,
+        first: tuple[tuple[float, float], tuple[float, float]],
+        last: tuple[tuple[float, float], tuple[float, float]],
+    ) -> None:
+        """按节点参数画箭头（`grid::arrow` 的标记属性）。
+
+        `first` / `last` 各是路径一端的两点：**端点在前、沿路径向内的相邻一点在后**，
+        切向由这对相邻点给出；箭翼几何与查看器共用 `ggcore.arrow.head_geometry()`。
+        两端的切向要各取各的相邻点——拿「另一端」当 back 求的是整条路径的弦方向
+        （曲线两端与切向差很远，SIL-763）。
+        """
+        ends = node.params.get("arrow", "none")
+        if ends == "none":
+            return
+        length = float(node.params.get("arrow_length", 0.0))
+        if length <= 0:
+            return
+        angle = float(node.params.get("arrow_angle", 30.0))
+        closed = node.params.get("arrow_type", "open") == "closed"
+        stroke = self._paint(node.gpar, stroke=True)
+        fill = self._paint(node.gpar, stroke=False)
+        if fill is None:
+            fill = self._paint(node.gpar, stroke=False, use_col=True)
+        assert self.canvas is not None
+        tips: list[tuple[tuple[float, float], tuple[float, float]]] = []
+        if ends in ("first", "both"):
+            tips.append(first)
+        if ends in ("last", "both"):
+            tips.append(last)
+        for tip, back in tips:
+            b1, b2 = head_geometry(tip[0], tip[1], back[0], back[1], length_pt=length, angle=angle)
+            if closed:
+                path = skia.Path()
+                path.moveTo(float(tip[0]), float(tip[1]))
+                path.lineTo(b1[0], b1[1])
+                path.lineTo(b2[0], b2[1])
+                path.close()
+                if fill is not None:
+                    self.canvas.drawPath(path, fill)
+                if stroke is not None:
+                    self.canvas.drawPath(path, stroke)
+            elif stroke is not None:
+                self.canvas.drawLine(float(tip[0]), float(tip[1]), b1[0], b1[1], stroke)
+                self.canvas.drawLine(float(tip[0]), float(tip[1]), b2[0], b2[1], stroke)
+
     # -- 原语 ---------------------------------------------------------------
 
     def _draw_rect(self, node: Any) -> None:
@@ -431,9 +482,23 @@ class _SkiaDevice(Device):
             if not all(math.isfinite(float(value)) for value in (x0, y0, x1, y1)):
                 continue
             self.canvas.drawLine(float(x0), float(y0), float(x1), float(y1), stroke)
+            start = (float(x0), float(y0))
+            end = (float(x1), float(y1))
+            self._draw_arrow_heads(node, (start, end), (end, start))
 
     def _draw_polyline(self, node: Any) -> None:
         self._stroke_and_fill(node, self._polyline_path(node, closed=False))
+        points = node.bufs["points"]
+        ids = node.bufs.get("id")
+        for group in self._groups(np.asarray(points), ids):
+            finite = [
+                (float(x), float(y))
+                for x, y in group
+                if math.isfinite(float(x)) and math.isfinite(float(y))
+            ]
+            if len(finite) < 2:
+                continue
+            self._draw_arrow_heads(node, (finite[0], finite[1]), (finite[-1], finite[-2]))
 
     def _draw_polygon(self, node: Any) -> None:
         self._stroke_and_fill(node, self._polyline_path(node, closed=True))
@@ -588,14 +653,37 @@ class _SkiaDevice(Device):
         if image is None:
             raise DeviceError(f"位图解码失败（mime={blob.mime}，{len(blob.data)} 字节）")
         x0, y0, x1, y1 = (float(value) for value in node.bufs["rect"][0])
+        interpolate = bool(node.params["interpolate"])
+        if self.format == "svg" and not interpolate:
+            # SVG 只是把位图交出去，光栅化是后一步的事（resvg / 浏览器）：浏览器与
+            # resvg 默认对缩放后的图做平滑插值，2×2 的像素格会糊成一团。参考产线
+            # （svglite）把位图先按设备像素铺好再嵌进 SVG，这里照做——最近邻放大到
+            # 目标尺寸，`<image>` 与目标矩形 1:1，后续光栅化不再重采样。
+            image = self._prescale_nearest(image, max(1, round(x1 - x0)), max(1, round(y1 - y0)))
         sampling = (
             skia.SamplingOptions(skia.FilterMode.kLinear)
-            if node.params["interpolate"]
+            if interpolate
             else skia.SamplingOptions(skia.FilterMode.kNearest)
         )
         self.canvas.drawImageRect(
             image, skia.Rect.MakeLTRB(x0, y0, x1, y1), sampling, skia.Paint(AntiAlias=True)
         )
+
+    @staticmethod
+    def _prescale_nearest(image: skia.Image, width: int, height: int) -> skia.Image:
+        """最近邻放大到位图的最终像素尺寸（`interpolate = FALSE` 的 SVG 路径）。"""
+        if image.width() == width and image.height() == height:
+            return image
+        # skia-python 的 `toarray()` 是 BGRA，`ggcore.png` 写的是 RGBA。
+        pixels = np.asarray(image.toarray(), dtype=np.uint8)[:, :, [2, 1, 0, 3]]
+        ys = np.repeat(np.arange(pixels.shape[0]), -(-height // pixels.shape[0]))[:height]
+        xs = np.repeat(np.arange(pixels.shape[1]), -(-width // pixels.shape[1]))[:width]
+        scaled = pixels[ys][:, xs]
+        encoded = encode_rgba(width, height, np.ascontiguousarray(scaled))
+        scaled_image = skia.Image.MakeFromEncoded(encoded)
+        if scaled_image is None:  # pragma: no cover - 自己写的 PNG 一定能解码
+            raise DeviceError("位图放大后编码失败")
+        return scaled_image
 
     def _draw_xspline(self, node: Any) -> None:
         points = node.bufs["points"]
@@ -658,6 +746,21 @@ class _SkiaDevice(Device):
             )
             sampled = np.column_stack((sampled[:, 0], height - sampled[:, 1]))
             path.addPath(self._polyline_path_from(sampled, closed=not is_open))
+            if len(sampled) >= 2:
+                # 两端的切向各取各自的相邻点（`sampled[0] → sampled[1]`、
+                # `sampled[-1] → sampled[-2]`），与查看器 `arrowPath()` 同口径。
+                # 箭头不受 `open` 影响：查看器对开 / 闭曲线都画（SIL-763）。
+                self._draw_arrow_heads(
+                    node,
+                    (
+                        (float(sampled[0, 0]), float(sampled[0, 1])),
+                        (float(sampled[1, 0]), float(sampled[1, 1])),
+                    ),
+                    (
+                        (float(sampled[-1, 0]), float(sampled[-1, 1])),
+                        (float(sampled[-2, 0]), float(sampled[-2, 1])),
+                    ),
+                )
         self._stroke_and_fill(node, path, fill=not is_open)
 
 

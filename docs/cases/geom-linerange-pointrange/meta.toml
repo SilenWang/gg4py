@@ -1,0 +1,7 @@
+family = "geom-linerange"
+features = ["aes-mapping", "size-aes"]
+ci = true
+title = "geom_linerange + geom_pointrange：区间线 + 中点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`pointrange` 是 linerange + 点（点大小 `size * 4`）；图例 key 未映射，两层都画在面板里。"

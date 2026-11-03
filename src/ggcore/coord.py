@@ -541,6 +541,23 @@ class PanelParams:
         """`{"x": (low, high), "y": (low, high)}`（只读）。"""
         return MappingProxyType({"x": self.x_range, "y": self.y_range})
 
+    def backtransform_range(self) -> dict[str, tuple[float, float]]:
+        """上游 `coord$backtransform_range(panel_params)`。
+
+        线性坐标就是面板 `x.range` / `y.range`；`coord_trans` 再把映射空间的
+        范围反变换回标度空间——`geom_abline` / `hline` / `vline` 的端点按这个
+        范围算（先反变换、再画、再由 `coord$transform()` 投回屏幕）。
+        """
+        out: dict[str, tuple[float, float]] = {}
+        for axis in ("x", "y"):
+            low, high = self.x_range if axis == "x" else self.y_range
+            spec = self.trans.get(axis)
+            if spec is not None and spec.name != "identity":
+                values = np.asarray(spec.invert(np.array([low, high])), dtype=np.float64)
+                low, high = float(values[0]), float(values[1])
+            out[axis] = (low, high)
+        return out
+
     @property
     def limits(self) -> Mapping[str, tuple[float, float]]:
         """展开前的范围（与 :attr:`ranges` 同构）。"""

@@ -1,0 +1,7 @@
+family = "geom-spoke"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_spoke：angle / radius 映射（数据空间弧度）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`xend = x + cos(angle) * radius`、`yend = y + sin(angle) * radius` 在 `setup_data()` 里算完。"

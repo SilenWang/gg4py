@@ -30,6 +30,7 @@ import numpy as np
 
 from ggcore.build import BuildWarning
 from ggcore.data import Column, ColumnTable
+from ggcore.viewport import NA
 from ggcore.viewport import NA as _NA
 
 __all__ = [
@@ -44,10 +45,13 @@ __all__ = [
     "lty_value",
     "munch_xy",
     "npc_values",
+    "put_column",
+    "resolve_rect_axis",
     "row_slice",
     "table_column",
     "table_numeric",
     "table_strings",
+    "table_values",
 ]
 
 #: ggplot2 的 `.pt`：mm → pt（1 mm = 72.27/25.4 pt）。
@@ -88,6 +92,69 @@ def table_strings(table: ColumnTable, name: str) -> list[Any]:
     values = column.values.tolist()
     mask = np.asarray(column.na_mask, dtype=bool).tolist()
     return [None if missing else value for value, missing in zip(values, mask, strict=True)]
+
+
+def table_values(table: ColumnTable, name: str, default: Any) -> list[Any]:
+    """逐行取值（缺失位是 `NA`）；没有列时整列取 `default`。
+
+    `default` 是 `None` 时返回 `None`（不是 `NA`）——R 的 `colour = NULL` 与
+    `colour = NA` 是两件事：前者不描边，后者是缺失。
+    """
+    if name not in table:
+        return [default] * table.nrows
+    column = table.column(name)
+    values = column.values.tolist()
+    mask = np.asarray(column.na_mask, dtype=bool).tolist()
+    return [NA if missing else value for value, missing in zip(values, mask, strict=True)]
+
+
+def put_column(
+    columns: list[tuple[str, Column]], name: str, column: Column
+) -> list[tuple[str, Column]]:
+    """按 R 的 `data[[name]] <- value` 语义就地替换或追加（位置保持首次出现处）。"""
+    for position, (key, _) in enumerate(columns):
+        if key == name:
+            columns[position] = (name, column)
+            return columns
+    columns.append((name, column))
+    return columns
+
+
+def resolve_rect_axis(
+    minimum: Any,
+    maximum: Any,
+    center: Any,
+    length: Any,
+    *,
+    names: tuple[str, str, str, str],
+    fun: str,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """`resolve_rect()`：`(min, max, center, length)` 里缺一个就按其余三个补。
+
+    `names` 是 `(min, max, center, length)` 在报错文案里的 aes 名。四个都给或
+    只给三个以外的情况照上游报错。返回 `(min, max)`；`min` / `max` 都给了时返回
+    `None`（调用方保留原列）。
+    """
+    absent = [minimum is None, maximum is None, center is None, length is None]
+    if sum(absent) > 2:
+        present = [name for name, missing in zip(names, absent, strict=True) if not missing]
+        raise GeomError(
+            f"geom_{fun} 需要 {', '.join(names[:2])} 与 {', '.join(names[2:])} 里的两个；"
+            f"当前只给了 {', '.join(present) if present else '（无）'}"
+        )
+    if absent[0] and absent[1]:
+        low = center - 0.5 * length
+        high = center + 0.5 * length
+        return low, high
+    if absent[0]:
+        if center is None:
+            return maximum - length, maximum
+        return maximum - 2 * (maximum - center), maximum
+    if absent[1]:
+        if center is None:
+            return minimum, minimum + length
+        return minimum, minimum + 2 * (center - minimum)
+    return None
 
 
 def row_slice(table: ColumnTable, keep: np.ndarray) -> ColumnTable:
@@ -215,6 +282,10 @@ class GeomRenderer:
     detect_flipped: ClassVar[bool] = False
     #: R 的 `has_flipped_aes(ambiguous = TRUE)`：没有显式 orientation 时不猜横向。
     ambiguous_flipped: ClassVar[bool] = False
+    #: R 的 `has_flipped_aes(range_is_orthogonal = ...)`：区间类 geom（ribbon /
+    #: linerange / errorbar）按「哪一族区间列在场」推方向，不看列类型。
+    #: `None` = 不传这个参数（默认行为）。
+    range_is_orthogonal: ClassVar[bool | None] = None
 
     # -- setup ------------------------------------------------------------
 
@@ -256,6 +327,15 @@ class GeomRenderer:
         if not self.detect_flipped:
             resolved.setdefault("flipped_aes", False)
             return _with_discrete_position(resolved, source)
+        if self.range_is_orthogonal is not None:
+            # R：`range_is_orthogonal = TRUE` 时「y 族区间在场 → 纵向；x 族区间在场
+            # → 横向」，两边都在场时 y 族优先（上游只看 ymin / ymax 是否非空）。
+            if "ymin" in source or "ymax" in source:
+                resolved["flipped_aes"] = not self.range_is_orthogonal
+                return _with_discrete_position(resolved, source)
+            if "xmin" in source or "xmax" in source:
+                resolved["flipped_aes"] = bool(self.range_is_orthogonal)
+                return _with_discrete_position(resolved, source)
         if self.ambiguous_flipped:
             resolved["flipped_aes"] = False
             return _with_discrete_position(resolved, source)
