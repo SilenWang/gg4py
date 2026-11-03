@@ -1,8 +1,9 @@
 # 主题账本（theme）
 
 `ggcore.theme` 是 ggplot2 4.0.3 主题系统的对等物：元素对象、元素树、继承、
-`rel()` 求值、局部覆盖，以及 `theme_grey()` / `theme_minimal()` / `theme_void()`
-三套完整主题。目标不是「看起来像」，而是每个元素都能解析成可断言的数字：
+`rel()` 求值、局部覆盖，以及 `theme_grey()` / `theme_bw()` / `theme_minimal()` /
+`theme_void()` 四套完整主题（`bw` 是 grey 的白底变体）。目标不是「看起来像」，
+而是每个元素都能解析成可断言的数字：
 
 ```python
 from ggcore.theme import resolve_theme, theme_grey
@@ -22,7 +23,7 @@ resolved["panel.grid.minor"].linewidth  # 0.25（mm）
 pixi run -e refs refs:theme     # tools/refs/theme_ref.R → tests/fixtures/theme_r_reference.json
 ```
 
-`tests/test_theme_r_parity.py` 对三套主题的每个元素逐项比对，夹具里的数值就是
+`tests/test_theme_r_parity.py` 对四套主题的每个元素逐项比对，夹具里的数值就是
 ggplot2 `calc_element()` 的结果（颜色/单位/边距已换成 ggcore 的规范形式）。
 
 ## 元素对象
@@ -32,7 +33,7 @@ ggplot2 `calc_element()` 的结果（颜色/单位/边距已换成 ggcore 的规
 
 | 构造器 | 字段 |
 | --- | --- |
-| `element_text(family, face, italic, fontweight, fontwidth, size, colour, hjust, vjust, angle, lineheight, margin)` | 另可 `debug=` / `inherit_blank=`；`italic` / `fontweight` / `fontwidth` 原样透传 |
+| `element_text(family, face, italic, fontweight, fontwidth, size, colour, hjust, vjust, angle, lineheight, margin)` | 另可 `debug=` / `inherit_blank=`；`italic` / `fontweight` / `fontwidth` 原样透传，只校验类型（布尔；字符串或数值） |
 | `element_line(colour, linewidth, linetype, lineend, linejoin)` | `linewidth` 单位 mm；`arrow=` / `arrow_fill=` |
 | `element_rect(fill, colour, linewidth, linetype, linejoin)` | 背景/边框 |
 | `element_polygon(...)` | 与 rect 同字段 |
@@ -133,14 +134,27 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 `tests/test_theme.py::test_no_rel_survives_outside_the_whitelist` 守着这条
 约定（新增的 `Rel` 落点会让它变红）。
 
-## 三套完整主题
+## 四套完整主题
 
-`theme_grey()`（默认）、`theme_minimal()`（`theme_bw()` 再删背景/边框/刻度）、
-`theme_void()`（几乎全部 blank，只留标题类文字）都照 4.0.3 的数值构造。
-三套主题共享 `base_size=11`、`base_line_size=base_size/22=0.5`、
-`base_rect_size=0.5`；`ink="black"`、`paper="white"`、`accent="#3366FF"`。
-`theme_void()` 的 `paper` 默认是 `alpha(ink, 0)`（`#00000000`）。
-`theme_bw()` 也注册在册：`p + theme_bw()` 与 `p.theme_bw()` 等价。
+`theme_grey()`（默认）、`theme_bw()`（grey 的白底变体，也是 minimal 的底）、
+`theme_minimal()`（`theme_bw()` 再删背景/边框/刻度）、`theme_void()`（几乎全部
+blank，只留标题类文字）都照 4.0.3 的数值构造。四套主题共享 `base_size=11`、
+`base_line_size=base_size/22=0.5`、`base_rect_size=0.5`；`ink="black"`、
+`paper="white"`、`accent="#3366FF"`。`theme_void()` 的 `paper` 默认是
+`alpha(ink, 0)`（`#00000000`）。四套都注册在册：`p + theme_bw()` 与
+`p.theme_bw()` 等价（grey / minimal / void 同理）。
+
+`theme_bw()` 不是第五种风格，而是 grey 的白底变体：只覆盖下面 5 个元素，其余
+与 grey 逐项相同。所以下面的逐元素表只列 grey / minimal / void 三列，bw 列等于
+grey 列、按这张表替换对应行：
+
+| 元素 | theme_bw 相对 theme_grey |
+| --- | --- |
+| `panel.background` | rect fill=#FFFFFF（`paper`）colour=NA |
+| `panel.border` | rect colour=#333333（`mix(ink, paper, 0.2)`） |
+| `panel.grid` | line colour=#EBEBEB（`mix(ink, paper, 0.92)`） |
+| `panel.grid.minor` | 不变（`rel(0.5)`） |
+| `strip.background` | rect fill=#D9D9D9（`mix(ink, paper, 0.851)`）colour=#333333 |
 
 八类核心元素的解析值（pt 为字号，mm 为线宽）：
 

@@ -10,7 +10,8 @@
 - `theme()` 局部覆盖：`None` 删除（回落到父元素），`element_blank()` 画空白；
 - `merge_theme()` / `resolve_theme()`：解析阶段把每个元素折成具体值
   （字号 pt、颜色 `#RRGGBB`、线宽 mm、单位 `Unit`、边距 `Margin`）；
-- 完整主题 `theme_grey()` / `theme_minimal()` / `theme_void()`。
+- 完整主题 `theme_grey()` / `theme_bw()` / `theme_minimal()` / `theme_void()`
+  （`bw` 是 grey 的白底变体）。
 
 设计口径（详见 `docs/notes/theme.md`）：
 
@@ -235,6 +236,25 @@ def _check_size(name: str, value: Any) -> None:
     _check_number(name, value)
 
 
+def _check_bool(name: str, value: Any) -> None:
+    if value is not None and not isinstance(value, bool):
+        raise ThemeError(f"{name} 必须是 True/False，得到 {type(value).__name__}")
+
+
+def _check_font_axis(name: str, value: Any) -> None:
+    """`fontweight` / `fontwidth`：只校验类型，取值留给字体栈。
+
+    R 侧这两项交给 systemfonts（weight 是 1–1000 的数值或 "normal" / "bold"
+    这类名字，width 是 "ultra-condensed" … 这类名字），ggcore 不解释取值，
+    但不能是布尔或别的对象——否则会把错误拖到渲染期。
+    """
+    if value is None or isinstance(value, str):
+        return
+    if isinstance(value, numbers.Real) and not isinstance(value, bool):
+        return
+    raise ThemeError(f"{name} 必须是字符串或数值，得到 {type(value).__name__}")
+
+
 def element_text(
     family: str | None = None,
     face: str | None = None,
@@ -258,6 +278,9 @@ def element_text(
         colour = color
     if face is not None and face not in ("plain", "italic", "bold", "bold.italic"):
         raise ThemeError(f"face 必须是 plain/italic/bold/bold.italic，得到 {face!r}")
+    _check_bool("italic", italic)
+    _check_font_axis("fontweight", fontweight)
+    _check_font_axis("fontwidth", fontwidth)
     _check_size("size", size)
     _check_colour("colour", colour)
     for name, value in (

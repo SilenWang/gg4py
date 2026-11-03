@@ -4,9 +4,10 @@
 #
 #   pixi run -e refs refs:theme
 #
-# 对 theme_grey() / theme_minimal() / theme_void() 的**每一个**元素跑
-# calc_element()，把继承 + rel() + inherit.blank 都交给 ggplot2 4.0.3 算，
-# 结果按 ggcore 的规范形式落盘（字号 pt、线宽 mm、颜色 #RRGGBB、边距 pt）。
+# 对 theme_grey() / theme_bw() / theme_minimal() / theme_void() 的**每一个**
+# 元素跑 calc_element()，把继承 + rel() + inherit.blank 都交给 ggplot2 4.0.3
+# 算，结果按 ggcore 的规范形式落盘（字号 pt、线宽 mm、颜色 #RRGGBB、边距 pt）。
+# `bw` 是 grey 的白底变体（minimal 的底），单独列一套才能守住它的数值漂移。
 # Python 侧 `tests/test_theme_r_parity.py` 用同一份口径逐项比对。
 
 library(ggplot2)
@@ -111,6 +112,7 @@ describe_element <- function(el) {
 
 themes <- list(
   grey = theme_grey(),
+  bw = theme_bw(),
   minimal = theme_minimal(),
   void = theme_void()
 )

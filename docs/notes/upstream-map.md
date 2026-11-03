@@ -53,7 +53,7 @@ Python 模块，反之亦然。
 | `ggcore.facet`（`FacetWrap`） | `R/facet-wrap.R` | `facet_wrap()` | 已实现（M1-6：ncol/nrow/dir/as.table/drop/labeller/scales；space 只支持 fixed，其余报错） |
 | `ggcore.facet`（`FacetGrid`） | `R/facet-grid-.R` | `facet_grid()` | 已实现（M1-6：rows/cols/as.table/scales；margins / space=free 待补，其余非法值报错） |
 | `ggcore.guide` | `R/guides-.R:69` | `guides()` | 未实现 |
-| `ggcore.theme` | `R/theme.R` / `R/theme-elements.R` / `R/theme-defaults.R` | `theme()` / `element_*()` / `calc_element()` / 三套完整主题 | 已实现（M1-10：元素树 + 继承 + rel 解析，见 `docs/notes/theme.md`） |
+| `ggcore.theme` | `R/theme.R` / `R/theme-elements.R` / `R/theme-defaults.R` | `theme()` / `element_*()` / `calc_element()` / 四套完整主题（grey / bw / minimal / void） | 已实现（M1-10：元素树 + 继承 + rel 解析，见 `docs/notes/theme.md`） |
 
 ## 文本度量
 

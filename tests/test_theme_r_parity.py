@@ -1,12 +1,13 @@
 """theme 元素解析与 ggplot2 4.0.3 的逐元素对拍。
 
 夹具由 `pixi run -e refs refs:theme` 生成（`tools/refs/theme_ref.R`）：对
-`theme_grey()` / `theme_minimal()` / `theme_void()` 的每一个元素跑
-`calc_element()`，Python 侧用同一份规范形式比对。
+`theme_grey()` / `theme_bw()` / `theme_minimal()` / `theme_void()` 的每一个
+元素跑 `calc_element()`，Python 侧用同一份规范形式比对。`theme_bw()` 是
+`theme_grey()` 的白底变体，单独一套夹具才守得住它自己的数值。
 
 根元素上的 `rel()` 是唯一的刻意差异：R 的 `calc_element()` 保持 `rel` 原样
 （渲染时才消费），ggcore 按 `base_size` 折成 pt（见 docs/notes/theme.md）。
-夹具里三套主题的根元素没有 rel，所以不影响这份对拍。
+夹具里四套主题的根元素没有 rel，所以不影响这份对拍。
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from ggcore.theme import (
     Rel,
     ResolvedTheme,
     resolve_theme,
+    theme_bw,
     theme_grey,
     theme_minimal,
     theme_void,
@@ -106,6 +108,7 @@ def reference() -> dict:
     ("name", "builder"),
     [
         ("grey", theme_grey),
+        ("bw", theme_bw),
         ("minimal", theme_minimal),
         ("void", theme_void),
     ],
@@ -137,6 +140,7 @@ def test_every_element_matches_ggplot2_4_0_3(reference: dict, name: str, builder
             else:
                 assert got == want, f"{element_name}.{key}"
 
-    # expected-only 的 null 键不许无限增长：超出现有名单就说明少建模了字段。
-    assert len(skipped) <= len(_KNOWN_ONLY_IN_EXPECTED), sorted(skipped)
-    assert skipped <= _KNOWN_ONLY_IN_EXPECTED, sorted(skipped - _KNOWN_ONLY_IN_EXPECTED)
+    # expected-only 的 null 键不许无限增长：必须与名单**完全相等**。
+    # 子集断言（`<=`）只能防「新增」，白名单里的陈旧条目会一直躺着；`==`
+    # 让「只能缩小」真正成立：字段建好了就必须从名单里删掉。
+    assert skipped == _KNOWN_ONLY_IN_EXPECTED, sorted(skipped ^ _KNOWN_ONLY_IN_EXPECTED)

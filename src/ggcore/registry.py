@@ -81,6 +81,7 @@ __all__: list[str] = [
     "SCALE_SPECS",
     "STAT_GEOMS",
     "STAT_NAMES",
+    "THEME_NAMES",
     "GeomSpec",
     "bind_plot",
     "construct",
@@ -163,6 +164,11 @@ def registered(kind: str) -> tuple[str, ...]:
     return tuple(_REGISTRY[kind])
 
 
+def _sync_theme_names() -> None:
+    """重算 `THEME_NAMES`：它是注册表的快照，不手写清单（SIL-671）。"""
+    globals()["THEME_NAMES"] = registered("theme")
+
+
 def register(kind: str, name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
     """登记一个组件构造器，并（重新）生成两个入口。
 
@@ -179,6 +185,8 @@ def register(kind: str, name: str, constructor: Callable[..., Any]) -> Callable[
         raise ValueError(f"组件名 {name!r} 生成的入口 {entry!r} 不是合法标识符")
     _REGISTRY[kind][name] = constructor
     _refresh_entry(kind, name)
+    if kind == "theme":
+        _sync_theme_names()
     return constructor
 
 
@@ -188,6 +196,8 @@ def unregister(kind: str, name: str) -> None:
     if name not in _REGISTRY[kind]:
         raise LookupError(f"{kind} {name!r} 未注册；已注册：{_available(kind)}")
     del _REGISTRY[kind][name]
+    if kind == "theme":
+        _sync_theme_names()
     entry = entry_name(kind, name)
     globals().pop(entry, None)
     exports = globals().get("__all__")
@@ -423,7 +433,6 @@ SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("alpha_continuous", "alpha", {"type": "continuous"}),
 )
 
-THEME_NAMES: tuple[str, ...] = ("grey", "minimal", "void")
 COORD_NAMES: tuple[str, ...] = ("cartesian", "fixed")
 FACET_NAMES: tuple[str, ...] = ("null", "wrap", "grid")
 GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
@@ -627,3 +636,7 @@ def _register_defaults() -> None:
 
 
 _register_defaults()
+
+#: 已登记的主题名（按登记顺序）。由注册表派生：`register_theme()` /
+#: `unregister()` 会同步刷新，避免像 SIL-671 之前那样手写清单漏掉 `bw`。
+THEME_NAMES: tuple[str, ...] = registered("theme")
