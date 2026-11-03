@@ -1397,6 +1397,44 @@ _GEOM_KEYS: Mapping[str, Mapping[str, tuple[float, ...]]] = MappingProxyType(
                 "ymax": (0.9,),
             }
         ),
+        # M2-7 长尾 B：文本 / 点 / 分布 / 2D 族
+        "text": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
+        "label": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
+        "jitter": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
+        "count": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
+        "qq": MappingProxyType({"x": (0.5,), "y": (0.5,)}),
+        "density": MappingProxyType({"x": (0.0, 1.0), "ymin": (0.0, 0.0), "ymax": (0.0, 1.0)}),
+        "contour": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "density_2d": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "density2d": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "qq_line": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "quantile": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "function": MappingProxyType({"x": (0.2, 0.8), "y": (0.2, 0.8)}),
+        "bin2d": MappingProxyType({"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}),
+        "bin_2d": MappingProxyType(
+            {"xmin": (0.0,), "xmax": (1.0,), "ymin": (0.0,), "ymax": (1.0,)}
+        ),
+        "hex": MappingProxyType({"x": (0.5,), "y": (0.5,), "width": (1.0,), "height": (1.0,)}),
+        "dotplot": MappingProxyType(
+            {"x": (0.5,), "y": (0.5,), "binwidth": (0.5,), "stackpos": (0.0,)}
+        ),
+        "violin": MappingProxyType(
+            {
+                "x": (0.5, 0.5, 0.5),
+                "y": (0.0, 0.5, 1.0),
+                "violinwidth": (0.0, 0.5, 0.0),
+                "xmin": (0.2, 0.2, 0.2),
+                "xmax": (0.8, 0.8, 0.8),
+                "width": (0.6, 0.6, 0.6),
+            }
+        ),
+        "contour_filled": MappingProxyType({"x": (0.0, 1.0, 1.0, 0.0), "y": (0.0, 0.0, 1.0, 1.0)}),
+        "density_2d_filled": MappingProxyType(
+            {"x": (0.0, 1.0, 1.0, 0.0), "y": (0.0, 0.0, 1.0, 1.0)}
+        ),
+        "density2d_filled": MappingProxyType(
+            {"x": (0.0, 1.0, 1.0, 0.0), "y": (0.0, 0.0, 1.0, 1.0)}
+        ),
         # --- M2-S2：模板照各 geom 的 `draw_key_*` ---------------------------
         # 线段族：0.1 → 0.9 的一道横线（R 的 `draw_key_path` / `draw_key_vpath`）。
         **{
@@ -1528,6 +1566,9 @@ def key_table(
     if geom == "boxplot":
         columns["flipped_aes"] = Column("bool", np.zeros(nrows, dtype=bool))
         columns["outliers"] = Column("float", np.full(nrows, np.nan))
+    if geom in ("text", "label") and "label" not in columns:
+        # R 的 `draw_key_text` / `draw_key_label` 用 "a" 作键标签。
+        columns["label"] = Column("str", np.array(["a"] * nrows, dtype=object))
     return ColumnTable(list(columns.items()), nrows=nrows)
 
 
@@ -1592,15 +1633,19 @@ class _KeyPanel:
         """key 数据坐标本来就是 0..1，直接原样返回（`PanelParams` 的对等物）。"""
         return self.transform(table.column(name), axis)
 
-    def position_of(self, axis: str, value: float) -> float:
-        return float(value)
+    @property
+    def is_linear(self) -> bool:
+        return True
 
     def project_xy(self, xs: Any, ys: Any) -> tuple[np.ndarray, np.ndarray]:
-        """`coord_munch()` 的入口：key 的数据坐标就是 npc，原样返回。"""
+        """线性面板：数据坐标即 npc（`munch_xy()` / 几何的 `project_xy()` 对等物）。"""
         return (
             np.asarray(xs, dtype=np.float64),
             np.asarray(ys, dtype=np.float64),
         )
+
+    def position_of(self, axis: str, value: float) -> float:
+        return float(value)
 
     def backtransform_range(self) -> dict[str, tuple[float, float]]:
         return {"x": self.x_range, "y": self.y_range}

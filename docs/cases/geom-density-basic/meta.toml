@@ -1,0 +1,7 @@
+family = "geom-density"
+features = ["aes-mapping", "stat-identity", "scale-limits"]
+ci = true
+title = "density：密度多边形 + 上沿"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "GeomDensity 继承 GeomArea（ymin = 0、ymax = density），默认 outline.type = upper，只描上沿。"

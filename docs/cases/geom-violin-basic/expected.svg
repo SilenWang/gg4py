@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='288.00pt' height='216.00pt' viewBox='0 0 288.00 216.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA='>
+    <rect x='0.00' y='0.00' width='288.00' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<rect x='0.00' y='0.00' width='288.00' height='216.00' style='stroke-width: 0.00; stroke: none;' />
+<polygon points='84.00,172.80 71.40,151.20 58.80,129.60 48.00,108.00 58.80,86.40 71.40,64.80 84.00,43.20 84.00,43.20 96.60,64.80 109.20,86.40 120.00,108.00 109.20,129.60 96.60,151.20 84.00,172.80 84.00,172.80 ' style='stroke-width: 1.07; stroke-linecap: butt; fill: #4C78A8;' />
+<polygon points='204.00,162.00 193.20,140.40 180.60,118.80 171.60,97.20 180.60,75.60 193.20,54.00 204.00,32.40 204.00,32.40 214.80,54.00 227.40,75.60 236.40,97.20 227.40,118.80 214.80,140.40 204.00,162.00 204.00,162.00 ' style='stroke-width: 1.07; stroke-linecap: butt; fill: #4C78A8;' />
+</g>
+</g>
+</svg>

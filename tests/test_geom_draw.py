@@ -105,37 +105,34 @@ def _clips(ir_scene) -> list[tuple[float, float, float, float]]:
 #: 真要逐张画出来），所以不能把 build-only 的桩塞进去。覆盖用「可绘制 ∪ 本表」
 #: 表达：注册表集合 == 渲染器集合 ∪ allowlist。**只减不增**——SIL-735 落地时从
 #: 这里删条目（同时渲染器会从 `BUILD_ONLY_RENDERERS` 移到 `GEOM_RENDERERS`，
-#: 测试要求两边逐项相等）。
-BUILD_ONLY_ALLOWLIST: dict[str, str] = {
-    "hex": "SIL-735",
-    "contour": "SIL-735",
-    "contour_filled": "SIL-735",
-    "density_2d": "SIL-735",
-    "density_2d_filled": "SIL-735",
-}
+#: 测试要求两边逐项相等）。SIL-735 收口后本表为空，机制保留：新注册一个没有
+#: `draw()` 的 geom 必须在这里点名归属，否则下面的集合相等断言会红。
+BUILD_ONLY_ALLOWLIST: dict[str, str] = {}
 
 
 def test_renderer_registry_covers_every_registered_geom() -> None:
-    # M2-S2：注册表里每一个 geom 都必须有绘制实现，或者进显式 allowlist（build
-    # 级实现 + 归属任务）。集合**相等**而不是子集：注册表多出一个既不可绘制、
-    # 也没登记的 geom 就红（#61 建立的回归保护）。
+    # M2-S2：注册表里的每一个 geom 都必须有绘制实现（49 个 = M1-7 的 9 个 +
+    # 长尾 A 的 20 个 + 长尾 B 的 20 个）。两边顺序一致，缺一个就红。
+    assert registered_renderers() == registry.registered("geom")
+    # 集合**相等**而不是子集：注册表多出一个既不可绘制、也没登记的 geom 就红
+    # （#61 建立的回归保护）。SIL-735 收口后 allowlist 已清空。
     rendered = set(registered_renderers())
     allowlisted = set(BUILD_ONLY_ALLOWLIST)
+    assert allowlisted == set()
     assert rendered | allowlisted == set(registry.registered("geom"))
     # 两边不重叠：能画的 geom 不该挂在 allowlist 上。
     assert not rendered & allowlisted
     # allowlist 与 build-only 渲染器逐项相等：条目搬进 `GEOM_RENDERERS` 时必须
     # 同步删掉，否则这里红。
     assert set(build_only_renderers()) == allowlisted
-    # 只减不增：5 是 SIL-735 收口前的条目数，新增一条要改这里（评审可见）。
-    assert len(allowlisted) <= 5
     # 每个 allowlist 条目的 `draw()` 必须点名自己的归属任务。
     for name, followup in BUILD_ONLY_ALLOWLIST.items():
         with pytest.raises(GeomError, match=followup):
             renderer_for(name).draw(None, None, None, None, None, None)
     assert renderer_for("col").name == "col"
+    assert renderer_for("violin").name == "violin"
     with pytest.raises(GeomError, match="没有绘制实现"):
-        renderer_for("violin")
+        renderer_for("sf_text")
 
 
 def test_geom_contract_fields_match_ggplot2() -> None:
@@ -676,6 +673,35 @@ def _digest_plots() -> dict[str, object]:
         ymin=[0.2, 0.3],
         ymax=[0.8, 0.7],
     )
+    # --- M2-7 长尾 B：文本 / 点 / 分布 / 2D 族 ------------------------------
+    text = _table(x=[0.2, 0.7], y=[0.3, 0.8], label=["a", "bc"])
+    bins = _table(
+        x=[0.25, 0.75], y=[0.3, 0.7], width=[0.5, 0.5], height=[0.4, 0.4], count=[1.0, 2.0]
+    )
+    contours = _table(
+        x=[0.1, 0.4, 0.7, 0.1, 0.4, 0.7],
+        y=[0.2, 0.5, 0.2, 0.6, 0.9, 0.6],
+        level=[1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
+        group=["g1", "g1", "g1", "g2", "g2", "g2"],
+    )
+    bands = _table(
+        x=[0.0, 1.0, 1.0, 0.0, 0.2, 0.3, 0.3, 0.2],
+        y=[0.0, 0.0, 1.0, 1.0, 0.2, 0.2, 0.3, 0.3],
+        level=["(0, 1]"] * 8,
+        group=["b1"] * 8,
+        subgroup=["s1"] * 4 + ["s2"] * 4,
+    )
+    dotplot = _table(
+        x=[0.2, 0.5], y=[0.0, 0.0], binwidth=[0.1, 0.1], count=[2.0, 1.0], group=[1.0, 1.0]
+    )
+    violin = _table(
+        x=[1.0, 1.0, 1.0],
+        y=[0.1, 0.3, 0.5],
+        violinwidth=[0.0, 0.5, 1.0],
+        xmin=[0.6, 0.6, 0.6],
+        xmax=[1.4, 1.4, 1.4],
+        group=[1.0, 1.0, 1.0],
+    )
     return {
         "point": ggplot(point, aes(x="x", y="y", colour="g")) + registry.geom_point(),
         "line": ggplot(line, aes(x="x", y="y", colour="g")) + registry.geom_line(),
@@ -723,6 +749,39 @@ def _digest_plots() -> dict[str, object]:
         "rug": ggplot(point, aes(x="x", y="y")) + registry.geom_rug(),
         "map": ggplot(_table(map_id=["a", "b"]), aes(map_id="map_id"))
         + registry.geom_map(map=MAP_TABLE),
+        # --- M2-7 长尾 B ------------------------------------------------------
+        "text": ggplot(text, aes(x="x", y="y", label="label")) + registry.geom_text(size=5),
+        "label": ggplot(text, aes(x="x", y="y", label="label")) + registry.geom_label(size=5),
+        "jitter": ggplot(point, aes(x="x", y="y")) + registry.geom_jitter(width=0.0, height=0.0),
+        "count": ggplot(point, aes(x="x", y="y")) + registry.geom_count(stat="identity"),
+        "bin2d": ggplot(bins, aes(x="x", y="y"))
+        + registry.geom_bin2d(stat="identity", fill="#4C78A8"),
+        "bin_2d": ggplot(bins, aes(x="x", y="y"))
+        + registry.geom_bin_2d(stat="identity", fill="#4C78A8"),
+        "hex": ggplot(bins, aes(x="x", y="y")) + registry.geom_hex(stat="identity"),
+        "density": ggplot(step, aes(x="x", y="y")) + registry.geom_density(stat="identity"),
+        "density_2d": ggplot(contours, aes(x="x", y="y", group="group"))
+        + registry.geom_density_2d(stat="identity"),
+        "density2d": ggplot(contours, aes(x="x", y="y", group="group"))
+        + registry.geom_density2d(stat="identity"),
+        "density_2d_filled": ggplot(bands, aes(x="x", y="y", group="group", subgroup="subgroup"))
+        + registry.geom_density_2d_filled(stat="identity", fill="#4C78A8"),
+        "density2d_filled": ggplot(bands, aes(x="x", y="y", group="group", subgroup="subgroup"))
+        + registry.geom_density2d_filled(stat="identity", fill="#4C78A8"),
+        "contour": ggplot(contours, aes(x="x", y="y", group="group"))
+        + registry.geom_contour(stat="identity", colour="#3366FF"),
+        "contour_filled": ggplot(bands, aes(x="x", y="y", group="group", subgroup="subgroup"))
+        + registry.geom_contour_filled(stat="identity", fill="#4C78A8"),
+        "dotplot": ggplot(dotplot, aes(x="x", y="y", binwidth="binwidth", count="count"))
+        + registry.geom_dotplot(stat="identity"),
+        "violin": ggplot(
+            violin, aes(x="x", y="y", violinwidth="violinwidth", xmin="xmin", xmax="xmax")
+        )
+        + registry.geom_violin(stat="identity"),
+        "qq": ggplot(point, aes(x="x", y="y")) + registry.geom_qq(stat="identity"),
+        "qq_line": ggplot(point, aes(x="x", y="y")) + registry.geom_qq_line(stat="identity"),
+        "quantile": ggplot(step, aes(x="x", y="y")) + registry.geom_quantile(stat="identity"),
+        "function": ggplot(step, aes(x="x", y="y")) + registry.geom_function(stat="identity"),
     }
 
 

@@ -380,3 +380,10 @@ class ShaperMetrics:
         lines = len(self._lines(text))
         pitch = LINE_PITCH * size
         return (box + (lines - 1) * pitch) / 72.0
+
+    def descent(self, *, fontsize: float, cex: float = 1.0, font: str = "sans") -> float:
+        """字体的 descent（英寸）：`geom_label` 的 `font_descent()` 用它平衡内边距。"""
+        size = float(fontsize) * float(cex)
+        face = self.shaper.primary_face(font)
+        metrics = self.shaper.font(face, size).getMetrics()
+        return float(metrics.fDescent) / 72.0

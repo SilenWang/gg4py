@@ -1,0 +1,7 @@
+family = "geom-count"
+features = ["aes-mapping", "size-aes", "scale-size", "scale-limits"]
+ci = true
+title = "count：n → size（面积标度）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "geom_count = GeomPoint + stat_sum；这里喂 stat 输出（n 列），尺寸走 scale_size_area。"

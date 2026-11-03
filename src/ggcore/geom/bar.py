@@ -28,6 +28,7 @@ from ggcore.build import BuildWarning
 from ggcore.data import Column, ColumnTable
 from ggcore.geom.base import (
     POINT_PER_MM,
+    GeomError,
     GeomRenderer,
     alpha_colour,
     default_size,
@@ -350,6 +351,9 @@ class AreaRenderer(GeomRenderer):
         linetype = _values(data, "linetype", 1)
         lineend = str(build.params.get("lineend", "butt"))
         linejoin = str(build.params.get("linejoin", "round"))
+        outline = str(build.params.get("outline.type", "both") or "both")
+        if outline not in ("both", "upper", "lower", "full"):
+            raise GeomError(f"outline.type 只能是 both / upper / lower / full，收到 {outline!r}")
         groups = (
             np.asarray(data.column("group").values, dtype=np.float64)
             if "group" in data
@@ -387,7 +391,12 @@ class AreaRenderer(GeomRenderer):
                 )
             )
             if colour[first] is not None and colour[first] is not NA:
-                for px, py, pid in ((upper_x, upper_y, upper_id), (lower_x, lower_y, lower_id)):
+                edges: list[tuple[np.ndarray, np.ndarray, list[int]]] = []
+                if outline in ("both", "upper", "full"):
+                    edges.append((upper_x, upper_y, upper_id))
+                if outline in ("both", "lower", "full"):
+                    edges.append((lower_x, lower_y, lower_id))
+                for px, py, pid in edges:
                     if flip:
                         px, py = py, px
                     outlines.append(

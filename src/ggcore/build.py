@@ -118,10 +118,17 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        # M2-7 长尾 B：geom_count / geom_bin_2d / geom_hex / geom_density /
+        # geom_qq / geom_contour_filled 的 `Stat$default_aes`（与下面 M2-6 的
+        # 同名列合并成一份表；两边取值一致，`contour_filled` 用带 `order` 的版本）。
+        "sum": (("size", "n"),),
+        "bin2d": (("fill", "count"),),
         "bin_2d": (("fill", "count"),),
+        "binhex": (("fill", "count"),),
         "bin_hex": (("fill", "count"),),
         "summary_2d": (("fill", "value"),),
         "summary_hex": (("fill", "value"),),
+        "density": (("x", "density"), ("y", "density")),
         "contour": (("order", "level"),),
         "contour_filled": (("order", "level"), ("fill", "level")),
         # `stat_density_2d` 的链式 contour **不经过** map_statistic()：密度族即使
@@ -132,8 +139,6 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
         # 这里内联是因为 build 在 import 期不能反向 import stat_longtail）。
         "qq": (("x", "theoretical"), ("y", "sample")),
         "ecdf": (("x", "ecdf"), ("y", "ecdf")),
-        "density": (("x", "density"), ("y", "density")),
-        "sum": (("size", "n"),),
     }
 )
 
@@ -538,7 +543,11 @@ def compute_position(
     if mapped.nrows == 0:
         return _EMPTY
     _check_required_aes(layer, mapped, index)
-    table = ColumnTable(_geom_setup(layer, mapped, raw), nrows=mapped.nrows)
+    columns = _geom_setup(layer, mapped, raw)
+    # `setup_data()` 可以改变行数（`geom_dotplot` 按 `count` 展开成点），所以行数
+    # 取 setup 之后的结果，不是 `mapped.nrows`。
+    nrows = int(columns[0][1].size) if columns else 0
+    table = ColumnTable(columns, nrows=nrows)
     position = _resolve_position(layer.position)
     return position.compute_layer(table)
 

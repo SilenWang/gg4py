@@ -123,6 +123,10 @@ class _FallbackMetrics:
         del text, font
         return 0.955 * float(fontsize) * float(cex) / 72.0
 
+    def descent(self, *, fontsize: float, cex: float = 1.0, font: str = "sans") -> float:
+        del font
+        return 0.22 * float(fontsize) * float(cex) / 72.0
+
 
 _FALLBACK_METRICS = _FallbackMetrics()
 
@@ -260,7 +264,15 @@ def scene_from_build(
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover - FacetTable 一定覆盖每个 panel
             continue
-        children = _panel_children(prepared, prepared_layers, panel, params, theme, metrics)
+        children = _panel_children(
+            prepared,
+            prepared_layers,
+            panel,
+            params,
+            theme,
+            metrics,
+            panel_size_in=(box.width_cm / CM_PER_INCH, box.height_cm / CM_PER_INCH),
+        )
         if children:
             grobs.append(
                 g_tree(
@@ -848,6 +860,8 @@ def _panel_children(
     params: PanelParams,
     theme: ResolvedTheme,
     metrics: Any,
+    *,
+    panel_size_in: tuple[float, float] | None = None,
 ) -> list[Any]:
     children: list[Any] = []
     for name, border_only in (("panel.background", False),):
@@ -878,13 +892,20 @@ def _panel_children(
             children.append(grob)
 
     layer_grobs: list[Any] = []
+    draw_params = params
+    if panel_size_in is not None:
+        draw_params = replace(
+            params,
+            panel_width_in=float(panel_size_in[0]),
+            panel_height_in=float(panel_size_in[1]),
+        )
     for layer in layers:
         data = _panel_rows(layer.data, panel)
         if data is None or data.nrows == 0:
             continue
         geom = _geom_of(layer)
         panel_layer = replace(layer, data=data)
-        grob = geom.draw(panel_layer, params, build.coord, theme, metrics)
+        grob = geom.draw(panel_layer, draw_params, build.coord, theme, metrics)
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)

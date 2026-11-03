@@ -1,0 +1,7 @@
+family = "geom-density2d"
+features = ["aes-mapping", "aes-grouping", "contour-band", "scale-limits", "stat-identity"]
+ci = true
+title = "density2d：两条等值线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "GeomDensity2d 继承 GeomPath：每个 group 一条折线，默认 accent 色。"

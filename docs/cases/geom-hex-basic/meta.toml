@@ -1,0 +1,7 @@
+family = "geom-hex"
+features = ["aes-mapping", "fill-aes", "bin-hex", "scale-gradient", "scale-limits"]
+ci = true
+title = "hex：六边形 bin"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "六边形顶点 = hexbin::hexcoords(dx = width/2, dy = height/√3/2)；fill 吃 alpha、col 不吃。"

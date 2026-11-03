@@ -464,7 +464,7 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
         # 用 lwd 本身会在细线上把虚线画密（SIL-737 的 abline 用例）。
         # 再乘 72/96：上面算出来的是 lwd 单位（1/96 inch）的段长，IR 的 `lty` 是 pt，
         # 渲染器随即乘 `DASH_UNIT = 4/3` 换回 lwd 单位写进 `stroke-dasharray`
-        # （`pattern × max(lwd, 1)`，与参考产线同口径；SIL-763）。
+        # （`pattern × max(lwd, 1)`，与参考产线同口径；SIL-763 / SIL-765）。
         scale = max(float(gp.lwd), 1.0) * _LWD_UNITS_TO_PT
         pattern = tuple(round(segment * scale, 6) for segment in dashes)
     return ir.Gpar(
@@ -680,6 +680,10 @@ class CircleGrob(Grob):
     x: Unit = field(default_factory=lambda: unit(0.5, "npc"))
     y: Unit = field(default_factory=lambda: unit(0.5, "npc"))
     r: Unit = field(default_factory=lambda: unit(0.5, "npc"))
+    #: 半径按哪一根轴换算：grid 的 `circleGrob(r = unit(., "npc"))` 取较小边，
+    #: `geom_dotplot` 取「非堆叠轴」（R 的 `convertX` / `convertY`）。IR 的
+    #: circle 存绝对 r（pt），换算是遍历期一次性的，所以这里记轴就好。
+    r_axis: str = "x"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -937,8 +941,17 @@ def circle_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    *,
+    r_axis: str = "x",
 ) -> CircleGrob:
-    """`circleGrob()`：`r` 在视口单位下，椭圆交给视口变换（IR 不做 rx/ry）。"""
+    """`circleGrob()`：`r` 在视口单位下，椭圆交给视口变换（IR 不做 rx/ry）。
+
+    `r_axis` 决定 `npc` / `native` 半径按哪根轴换算（grid 的圆半径默认取较小边；
+    `geom_dotplot` 要按「非堆叠轴」，所以显式给）。绝对单位（mm/pt/inches）与
+    轴无关。
+    """
+    if r_axis not in ("x", "y"):
+        raise GrobError(f"'r_axis' must be 'x' or 'y', got {r_axis!r}")
     x_unit = _as_unit("x", x, default_units)
     y_unit = _as_unit("y", y, default_units)
     r_unit = _as_unit("r", r, default_units)
@@ -951,6 +964,7 @@ def circle_grob(
         x=x_unit,
         y=y_unit,
         r=r_unit,
+        r_axis=r_axis,
     )
 
 
@@ -1873,7 +1887,7 @@ class _Traverser:
         n = grob.count
         cx = _recycle(frame.loc(grob.x, "x"), n)
         cy = _recycle(frame.flip(frame.loc(grob.y, "y")), n)
-        r = _recycle(frame.dim(grob.r, "x"), n)
+        r = _recycle(frame.dim(grob.r, grob.r_axis), n)
         circle = np.column_stack([cx, cy, r])
         return _Resolved(NodeKind.CIRCLE, {"circle": circle}, lambda gp: {})
 

@@ -25,7 +25,7 @@ import pytest
 from ggcore import registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.geom import GeomError, build_only_renderers, renderer_for
+from ggcore.geom import build_only_renderers, renderer_for
 from ggcore.geom.scene import scene_from_plot
 from ggcore.plot import aes, ggplot
 
@@ -483,21 +483,16 @@ def test_contour_deduplicates_duplicate_grid_points() -> None:
         )
 
 
-def test_2d_geoms_are_build_only_and_name_the_followup() -> None:
-    # `geom_tile` 已由 SIL-737 实现绘制，从 build-only 列表移出；剩下的 5 个
-    # 仍然只有 build 级实现，`draw()` 点名 SIL-735。
-    assert build_only_renderers() == (
-        "hex",
-        "contour",
-        "contour_filled",
-        "density_2d",
-        "density_2d_filled",
-    )
-    assert "tile" not in build_only_renderers()
-    for name in build_only_renderers():
-        with pytest.raises(GeomError, match="SIL-735") as raised:
-            renderer_for(name).draw(None, None, None, None, None, None)
-        assert "SIL-737" not in str(raised.value)
+def test_2d_geoms_are_drawn_after_the_long_tail_merge() -> None:
+    """M2-S2 的两组长尾 geom 落地后，2D 族的 6 个 geom 都有 `draw()` 实现。
+
+    `tile` 在 SIL-737（长尾 A），其余 5 个在 SIL-735（长尾 B）。`BUILD_ONLY_RENDERERS`
+    里只剩「仍未实现绘制」的名字，所以 `build_only_renderers()` 是空的；#58 的
+    build 级实现（`setup_data()` / 默认美学）仍在，只是不再参与 `draw()` 分派。
+    """
+    assert build_only_renderers() == ()
+    for name in ("tile", "hex", "contour", "contour_filled", "density_2d", "density_2d_filled"):
+        assert renderer_for(name).name == name
 
 
 def _walk(scene) -> list:

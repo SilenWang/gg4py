@@ -11,6 +11,7 @@ from ggcore.layer import Geom, Layer
 
 EXPECTED = {
     "geom": (
+        # M1-7 的 9 个
         "point",
         "line",
         "path",
@@ -20,7 +21,7 @@ EXPECTED = {
         "histogram",
         "boxplot",
         "smooth",
-        # M2-S2：长尾 A（顺序 = registry.GEOM_SPECS 的登记顺序）
+        # M2-S2：长尾 A（SIL-737，顺序 = registry.GEOM_SPECS 的登记顺序）
         "abline",
         "hline",
         "vline",
@@ -29,12 +30,6 @@ EXPECTED = {
         "spoke",
         "rect",
         "tile",
-        # M2-6：2D 族的 build-only 部分（tile 已转成可绘制，见上）
-        "hex",
-        "contour",
-        "contour_filled",
-        "density_2d",
-        "density_2d_filled",
         "raster",
         "polygon",
         "ribbon",
@@ -47,6 +42,27 @@ EXPECTED = {
         "blank",
         "rug",
         "map",
+        # M2-7 长尾 B（SIL-735）
+        "text",
+        "label",
+        "jitter",
+        "count",
+        "bin2d",
+        "bin_2d",
+        "hex",
+        "density",
+        "density_2d",
+        "density2d",
+        "density_2d_filled",
+        "density2d_filled",
+        "contour",
+        "contour_filled",
+        "dotplot",
+        "violin",
+        "qq",
+        "qq_line",
+        "quantile",
+        "function",
     ),
     "stat": (
         "identity",

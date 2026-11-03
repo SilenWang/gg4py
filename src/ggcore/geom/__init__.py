@@ -27,6 +27,23 @@ from ggcore.geom.base import (
     table_strings,
 )
 from ggcore.geom.boxplot import BoxplotRenderer
+from ggcore.geom.dist import (
+    Bin2dRenderer,
+    ContourFilledRenderer,
+    ContourRenderer,
+    CountRenderer,
+    Density2dFilledRenderer,
+    Density2dRenderer,
+    DensityRenderer,
+    DotplotRenderer,
+    FunctionRenderer,
+    HexRenderer,
+    JitterRenderer,
+    QqLineRenderer,
+    QqRenderer,
+    QuantileRenderer,
+    ViolinRenderer,
+)
 from ggcore.geom.interval import (
     CrossbarRenderer,
     ErrorbarhRenderer,
@@ -48,23 +65,36 @@ from ggcore.geom.segment import (
 )
 from ggcore.geom.smooth import SmoothRenderer
 from ggcore.geom.stat2d import BUILD_ONLY_RENDERERS
+from ggcore.geom.text import LabelRenderer, TextRenderer
 
 __all__ = [
     "GEOM_RENDERERS",
     "AblineRenderer",
     "AreaRenderer",
     "BarRenderer",
+    "Bin2dRenderer",
     "BlankRenderer",
     "BoxplotRenderer",
     "ColRenderer",
+    "ContourFilledRenderer",
+    "ContourRenderer",
+    "CountRenderer",
     "CrossbarRenderer",
     "CurveRenderer",
+    "Density2dFilledRenderer",
+    "Density2dRenderer",
+    "DensityRenderer",
+    "DotplotRenderer",
     "ErrorbarRenderer",
     "ErrorbarhRenderer",
+    "FunctionRenderer",
     "GeomError",
     "GeomRenderer",
+    "HexRenderer",
     "HistogramRenderer",
     "HlineRenderer",
+    "JitterRenderer",
+    "LabelRenderer",
     "LineRenderer",
     "LinerangeRenderer",
     "MapRenderer",
@@ -72,6 +102,9 @@ __all__ = [
     "PointRenderer",
     "PointrangeRenderer",
     "PolygonRenderer",
+    "QqLineRenderer",
+    "QqRenderer",
+    "QuantileRenderer",
     "RasterRenderer",
     "RectRenderer",
     "RibbonRenderer",
@@ -80,7 +113,9 @@ __all__ = [
     "SmoothRenderer",
     "SpokeRenderer",
     "StepRenderer",
+    "TextRenderer",
     "TileRenderer",
+    "ViolinRenderer",
     "VlineRenderer",
     "flip_data",
     "registered_renderers",
@@ -128,6 +163,27 @@ GEOM_RENDERERS: dict[str, GeomRenderer] = {
     "blank": BlankRenderer(),
     "rug": RugRenderer(),
     "map": MapRenderer(),
+    # M2-7 长尾 B：文本 / 点 / 分布 / 2D 族（20 个注册名）
+    "text": TextRenderer(),
+    "label": LabelRenderer(),
+    "jitter": JitterRenderer(),
+    "count": CountRenderer(),
+    "bin2d": Bin2dRenderer(),
+    "bin_2d": Bin2dRenderer(),
+    "hex": HexRenderer(),
+    "density": DensityRenderer(),
+    "density_2d": Density2dRenderer(),
+    "density2d": Density2dRenderer(),
+    "density_2d_filled": Density2dFilledRenderer(),
+    "density2d_filled": Density2dFilledRenderer(),
+    "contour": ContourRenderer(),
+    "contour_filled": ContourFilledRenderer(),
+    "dotplot": DotplotRenderer(),
+    "violin": ViolinRenderer(),
+    "qq": QqRenderer(),
+    "qq_line": QqLineRenderer(),
+    "quantile": QuantileRenderer(),
+    "function": FunctionRenderer(),
 }
 
 
@@ -157,8 +213,13 @@ def renderer_for(name: str) -> GeomRenderer:
 
 
 def build_only_renderers() -> tuple[str, ...]:
-    """只有 build 级实现（没有 `draw()`）的 geom 名。"""
-    return tuple(BUILD_ONLY_RENDERERS)
+    """只有 build 级实现（没有 `draw()`）的 geom 名。
+
+    `GEOM_RENDERERS` 里已经能画的名字不算——M2-S2 之后 `tile` / `hex` / `contour` /
+    `contour_filled` / `density_2d` / `density_2d_filled` 都由 geom 层接管绘制，
+    `BUILD_ONLY_RENDERERS` 只剩仍未落地绘制的名字。
+    """
+    return tuple(name for name in BUILD_ONLY_RENDERERS if name not in GEOM_RENDERERS)
 
 
 def has_renderer(name: str) -> bool:
