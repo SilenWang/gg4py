@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-margin"]
+ci = true
+title = "上游快照：tag 缺省位置（margin / topleft）"
+source = "upstream:tests/testthat/_snaps/labels/defaults.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`labs(tag = \"Fig. A)\")` 在 `plot.tag.location = \"margin\"`、`plot.tag.position = \"topleft\"` 下把 margin 的左边与上边扩到 tag 尺寸。"

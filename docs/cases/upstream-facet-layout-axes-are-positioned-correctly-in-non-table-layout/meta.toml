@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-layout-non-table", "facet-wrap-dir-v"]
+ci = true
+title = "上游快照：非表格布局的轴定位"
+source = "upstream:tests/testthat/_snaps/facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`as.table = FALSE` + `scale_y_continuous(position = \"left\")` 的轴定位。"

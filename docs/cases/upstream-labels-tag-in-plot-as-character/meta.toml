@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-plot"]
+ci = true
+title = "上游快照：tag 在整张图左下角"
+source = "upstream:tests/testthat/_snaps/labels/tag-in-plot-as-character.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`plot.tag.position = \"bottomleft\"` + `plot.tag.location = \"plot\"`。"

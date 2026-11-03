@@ -1,0 +1,7 @@
+family = "patterns"
+features = ["pattern-fill"]
+ci = true
+title = "上游快照：单个平铺图案填充"
+source = "upstream:tests/testthat/_snaps/patterns/single-pattern-fill.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：卡点见 tools/upstream/snapshots.toml（图案内容坐标系按图层 bbox）。"

@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -872,6 +872,12 @@ def _overlap_order(n: int) -> list[int]:
     return order
 
 
+def _without_labels(ticks: AxisGuideTicks) -> AxisGuideTicks:
+    """把一条轴（含叠放子轴）的标签清空，只留刻度。"""
+    children = tuple(_without_labels(child) for child in ticks.children)
+    return replace(ticks, labels=(), children=children)
+
+
 def _visible_labels(
     ticks: AxisGuideTicks, element: Any, metrics: Any, *, axis_length_cm: float
 ) -> list[tuple[AxisLabel, int]]:
@@ -934,12 +940,20 @@ def axis_guide_grobs(
     *,
     metrics: Any = None,
     name: str = "axis",
+    draw_labels: bool = True,
 ) -> list[Any]:
-    """一条轴的刻度线 + 标签（页面 cm 坐标，y 向上）。"""
+    """一条轴的刻度线 + 标签（页面 cm 坐标，y 向上）。
+
+    `draw_labels=False` 只去掉标签（刻度 / 轴线照画）：`facet_grid(axes = "all",
+    axis.labels = "margins")` 的内面板走这条口径（R 的 `censor_labels()` 把
+    内面板的 `draw_labels` 置空，轴带本身仍留刻度位置）。
+    """
     from ggcore.axis import font_int, margin_sides_cm, paint
     from ggcore.grobs import segments_grob, text_grob
     from ggcore.viewport import gpar
 
+    if not draw_labels:
+        ticks = _without_labels(ticks)
     element = _text_element(theme, ticks.side)
     horizontal = _horizontal(ticks.side)
     side = ticks.side
@@ -998,6 +1012,14 @@ def axis_guide_grobs(
             # 锚点换成对面那一侧的口径（R 的 `measure_grobs()` 用 spacer 吸收
             # 负刻度，轴线 / 刻度 / 文字保持在面板边界内的同一侧）。
             hjust, vjust = _anchor(layer.angle, _OPPOSITE_SIDE[side])
+        # `axis.text.*` 的 hjust / vjust 是显式覆盖（R `label_angle_heuristic()`
+        # 只在两者为 NULL 时才按角度推锚点，见 #5820 的 outside-justified 快照）。
+        hjust_override = getattr(element, "hjust", None)
+        if hjust_override is not None:
+            hjust = float(hjust_override)
+        vjust_override = getattr(element, "vjust", None)
+        if vjust_override is not None:
+            vjust = float(vjust_override)
         # 刻度线：同一档（major / minor / long / mid / short）合成一个 segments
         # grob（R 的 `grobTree(major, minor)` 同构；逐个 mark 画会把面板内的
         # 线段拆成多个 grob，`tests/test_panel_grid.py` 的计数口径也会跟着变）。

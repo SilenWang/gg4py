@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**200**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**111**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **78** 条（M3 开工前归零） / `m3` **33** 条（移交 M3）
+- 已纳管：**210**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**101**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **68** 条（M3 开工前归零） / `m3` **33** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -17,12 +17,10 @@
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `theme` | m2-closeout | 39 | 31 | 8 |
 | `aes` | m2-closeout | 6 | 0 | 6 |
-| `labels` | m2-closeout | 6 | 0 | 6 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
 | `geom-path` | m2-closeout | 5 | 0 | 5 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `draw-key` | m2-closeout | 6 | 2 | 4 |
-| `facet-` | m2-closeout | 4 | 0 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
 | `geom-hex` | m2-closeout | 3 | 0 | 3 |
@@ -35,7 +33,7 @@
 | `geom-polygon` | m2-closeout | 2 | 0 | 2 |
 | `geom-smooth` | m2-closeout | 2 | 0 | 2 |
 | `guide-legend` | m2-closeout | 7 | 5 | 2 |
-| `facet-layout` | m2-closeout | 1 | 0 | 1 |
+| `facet-` | m2-closeout | 4 | 3 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-label` | m2-closeout | 1 | 0 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
@@ -45,14 +43,16 @@
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
+| `facet-layout` | m2-closeout | 1 | 1 | 0 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
 | `geom-raster` | m2-closeout | 12 | 12 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
+| `labels` | m2-closeout | 6 | 6 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
-| **合计** | — | 311 | 200 | 111 |
+| **合计** | — | 311 | 210 | 101 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -78,6 +78,10 @@
 | `coord-transform/sec-axis-with-coord-transform.svg` | `upstream-coord-transform-sec-axis` |
 | `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
 | `draw-key/horizontal-linerange-and-pointrange.svg` | `upstream-draw-key-horizontal-linerange-pointrange` |
+| `facet-/facet-grid-with-omitted-inner-axis-labels.svg` | `upstream-facet-facet-grid-with-omitted-inner-axis-labels` |
+| `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
+| `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
+| `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg` | `upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout` |
 | `geom-dotplot/2-na-values-bin-along-y-stack-center.svg` | `upstream-geom-dotplot-2-na-bin-along-y` |
 | `geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg` | `upstream-geom-dotplot-2-na-dotdensity` |
 | `geom-dotplot/3-stackgroups-bin-y-histodot.svg` | `upstream-geom-dotplot-3-stackgroups-bin-y-histodot` |
@@ -201,6 +205,12 @@
 | `guides/reversed-guide-bins.svg` | `upstream-guides-reversed-guide-bins` |
 | `guides/rotated-guide-titles-and-labels.svg` | `upstream-guides-rotated-guide-titles-labels` |
 | `guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg` | `upstream-guides-vertical-gap-1cm-title-guide` |
+| `labels/defaults.svg` | `upstream-labels-defaults` |
+| `labels/tag-in-margin.svg` | `upstream-labels-tag-in-margin` |
+| `labels/tag-in-panel-as-character.svg` | `upstream-labels-tag-in-panel-as-character` |
+| `labels/tag-in-panel-as-numeric.svg` | `upstream-labels-tag-in-panel-as-numeric` |
+| `labels/tag-in-plot-as-character.svg` | `upstream-labels-tag-in-plot-as-character` |
+| `labels/tag-in-plot-as-numeric.svg` | `upstream-labels-tag-in-plot-as-numeric` |
 | `scale_date/dates-along-x-default-breaks.svg` | `upstream-scale-date-dates-along-x-default-breaks` |
 | `scale_date/dates-along-y-default-breaks.svg` | `upstream-scale-date-dates-along-y-default-breaks` |
 | `scale_date/scale-x-date-breaks-3-weeks.svg` | `upstream-scale-date-scale-x-date-breaks-3-weeks` |
@@ -398,22 +408,19 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 </details>
 
-### `facet-` — 4 条 · SIL-715 · m2-closeout
+### `facet-` — 1 条 · SIL-715 · m2-closeout
 
-省略内轴标签 / 左对齐 strip 的分面布局口径未复刻（SIL-715 #7 的组合矩阵在 M2-S3 另做）。
+SIL-796：`axes = "all"` + `axis.labels = "margins"` 已接上（case `upstream-facet-facet-wrap-with-omitted-inner-axis-labels`），但 `facet_wrap` 每行插轴带后 gtable 的 null 行把 strip 与面板之间的 5.46pt 轴带分配成 2.72pt，第二行 strip 上移 2.74pt（图级 2.92%，均值 0.65%）。卡在 `facet_table()` 的 `heights` 与 `facet_table.panel_boxes()` 的 null 行分配口径，不是阈值问题。
 
 <details><summary>快照</summary>
 
-- `facet-/facet-grid-with-omitted-inner-axis-labels.svg`
 - `facet-/facet-wrap-with-omitted-inner-axis-labels.svg`
-- `facet-/left-justified-facet-labels-with-margins.svg`
-- `facet-/left-justified-rotated-facet-labels-with-margins.svg`
 
 </details>
 
 ### `facet-labels` — 1 条 · SIL-715 · m2-closeout
 
-`labeller` 的 plotmath 解析与 outside 对齐未复刻。
+SIL-796：`axis.text.*` 的 hjust / vjust 已接到轴标签锚点（`_anchor()` 之后的显式覆盖），但 `scales = "free"` × 多行轴标签（`"X\nX\nX\nX\nX"`）的外侧对齐仍差 15.5%：free 面板的轴带宽度按每面板标签单独量，R 的 `outside` 口径要求四边标签基线跨面板统一。卡在「自由标度 × 多行标签的跨面板对齐」。
 
 <details><summary>快照</summary>
 
@@ -423,7 +430,7 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 ### `facet-labels` — 1 条 · SIL-715 · m3
 
-`labeller` 的 plotmath 解析与 outside 对齐未复刻。
+SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。
 
 <details><summary>快照</summary>
 
@@ -431,19 +438,9 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 </details>
 
-### `facet-layout` — 1 条 · SIL-715 · m2-closeout
-
-非表格布局（`facet_grid` 缺行/列）的轴定位未复刻。
-
-<details><summary>快照</summary>
-
-- `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg`
-
-</details>
-
 ### `facet-strips` — 1 条 · SIL-715 · m2-closeout
 
-`facet_wrap(switch=)` 的 strip 换边未复刻。
+SIL-796：`facet_grid(switch = "both")` 未实现——strip 仍固定在顶部 / 右侧，未换到底部 / 左侧，y strip 文本也未按换边翻转（图级 12.7%）。卡在 `facet_table()` 的 strip 放置位置与 `strip.text.y` 的角度翻转。
 
 <details><summary>快照</summary>
 
@@ -735,21 +732,6 @@ key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key
 
 </details>
 
-### `labels` — 6 条 · SIL-715 · m2-closeout
-
-`plot.tag.location`（margin / panel / plot）目前只在主题元素树里，渲染器还没消费；补齐后再纳管 6 条。
-
-<details><summary>快照</summary>
-
-- `labels/defaults.svg`
-- `labels/tag-in-margin.svg`
-- `labels/tag-in-panel-as-character.svg`
-- `labels/tag-in-panel-as-numeric.svg`
-- `labels/tag-in-plot-as-character.svg`
-- `labels/tag-in-plot-as-numeric.svg`
-
-</details>
-
 ### `legend-draw` — 1 条 · SIL-715 · m2-closeout
 
 这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。
@@ -760,16 +742,43 @@ key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key
 
 </details>
 
-### `patterns` — 4 条 · SIL-715 · m3
+### `patterns` — 1 条 · SIL-715 · m3
 
-pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。
+SIL-796：`geom_col(fill = pattern(...))` 已能渲染（`tile_pattern()` 走 IR `TilePattern`），但相位差 31%——`TilePatternSpec.resolve()` 用单节点 bbox 折 npc，R 的 `pattern()` 内容按**图层 bbox** 的 npc（`userSpaceOnUse`）并锚在图层中心；单根 bar 的 bbox 让每根柱的图案各从自身左下角起算。卡在「图案内容坐标系 = 图层包围盒」。
+
+<details><summary>快照</summary>
+
+- `patterns/single-pattern-fill.svg`
+
+</details>
+
+### `patterns` — 1 条 · SIL-715 · m3
+
+SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。
+
+<details><summary>快照</summary>
+
+- `patterns/pattern-fills-through-scale.svg`
+
+</details>
+
+### `patterns` — 1 条 · SIL-715 · m3
+
+SIL-796：同 `single-pattern-fill`——`linearGradient(group = FALSE)` / `radialGradient(group = FALSE)` 与 `pattern()` 的混合列表已能经 `fill=` 传进 geom，但渐变端点 / 图案相位按单节点 bbox 折，R 按图层 bbox。卡在「图层级填充包围盒」。
 
 <details><summary>快照</summary>
 
 - `patterns/pattern-fills-no-alpha.svg`
-- `patterns/pattern-fills-through-scale.svg`
+
+</details>
+
+### `patterns` — 1 条 · SIL-715 · m3
+
+SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4, 0.2)` 在 R 里走 `grid::GridMask`（svglite 写 `<mask style='mask-type:alpha'>`）；IR 没有 mask 节点，`alpha_colour()` 对 FillSpec 也不折 alpha（只接受颜色串）。要先给 IR / 两个设备加 alpha mask 原语。
+
+<details><summary>快照</summary>
+
 - `patterns/pattern-fills-with-alpha.svg`
-- `patterns/single-pattern-fill.svg`
 
 </details>
 

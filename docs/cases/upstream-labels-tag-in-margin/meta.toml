@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-margin"]
+ci = true
+title = "上游快照：tag 在 margin 底部"
+source = "upstream:tests/testthat/_snaps/labels/tag-in-margin.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`plot.tag.position = \"bottom\"` + `plot.tag.location = \"margin\"`，底部 margin 扩到 tag 高度。"

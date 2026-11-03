@@ -1,0 +1,7 @@
+family = "facet-labels"
+features = ["facet-label-outside-justification"]
+ci = true
+title = "上游快照：outside-justified labels"
+source = "upstream:tests/testthat/_snaps/facet-labels/outside-justified-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：卡点见 tools/upstream/snapshots.toml（自由标度 × 多行标签的跨面板对齐）。"

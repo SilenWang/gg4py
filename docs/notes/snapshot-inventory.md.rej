@@ -1,0 +1,53 @@
+--- docs/notes/snapshot-inventory.md
++++ docs/notes/snapshot-inventory.md
+@@ -4,9 +4,9 @@
+ 
+ - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
+ - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
+-- 已纳管：**177**（`expected.svg` 与上游快照逐字节相同）
+-- 已知缺口：**134**（全部按分类归口，见下表）
+-- 缺口归属：`m2-closeout` **111** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
++- 已纳管：**187**（`expected.svg` 与上游快照逐字节相同）
++- 已知缺口：**124**（全部按分类归口，见下表）
++- 缺口归属：`m2-closeout` **101** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+ 
+ ## 按簇 burndown
+ 
+@@ -19,12 +19,10 @@
+ | `theme` | m2-closeout | 39 | 31 | 8 |
+ | `sec-axis` | m2-closeout | 7 | 0 | 7 |
+ | `aes` | m2-closeout | 6 | 0 | 6 |
+-| `labels` | m2-closeout | 6 | 0 | 6 |
+ | `coord-cartesian` | m2-closeout | 5 | 0 | 5 |
+ | `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
+ | `geom-path` | m2-closeout | 5 | 0 | 5 |
+ | `draw-key` | m2-closeout | 6 | 2 | 4 |
+-| `facet-` | m2-closeout | 4 | 0 | 4 |
+ | `patterns` | m2-closeout | 4 | 0 | 4 |
+ | `coord-transform` | m2-closeout | 3 | 0 | 3 |
+ | `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
+@@ -39,20 +37,22 @@
+ | `geom-smooth` | m2-closeout | 2 | 0 | 2 |
+ | `guide-legend` | m2-closeout | 7 | 5 | 2 |
+ | `coord-flip` | m2-closeout | 1 | 0 | 1 |
+-| `facet-layout` | m2-closeout | 1 | 0 | 1 |
++| `facet-` | m2-closeout | 4 | 3 | 1 |
+ | `facet-strips` | m2-closeout | 1 | 0 | 1 |
+ | `geom-label` | m2-closeout | 1 | 0 | 1 |
+ | `geom-text` | m2-closeout | 1 | 0 | 1 |
+ | `guides` | m2-closeout | 45 | 44 | 1 |
+ | `legend-draw` | m2-closeout | 1 | 0 | 1 |
+ | `position-stack` | m2-closeout | 1 | 0 | 1 |
++| `facet-layout` | m2-closeout | 1 | 1 | 0 |
+ | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
+ | `geom-raster` | m2-closeout | 12 | 12 | 0 |
+ | `geom-violin` | m2-closeout | 14 | 14 | 0 |
+ | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
++| `labels` | m2-closeout | 6 | 6 | 0 |
+ | `scale_date` | m2-closeout | 8 | 8 | 0 |
+ | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
+-| **合计** | — | 311 | 177 | 134 |
++| **合计** | — | 311 | 187 | 124 |
+ 
+ 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
+ 

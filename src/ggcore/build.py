@@ -947,7 +947,14 @@ class PlotBuild:
         """`{PANEL: PanelParams}`（每面板一份）。"""
         return MappingProxyType({panel.panel: panel.panel_params for panel in self.panels})
 
-    def facet_table(self, metrics: Any = None, *, right_inside: bool = False) -> Any:
+    def facet_table(
+        self,
+        metrics: Any = None,
+        *,
+        right_inside: bool = False,
+        axis_x_cm: float = 0.0,
+        axis_y_cm: float = 0.0,
+    ) -> Any:
         """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。
 
         `metrics` 给出时 strip 尺寸走真实字体度量（M1-7 的场景装配）。
@@ -985,6 +992,8 @@ class PlotBuild:
                 theme_aspect if isinstance(theme_aspect, (int, float)) else None,
             ),
             right_inside=right_inside,
+            axis_x_cm=axis_x_cm,
+            axis_y_cm=axis_y_cm,
         )
 
 
