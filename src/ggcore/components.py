@@ -22,7 +22,7 @@ from typing import Any
 
 from ggcore.aes import frozen_mapping
 
-__all__ = ["Coord", "Facet", "Guide", "Labels", "Scale", "Theme"]
+__all__ = ["Coord", "Facet", "Guide", "Guides", "Labels", "Scale", "Theme"]
 
 _MISSING = object()
 
@@ -133,6 +133,27 @@ class Guide:
         raise NotImplementedError(
             f"guide_{self.name} 没有 build_guide()（自定义 Guide 子类需要覆写它）"
         )
+
+
+@dataclass(frozen=True, slots=True)
+class Guides:
+    """`guides()` 的组件：一次给出多张图例的设置（M2-2）。
+
+    `entries` 的键是美学名（`"colour"` / `"fill"` …）或自定义 guide 的自由名字
+    （`"custom"`），值可以是：
+
+    - 注册表组件（`registry.guide_legend(...)` / `registry.guide_<name>(...)`）、
+    - `ggcore.guide` 的实现对象（`guide_legend(...)` / `guide_custom(...)`）、
+    - 字符串（`"none"` / `"legend"` / `"colourbar"`）。
+
+    与 `p + guides(...)` 同一条路径：后加的条目替换先加的，和 `plot.scales`
+    的「同一美学只有一个条目」口径相同。
+    """
+
+    entries: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "entries", dict(self.entries))
 
 
 @dataclass(frozen=True, slots=True)

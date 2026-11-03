@@ -23,25 +23,31 @@ from ggcore import ir, registry
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom.scene import plot_layout, scene_from_plot
+from ggcore.grobs import rect_grob, text_grob
 from ggcore.guide import (
     AUTO,
+    Guide,
     GuideColourbar,
+    GuideCustom,
     GuideError,
     GuideLegend,
     GuideNone,
     build_guides,
     guide_colourbar,
+    guide_custom,
     guide_from_component,
     guide_legend,
     guide_none,
     key_table,
+    legend_box_layout,
     legend_grob,
     legend_layout,
 )
-from ggcore.plot import aes, ggplot
+from ggcore.plot import aes, ggplot, guides
 from ggcore.theme import Theme, element_text, margin, resolve_theme
 from ggcore.theme import theme as make_theme
 from ggcore.units import UnitContext, convert_height, convert_width, unit
+from ggcore.viewport import gpar
 
 
 class FakeMetrics:
@@ -429,14 +435,45 @@ def test_legend_does_not_overlap_title_or_caption(position: str) -> None:
         assert union_y >= layout.caption.top - 1e-9 or layout.legend_side in ("right", "left")
 
 
-def test_legend_position_inside_is_named_as_unimplemented() -> None:
+def test_legend_position_inside_places_the_legend_in_the_panel() -> None:
     plot = (
         ggplot(data(), aes(x="x", y="y", colour="g"))
         + registry.geom_point()
-        + make_theme(**{"legend.position": "inside"})
+        + make_theme(**{"legend.position": "inside", "legend.position.inside": (0.25, 0.75)})
     )
-    with pytest.raises(GuideError, match="inside"):
-        plot_layout(build_plot(plot))
+    layout = plot_layout(build_plot(plot), width_in=7, height_in=7, metrics=METRICS)
+    assert layout.legend_side is None or layout.legend_side == "inside"
+    assert layout.legend_boxes
+    box = layout.legend_boxes[0]
+    area = layout.panel_area
+    # 默认 `legend.justification.inside = center`：盒中心落在 (0.25, 0.75)。
+    assert box.x_cm + box.width_cm / 2.0 == pytest.approx(area.x_cm + 0.25 * area.width_cm)
+    assert box.y_cm + box.height_cm / 2.0 == pytest.approx(area.y_cm + 0.75 * area.height_cm)
+    # inside 不占版面：面板区与没有图例时一样大。
+    plain = plot_layout(
+        build_plot(
+            ggplot(data(), aes(x="x", y="y", colour="g"))
+            + registry.geom_point()
+            + make_theme(**{"legend.position": "none"})
+        ),
+        width_in=7,
+        height_in=7,
+        metrics=METRICS,
+    )
+    assert area.width_cm == pytest.approx(plain.panel_area.width_cm)
+    assert area.height_cm == pytest.approx(plain.panel_area.height_cm)
+
+
+def test_legend_position_numeric_pair_means_inside() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + make_theme(**{"legend.position": (0.5, 0.5)})
+    )
+    layout = plot_layout(build_plot(plot), width_in=7, height_in=7, metrics=METRICS)
+    box = layout.legend_boxes[0]
+    area = layout.panel_area
+    assert box.x_cm + box.width_cm / 2.0 == pytest.approx(area.x_cm + area.width_cm / 2.0)
 
 
 def test_theme_void_keeps_the_legend_but_drops_the_axes() -> None:
@@ -763,3 +800,423 @@ def test_legend_centre_follows_the_panel_rows_when_the_strip_grows() -> None:
         )
     assert _panel_rows_center_cm(doubled) < _panel_rows_center_cm(base) - 0.1
     assert _center_cm(doubled.legend_boxes) < _center_cm(base.legend_boxes) - 0.1
+
+
+# ---------------------------------------------------------------------------
+# M2-2（SIL-738）：guides() 入口 / key 合并 / override / 布局 / 扩展点
+# ---------------------------------------------------------------------------
+
+
+def test_guides_entry_overrides_scale_and_supports_none() -> None:
+    base = ggplot(data(), aes(x="x", y="y", colour="g")) + registry.geom_point()
+    # `guides(colour = "none")` 与 `scale_(guide="none")` 等价，且 plot 级优先。
+    plot = base + guides(colour="none")
+    assert build_guides(build_plot(plot)) == ()
+    scale_none = base + registry.scale_colour_discrete(guide="none")
+    assert build_guides(build_plot(scale_none)) == ()
+    assert build_guides(build_plot(scale_none + guides(colour="legend")))
+    # `guides(colour = None)` 取消 plot 级设置，回落到 scale。
+    fallback = base + guides(colour="none") + guides(colour=None)
+    assert build_guides(build_plot(fallback))
+    # color 是 colour 的别名。
+    assert build_guides(build_plot(base + guides(color="none"))) == ()
+    # 位置参数也认 dict（R 的 `guides(list(...))`）。
+    assert build_guides(build_plot(base + guides({"colour": "none"}))) == ()
+
+
+def test_guides_accepts_guide_implementations_and_components() -> None:
+    base = ggplot(data(), aes(x="x", y="y", colour="g")) + registry.geom_point()
+    implementation = base + guides(colour=guide_legend(title="impl", nrow=1))
+    assert build_guides(build_plot(implementation))[0].title == "impl"
+    component = base + guides(colour=registry.guide_legend(title="component"))
+    assert build_guides(build_plot(component))[0].title == "component"
+
+
+def test_colour_and_fill_on_the_same_variable_share_one_guide() -> None:
+    """同一变量的 colour + fill：标题 / 标签 / guide 类型相同 → 合成一张，键不重复。"""
+    plot = ggplot(data(), aes(x="x", y="y", colour="g", fill="g")) + registry.geom_point(shape=21)
+    guides_built = build_guides(build_plot(plot))
+    assert len(guides_built) == 1
+    assert guides_built[0].aesthetics == ("colour", "fill")
+    assert [key.label for key in guides_built[0].keys] == ["a", "b", "c"]
+    for key in guides_built[0].keys:
+        assert set(key.values) == {"colour", "fill"}
+    assert guides_built[0].layers == (0,)
+
+
+def test_merge_requires_the_same_order() -> None:
+    """R 的 hash 分组包含 order：order 不同不合并。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g", shape="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(order=1), shape=guide_legend(order=2))
+    )
+    assert len(build_guides(build_plot(plot))) == 2
+
+
+def test_merge_of_override_aes_keeps_the_first_and_warns() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g", shape="g"))
+        + registry.geom_point()
+        + guides(
+            colour=guide_legend(override_aes={"colour": "black", "size": 4}),
+            shape=guide_legend(override_aes={"colour": "red"}),
+        )
+    )
+    with pytest.warns(UserWarning, match="override.aes"):
+        merged = build_guides(build_plot(plot))[0]
+    assert merged.guide.override_aes["colour"] == "black"
+
+
+def test_override_aes_reaches_the_key_grob() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(override_aes={"colour": "black", "alpha": 0.5}))
+    )
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    guide = build_guides(build)[0]
+    layout = legend_layout(guide, theme_value, "right", metrics=METRICS)
+    grobs = legend_grob(guide, build, theme_value, layout, metrics=METRICS)
+    points = [item for item in grobs if type(item).__name__ == "PointsGrob"]
+    assert points
+    for item in points:
+        assert str(item.gp.col).startswith("#000000")
+        # alpha 与颜色合成到 RGBA 十六进制（#00000080 即 50%）。
+        assert str(item.gp.col).endswith("80")
+
+
+def test_override_aes_vector_applies_per_key() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(override_aes={"colour": ["#111111", "#222222"]}))
+    )
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    guide = build_guides(build)[0]
+    layout = legend_layout(guide, theme_value, "right", metrics=METRICS)
+    points = [
+        item
+        for item in legend_grob(guide, build, theme_value, layout, metrics=METRICS)
+        if type(item).__name__ == "PointsGrob"
+    ]
+    assert [item.gp.col for item in points] == ["#111111", "#222222", "#111111"]
+
+
+def test_label_position_left_and_top() -> None:
+    for position in ("left", "top", "bottom"):
+        plot = (
+            ggplot(data(), aes(x="x", y="y", colour="g"))
+            + registry.geom_point()
+            + guides(colour=guide_legend(label_position=position))
+        )
+        _build, theme_value, guides_built, _layouts = _layout(plot)
+        layout = legend_layout(guides_built[0], theme_value, "right", metrics=METRICS)
+        assert layout.label_position == position
+        cell = layout.keys[0]
+        if position == "left":
+            assert cell.label_box.x_cm < cell.box.x_cm
+        elif position == "top":
+            assert cell.label_box.y_cm >= cell.box.y_cm + cell.box.height_cm
+        else:
+            assert cell.label_box.top <= cell.box.y_cm
+
+
+def test_horizontal_legend_defaults_to_five_columns_and_left_title() -> None:
+    """R 4.0.3：横排默认 `nrow = ceil(n / 5)`；标题默认在左侧（单独一列）。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.arange(12.0))),
+            ("y", Column("float", np.arange(12.0))),
+            (
+                "g",
+                Column(
+                    "categorical",
+                    np.arange(12, dtype=np.int32) % 12,
+                    levels=tuple(str(index) for index in range(12)),
+                ),
+            ),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y", colour="g")) + registry.geom_point()
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    layout = legend_layout(build_guides(build)[0], theme_value, "bottom", metrics=METRICS)
+    assert layout.direction == "horizontal"
+    assert layout.title_position == "left"
+    # 12 个键 → 3 行 × 4 列；标签在键右侧。
+    ys = sorted({round(cell.box.y_cm, 9) for cell in layout.keys})
+    xs = sorted({round(cell.box.x_cm, 9) for cell in layout.keys})
+    assert (len(ys), len(xs)) == (3, 4)
+
+
+def test_byrow_fills_rows_first() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(ncol=2, byrow=True))
+    )
+    _build, theme_value, guides_built, _layouts = _layout(plot)
+    layout = legend_layout(guides_built[0], theme_value, "right", metrics=METRICS)
+    rows = [round(cell.box.y_cm, 9) for cell in layout.keys]
+    # byrow：前两个键在同一行（y 相同），第三个换行。
+    assert rows[0] == rows[1]
+    assert rows[2] != rows[0]
+
+
+def test_title_and_label_justification_are_honoured() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(title_hjust=1.0, label_hjust=1.0))
+    )
+    _build, theme_value, guides_built, _layouts = _layout(plot)
+    layout = legend_layout(guides_built[0], theme_value, "right", metrics=METRICS)
+    assert layout.title_hjust == 1.0
+    grobs = legend_grob(guides_built[0], build_plot(plot), theme_value, layout, metrics=METRICS)
+    labels = [item for item in grobs if getattr(item, "name", "").startswith("guide.label")]
+    assert labels and all(item.hjust == 1.0 for item in labels)
+
+
+def test_guide_custom_draws_its_grob_and_title() -> None:
+    box = rect_grob(0.0, 0.0, 1.0, 1.0, default_units="cm", gp=gpar(fill="#123456"))
+    plot = (
+        ggplot(data(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + guides(custom=guide_custom(box, width=unit(1.0, "cm"), height=unit(1.0, "cm"), title="C"))
+    )
+    build = build_plot(plot)
+    built = build_guides(build)
+    assert len(built) == 1
+    guide = built[0]
+    assert isinstance(guide.guide, GuideCustom)
+    assert guide.title == "C"
+    theme_value = resolve_theme(Theme())
+    layout = legend_layout(guide, theme_value, "right", metrics=METRICS)
+    assert layout.content_box is not None
+    grobs = legend_grob(guide, build, theme_value, layout, metrics=METRICS)
+    assert any(getattr(item, "name", "") == "guide.title" for item in grobs)
+    content = [item for item in grobs if getattr(item, "vp", None) is not None]
+    assert content and content[0].gp.fill == "#123456"
+    # 自定义 guide 不占「被映射的美学」那一路；默认图例也不会凭空出现。
+    assert build_guides(
+        build_plot(
+            ggplot(data(), aes(x="x", y="y"))
+            + registry.geom_point()
+            + guides(custom=guide_custom(box, width=unit(1.0, "cm"), height=unit(1.0, "cm")))
+        )
+    )
+
+
+def test_guide_custom_deduplicates_identical_guides() -> None:
+    box = rect_grob(0.0, 0.0, 1.0, 1.0, default_units="cm", gp=gpar(fill="#123456"))
+    custom = guide_custom(box, width=unit(1.0, "cm"), height=unit(1.0, "cm"), title="C")
+    plot = (
+        ggplot(data(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + guides(first=custom, second=custom)
+    )
+    assert len(build_guides(build_plot(plot))) == 1
+
+
+class _DescribeGuide(Guide):
+    """扩展点演示：只换标题、不画 key（M2-9 的扩展 API 走同一组方法）。"""
+
+    kind = "legend"
+    available_aes = ("any",)
+
+    def __init__(self, title: str = "described") -> None:
+        self.title = title
+        self.position = None
+        self.order = 0.0
+
+    def train(self, build, aesthetic, scale):
+        trained = super().train(build, aesthetic, scale)
+        if trained is None:
+            return None
+        from dataclasses import replace as _replace
+
+        return _replace(trained, title=self.title)
+
+    def gengrob(self, guide_build, build, theme, layout, *, metrics=None, name="guide"):
+        return [text_grob(guide_build.title or "", 0.0, 0.0, default_units="cm")]
+
+
+def test_custom_guide_subclass_can_override_train_and_gengrob() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=_DescribeGuide("A guide showing a, b, c"))
+    )
+    build = build_plot(plot)
+    built = build_guides(build)
+    assert built[0].title == "A guide showing a, b, c"
+    theme_value = resolve_theme(Theme())
+    layout = legend_layout(built[0], theme_value, "right", metrics=METRICS)
+    grobs = built[0].guide.gengrob(built[0], build, theme_value, layout)
+    assert len(grobs) == 1
+    assert grobs[0].label[0] == "A guide showing a, b, c"
+
+
+def test_registered_guide_component_uses_build_guide_and_draw_keys() -> None:
+    """M2-9 的注册入口：组件子类 `build_guide()` + 运行时 `draw_keys()`。"""
+    from dataclasses import dataclass
+
+    from ggcore.components import Guide as GuideComponent
+
+    @dataclass(frozen=True)
+    class StarGuide(GuideLegend):
+        kind: str = "star"
+
+        def draw_keys(self, guide_build, theme, layout, *, metrics=None, name="guide"):
+            return [
+                text_grob(
+                    f"*{cell.key.label}",
+                    cell.box.x_cm,
+                    cell.box.y_cm,
+                    default_units="cm",
+                    name=f"{name}.star-{index}",
+                )
+                for index, cell in enumerate(layout.keys)
+            ]
+
+    class StarSpec(GuideComponent):
+        def build_guide(self):
+            return StarGuide(
+                title=self.params.get("title", AUTO),
+                direction=self.params.get("direction"),
+            )
+
+    registry.register_guide("star", StarSpec)
+    try:
+        plot = (
+            ggplot(data(), aes(x="x", y="y", colour="g"))
+            + registry.geom_point()
+            + guides(colour=registry.guide_star(aesthetic="colour"))
+        )
+        build = build_plot(plot)
+        built = build_guides(build)
+        assert len(built) == 1 and built[0].guide.kind == "star"
+        theme_value = resolve_theme(Theme())
+        layout = legend_layout(built[0], theme_value, "right", metrics=METRICS)
+        grobs = legend_grob(built[0], build, theme_value, layout, metrics=METRICS)
+        assert any(getattr(item, "name", "").startswith("guide.star-") for item in grobs)
+        # 字符串写法也走注册表（`scale_*(guide="star")` 同一路径）。
+        string_plot = (
+            ggplot(data(), aes(x="x", y="y", colour="g"))
+            + registry.geom_point()
+            + guides(colour="star")
+        )
+        assert build_guides(build_plot(string_plot))[0].guide.kind == "star"
+    finally:
+        registry.unregister("guide", "star")
+    # 未注册的名字仍点名报错。
+    with pytest.raises(GuideError, match="guide_bins"):
+        build_guides(
+            build_plot(
+                ggplot(data(), aes(x="x", y="y", colour="g"))
+                + registry.geom_point()
+                + guides(colour="guide_bins")
+            )
+        )
+
+
+def test_legend_box_layout_stacks_vertically_and_horizontally() -> None:
+    plot = ggplot(data(), aes(x="x", y="y", colour="g", fill="h")) + registry.geom_point(shape=21)
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    built = build_guides(build)
+    assert len(built) == 2
+    layouts = [legend_layout(guide, theme_value, "right", metrics=METRICS) for guide in built]
+    vertical = legend_box_layout(layouts, "right", theme_value)
+    assert vertical.direction == "vertical"
+    assert vertical.height_cm == pytest.approx(sum(item.height_cm for item in layouts) + 0.3866)
+    assert vertical.width_cm == pytest.approx(max(item.width_cm for item in layouts))
+    horizontal = legend_box_layout(layouts, "bottom", theme_value)
+    assert horizontal.direction == "horizontal"
+    assert horizontal.width_cm == pytest.approx(
+        sum(item.width_cm for item in layouts) + 0.3866, abs=1e-4
+    )
+    assert horizontal.height_cm == pytest.approx(max(item.height_cm for item in layouts))
+    # 每个图例在盒内不重叠。
+    for direction_box in (vertical, horizontal):
+        first, second = direction_box.boxes
+        assert first.x_cm + first.width_cm <= second.x_cm + 1e-9 or (
+            first.y_cm >= second.y_cm + second.height_cm - 1e-9
+        )
+
+
+def test_guide_positions_can_differ_per_guide() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g", fill="h"))
+        + registry.geom_point(shape=21)
+        + guides(
+            colour=guide_legend(position="right"),
+            fill=guide_legend(position="bottom"),
+        )
+    )
+    layout = plot_layout(build_plot(plot), width_in=7, height_in=7, metrics=METRICS)
+    assert len(layout.legend_box_layouts) == 2
+    assert {box.position for box in layout.legend_box_layouts} == {"right", "bottom"}
+    right = next(box for box in layout.legend_box_layouts if box.position == "right")
+    bottom = next(box for box in layout.legend_box_layouts if box.position == "bottom")
+    assert right.direction == "vertical" and bottom.direction == "horizontal"
+
+
+def test_guide_legend_title_subtitle_rows() -> None:
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + guides(colour=guide_legend(title="T", subtitle="S"))
+    )
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    guide = build_guides(build)[0]
+    layout = legend_layout(guide, theme_value, "right", metrics=METRICS)
+    assert layout.title_box is not None and layout.subtitle_box is not None
+    assert layout.subtitle_box.top == pytest.approx(layout.title_box.y_cm)
+    grobs = legend_grob(guide, build, theme_value, layout, metrics=METRICS)
+    texts = [list(getattr(item, "label", ())) for item in grobs]
+    assert ["T"] in texts and ["S"] in texts
+
+
+@pytest.mark.parametrize("position", ["top", "bottom"])
+def test_horizontal_legend_sits_outside_the_panel(position: str) -> None:
+    """top / bottom 的图例盒在面板之外：top 在顶轴之上，bottom 在 x 轴标题之下。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + make_theme(**{"legend.position": position})
+    )
+    layout = plot_layout(build_plot(plot), width_in=4, height_in=3, metrics=METRICS)
+    box = layout.legend_boxes[0]
+    if position == "top":
+        assert box.y_cm >= layout.panel_area.top
+        assert box.y_cm == pytest.approx(
+            layout.panel_area.top + layout.x_axis_top_cm + layout.x_title_top_cm + 0.3866,
+            abs=0.01,
+        )
+    else:
+        assert box.top <= layout.panel_area.y_cm
+        # R 的 guide-box-bottom 在 axis-b / xlab-b 之下、caption 之上。
+        assert box.y_cm >= layout.margin_cm[2]
+        assert box.top <= layout.panel_area.y_cm - layout.x_axis_cm - layout.x_title_cm + 1e-9
+
+
+def test_guide_extension_functions_forward_to_methods() -> None:
+    """`guide_train` / `guide_transform` / `guide_geom` / `guide_gengrob` 是方法名的旧入口。"""
+    from ggcore.guide import guide_gengrob, guide_geom, guide_train, guide_transform
+
+    plot = ggplot(data(), aes(x="x", y="y", colour="g")) + registry.geom_point()
+    build = build_plot(plot)
+    scale = build.scales.scale("colour")
+    guide = guide_legend(title="G")
+    trained = guide_train(guide, build, "colour", scale)
+    assert trained is not None and trained.title == "G"
+    assert guide_transform(guide, trained.keys) == trained.keys
+    assert guide_geom(guide, build.layers[0]) is None
+    theme_value = resolve_theme(Theme())
+    layout = legend_layout(trained, theme_value, "right", metrics=METRICS)
+    assert guide_gengrob(trained, build, theme_value, layout, metrics=METRICS)
