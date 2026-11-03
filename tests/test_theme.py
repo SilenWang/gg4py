@@ -594,9 +594,13 @@ def test_theme_set_get_update_replace(keep_default_theme) -> None:
     p = plot.ggplot({"x": [1.0], "y": [2.0]})
     assert p.theme.name == "dark"
 
-    # 无参 theme_set() 只读，不改。
-    assert theme_set().name == "dark"
+    # 无参 theme_set() 是「重置为内置默认」，不是读取（上游 set_theme(new = NULL)：
+    # `new <- new %||% ggplot_global$theme_default`）。返回旧主题。
+    previous = theme_set()
+    assert previous.name == "dark"
+    assert theme_get().name == "grey"
 
+    theme_set(plot.theme_dark())
     previous = theme_update(**{"panel.background": element_rect(fill="red")})
     assert previous.name == "dark"
     updated = theme_get()
@@ -613,6 +617,47 @@ def test_theme_set_get_update_replace(keep_default_theme) -> None:
     assert replaced.elements["panel.grid.major"].linewidth is None
     resolved = resolve_theme(replaced)
     assert resolved["panel.grid.major"].linewidth == 0.5
+
+
+def test_theme_replace_keeps_inherit_blank_false_on_replaced_elements(
+    keep_default_theme,
+) -> None:
+    """`theme_replace()` 是 `get_theme() %+replace% theme(...)`（R/theme-current.R）。
+
+    `theme(...)` 不带 `complete`，换进来的元素保持构造值 `inherit.blank=FALSE`，
+    解析时不会继承 `panel.grid`（`theme_void()` 里是 blank）；base 里的旧元素
+    仍带 `inherit.blank=TRUE`。旧实现把换进来的元素也重标成 TRUE，这里会解析
+    成 `ElementBlank`。
+    """
+    from ggcore.theme import theme_get, theme_replace, theme_set
+
+    theme_set(theme_void())
+    theme_replace(**{"panel.grid.major": element_line(colour="red")})
+
+    replaced = theme_get()
+    assert replaced.elements["panel.grid.major"].inherit_blank is False
+    assert replaced.elements["text"].inherit_blank is True
+
+    resolved = resolve_theme(replaced)["panel.grid.major"]
+    assert isinstance(resolved, ElementLine), type(resolved).__name__
+    assert resolved.colour == "#FF0000"
+
+
+def test_theme_replace_keeps_existing_elements_inherit_blank_true(
+    keep_default_theme,
+) -> None:
+    """旧元素不会被 `theme_replace()` 重新标记（`e1[names(e2)] <- e2` 只动同名项）。"""
+    from ggcore.theme import theme_get, theme_replace, theme_set
+
+    theme_set(theme_void())
+    theme_replace(**{"panel.grid.major": element_line(colour="red")})
+
+    replaced = theme_get()
+    assert replaced.complete is True
+    assert replaced.name == "void"
+    # 没被替换的元素保持 `theme_void()` 构造时的 `inherit.blank=TRUE`。
+    assert replaced.elements["plot.background"].inherit_blank is True
+    assert isinstance(resolve_theme(replaced)["panel.background"], ElementBlank)
 
 
 def test_theme_set_rejects_partial_and_non_theme(keep_default_theme) -> None:

@@ -180,9 +180,14 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 | 函数 | 语义 | 返回值 |
 | --- | --- | --- |
 | `theme_get()` | 当前默认主题（初值 `theme_grey()`） | `Theme` |
-| `theme_set(new)` | 整份换掉默认主题；只接受完整主题，`theme_set()` 无参时返回当前值 | 旧主题 |
+| `theme_set(new)` | 整份换掉默认主题；只接受完整主题。无参（或 `None`）时**重置为内置默认 `theme_grey()`**（上游 `set_theme(new = NULL)` 的 `new %||% ggplot_global$theme_default`），不是读取 | 旧主题 |
 | `theme_update(**elements)` | `theme_set(theme_get() + theme(...))`：逐元素合并 | 旧主题 |
 | `theme_replace(**elements)` | `theme_set(theme_get() %+replace% theme(...))`：整份替换同名元素 | 旧主题 |
+
+`theme_replace()` 换进来的元素保留构造值 `inherit.blank=FALSE`（上游
+`%+replace%` 只是 `e1[names(e2)] <- e2`，`theme(...)` 没带 `complete`），
+解析时不继承被替换掉的那支父元素；内置主题族（`theme_bw()` 起）则在
+`theme(..., complete = TRUE)` 里生成，换进来的元素带 `inherit.blank=TRUE`。
 
 `ggplot()` 的默认主题取 `theme_get()`，`resolve_theme()` 对局部主题的合并底
 也是 `theme_get()`（对应上游 `calc_element(element, plot_theme(plot))` 里

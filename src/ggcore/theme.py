@@ -1201,10 +1201,28 @@ def _complete(name: str, elements: Mapping[str, Any], base_size: float = 11.0) -
     )
 
 
-def _replace(base: Theme, name: str, updates: Mapping[str, Any]) -> Theme:
+def _replace(
+    base: Theme,
+    name: str,
+    updates: Mapping[str, Any],
+    *,
+    complete: bool = True,
+) -> Theme:
+    """`base %+replace% theme(...)`：整份替换同名元素，不合并字段。
+
+    `complete` 对应上游 `theme(..., complete = TRUE)`：四个内置主题族
+    （`theme_bw()` 起）都是 `theme_grey() %+replace% theme(..., complete=TRUE)`，
+    换进来的元素因此带 `inherit.blank=TRUE`。`theme_replace()` 走的是不带
+    `complete` 的 `theme(...)`，换进来的元素保持构造值 `inherit.blank=FALSE`
+    （R/theme-current.R: `replace_theme <- function(...) set_theme(get_theme()
+    %+replace% theme(...))`）——此时 base 的旧元素原样保留它们自己的标记。
+    """
     elements = dict(base.elements)
-    elements.update(updates)
-    return _complete(name, elements, base_size=base.base_size)
+    if complete:
+        elements.update({key: _inherit_blank(value) for key, value in updates.items()})
+    else:
+        elements.update(updates)
+    return Theme(name=name, elements=elements, complete=True, base_size=base.base_size)
 
 
 def theme_grey(
@@ -1863,13 +1881,18 @@ def theme_get() -> Theme:
 def theme_set(new: Any = _UNSET) -> Theme:
     """设置全局默认主题，返回旧值（对应 R 的不可见返回值）。
 
-    - 不传参数 → 返回当前主题，不改；
+    上游 4.0.3 是 `set_theme(new = NULL)`，函数体第一行 `new <- new %||%
+    ggplot_global$theme_default`：**无参（或传 `None`）时重置为内置默认
+    `theme_grey()`**，不是「读当前值」（读当前值用 `theme_get()`）。
+
+    - 无参 / `None` → 重置为 `theme_grey()`，返回旧主题；
     - 传入的主题必须是完整主题（`complete=True`），否则报 `ThemeError`
       （对应上游的 "must be called with a complete theme"）。
     """
     global _theme_default
     old = theme_get()
-    if new is _UNSET:
+    if new is _UNSET or new is None:
+        _theme_default = theme_grey()
         return old
     if not isinstance(new, Theme):
         raise TypeError(f"theme_set() 需要 Theme，得到 {type(new).__name__}")
@@ -1887,9 +1910,14 @@ def theme_update(**elements: Any) -> Theme:
 
 
 def theme_replace(**elements: Any) -> Theme:
-    """在当前默认主题上按元素整份替换（`%+replace%` 语义），返回旧值。"""
+    """在当前默认主题上按元素整份替换（`%+replace%` 语义），返回旧值。
+
+    上游是 `set_theme(get_theme() %+replace% theme(...))`：`theme(...)` 不带
+    `complete`，换进来的元素保留 `inherit.blank=FALSE`，只有 base 里的旧元素
+    继续带 `inherit.blank=TRUE`。
+    """
     old = theme_get()
-    theme_set(_replace(old, old.name, elements))
+    theme_set(_replace(old, old.name, elements, complete=False))
     return old
 
 
