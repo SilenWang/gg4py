@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "scale-limits", "stat-manual"]
+ci = true
+title = "manual：fun 只保留前 4 行"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_manual 的端到端：fun(data) 的输入是列式映射，返回值走同一套 ColumnTable 拼装。"

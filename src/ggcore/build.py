@@ -117,6 +117,12 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        # M2-6 的长尾 stat（`ggcore.stat_longtail.DEFAULT_AES` 的同一份表；
+        # 这里内联是因为 build 在 import 期不能反向 import stat_longtail）。
+        "qq": (("x", "theoretical"), ("y", "sample")),
+        "ecdf": (("x", "ecdf"), ("y", "ecdf")),
+        "density": (("x", "density"), ("y", "density")),
+        "sum": (("size", "n"),),
     }
 )
 
@@ -315,6 +321,10 @@ def compute_aesthetics(
     不给时与 M1-3 完全一致：整层写 `"1"`（单面板的字节不变）。
     """
     table = _resolve_data(plot, layer) if data_table is None else data_table
+    # 上游 `stat_function()` 的 `checks`：空数据补一行 `group = 1`
+    # （`ensure_nonempty_data()`），否则 0 行会在阶段 2 之前被短路掉。
+    if table.nrows == 0 and layer.stat.name == "function":
+        table = ColumnTable([("group", Column("int", np.array([1.0])))], nrows=1)
     mapping = _resolve_mapping(plot, layer)
     nrows = table.nrows
 

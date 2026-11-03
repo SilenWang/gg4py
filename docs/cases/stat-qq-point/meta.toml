@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "scale-limits", "stat-qq"]
+ci = true
+title = "qq：理论分位数 vs 样本分位数（默认真态）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_qq 的端到端：`aes(sample = v)` + 默认 geom point；x / y 来自 stat 的 default_aes。"

@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "aes-grouping", "scale-limits", "stat-ydensity"]
+ci = true
+title = "ydensity：密度网格落成点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_ydensity 的端到端（quantiles = NULL）：density / violinwidth / n 逐值对拍在 ydensity_* 四个 case。"

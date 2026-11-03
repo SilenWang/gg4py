@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "guide-legend", "guide-horizontal", "scale-limits"]
+ci = true
+title = "guide：图例在 top（横排）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "R 4.0.3 的横排图例把标题放在左侧一列（不旋转），键按 nrow = ceil(n / 5) 排；`legend.box.spacing` 把面板整体下推（M2-2 SIL-738）。"
