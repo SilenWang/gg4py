@@ -15,12 +15,36 @@ M1-1 只给它们**占位结构**：名字 + 参数（+ theme 的完整/局部�
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MemberDescriptorType
 from typing import Any
 
 from ggcore.aes import frozen_mapping
 
-__all__ = ["Coord", "Facet", "Guide", "Labels", "Scale", "Theme"]
+__all__ = ["Coord", "Facet", "Guide", "Guides", "Labels", "Scale", "Theme"]
+
+_MISSING = object()
+
+
+def _declared_attr(obj: Any, name: str, base: type[Any]) -> Any:
+    """在 `base` 的子类上找用户显式写的类属性（跳过 slots 描述符）。"""
+    for cls in type(obj).__mro__:
+        if cls is base:
+            return _MISSING
+        if name in cls.__dict__:
+            value = cls.__dict__[name]
+            if isinstance(value, MemberDescriptorType):
+                continue
+            return value
+    return _MISSING
+
+
+def _apply_declared(obj: Any, base: type[Any], *names: str) -> None:
+    for name in names:
+        value = _declared_attr(obj, name, base)
+        if value is not _MISSING:
+            object.__setattr__(obj, name, value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,11 +60,21 @@ class Scale:
     params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        _apply_declared(self, Scale, "name", "aesthetic")
+        defaults = _declared_attr(self, "params", Scale)
+        if defaults is not _MISSING and isinstance(defaults, Mapping):
+            object.__setattr__(self, "params", {**defaults, **self.params})
         object.__setattr__(self, "params", frozen_mapping(self.params))
 
     @property
     def key(self) -> str:
         return self.aesthetic
+
+    def build_scale(self) -> Any:
+        """扩展点：子类覆写后返回 :class:`ggcore.scales.ScaleBase` 实例。"""
+        raise NotImplementedError(
+            f"scale_{self.name} 没有 build_scale()（自定义 Scale 子类需要覆写它）"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +85,17 @@ class Coord:
     params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        _apply_declared(self, Coord, "name")
+        defaults = _declared_attr(self, "params", Coord)
+        if defaults is not _MISSING and isinstance(defaults, Mapping):
+            object.__setattr__(self, "params", {**defaults, **self.params})
         object.__setattr__(self, "params", frozen_mapping(self.params))
+
+    def build_coord(self) -> Any:
+        """扩展点：子类覆写后返回 :class:`ggcore.coord.CoordBase` 实例。"""
+        raise NotImplementedError(
+            f"coord_{self.name} 没有 build_coord()（自定义 Coord 子类需要覆写它）"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,11 +118,42 @@ class Guide:
     params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        _apply_declared(self, Guide, "name", "aesthetic")
+        defaults = _declared_attr(self, "params", Guide)
+        if defaults is not _MISSING and isinstance(defaults, Mapping):
+            object.__setattr__(self, "params", {**defaults, **self.params})
         object.__setattr__(self, "params", frozen_mapping(self.params))
 
     @property
     def key(self) -> str:
         return self.aesthetic or self.name
+
+    def build_guide(self) -> Any:
+        """扩展点：子类覆写后返回 :class:`ggcore.guide.Guide` 实例。"""
+        raise NotImplementedError(
+            f"guide_{self.name} 没有 build_guide()（自定义 Guide 子类需要覆写它）"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Guides:
+    """`guides()` 的组件：一次给出多张图例的设置（M2-2）。
+
+    `entries` 的键是美学名（`"colour"` / `"fill"` …）或自定义 guide 的自由名字
+    （`"custom"`），值可以是：
+
+    - 注册表组件（`registry.guide_legend(...)` / `registry.guide_<name>(...)`）、
+    - `ggcore.guide` 的实现对象（`guide_legend(...)` / `guide_custom(...)`）、
+    - 字符串（`"none"` / `"legend"` / `"colourbar"`）。
+
+    与 `p + guides(...)` 同一条路径：后加的条目替换先加的，和 `plot.scales`
+    的「同一美学只有一个条目」口径相同。
+    """
+
+    entries: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "entries", dict(self.entries))
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +173,10 @@ class Theme:
     base_size: float = 11.0
 
     def __post_init__(self) -> None:
+        _apply_declared(self, Theme, "name", "complete", "base_size")
+        defaults = _declared_attr(self, "elements", Theme)
+        if defaults is not _MISSING and isinstance(defaults, Mapping):
+            object.__setattr__(self, "elements", {**defaults, **self.elements})
         object.__setattr__(self, "elements", frozen_mapping(self.elements))
 
 

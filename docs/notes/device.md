@@ -203,6 +203,11 @@ IR 不展平曲线（`docs/notes/ir.md` §4），设备按公式求值：
 `lwd` 折算又把 16 张 `docs/cases/grob-*/baseline` 全部重录了一遍：有描边的 13 张
 像素变化，`grob-text` / `grob-text-rot` / `grob-raster` 不含描边、逐字节不变。
 
+M2-12 的 dash 口径（`DASH_UNIT = 4/3`，见 `docs/notes/viewer.md` §10.1）与
+`lwd = 0` 不再按 skia 的 hairline 描边，又重录了 6 张含 `lty` 的基线：
+`grob-bezier` / `grob-curve` / `grob-lines` / `grob-polyline` / `grob-rect` /
+`grob-segments`。其余 10 张逐字节不变——受影响面完全等于「带虚线的 grob」。
+
 ## 7. 裁剪与变换：照 IR 的消费约束
 
 - `viewport.transform` 自下而上合成，**先在页面空间裁 `clip_rect`、再 concat**

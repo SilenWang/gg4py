@@ -1,0 +1,7 @@
+family = "extension"
+features = ["aes-mapping", "api-extension"]
+ci = true
+title = "扩展 API：只实现一个 Geom 子类的自定义 geom_mysegment"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "R 侧用等价的 geom_segment()；gg4py 侧 plot.py 只定义 GeomMySegment 并 register_geom。"

@@ -27,8 +27,9 @@ from ggcore.axis import axis_ticks
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom.scene import plot_layout
-from ggcore.guide import GuideColourbar, build_guides
-from ggcore.plot import aes, ggplot
+from ggcore.guide import GuideColourbar, build_guides, guide_legend
+from ggcore.plot import aes, ggplot, guides
+from ggcore.theme import theme as make_theme
 from ggskia.text import ShaperMetrics
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "guide_r_reference.json"
@@ -98,6 +99,61 @@ def _plot(name: str) -> ggplot:
             + registry.labs(title="T", x="X", y="Y")
             + registry.theme_void()
         )
+    if name == "legend_colour_fill_same":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl", fill="cyl"))
+            + registry.geom_point(shape=21, size=2.5)
+            + labels
+        )
+    if name == "legend_override":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl"))
+            + registry.geom_point()
+            + labels
+            + guides(colour=guide_legend(override_aes={"alpha": 1, "colour": "black"}))
+        )
+    if name == "legend_nrow2":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl"))
+            + registry.geom_point()
+            + labels
+            + guides(colour=guide_legend(nrow=2))
+        )
+    if name == "legend_label_left":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl"))
+            + registry.geom_point()
+            + labels
+            + guides(colour=guide_legend(label_position="left"))
+        )
+    if name == "legend_top":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl"))
+            + registry.geom_point()
+            + labels
+            + make_theme(**{"legend.position": "top"})
+        )
+    if name == "legend_inside":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl"))
+            + registry.geom_point()
+            + labels
+            + make_theme(**{"legend.position": "inside", "legend.position.inside": (0.3, 0.7)})
+        )
+    if name == "legend_order":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl", fill="gear"))
+            + registry.geom_point(shape=21, size=2.5)
+            + labels
+            + guides(colour=guide_legend(order=2), fill=guide_legend(order=1))
+        )
+    if name == "legend_two_bottom":
+        return (
+            ggplot(table, aes(x="x", y="y", colour="cyl", fill="gear"))
+            + registry.geom_point(shape=21, size=2.5)
+            + labels
+            + make_theme(**{"legend.position": "bottom"})
+        )
     raise AssertionError(f"fixture 里有未覆盖的 case {name!r}")
 
 
@@ -114,6 +170,14 @@ def test_fixture_covers_the_documented_cases() -> None:
         "axis_discrete",
         "axis_log10",
         "theme_void",
+        "legend_colour_fill_same",
+        "legend_override",
+        "legend_nrow2",
+        "legend_label_left",
+        "legend_top",
+        "legend_inside",
+        "legend_order",
+        "legend_two_bottom",
     }
     assert REFERENCE["ggplot2"].startswith("4.0.3")
 
@@ -144,15 +208,15 @@ def test_axis_and_legend_sizes_match_r(name: str) -> None:
     if not legends["present"]:
         assert not layout.legend_layouts
         return
-    ours = [item.height_cm for item in layout.legend_layouts]
-    reference_heights = [item["height"] for item in legends["guides"]]
-    assert len(ours) == len(reference_heights)
-    for ours_height, reference_height in zip(ours, reference_heights, strict=True):
-        assert abs(ours_height - reference_height) <= TOLERANCE_CM
-    widths = [item.width_cm for item in layout.legend_layouts]
-    reference_widths = [item["width"] for item in legends["guides"]]
-    for ours_width, reference_width in zip(widths, reference_widths, strict=True):
-        assert abs(ours_width - reference_width) <= TOLERANCE_CM
+    ours = {
+        guide.title: item for guide, item in zip(layout.guides, layout.legend_layouts, strict=True)
+    }
+    reference_by_title = {item["title"]: item for item in legends["guides"]}
+    assert set(ours) == set(reference_by_title)
+    for title, reference in reference_by_title.items():
+        item = ours[title]
+        assert abs(item.height_cm - reference["height"]) <= TOLERANCE_CM, title
+        assert abs(item.width_cm - reference["width"]) <= TOLERANCE_CM, title
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -221,7 +285,106 @@ def test_page_layout_covers_the_r_gtable_regions() -> None:
         regions = set(structure["regions"])
         assert {"axis-l", "axis-b", "ylab-l", "xlab-b", "title"} <= regions
         if case["legends"]["present"]:
-            assert "guide-box-right" in regions
+            assert f"guide-box-{case['legends']['position']}" in regions
+
+
+def _non_zero(values: list[float]) -> list[float]:
+    return [float(value) for value in values if abs(float(value)) > 1e-9]
+
+
+@pytest.mark.parametrize("name", sorted(CASES))
+def test_legend_row_and_column_sizes_match_r(name: str) -> None:
+    """图例盒 / 每张图例的 gtable 行高列宽逐项对齐（≤ 0.5mm）。
+
+    R 的 `guide-box-*` 有 null 单位的全局 margin 列（转换成 cm 是 0），比较时
+    去掉两侧的 0 列；图例自己的 gtable 是纯绝对单位，逐项比较。
+    """
+    case = CASES[name]
+    legends = case["legends"]
+    layout = plot_layout(
+        build_plot(BUILDERS[name]()),
+        width_in=REFERENCE["size_in"][0],
+        height_in=REFERENCE["size_in"][1],
+        metrics=METRICS,
+    )
+    if not legends["present"]:
+        assert not layout.legend_layouts
+        return
+    assert layout.legend_layouts
+    assert layout.legend_box_layouts
+    box = layout.legend_box_layouts[0]
+    if len(legends["guides"]) == 1:
+        for ours_values, reference, label in (
+            (_non_zero(box.col_widths_cm), _non_zero(legends["widths"]), "box 列宽"),
+            (_non_zero(box.row_heights_cm), _non_zero(legends["heights"]), "box 行高"),
+        ):
+            assert len(ours_values) == len(reference), (label, ours_values, reference)
+            for index, (value, expected) in enumerate(zip(ours_values, reference, strict=True)):
+                assert abs(value - expected) <= TOLERANCE_CM, (label, index, value, expected)
+    else:
+        # 两张图例在盒里的先后由 `order` / hash 决定；hash 是 R 的内部值，
+        # 我们只比较盒的整体尺寸（每张图例自己的行列在下面按标题比）。
+        assert abs(box.width_cm - legends["width"]) <= TOLERANCE_CM
+        assert abs(box.height_cm - legends["height"]) <= TOLERANCE_CM
+
+    assert len(layout.legend_layouts) == len(legends["guides"])
+    ours = {
+        guide.title: item for guide, item in zip(layout.guides, layout.legend_layouts, strict=True)
+    }
+    for reference in legends["guides"]:
+        title = reference["title"]
+        assert title in ours
+        item = ours[title]
+        if isinstance(_guide_of(layout, title), GuideColourbar):
+            # 色条的 gtable 分解归 M2-2 A 组（SIL-739）；这里只钉总尺寸。
+            assert abs(item.width_cm - reference["width"]) <= TOLERANCE_CM
+            assert abs(item.height_cm - reference["height"]) <= TOLERANCE_CM
+            continue
+        for values, expected, label in (
+            (item.col_widths_cm, reference["widths"], "图例列宽"),
+            (item.row_heights_cm, reference["heights"], "图例行高"),
+        ):
+            assert len(values) == len(expected), (title, label, values, expected)
+            for cell, value in enumerate(values):
+                assert abs(value - expected[cell]) <= TOLERANCE_CM, (
+                    title,
+                    label,
+                    cell,
+                    value,
+                    expected[cell],
+                )
+
+
+def _guide_of(layout, title):
+    for guide in layout.guides:
+        if guide.title == title:
+            return guide.guide
+    raise AssertionError(f"没有标题为 {title!r} 的图例")
+
+
+def test_inside_legend_is_anchored_at_position_inside() -> None:
+    case = CASES["legend_inside"]
+    legends = case["legends"]
+    assert legends["position"] == "inside"
+    # R 把 wrapper 的视口放在 legend.position.inside 的 npc 坐标上。
+    assert legends["x_npc"] == pytest.approx(0.3)
+    assert legends["y_npc"] == pytest.approx(0.7)
+    layout = plot_layout(build_plot(BUILDERS["legend_inside"]()), metrics=METRICS)
+    assert layout.legend_box_origins
+    box = layout.legend_box_origins[0]
+    area = layout.panel_area
+    center_x = box.x_cm + box.width_cm / 2.0
+    center_y = box.y_cm + box.height_cm / 2.0
+    assert center_x == pytest.approx(area.x_cm + 0.3 * area.width_cm, abs=1e-9)
+    assert center_y == pytest.approx(area.y_cm + 0.7 * area.height_cm, abs=1e-9)
+
+
+def test_ordered_guides_stack_in_the_r_order() -> None:
+    """`guide_legend(order=)` 小的在上面/左边；没写 order 的排在显式 order 之后。"""
+    layout = plot_layout(build_plot(BUILDERS["legend_order"]()), metrics=METRICS)
+    assert [guide.aesthetics for guide in layout.guides] == [("fill",), ("colour",)]
+    first, second = layout.legend_boxes
+    assert first.y_cm > second.y_cm
 
 
 def test_merged_guide_has_one_legend_not_two() -> None:

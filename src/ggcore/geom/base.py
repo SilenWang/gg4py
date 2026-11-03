@@ -280,7 +280,8 @@ class GeomRenderer:
         `detect_missing()` 会把它们从 `vars` 里 intersect 掉），所以 boxplot 的
         `required_aes` 在这里不起作用——上游行为如此。
         """
-        return tuple(geom.required_aes) + tuple(self.non_missing_aes)
+        non_missing = tuple(getattr(geom, "non_missing_aes", ())) or tuple(self.non_missing_aes)
+        return tuple(geom.required_aes) + non_missing
 
     def handle_na(self, geom: Any, data: ColumnTable, na_rm: bool) -> ColumnTable:
         """绘制期删行：缺失（或越界被标成 NA）的行整行删掉，并发 warning。"""

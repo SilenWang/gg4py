@@ -71,13 +71,12 @@ __all__ = [
 #: 网格线因此偏 1px。见 docs/notes/guide.md「轴」。
 TEXT_LINE_EM = 0.8945
 
-#: 布局列宽里「拉丁文字」的度量字面。R 的缺省 sans 是 Helvetica 口径
-#: （数字 0.556em，`1.5` @8.8pt 量 12.20pt）；受管字体栈的主字面 Noto Sans CJK SC
-#: 把拉丁数字排成 0.50em（同一串 11.20pt），照样排下去 y 轴标签列会窄 1pt、
-#: 面板左边界整列偏 1px。这里只**量宽度**（列宽 / 图例标签盒），不换绘制字面：
-#: IR 的 `text.width` 仍由绘制端按自己的字面量（`docs/notes/guide.md`
-#: 「与 R 的实测差」记着这条差）。
-LAYOUT_LATIN_FONT = "Noto Sans"
+#: 布局列宽里「拉丁文字」的度量字面。M2-a（SIL-728）把参考产线的默认拉丁字面
+#: 定位成 **Arimo**（R/svglite 的 `font-family: "Arimo"`），绘制端
+#: `ggskia.text.SANS_FAMILY` 与它一致；布局量宽必须用同一字面，否则 `gear`
+#: 这类字符串会差 7%（Noto Sans 的 g 更宽），图例盒 / y 轴列宽随之偏。
+#: 这里只**量宽度**（列宽 / 图例标签盒），不换绘制字面。
+LAYOUT_LATIN_FONT = "Arimo"
 
 #: 没有 `Metrics` 时每字符的宽度（em）。只在布局估算里用，渲染宽度由 IR 文本节点
 #: 自带的 `text.width` 决定；有度量时一律走 `Metrics.strwidth()`。

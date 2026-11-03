@@ -52,6 +52,12 @@ _JOINS = {
     LineJoin.BEVEL: skia.Paint.kBevel_Join,
 }
 
+#: `lty` 段长的折算（M2-12，口径见 `docs/notes/scales.md`）。
+#: IR 的 `lty` 是「lwd 的倍数 × pt 口径的 lwd」，而 svglite 写
+#: `stroke-dasharray` 时只折算线宽、不折算段长（段长仍按 1/96 in 的数值），
+#: 所以参考图里的段长比物理 pt 大 4/3。查看器 `render.ts` 用同一个常量。
+DASH_UNIT = 4.0 / 3.0
+
 
 class _SkiaDevice(Device):
     """一台 skia 画布 + IR 遍历器。子类只需给画布与编码。"""
@@ -145,6 +151,12 @@ class _SkiaDevice(Device):
         colour = gpar.col if (stroke or use_col) else gpar.fill
         if colour is None:
             return None
+        # `lwd = 0` 在 R / svglite 里是「不画线」（`stroke-width: 0` 在 SVG 里
+        # 同样是零宽 = 不描边），但 skia 的 `setStrokeWidth(0)` 是 **hairline**，
+        # 会多出一圈 1 px 的描边。实心 pch（19/15/17…）的 IR 就是 lwd=0，
+        # 不跳过的话点会比参考图大一圈（M2-12 的两腿对拍抓到 1 pt 包围盒差）。
+        if stroke and gpar.lwd <= 0:
+            return None
         red, green, blue, alpha = colour
         paint = skia.Paint(AntiAlias=True)
         paint.setColor(skia.ColorSetARGB(round(alpha * gpar.alpha), red, green, blue))
@@ -155,7 +167,11 @@ class _SkiaDevice(Device):
             paint.setStrokeJoin(_JOINS[gpar.linejoin])
             paint.setStrokeMiter(gpar.linemitre)
             if gpar.lty:
-                paint.setPathEffect(skia.DashPathEffect.Make(list(gpar.lty), 0.0))
+                paint.setPathEffect(
+                    skia.DashPathEffect.Make(
+                        [float(segment) * DASH_UNIT for segment in gpar.lty], 0.0
+                    )
+                )
         else:
             paint.setStyle(skia.Paint.kFill_Style)
         return paint
@@ -283,7 +299,10 @@ class _SkiaDevice(Device):
         stroke = self._paint(node.gpar, stroke=True)
         fill = self._paint(node.gpar, stroke=False)
         col_fill = self._paint(node.gpar, stroke=False, use_col=True)
-        if stroke is None and fill is None:
+        # 三者都得看：实心 pch（15..19）的 gpar 里 `fill = None`、`col = 颜色`、
+        # 且 `lwd = 0`（无描边），只判 fill / stroke 会把这些点整批画丢
+        # （M2-12 的两腿对拍抓到：skia 侧整张图只剩白底）。
+        if stroke is None and fill is None and col_fill is None:
             return
         text = character_pch(pch)
         if text is not None:
