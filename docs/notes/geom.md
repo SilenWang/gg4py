@@ -201,7 +201,7 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 ```bash
 pixi run -e refs refs:geom          # 夹具 + 49 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
 pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py tests/test_geom_long_tail_b.py -q
-pixi run cases:matrix               # 全部 128 个三文件 case 逐张 render + diff
+pixi run cases:matrix               # 全部 146 个三文件 case 逐张 render + diff
 pixi run check                      # 全量门禁
 ```
 
@@ -217,7 +217,7 @@ stat 未实现的部分（M1 的 histogram / boxplot / smooth，M2-7 的 2D / �
 把 R 的 `$data`（或 stat 形状的列）当绘制输入。
 
 M2-7 的 22 条新 case（`docs/cases/geom-*`）走 `stat = "identity"` + stat 形状
-的列，实测全部在图级 < 2% / 均值 < 1% 的阈值内（`pixi run cases:matrix` 128/128
+的列，实测全部在图级 < 2% / 均值 < 1% 的阈值内（`pixi run cases:matrix` 146/146
 pass）；文本三条（对齐 / 旋转 / 换行）与 label 一条也在阈值内，残余差异来自
 字体度量的亚像素，见 `docs/notes/metrics-ledger.md` M2-b。
 
