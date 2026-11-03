@@ -13,6 +13,12 @@ M0 的比对对象有三类，用途不同，**不能混用容差**：
 > （X2），差 3 的来历查不到（不是被忽略的目录：`_snaps/4.0`、`4.4`、`4.5` 里没有
 > SVG）。逐条清单与处置见 `docs/notes/snapshot-inventory.md`。
 
+> **缺口归属（SIL-786）**：`snapshots.toml` 的每个 group 必须写
+> `owner = "m2-closeout"`（M2 已宣称但没做到对等，M3 开工前归零）或
+> `owner = "m3"`（`geom_sf` / `coord_sf` / `coord_map` / `annotate` / 版面组合，
+> 移交 M3）。按簇的 burndown 表由 `pixi run snapshots:report` 生成在同一份清单里，
+> 不另维护；`pixi run snapshots:report:check` 挂在 CI 上守新鲜度。
+
 ## 为什么上游快照不入库
 
 SVG 是派生资产：上游一换 pin 就整批失效，进 git 只会制造大 diff 和冲突。拉取

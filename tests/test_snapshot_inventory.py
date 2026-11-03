@@ -61,6 +61,23 @@ def test_imported_cases_match_the_upstream_bytes() -> None:
     assert summary["imported"] + summary["gaps"] == summary["total"]
 
 
+def test_every_gap_cluster_declares_an_owner() -> None:
+    """SIL-786：每簇必须写 owner = m2-closeout | m3，缺 owner 会让收口无主。"""
+    dispositions = SNAPSHOTS.load_dispositions()
+    groups = dispositions["groups"]
+    for name, group in groups.items():
+        assert group.get("owner") in SNAPSHOTS.OWNERS, name
+    rows = SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), dispositions)
+    for row in rows:
+        if not row["case"]:
+            assert row["owner"] in SNAPSHOTS.OWNERS, row["path"]
+
+
+def test_inventory_burndown_is_generated_from_the_toml() -> None:
+    """清单是生成物：台账（含 owner 与 burndown）不允许和 snapshots.toml 漂移。"""
+    assert SNAPSHOTS.check_report() == []
+
+
 def test_large_base_size_outliers_stay_gaps() -> None:
     """三条实测超 2% 的大字号快照是**实现缺口**，不能用分档放绿（SIL-715）。"""
     rows = {

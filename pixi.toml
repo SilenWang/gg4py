@@ -119,6 +119,9 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "snapshots:import" = "python tools/upstream/import_snapshot_cases.py"
 "snapshots:report" = "python tools/upstream/snapshots.py --report"
 "snapshots:check" = "python tools/upstream/snapshots.py"
+# SIL-786：清单新鲜度门禁。`snapshots:report` 是唯一的生成入口，`:check` 只比
+# 产物与处置清单是否同源——改了 `snapshots.toml`（含 owner）就必须重跑 report。
+"snapshots:report:check" = "python tools/upstream/snapshots.py --check-report"
 # SIL-745 #3：阈值分档。`measure` 量 text_load / 墨量并写 docs/notes/snapshot-tiers.md；
 # `check` 只校验「声明的容差不超过档位上限」（CI 里没有运行产物，不拿旧实测判红）。
 "tiers:measure" = "PYTHONPATH=src python tools/cases/snapshot_tiers.py --measure"
@@ -302,6 +305,7 @@ check = { depends-on = [
   "cases:matrix:check",
   "api:coverage:check",
   "snapshots:check",
+  "snapshots:report:check",
   "tiers:check",
   "docs:theme:check",
 ] }
