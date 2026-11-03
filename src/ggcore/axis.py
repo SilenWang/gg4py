@@ -90,7 +90,8 @@ class AxisError(ValueError):
     """轴参数无法表达（secondary axis 的非法变换 / 旋转标签等）。"""
 
 
-#: `sec_axis()` 的「沿用主轴」标记（上游 `derive()`）。`None` 与它同义。
+#: `sec_axis()` 的「沿用主轴」标记（上游 `derive()`）：`dup_axis()` 的缺省标题。
+#: `None` 则是上游 `waiver()` / `NULL`：**不显示次轴标题**（SIL-759）。
 DERIVE: Any = object()
 
 
@@ -99,7 +100,13 @@ class SecondaryAxis:
     """`sec_axis(transform, name, breaks, labels, guide)`（上游 `AxisSecondary`）。
 
     `transform` 是**主轴值 → 次轴值**的函数（`~ . * 2` 即 `lambda v: v * 2`）。
-    断点 / 标签 / 标题缺省 `None`（= 上游的 `waiver()` / `derive()`：沿用主轴）。
+    断点 / 标签缺省 `None`（= 上游 `waiver()`：按主轴推）。
+
+    标题三条口径（R 4.0.3 实测）：
+
+    - `name=None`（`sec_axis()` 的缺省，= R 的 `waiver()` / `NULL`）：不显示标题；
+    - `name=DERIVE`（`dup_axis()` 的缺省，= R 的 `derive()`）：沿用主轴标题；
+    - 其它值：原样作为次轴标题。
     """
 
     transform: Callable[[Any], Any] | None = None
@@ -149,18 +156,26 @@ def sec_axis(
     labels: Any = None,
     guide: Any = None,
 ) -> SecondaryAxis:
-    """`sec_axis(~ . * 2)`：给位置标度加第二条轴（画在 top / right）。"""
+    """`sec_axis(~ . * 2)`：给位置标度加第二条轴（画在 top / right）。
+
+    `name` 缺省 `None` = 上游 `waiver()`：**不显示次轴标题**（主轴标题仍在
+    自己的轴上）；要沿用主轴标题用 `dup_axis()` 或 `name=DERIVE`。
+    """
     return SecondaryAxis(transform, name, breaks, labels, guide)
 
 
 def dup_axis(
     transform: Callable[[Any], Any] | None = None,
-    name: Any = None,
+    name: Any = DERIVE,
     breaks: Any = None,
     labels: Any = None,
     guide: Any = None,
 ) -> SecondaryAxis:
-    """`dup_axis()`：与主轴同值的第二条轴（`sec_axis(identity)`）。"""
+    """`dup_axis()`：与主轴同值的第二条轴（`sec_axis(identity)`）。
+
+    上游 `dup_axis()` 的 `name = derive()`：缺省**沿用主轴标题**（`SEC_AXIS` 的
+    `sec_axis()` 缺省则是 `waiver()`，不显示标题）。
+    """
     return SecondaryAxis(transform or _identity, name, breaks, labels, guide)
 
 
@@ -216,7 +231,7 @@ def text_width_cm(
                     line,
                     fontsize=float(size_pt),
                     cex=1.0,
-                    font=str(family or LAYOUT_LATIN_FONT),
+                    font=str(family),
                 )
             )
             for line in lines
@@ -243,8 +258,14 @@ def margin_sides_cm(
     return (out[0], out[1], out[2], out[3])
 
 
-def paint(value: Any) -> str | None:
-    """主题颜色 → 可绘制的颜色；`NA` / `transparent` / 缺失 → None。"""
+def paint(value: Any) -> Any:
+    """主题颜色 → 可绘制的颜色；`NA` / `transparent` / 缺失 → None。
+
+    渐变 / 图案的待解析规格（`ggcore.fills`）原样透传——`panel.background` /
+    `plot.background` 的 `element_rect(fill = 渐变)` 走这一条。
+    """
+    if hasattr(type(value), "resolve"):
+        return value
     if value is None or value is NA or not isinstance(value, str):
         return None
     text = value.strip()

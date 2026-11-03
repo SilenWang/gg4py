@@ -123,3 +123,40 @@ def test_untouched_pair_passes_selftest_baseline(tmp_path: Path) -> None:
     assert parity._centroid_delta(
         parity.ink_centroid(reference), parity.ink_centroid(moved)
     ) == pytest.approx(0.0)
+
+
+GRADIENT_BODY = (
+    '<defs><linearGradient id="g0" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="20" y2="0">'
+    '<stop offset="0" stop-color="#e45756"/>'
+    '<stop offset="0.5" stop-color="#f4a582" stop-opacity="0.5"/>'
+    '<stop offset="1" stop-color="#4c78a8"/>'
+    "</linearGradient></defs>"
+    '<rect x="0" y="0" width="20" height="10" fill="url(#g0)" fill-opacity="0.8"/>'
+)
+
+
+def test_palette_expands_gradient_url_definitions(tmp_path: Path) -> None:
+    """`fill: url(#…)` 必须按 `<defs>` 里的**定义**展开成 stop 颜色 × 透明度。
+
+    两条腿的 id 名字不同（skia `gradient_0` / 查看器 `ggv-fill-0`），直接把
+    `url(#…)` 字符串当涂色比会把同一份 IR 判成错色。这里钉住展开后得到的是
+    「画到画布上的颜色」，元素自身的 `fill-opacity` 也乘进去。
+    """
+    svg = _svg(tmp_path / "gradient.svg", GRADIENT_BODY)
+    assert parity.normalised_palette(svg) == {
+        ("#e45756", "0.8"),
+        ("#f4a582", "0.4"),
+        ("#4c78a8", "0.8"),
+    }
+
+
+def test_palette_sees_a_changed_gradient_stop(tmp_path: Path) -> None:
+    """负向对照：只改 `<stop>` 的颜色，`url(#id)` 展开必须让颜色集合变红。
+
+    这是展开逻辑自己的负向对照：如果实现退化成「直接拿 `url(#…)` 字符串比」，
+    两条腿的 id 不同时仍会「相等」，而改 stop 颜色也不会被发现——这条会先红。
+    """
+    source = _svg(tmp_path / "gradient.svg", GRADIENT_BODY)
+    mutated = _svg(tmp_path / "gradient-mutated.svg", GRADIENT_BODY.replace("#e45756", "#ff00ff"))
+    assert parity.normalised_palette(source) != parity.normalised_palette(mutated)
+    assert ("#ff00ff", "0.8") in parity.normalised_palette(mutated)

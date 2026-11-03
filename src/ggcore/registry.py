@@ -35,12 +35,26 @@ from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Any
 
+import numpy as np
+
 from ggcore.aes import as_aes, frozen_mapping
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
+from ggcore.data import Column, ColumnTable
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
-from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
+from ggcore.theme import (
+    theme_bw,
+    theme_classic,
+    theme_dark,
+    theme_gray,
+    theme_grey,
+    theme_light,
+    theme_linedraw,
+    theme_minimal,
+    theme_test,
+    theme_void,
+)
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。`position` 紧跟 `stat`：
 #: 它作用在 stat 之后、标度映射之前（就是流水线第 4 阶段）。
@@ -525,6 +539,15 @@ _BAR_DEFAULTS = {
     "width": 0.9,
 }
 _LINE_DEFAULTS = {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None}
+#: `geom_rect` / `polygon` / `ribbon` 一族：`colour = NA`、`fill = col_mix(ink, paper, 0.35)`
+#: 在 theme_grey 下是 `grey35`；tile / raster / map 用 0.2 的混合（`grey20`）。
+_RECT_DEFAULTS = {
+    "colour": None,
+    "fill": "grey35",
+    "linewidth": 0.5,
+    "linetype": 1,
+    "alpha": None,
+}
 
 GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
     {
@@ -615,10 +638,358 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "identity",
             optional_aes=("ymin", "ymax"),
         ),
+        # --- M2-S2 长尾 A：线段 / 矩形 / 区间 / 标注族 -----------------------
+        # default_aes 的值是 theme_grey 解析后的静态结果（颜色写成语义名，
+        # 绘制期按 col2rgb 折算；与上游 `from_theme(...)` 的取值一致）。
+        "abline": GeomSpec(("slope", "intercept"), _LINE_DEFAULTS),
+        "hline": GeomSpec(("yintercept",), _LINE_DEFAULTS),
+        "vline": GeomSpec(("xintercept",), _LINE_DEFAULTS),
+        "segment": GeomSpec(
+            ("x", "y", "xend|yend"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "curve": GeomSpec(
+            ("x", "y", "xend|yend"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "spoke": GeomSpec(
+            ("x", "y", "angle", "radius"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linetype", "linewidth"),
+        ),
+        "rect": GeomSpec(
+            ("x|width|xmin|xmax", "y|height|ymin|ymax"),
+            _RECT_DEFAULTS,
+        ),
+        # `geom_tile` 的绘制由 SIL-737 落地。上游 `GeomTile$default_aes` 是
+        # `fill = col_mix(ink, paper, 0.2)`（grey20）、`linewidth = 0.4 * borderwidth`
+        # （0.2），与 M2-6 的 build-only 桩（SIL-735 口径、grey92）不同：绘制实现
+        # 以本条为准，桩由它取代。
+        "tile": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey20",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "raster": GeomSpec(
+            ("x", "y"),
+            {"fill": "grey20", "alpha": None},
+            non_missing_aes=("fill", "xmin", "xmax", "ymin", "ymax"),
+        ),
+        "polygon": GeomSpec(("x", "y"), {**_RECT_DEFAULTS, "fill": "grey20"}),
+        "ribbon": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {**_RECT_DEFAULTS, "fill": "grey20"},
+        ),
+        "step": GeomSpec(
+            ("x", "y"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "errorbar": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "errorbarh": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "linerange": GeomSpec(("x|y", "ymin|xmin", "ymax|xmax"), _LINE_DEFAULTS),
+        "pointrange": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "size": 0.5,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "shape": 19.0,
+                "fill": None,
+                "alpha": None,
+                "stroke": 1.0,
+            },
+        ),
+        "crossbar": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {"colour": "black", "fill": None, "linewidth": 0.5, "linetype": 1, "alpha": None},
+        ),
+        "blank": GeomSpec((), {}),
+        "rug": GeomSpec((), _LINE_DEFAULTS),
+        "map": GeomSpec(("map_id",), {**_RECT_DEFAULTS, "fill": "grey20"}),
+        # -- M2-7 长尾 B：文本 / 点 / 分布 / 2D 族 ---------------------------------
+        # 默认美学照 4.0.3 的 `from_theme(...)`：`theme_grey()$geom` 解析后
+        # ink = black、paper = white、accent = #3366FF、fontsize = 3.87mm；
+        # `col_mix(ink, paper, 0.2 / 0.35 / 0.5)` = grey20 / grey35 / #808080。
+        "text": GeomSpec(
+            ("x", "y", "label"),
+            {
+                "colour": "black",
+                "family": "",
+                "size": 3.87,
+                "angle": 0.0,
+                "hjust": 0.5,
+                "vjust": 0.5,
+                "alpha": None,
+                "fontface": 1,
+                "lineheight": 1.2,
+            },
+            "identity",
+            "nudge",
+            non_missing_aes=("angle",),
+        ),
+        "label": GeomSpec(
+            ("x", "y", "label"),
+            {
+                "colour": "black",
+                "fill": "white",
+                "family": "",
+                "size": 3.87,
+                "angle": 0.0,
+                "hjust": 0.5,
+                "vjust": 0.5,
+                "alpha": None,
+                "fontface": 1,
+                "lineheight": 1.2,
+                "linewidth": 0.25,
+                "linetype": 1,
+            },
+            "identity",
+            "nudge",
+        ),
+        "jitter": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "identity",
+            "jitter",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "count": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "sum",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "bin2d": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "#333333",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            "bin2d",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "bin_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "#333333",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            "bin2d",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "hex": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#808080",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "binhex",
+        ),
+        "density": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "black",
+                "fill": None,
+                "weight": 1.0,
+                "alpha": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+            },
+            "density",
+        ),
+        "density_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "density2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "density_2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+        ),
+        "density2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+        ),
+        "contour": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "contour_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour_filled",
+        ),
+        "dotplot": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "black",
+                "fill": "black",
+                "alpha": None,
+                "stroke": 1.0,
+                "linetype": 1,
+                "weight": 1.0,
+                "width": 0.9,
+            },
+            "bindot",
+            non_missing_aes=("size", "shape"),
+        ),
+        "violin": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#333333",
+                "fill": "white",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+                "width": 0.9,
+            },
+            "ydensity",
+            "dodge",
+        ),
+        "qq": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "qq",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "qq_line": GeomSpec(
+            ("x", "y"),
+            {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None},
+            "qq_line",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "quantile": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "quantile",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "function": GeomSpec(
+            ("x", "y"),
+            {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None},
+            "function",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
     }
 )
 
-#: stat 导出（M1-1 的 6 个 + M2-6 的 14 个长尾；`align` 是 4.0.3 里 area 的默认 stat）。
+#: 6 个 stat（M1-1 只登记名字；`align` 是 4.0.3 里 area 的默认 stat）。
 STAT_NAMES: tuple[str, ...] = (
     "identity",
     "bin",
@@ -626,6 +997,18 @@ STAT_NAMES: tuple[str, ...] = (
     "boxplot",
     "smooth",
     "align",
+    "bin_2d",
+    "bin_hex",
+    "summary_2d",
+    "summary_hex",
+    "contour",
+    "contour_filled",
+    "density_2d",
+    "density_2d_filled",
+    "bin2d",
+    "binhex",
+    "summary2d",
+    "density2d",
     "qq",
     "qq_line",
     "ecdf",
@@ -641,6 +1024,20 @@ STAT_NAMES: tuple[str, ...] = (
     "manual",
     "spoke",
     "ydensity",
+    "bin2d",
+    "binhex",
+    "summary2d",
+    "density2d",
+)
+
+#: 2D 族的旧别名 → 正名。
+STAT_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "bin2d": "bin_2d",
+        "binhex": "bin_hex",
+        "summary2d": "summary_2d",
+        "density2d": "density_2d",
+    }
 )
 
 #: `stat_*()` 的默认 geom（照 4.0.3 的 `stat_*` 构造器；`spoke` 已 `deprecate_stop`，
@@ -653,6 +1050,14 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
         "boxplot": "boxplot",
         "smooth": "smooth",
         "align": "area",
+        "bin_2d": "tile",
+        "bin_hex": "hex",
+        "summary_2d": "tile",
+        "summary_hex": "hex",
+        "contour": "contour",
+        "contour_filled": "contour_filled",
+        "density_2d": "density_2d",
+        "density_2d_filled": "density_2d_filled",
         "qq": "point",
         "qq_line": "abline",
         "ecdf": "step",
@@ -768,7 +1173,19 @@ COORD_POSITIONAL: Mapping[str, tuple[str, ...]] = MappingProxyType(
 )
 
 FACET_NAMES: tuple[str, ...] = ("null", "wrap", "grid")
-GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
+GUIDE_NAMES: tuple[str, ...] = (
+    "legend",
+    "colourbar",
+    "bins",
+    "coloursteps",
+    "colorsteps",
+    "none",
+    # 轴 guide（M2-S2）：`guides(x = guide_axis(angle = 45))` 的注册名。
+    "axis",
+    "axis_logticks",
+    "axis_stack",
+    "axis_theta",
+)
 
 
 def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
@@ -787,6 +1204,16 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
         show_legend: bool | None = None,
         **params: Any,
     ) -> Layer:
+        if name == "jitter" and ("width" in params or "height" in params):
+            # `geom_jitter(width=, height=)` 是 `position_jitter(width=, height=)`
+            # 的简写；两者同时给是上游的显式错误。
+            if position is not None:
+                raise ValueError(
+                    "geom_jitter() 的 position 与 width/height 不能同时给：选一种方式指定抖动"
+                )
+            position = POSITION_FACTORIES["jitter"](
+                width=params.pop("width", None), height=params.pop("height", None)
+            )
         resolved_position = as_position(position, spec.position)
         if name == "boxplot":
             resolved_position = _boxplot_position(resolved_position, position, params)
@@ -841,20 +1268,115 @@ def _boxplot_position(
     return resolved
 
 
+#: 参考线三兄弟的「参数即数据」工厂（上游 `geom_abline()` / `geom_hline()` /
+#: `geom_vline()`）：给了截距参数时，它们把参数**做成图层数据**、映射指向同名列、
+#: `inherit.aes = FALSE`、`show.legend = FALSE`——所以 `$data` 的列序是
+#: `intercept, slope, PANEL, group, colour, …`，继承来的美学一律不进这一层。
+_REFERENCE_DATA_AES: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType(
+    {
+        "abline": (("intercept", 0.0), ("slope", 1.0)),
+        "hline": (("yintercept", 0.0),),
+        "vline": (("xintercept", 0.0),),
+    }
+)
+
+
+def _float_sequence(value: Any) -> list[float]:
+    """`slope = c(1, -1)` 这种向量参数：摊平成 float 列表（R 会按最长的一条回收）。"""
+    if isinstance(value, (list, tuple, np.ndarray)):
+        values = [float(item) for item in np.asarray(value, dtype=np.float64).ravel()]
+        if not values:
+            raise ValueError("geom_abline() 的 slope / intercept 不能是空序列")
+        return values
+    return [float(value)]
+
+
+def _reference_layer_factory(
+    name: str, spec: GeomSpec, defaults: tuple[tuple[str, float], ...]
+) -> Callable[..., Layer]:
+    """`geom_abline()` / `geom_hline()` / `geom_vline()` 的参数形态。
+
+    给了截距参数：参数落成图层数据（`data_frame0(...)` 的等价物）并按同名映射，
+    `inherit.aes = False`。没给：退回普通图层（允许 `mapping=aes(yintercept=...)`）。
+    """
+    generic = _geom_layer_factory(name, spec)
+
+    def factory(
+        mapping: Any = None,
+        data: Any = None,
+        *,
+        stat: Stat | str | None = None,
+        position: Position | str | None = None,
+        inherit_aes: bool = True,
+        show_legend: bool | None = None,
+        **params: Any,
+    ) -> Layer:
+        given = [key for key, _ in defaults if params.get(key) is not None]
+        if not given:
+            return generic(
+                mapping,
+                data,
+                stat=stat,
+                position=position,
+                inherit_aes=inherit_aes,
+                show_legend=show_legend,
+                **params,
+            )
+        sequences: list[tuple[str, list[float]]] = []
+        for key, fallback in defaults:
+            value = params.pop(key, None)
+            sequences.append((key, [fallback] if value is None else _float_sequence(value)))
+        nrows = max(len(values) for _, values in sequences)
+        table = ColumnTable(
+            [
+                (
+                    key,
+                    Column(
+                        "float",
+                        np.array([values[index % len(values)] for index in range(nrows)]),
+                    ),
+                )
+                for key, values in sequences
+            ],
+            nrows=nrows,
+        )
+        layer = Layer(
+            geom=Geom(
+                name=name,
+                required_aes=spec.required_aes,
+                default_aes=spec.default_aes,
+                non_missing_aes=spec.non_missing_aes,
+                optional_aes=spec.optional_aes,
+            ),
+            stat=as_stat(stat, spec.stat),
+            position=as_position(position, spec.position),
+            mapping=as_aes({key: key for key, _ in defaults}),
+            data=table,
+            params=params,
+            inherit_aes=False,
+            show_legend=False if show_legend is None else show_legend,
+        )
+        return layer
+
+    return factory
+
+
 def _stat_layer_factory(name: str) -> Callable[..., Layer]:
     """`stat_<name>(...)` 在 ggplot2 里同样是图层快捷方式。
 
     参数路由（M1-3 的约定）：`**params` 只进 `Stat.params`；geom 需要的参数
     （例如 `width`）不在这里，走 geom 的缺省值或 `geom=` 显式传入。
+    别名（`stat_bin2d` 等）在图层里落成正名，默认 geom 与正名一致。
 
     4.0.3 里有几个 stat 的默认 geom 属于 M2-7（`step` / `violin` / `pointrange` /
     `quantile` / `function` / `abline`）。那一组落地之前，用这些默认值的
     `stat_*()` 在**构造时**报错并点名可用的 `geom=`，不拖到构建期才炸。
     """
 
-    geom_name = STAT_GEOMS.get(name, "point")
+    stat_name = STAT_ALIASES.get(name, name)
+    geom_name = STAT_GEOMS.get(stat_name, "point")
 
-    if name == "spoke":
+    if stat_name == "spoke":
         # 4.0.3 的 `stat_spoke()` 本体是 `lifecycle::deprecate_stop()`：
         # 注册项保留（NAMESPACE 里仍然导出），调用即报错并指向 `geom_spoke()`。
         def deprecated(*args: Any, **params: Any) -> Layer:
@@ -900,8 +1422,13 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
                 () if spec is None else spec.non_missing_aes,
                 () if spec is None else spec.optional_aes,
             ),
-            stat=Stat(name, params),
-            position=as_position(position, STAT_POSITIONS[name]),
+            stat=Stat(stat_name, params),
+            # `STAT_POSITIONS` 是 M2-6 长尾 stat 的缺省表；2D 族沿用各自 geom
+            # 的缺省 position（`GEOM_SPECS[...]`，M2-6 的另一半登记在那里）。
+            position=as_position(
+                position,
+                STAT_POSITIONS.get(stat_name) or ("identity" if spec is None else spec.position),
+            ),
             mapping=as_aes(mapping),
             data=data,
             inherit_aes=inherit_aes,
@@ -1070,7 +1597,11 @@ def register_label(
 
 def _register_defaults() -> None:
     for name, spec in GEOM_SPECS.items():
-        register_geom(name, _geom_layer_factory(name, spec))
+        defaults = _REFERENCE_DATA_AES.get(name)
+        if defaults is None:
+            register_geom(name, _geom_layer_factory(name, spec))
+        else:
+            register_geom(name, _reference_layer_factory(name, spec, defaults))
     for name in STAT_NAMES:
         register_stat(name, _stat_layer_factory(name))
     for name in POSITION_NAMES:
@@ -1084,9 +1615,16 @@ def _register_defaults() -> None:
         register_facet(name, _facet_factory(name))
     for name in GUIDE_NAMES:
         register_guide(name, _guide_factory(name))
+    # 9 套完整主题（`gray` 是 `grey` 的美式拼写别名，上游两个都导出）。
     register_theme("grey", theme_grey)
+    register_theme("gray", theme_gray)
     register_theme("bw", theme_bw)
+    register_theme("classic", theme_classic)
+    register_theme("light", theme_light)
+    register_theme("dark", theme_dark)
+    register_theme("linedraw", theme_linedraw)
     register_theme("minimal", theme_minimal)
+    register_theme("test", theme_test)
     register_theme("void", theme_void)
     register_label("labs", _labels_factory)
 

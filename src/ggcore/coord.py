@@ -521,6 +521,11 @@ class PanelParams:
     cont_ranges: Mapping[str, tuple[float, float]] = field(default_factory=dict)
     #: 极坐标 / 径向坐标的几何（线性坐标为 None）。
     polar: PolarGeometry | None = None
+    #: 面板在页面上的实际尺寸（英寸）：场景装配时填入，`geom_text` 的
+    #: `check_overlap` 与 `geom_label` 的字号 → npc 换算要用它。构建设置里没有
+    #: 它是正常的（构建阶段还不知道版式）。
+    panel_width_in: float | None = None
+    panel_height_in: float | None = None
 
     def __post_init__(self) -> None:
         for name in ("x_range", "y_range", "x_limits", "y_limits"):
@@ -540,6 +545,23 @@ class PanelParams:
     def ranges(self) -> Mapping[str, tuple[float, float]]:
         """`{"x": (low, high), "y": (low, high)}`（只读）。"""
         return MappingProxyType({"x": self.x_range, "y": self.y_range})
+
+    def backtransform_range(self) -> dict[str, tuple[float, float]]:
+        """上游 `coord$backtransform_range(panel_params)`。
+
+        线性坐标就是面板 `x.range` / `y.range`；`coord_trans` 再把映射空间的
+        范围反变换回标度空间——`geom_abline` / `hline` / `vline` 的端点按这个
+        范围算（先反变换、再画、再由 `coord$transform()` 投回屏幕）。
+        """
+        out: dict[str, tuple[float, float]] = {}
+        for axis in ("x", "y"):
+            low, high = self.x_range if axis == "x" else self.y_range
+            spec = self.trans.get(axis)
+            if spec is not None and spec.name != "identity":
+                values = np.asarray(spec.invert(np.array([low, high])), dtype=np.float64)
+                low, high = float(values[0]), float(values[1])
+            out[axis] = (low, high)
+        return out
 
     @property
     def limits(self) -> Mapping[str, tuple[float, float]]:

@@ -1,0 +1,7 @@
+family = "geom-dotplot"
+features = ["aes-mapping", "stat-identity", "scale-limits"]
+ci = true
+title = "dotplot：count 展开 + 向上堆叠"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "R 侧用真实 stat_bindot（geom_dotplot 不接受 stat=），这里把它的 bin 输出当绘制输入；圆半径按非堆叠轴、stackoffset = (1 - stackratio)/2。"

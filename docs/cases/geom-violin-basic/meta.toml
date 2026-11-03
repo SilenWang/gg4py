@@ -1,0 +1,7 @@
+family = "geom-violin"
+features = ["aes-mapping", "aes-grouping", "stat-identity", "scale-limits"]
+ci = true
+title = "violin：violinwidth 收窄的闭合多边形"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "R 侧用真实 stat_ydensity；绘制按 violinwidth 收窄左右边界，再沿 y 排序闭合（首尾同点）。"

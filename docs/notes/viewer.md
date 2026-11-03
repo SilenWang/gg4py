@@ -185,6 +185,9 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
 | 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1） | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
+| `arrow`（v0.3 标记属性） | 设备按端点切向画箭翼 | `render.ts` 的 `arrowPath()`（与 `ggcore.arrow.head_geometry()` 同一公式） | 箭翼是节点的附加 `<path class="ir-arrow">`，不带 `data-row`（不参与叶子计数 / hover） |
+| 渐变 `fill` | skia shader，SVG 后端序列化后按 IR 重写渐变标签（`_rewrite_svg_gradients`） | 自己写 `<linearGradient>` / `<radialGradient>`（`userSpaceOnUse` + `gradientTransform` 烘焙页面矩阵） | 颜色 / 端点 / `spreadMethod` / focal 一致（`ir.md` §6.1） |
+| 图案 `fill` | 逐 tile 裁剪 + 平移画内容（纯矢量，不落位图） | 一个 `<pattern>`，内容平移到 tile 原点 | 同一套 tile 尺寸 / 相位；Chromium 与 resvg 都把 pattern 内容的坐标原点放在 tile 原点（svglite 同款写法） |
 | 结构 | 每个 IR 节点一段 `<g>`，几何在局部坐标 | 几何烘焙到页面坐标，容器不带 transform | 像素等价，DOM 结构不同（IR 不承诺对齐 svglite，`ir.md` §12） |
 | 交互 | 无 | hover / 图例开关 | 只存在于浏览器 |
 
@@ -253,7 +256,9 @@ M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 | gpar `fill` / `col` / `alpha` | 支持 | `#rrggbb` + `fill-opacity` / `stroke-opacity` |
 | gpar `lwd` / `lty` / `lineend` / `linejoin` / `linemitre` | 支持 | 线宽按 √\|det\| 缩放；`lty` 段长再乘 4/3（svglite 口径，见下）；`lwd = 0` 不描边（SVG 的零宽语义，skia 的 hairline 已在 M2-12 关掉） |
 | gpar `alpha` 合成 | 支持 | 乘进 `fill-opacity` / `stroke-opacity`（元素级），不写整页 `opacity`；`viewer-alpha-overlap` 守重叠带的源覆盖顺序 |
-| 渐变 / 图案 / mask / 箭头 | 不支持 | IR v0 没有这些字段（`ir.md` §12）；渐变条目前由色条光栅（`<image>`）承担，箭头归 M2-7 的标注族 |
+| gpar `fill` 的 `linear` / `radial` | 支持 | `<linearGradient>` / `<radialGradient>`（`userSpaceOnUse` + `gradientTransform` 烘焙页面矩阵）；每档 `stop-opacity` = 颜色 alpha，元素级 `fill-opacity` = `gpar.alpha`；`extend` → `spreadMethod` |
+| gpar `fill` 的 `pattern` | 支持 | `<pattern>`（tile 原点 + 内容平移到 tile 原点，Chromium / resvg 的口径）；内容只收几何图元、只支持 repeat |
+| mask / 箭头 | 不支持 | IR 没有这些字段（`ir.md` §12）；箭头归 M2-7 的标注族 |
 | 嵌入字体文件 | 不支持 | 浏览器用系统栈；diff 侧用受管字体转轮廓（§8） |
 | 图例 key → 数据系列 | 降级 | 只隐藏图例组本身，IR 没有 level → 行映射 |
 | 逐行 hover（bulk `points`） | 降级 | 节点级 tooltip，给 `1–N` 行范围；M2 做子路径命中 |

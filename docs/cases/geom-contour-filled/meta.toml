@@ -1,0 +1,7 @@
+family = "geom-contour"
+features = ["aes-mapping", "aes-grouping", "fill-aes", "scale-discrete", "contour-band", "stat-identity"]
+ci = true
+title = "contour_filled：分段色带"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "GeomContourFilled 继承 GeomPolygon：band = group，洞 = subgroup，evenodd 填充；fill 由 level 映射。"

@@ -1,0 +1,7 @@
+family = "geom-function"
+features = ["aes-mapping", "stat-identity", "scale-limits"]
+ci = true
+title = "function：x / y 网格折线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "GeomFunction 继承 GeomPath；多个绘制组时发 R 同文案的警告。"

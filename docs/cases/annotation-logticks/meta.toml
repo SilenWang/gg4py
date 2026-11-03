@@ -1,0 +1,7 @@
+family = "annotation"
+features = ["annotation-logticks", "scale-log10"]
+ci = true
+title = "annotation：annotation_logticks"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "面板内对数刻度，与 log10 轴联动（sides=bl）。"

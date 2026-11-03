@@ -1,0 +1,9 @@
+family = "geom-col"
+features = ["pattern-fill"]
+ci = true
+title = "col：平铺图案填充（tile 尺寸 / 原点 / 内容坐标）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """tile 是包围盒的 12% × 12%，以包围盒中心对齐（R `pattern(just = "centre")` 的缺省）。
+内容「浅底 + 左侧 40% 红色竖条」在 x 方向不对称：tile 尺寸、原点或相位错一点，
+竖条位置就会整片偏移，像素差会立刻超容差。"""

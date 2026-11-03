@@ -1,0 +1,7 @@
+family = "geom-text"
+features = ["multiline", "scale-limits"]
+ci = true
+title = "text：多行标签（\\n）与 lineheight"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "多行按 `\\n` 切行，宽度取各行最大推进，行高 = fontsize × lineheight。"

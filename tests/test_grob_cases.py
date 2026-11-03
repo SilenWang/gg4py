@@ -30,6 +30,8 @@ EXPECTED_KINDS: dict[str, NodeKind] = {
     "grob-rect": NodeKind.RECT,
     "grob-circle": NodeKind.CIRCLE,
     "grob-lines": NodeKind.LINES,
+    # 虚线段长的 lwd 边界（lwd = 0.5 / 0.9 / 1.0 / 2.0，SIL-763）
+    "grob-dash-lwd": NodeKind.SEGMENTS,
     "grob-segments": NodeKind.SEGMENTS,
     "grob-polyline": NodeKind.POLYLINE,
     "grob-polygon": NodeKind.POLYGON,
@@ -122,6 +124,17 @@ def test_points_case_shows_the_vector_gp_expansion() -> None:
         (0x54, 0xA2, 0x4B, 255),
         (0xB2, 0x79, 0xA2, 255),
     ]
+
+
+def test_dash_lwd_case_pins_the_max_lwd_boundary() -> None:
+    """`lwd < 1` 的段长按 `max(lwd, 1)` 算：0.5 / 0.9 / 1.0 同为 3pt，2.0 才翻倍。
+
+    这是 SIL-763 的专项 case：IR 的 `lty` 是 pt，公式 `pattern × max(lwd, 1) × 0.75`
+    （渲染器再乘 `DASH_UNIT = 4/3` 写回 lwd 单位的 `stroke-dasharray`）。
+    """
+    scene, _ppi = TOOL.build(_case("grob-dash-lwd"))
+    dashes = [item.gpar.lty for item in scene.by_kind(NodeKind.SEGMENTS)]
+    assert dashes == [(3.0, 3.0), (3.0, 3.0), (3.0, 3.0), (6.0, 6.0)]
 
 
 def test_null_case_has_no_instructions_for_null_or_zero_grobs() -> None:

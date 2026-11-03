@@ -49,7 +49,8 @@ from typing import Any
 
 import numpy as np
 
-from ggcore import ir
+from ggcore import fills, ir
+from ggcore.arrow import Arrow, arrow_node_params
 from ggcore.gtable import GTable, gtable_height, gtable_width, is_gtable
 from ggcore.ir import Blob, BlobTable, NodeKind
 from ggcore.units import (
@@ -273,8 +274,23 @@ _NAMED_COLOURS: Mapping[str, tuple[int, int, int]] = {
 }
 
 
+#: R 命名色表里的 `grey0` … `grey100`（X11 `rgb.txt` 的取值，不是公式）。
+#: 它与 `round(255 * k / 100)` 在 `.5` 处会差 1 个灰阶（`grey50` = 127 而不是
+#: 128、`grey30` = 77 而不是 76），所以整张表照抄，避免 `greyNN` 写进主题后
+#: 与 `col2rgb()` 对不上。
+_GREY_LEVELS: tuple[int, ...] = (
+    0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 26, 28, 31, 33, 36, 38, 41, 43, 46, 48,
+    51, 54, 56, 59, 61, 64, 66, 69, 71, 74, 77, 79, 82, 84, 87, 89, 92, 94, 97,
+    99, 102, 105, 107, 110, 112, 115, 117, 120, 122, 125, 127, 130, 133, 135,
+    138, 140, 143, 145, 148, 150, 153, 156, 158, 161, 163, 166, 168, 171, 173,
+    176, 179, 181, 184, 186, 189, 191, 194, 196, 199, 201, 204, 207, 209, 212,
+    214, 217, 219, 222, 224, 227, 229, 232, 235, 237, 240, 242, 245, 247, 250,
+    252, 255,
+)  # fmt: skip
+
+
 def _grey(name: str) -> tuple[int, int, int] | None:
-    """R 的 `grey<k>` / `gray<k>`（k = 0..100，可以是小数）：`round(255*k/100)`。"""
+    """R 的 `grey<k>` / `gray<k>`：整数 k（0..100）查 R 色表，小数按公式取整。"""
     for prefix in ("grey", "gray"):
         if name.startswith(prefix):
             digits = name[len(prefix) :]
@@ -284,10 +300,13 @@ def _grey(name: str) -> tuple[int, int, int] | None:
                 percent = float(digits)
             except ValueError:
                 return None
-            if 0.0 <= percent <= 100.0:
+            if not 0.0 <= percent <= 100.0:
+                return None
+            if percent.is_integer():
+                channel = _GREY_LEVELS[int(percent)]
+            else:
                 channel = round(255.0 * percent / 100.0)
-                return (channel, channel, channel)
-            return None
+            return (channel, channel, channel)
     return None
 
 
@@ -339,8 +358,14 @@ def parse_colour(value: Any) -> tuple[int, int, int, int]:
     raise GrobError(f"invalid colour: {value!r}")
 
 
-def _paint(value: Any) -> tuple[int, int, int, int] | None:
-    """解析后的颜色 → IR 的 `col` / `fill`：`None` = 不画。"""
+def _paint(value: Any) -> tuple[int, int, int, int] | fills.FillSpec | None:
+    """解析后的颜色 → IR 的 `col` / `fill`：`None` = 不画。
+
+    渐变 / 图案的**待解析**规格（`ggcore.fills`，SIL-751）原样透传：坐标要等被
+    填充对象的包围盒，到 :meth:`Instruction.to_node` 才折成 IR 的最终几何。
+    """
+    if isinstance(value, fills.FillSpec):
+        return value
     if value is None or value is NA:
         return None
     if isinstance(value, str) and value.strip().lower() == "transparent":
@@ -370,7 +395,7 @@ _LTY_CODES: Mapping[int, str] = {
 
 
 def _dash_pattern(lty: Any) -> tuple[float, ...] | None:
-    """`lty` → 段长（lwd 倍数）；`None` 表示“不描边”（`blank` / `NA`）。"""
+    """`lty` → 段长（`lwd` 的倍数，`lwd < 1` 时按 1 算）；`None` 表示不描边。"""
     if lty is None or lty is NA:
         return None
     if isinstance(lty, bool):
@@ -434,7 +459,14 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
     lwd = float(gp.lwd) * _LWD_UNITS_TO_PT
     pattern: tuple[float, ...] = ()
     if dashes is not None:
-        pattern = tuple(round(segment * lwd, 6) for segment in dashes)
+        # 段长 = 模式 × max(lwd, 1)：R 的 `lwd` 是 1/96 inch，参考产线（svglite）
+        # 把小于 1 的 lwd 按 1 算段长（`lty = "dashed"` 在 lwd < 1 时恒为 4,4 pt），
+        # 用 lwd 本身会在细线上把虚线画密（SIL-737 的 abline 用例）。
+        # 再乘 72/96：上面算出来的是 lwd 单位（1/96 inch）的段长，IR 的 `lty` 是 pt，
+        # 渲染器随即乘 `DASH_UNIT = 4/3` 换回 lwd 单位写进 `stroke-dasharray`
+        # （`pattern × max(lwd, 1)`，与参考产线同口径；SIL-763 / SIL-765）。
+        scale = max(float(gp.lwd), 1.0) * _LWD_UNITS_TO_PT
+        pattern = tuple(round(segment * scale, 6) for segment in dashes)
     return ir.Gpar(
         fill=_paint(gp.fill),
         col=col,
@@ -648,6 +680,10 @@ class CircleGrob(Grob):
     x: Unit = field(default_factory=lambda: unit(0.5, "npc"))
     y: Unit = field(default_factory=lambda: unit(0.5, "npc"))
     r: Unit = field(default_factory=lambda: unit(0.5, "npc"))
+    #: 半径按哪一根轴换算：grid 的 `circleGrob(r = unit(., "npc"))` 取较小边，
+    #: `geom_dotplot` 取「非堆叠轴」（R 的 `convertX` / `convertY`）。IR 的
+    #: circle 存绝对 r（pt），换算是遍历期一次性的，所以这里记轴就好。
+    r_axis: str = "x"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -662,6 +698,7 @@ class SegmentsGrob(Grob):
     y0: Unit = field(default_factory=lambda: unit(0.0, "npc"))
     x1: Unit = field(default_factory=lambda: unit(1.0, "npc"))
     y1: Unit = field(default_factory=lambda: unit(1.0, "npc"))
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -669,6 +706,7 @@ class PolylineGrob(Grob):
     x: Unit = field(default_factory=lambda: unit([0.0, 1.0], "npc"))
     y: Unit = field(default_factory=lambda: unit([0.0, 1.0], "npc"))
     id: Any = None
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -747,6 +785,7 @@ class CurveGrob(Grob):
     square: bool = True
     inflect: bool = False
     open: bool = True
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -902,8 +941,17 @@ def circle_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    *,
+    r_axis: str = "x",
 ) -> CircleGrob:
-    """`circleGrob()`：`r` 在视口单位下，椭圆交给视口变换（IR 不做 rx/ry）。"""
+    """`circleGrob()`：`r` 在视口单位下，椭圆交给视口变换（IR 不做 rx/ry）。
+
+    `r_axis` 决定 `npc` / `native` 半径按哪根轴换算（grid 的圆半径默认取较小边；
+    `geom_dotplot` 要按「非堆叠轴」，所以显式给）。绝对单位（mm/pt/inches）与
+    轴无关。
+    """
+    if r_axis not in ("x", "y"):
+        raise GrobError(f"'r_axis' must be 'x' or 'y', got {r_axis!r}")
     x_unit = _as_unit("x", x, default_units)
     y_unit = _as_unit("y", y, default_units)
     r_unit = _as_unit("r", r, default_units)
@@ -916,6 +964,7 @@ def circle_grob(
         x=x_unit,
         y=y_unit,
         r=r_unit,
+        r_axis=r_axis,
     )
 
 
@@ -950,6 +999,7 @@ def segments_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> SegmentsGrob:
     """`segmentsGrob()`：互不相连的线段，每行一条。"""
     x0_unit = _as_unit("x0", x0, default_units)
@@ -966,6 +1016,7 @@ def segments_grob(
         y0=y0_unit,
         x1=x1_unit,
         y1=y1_unit,
+        arrow=arrow,
     )
 
 
@@ -977,6 +1028,7 @@ def polyline_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> PolylineGrob:
     """`polylineGrob()`：`id` 变化即切一条折线（grid 的 `id` 语义）。"""
     x_unit = _as_unit("x", x, default_units)
@@ -990,6 +1042,7 @@ def polyline_grob(
         x=x_unit,
         y=y_unit,
         id=id,
+        arrow=arrow,
     )
 
 
@@ -1236,6 +1289,7 @@ def curve_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> CurveGrob:
     """`curveGrob()`：两端点 + 弯曲参数，曲线形状由设备按同一公式复现。"""
     if isinstance(ncp, bool) or not isinstance(ncp, int) or ncp < 1:
@@ -1263,6 +1317,7 @@ def curve_grob(
         square=bool(square),
         inflect=bool(inflect),
         open=bool(open),
+        arrow=arrow,
     )
 
 
@@ -1514,9 +1569,16 @@ class Instruction:
         bufs: dict[str, Any] = {}
         for name, value in self.bufs.items():
             bufs[name] = ir.i32(value) if name == "id" else ir.f32(value)
+        gpar = self.gpar
+        if isinstance(gpar.fill, fills.FillSpec):
+            # npc 口径要等几何定下来才能折成局部坐标（`ggcore.fills` 模块头）。
+            bbox = fills.node_bbox(self.kind, self.bufs, self.params)
+            if bbox is None:
+                raise GrobError(f"{self.kind} 没有可以量包围盒的几何，渐变 / 图案无从解析")
+            gpar = replace(gpar, fill=gpar.fill.resolve(bbox))
         return ir.Node(
             kind=self.kind,
-            gpar=self.gpar,
+            gpar=gpar,
             params=dict(self.params),
             bufs=bufs,
             texts=self.texts,
@@ -1825,7 +1887,7 @@ class _Traverser:
         n = grob.count
         cx = _recycle(frame.loc(grob.x, "x"), n)
         cy = _recycle(frame.flip(frame.loc(grob.y, "y")), n)
-        r = _recycle(frame.dim(grob.r, "x"), n)
+        r = _recycle(frame.dim(grob.r, grob.r_axis), n)
         circle = np.column_stack([cx, cy, r])
         return _Resolved(NodeKind.CIRCLE, {"circle": circle}, lambda gp: {})
 
@@ -1857,7 +1919,9 @@ class _Traverser:
         x1 = _recycle(frame.loc(grob.x1, "x"), n)
         y1 = _recycle(frame.flip(frame.loc(grob.y1, "y")), n)
         return _Resolved(
-            NodeKind.SEGMENTS, {"segments": np.column_stack([x0, y0, x1, y1])}, lambda gp: {}
+            NodeKind.SEGMENTS,
+            {"segments": np.column_stack([x0, y0, x1, y1])},
+            lambda gp: arrow_node_params(grob.arrow),
         )
 
     def _resolve_polyline(self, grob: PolylineGrob) -> _Resolved:
@@ -1865,7 +1929,9 @@ class _Traverser:
         bufs = {"points": points}
         if ids is not None:
             bufs["id"] = ids
-        return _Resolved(NodeKind.POLYLINE, bufs, lambda gp: {}, split=False)
+        return _Resolved(
+            NodeKind.POLYLINE, bufs, lambda gp: arrow_node_params(grob.arrow), split=False
+        )
 
     def _resolve_polygon(self, grob: PolygonGrob) -> _Resolved:
         points, ids = self._path_points(grob)
@@ -2013,6 +2079,7 @@ class _Traverser:
                 "square": grob.square,
                 "inflect": grob.inflect,
                 "open": grob.open,
+                **arrow_node_params(grob.arrow),
             },
             split=False,
         )

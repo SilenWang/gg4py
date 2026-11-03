@@ -1,0 +1,9 @@
+family = "geom-col"
+features = ["gradient-fill"]
+ci = true
+title = "col：线性渐变填充（整层包围盒的 npc 解析）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """三根柱子是同一个多行 rectGrob：R 只写一条 `<linearGradient gradientUnits='userSpaceOnUse'>`，
+按整层包围盒解析 x1=0 / x2=1，三根柱子看到的是同一条渐变的不同片段。每根柱子各来一条
+渐变会让中间那根完全不同（这条 case 就守这一点）。"""

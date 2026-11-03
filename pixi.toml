@@ -58,6 +58,12 @@ skia-python = ">=144.1, <145"
 cbor2 = ">=6.1.5, <7"
 # `pixi run diff` 的位图读写（PNG 解码 / 差异热图编码），不依赖绘图库。
 pillow = ">=11, <14"
+# 等值线 / 等值带的 marching-squares 内核（M2-6）。上界 <1.4 不是随手写的：
+# 浏览器侧 pin 的 pyodide@314.0.7 只提供 contourpy 1.3.3 的 wasm 轮子
+# （`docs/spike/e1_coldstart/static/pyodide/pyodide-lock.json`），而 PyPI 的
+# contourpy 不发布 wasm 构建。桌面端必须留在同一个版本线上，否则「CPython 上
+# 对拍的几何」和「浏览器里算出来的几何」是两套实现（SIL-758）。
+contourpy = ">=1.3.3, <1.4"
 
 # `src/` layout without a build backend: the package is imported through
 # PYTHONPATH (pytest.ini carries the same path for the test runner).
@@ -105,6 +111,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # M1-5 等比例验证：2×2 合成 panel → PNG / SVG，量面板像素宽高比
 # （ratio=1 / ratio=2 / 不写 coord_fixed 的对照）。产物进 .coord-aspect/（不入库）。
 "cases:coord" = "PYTHONPATH=src python tools/cases/coord_aspect_cases.py"
+# M2-5：theme 文档的两个派生区块（注册的主题 + 逐元素解析值）。
+# 改了主题数值或注册表就重跑；`--check` 挂进 `check` 守新鲜度。
+"docs:theme" = "PYTHONPATH=src python tools/docs/theme_doc.py"
+"docs:theme:check" = "PYTHONPATH=src python tools/docs/theme_doc.py --check"
+
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 
@@ -142,6 +153,9 @@ r-gtable = "0.3.*"
 r-ggplot2 = "==4.0.3"
 r-svglite = ">=2.2,<3"
 r-hms = ">=1.1,<2"
+# M2-6 的 2D stat 夹具：`stat_density_2d` 走 MASS::kde2d / bandwidth.nrd，
+# `stat_bin_hex` / `stat_summary_hex` 走 hexbin::hexbin（hbin.f）。
+r-hexbin = ">=1.28.6,<2"
 r-mass = ">=7.3_66,<8"
 r-quantreg = ">=6.1,<7"
 
@@ -164,6 +178,9 @@ r-quantreg = ">=6.1,<7"
 # M2-12：查看器渲染器专项 case 的参考图（lty 全量 / pch 0..25 / alpha 合成）。
 # 独立脚本是刻意的：`refs:cases` 会重写全部历史 expected.svg，本组只新增。
 "refs:viewer-cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/viewer_cases_ref.R"
+# SIL-751：渐变 / 图案填充的 3 条 case（linear / radial / pattern）参考图。
+# 同样只**新增**，不重写历史 expected.svg。
+"refs:gradient-cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/gradient_cases_ref.R"
 # 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
 "refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
 # M1-3 图层流水线夹具：16+ 张图的内置数据（列名 / 列序 / 类型 / 逐行值）。
@@ -191,6 +208,10 @@ r-quantreg = ">=6.1,<7"
 # guide / 主轴（M1-11）：8 个 case 的断点 / 标签 / 图例键（get_guide_data）+
 # ggplotGrob() 的 axis / ylab / xlab / title / guide-box 行列尺寸（cm）。
 "refs:guide" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_ref.R"
+# guides 长尾（M2-S2 / SIL-739）：colourbar 全量参数 / bins / coloursteps /
+# axis guide（角度、稀疏、分行、次刻度、logticks、叠放）的键与行列尺寸，
+# 外加 `scales::minor_breaks_log()` 的逐段位置与档位。
+"refs:guide-long" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_long_ref.R"
 # stat（M1-8）：bin / count / boxplot / smooth(loess) / align 共 30 个 case 的
 # ggplot_build(p)$data[[1]] 逐列值 + build/draw 两段 warning。
 # loess 覆盖两种面：显式 case 用 surface = "direct" + statistics/trace.hat = "exact"
@@ -212,6 +233,10 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # Every gate is a plain script with a non-zero exit code, so it runs both from
 # `pixi run check` and standalone. See docs/notes/gates.md.
 "gate:imports" = "python tools/gates/check_import_whitelist.py"
+# SIL-758：contourpy 只在等值线路径上加载。脚本把 contourpy 从 `sys.meta_path`
+# 上挡掉，断言 4 个非 contour stat + density_2d(contour=FALSE) 照常可用、只有
+# contour 族失败，且非 contour 路径没导入 `ggcore.contour`。
+"gate:contourpy-lazy" = "PYTHONPATH=src python tools/gates/check_contourpy_lazy.py"
 "gate:ir-json" = "python tools/gates/check_ir_json.py"
 "gate:determinism" = "python tools/gates/check_determinism.py"
 # M0-10: 同一份 plot → IR 在 CPython（cbor2）与 Pyodide（ggcore 自带纯 Python
@@ -243,6 +268,7 @@ check = { depends-on = [
   "lint",
   "test",
   "gate:imports",
+  "gate:contourpy-lazy",
   "gate:ir-json",
   "gate:determinism",
   "gate:metrics",
@@ -250,4 +276,5 @@ check = { depends-on = [
   "gate:pyodide:selftest",
   "gate:cbor",
   "cases:matrix:check",
+  "docs:theme:check",
 ] }

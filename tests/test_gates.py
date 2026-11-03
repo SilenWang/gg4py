@@ -50,6 +50,14 @@ def test_import_gate_allows_stdlib_and_numpy(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
+def test_import_gate_allows_contourpy_for_the_2d_stats(tmp_path: Path) -> None:
+    # M2-6：contourpy 进白名单（等值线是 stat 的内核，不是设备）；理由与 Pyodide
+    # 可用性记录在 docs/notes/gates.md。
+    root = plant(tmp_path, "import contourpy\nimport numpy as np\n")
+    result = run_gate("check_import_whitelist.py", "--root", str(root))
+    assert result.returncode == 0, result.stderr
+
+
 def test_import_gate_rejects_a_single_bad_import(tmp_path: Path) -> None:
     root = plant(tmp_path, "import os\nimport pandas as pd\n")
     result = run_gate("check_import_whitelist.py", "--root", str(root))

@@ -1,0 +1,7 @@
+family = "geom-reference"
+features = ["aes-mapping", "line-type"]
+ci = true
+title = "geom_abline / geom_hline / geom_vline：三种参考线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "参考线的端点来自面板的反变换范围；`coord$clip == \"on\"` 时 `abline` 先把范围扩一个跨度。"

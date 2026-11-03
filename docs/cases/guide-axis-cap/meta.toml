@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "guide-axis-cap"]
+ci = true
+title = "guide：guide_axis(cap) 的轴线端点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "cap=\"both\" 把 axis.line.x/y 收到最外一根刻度（R 的 GuideAxis$extract_decor()）；theme_classic 才有轴线。"

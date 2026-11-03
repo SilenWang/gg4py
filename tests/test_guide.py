@@ -526,8 +526,11 @@ def test_colourbar_reverse_ticks_follow_the_bar() -> None:
     bar = layout.bar
     assert bar is not None
     # 键已反序（最大值在前）；R 的 reverse 把最大值放到色带底部。
-    assert layout.ticks[0][0] == pytest.approx(bar.y_cm)
-    assert layout.ticks[-1][0] == pytest.approx(bar.y_cm + bar.height_cm)
+    # R 4.0.3 的刻度落在**箱心**（`(0.5, nbin - 0.5) / nbin`），不是色带两端。
+    nbin = guide.guide.nbin
+    inset = 0.5 / nbin * bar.height_cm
+    assert layout.ticks[0][0] == pytest.approx(bar.y_cm + inset)
+    assert layout.ticks[-1][0] == pytest.approx(bar.y_cm + bar.height_cm - inset)
     grobs = legend_grob(guide, build, theme_value, layout, name="g")
     bottom = next(grob for grob in grobs if grob.name == "g.bar-0")
     assert bottom.gp.fill == guide.keys[0].values["colour"]

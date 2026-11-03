@@ -14,8 +14,8 @@
  *   `canvas.concat()` 口径一致。
  */
 
-import { bufValue, nodeRows, paramNumber, paramString } from "./ir.js";
-import type { Color, FloatBuffer, Gpar, IrNode, IrScene } from "./ir.js";
+import { isColour, bufValue, nodeRows, paramNumber, paramString } from "./ir.js";
+import type { Color, Fill, FloatBuffer, Gpar, IrNode, IrScene } from "./ir.js";
 import { IrError } from "./ir.js";
 import { curvePoints, xsplinePoints } from "./curves.js";
 import type { Point } from "./curves.js";
@@ -199,14 +199,24 @@ function groupedPoints(
 // 原语 → SVG
 // ---------------------------------------------------------------------------
 
-function styleAttributes(gpar: Gpar, scale: number, options: { fill?: boolean; stroke?: boolean } = {}): Record<string, string> {
+function paintAttributes(
+  gpar: Gpar,
+  scale: number,
+  options: {
+    fill?: boolean;
+    stroke?: boolean;
+    fillValue?: string | null;
+    fillOpacity?: number;
+  } = {},
+): Record<string, string> {
   const useFill = options.fill ?? true;
   const useStroke = options.stroke ?? true;
   const attrs: Record<string, string> = {};
-  const fill = useFill ? colourValue(gpar.fill) : null;
+  // 填充值由调用方算好（纯色 / 渐变 / 图案都可能），默认不填。
+  const fill = useFill ? (options.fillValue ?? null) : null;
   const col = useStroke ? colourValue(gpar.col) : null;
   attrs["fill"] = fill ?? "none";
-  if (fill !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.fill, gpar.alpha));
+  if (fill !== null) attrs["fill-opacity"] = num(options.fillOpacity ?? gpar.alpha);
   attrs["stroke"] = col ?? "none";
   if (col !== null) {
     attrs["stroke-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
@@ -454,6 +464,9 @@ class Renderer {
   private readonly boxes = new Map<SVGGElement, Box>();
   private readonly stack: SVGGElement[] = [];
   private clipCount = 0;
+  private fillCount = 0;
+  /** 同一个 fill 对象在多个图元里复用同一条 `<defs>`（多行 rect 只出一份）。 */
+  private readonly fillIds = new Map<Fill, string>();
   private nodeCount = 0;
 
   constructor(private readonly scene: IrScene) {
@@ -602,10 +615,192 @@ class Renderer {
     return id;
   }
 
+  /**
+   * 一个节点的填充：纯色直接给 `#rrggbb`，渐变 / 图案先注册进 `<defs>` 再给
+   * `url(#id)`。`opacity` 是元素级 `fill-opacity`：纯色用「颜色 alpha × gpar.alpha」，
+   * 渐变 / 图案用 `gpar.alpha`（每档色标自己的 alpha 已经在 stop 里）。
+   */
+  private fillPaint(node: IrNode, matrix: Matrix): { value: string | null; opacity: number } {
+    const gpar = gparOf(node);
+    const fill = gpar.fill;
+    if (fill === null) return { value: null, opacity: gpar.alpha };
+    if (isColour(fill)) {
+      return { value: colourValue(fill), opacity: colourOpacity(fill, gpar.alpha) };
+    }
+    return { value: `url(#${this.fillDefinition(fill, matrix)})`, opacity: gpar.alpha };
+  }
+
+  private styleAttributes(
+    node: IrNode,
+    matrix: Matrix,
+    scale: number,
+    options: { fill?: boolean; stroke?: boolean } = {},
+  ): Record<string, string> {
+    const gpar = gparOf(node);
+    const paint = (options.fill ?? true)
+      ? this.fillPaint(node, matrix)
+      : { value: null, opacity: gpar.alpha };
+    return paintAttributes(gpar, scale, {
+      ...options,
+      fillValue: paint.value,
+      fillOpacity: paint.opacity,
+    });
+  }
+
+  /** `gradientTransform` / `patternTransform`：单位矩阵不写，省 DOM。 */
+  private matrixAttribute(
+    name: "gradientTransform" | "patternTransform",
+    matrix: Matrix,
+  ): Record<string, string> {
+    if (IDENTITY.every((value, index) => Math.abs(matrix[index] - value) < 1e-9)) return {};
+    return { [name]: `matrix(${matrix.map(num).join(" ")})` };
+  }
+
+  private fillDefinition(fill: Fill, matrix: Matrix): string {
+    const cached = this.fillIds.get(fill);
+    if (cached !== undefined) return cached;
+    const id = `ggv-fill-${this.fillCount++}`;
+    this.fillIds.set(fill, id);
+    if (isColour(fill)) {
+      throw new IrError("纯色填充不需要 <defs>");
+    }
+    if (fill.kind === "pattern") {
+      const pattern = el("pattern", {
+        id,
+        patternUnits: "userSpaceOnUse",
+        patternContentUnits: "userSpaceOnUse",
+        x: num(fill.origin[0]),
+        y: num(fill.origin[1]),
+        width: num(fill.size[0]),
+        height: num(fill.size[1]),
+        ...this.matrixAttribute("patternTransform", matrix),
+      });
+      // Chromium / resvg 把 pattern 内容的坐标原点放在 **tile 原点**（也就是
+      // 上面 x / y 那一格），不是引用元素的用户坐标原点——svglite 也是这么写
+      // 的（`translate(-x, -y + height)`）。所以内容虽然是节点局部坐标，落笔前
+      // 要平移到 tile 原点；否则内容整个落在窗口外，图案是空的。
+      const content = el("g", {
+        transform: `translate(${num(-fill.origin[0])} ${num(-fill.origin[1])})`,
+      });
+      for (const child of fill.content) {
+        content.append(this.patternElement(child));
+      }
+      pattern.append(content);
+      this.defs.append(pattern);
+      return id;
+    }
+    const stops = fill.stops
+      .map((stop) =>
+        el("stop", {
+          offset: num(stop.offset),
+          "stop-color": colourValue(stop.colour) ?? "#000000",
+          "stop-opacity": num(stop.colour[3] / 255),
+        }),
+      );
+    const spread = fill.extend === "pad" ? "pad" : fill.extend;
+    if (fill.kind === "linear") {
+      const gradient = el("linearGradient", {
+        id,
+        gradientUnits: "userSpaceOnUse",
+        spreadMethod: spread,
+        x1: num(fill.start[0]),
+        y1: num(fill.start[1]),
+        x2: num(fill.end[0]),
+        y2: num(fill.end[1]),
+        ...this.matrixAttribute("gradientTransform", matrix),
+      });
+      for (const stop of stops) gradient.append(stop);
+      this.defs.append(gradient);
+      return id;
+    }
+    const radial = el("radialGradient", {
+      id,
+      gradientUnits: "userSpaceOnUse",
+      spreadMethod: spread,
+      cx: num(fill.center[0]),
+      cy: num(fill.center[1]),
+      r: num(fill.radius),
+      ...(fill.focal === null
+        ? {}
+        : {
+            fx: num(fill.focal[0]),
+            fy: num(fill.focal[1]),
+            fr: num(fill.focal[2]),
+          }),
+      ...this.matrixAttribute("gradientTransform", matrix),
+    });
+    for (const stop of stops) radial.append(stop);
+    this.defs.append(radial);
+    return id;
+  }
+
+  /** 图案内容：**局部坐标**原样写（平移 / 缩放由 `patternTransform` 统一施加）。 */
+  private patternElement(node: IrNode): SVGElement {
+    const gpar = gparOf(node);
+    const fill = isColour(gpar.fill) ? gpar.fill : null;
+    const attrs = paintAttributes(gpar, 1, {
+      fillValue: colourValue(fill),
+      fillOpacity: colourOpacity(fill, gpar.alpha),
+    });
+    const rows = nodeRows(node);
+    const group = el("g");
+    if (node.kind === "rect") {
+      for (let row = 0; row < rows; row++) {
+        const x0 = bufValue(node, "rect", row, 0);
+        const y0 = bufValue(node, "rect", row, 1);
+        const x1 = bufValue(node, "rect", row, 2);
+        const y1 = bufValue(node, "rect", row, 3);
+        if (![x0, y0, x1, y1].every(Number.isFinite)) continue;
+        const box = normaliseBox(x0, y0, x1, y1);
+        group.append(
+          el("rect", {
+            x: num(box.x0),
+            y: num(box.y0),
+            width: num(box.x1 - box.x0),
+            height: num(box.y1 - box.y0),
+            ...attrs,
+          }),
+        );
+      }
+      return group;
+    }
+    if (node.kind === "circle") {
+      for (let row = 0; row < rows; row++) {
+        const cx = bufValue(node, "circle", row, 0);
+        const cy = bufValue(node, "circle", row, 1);
+        const radius = bufValue(node, "circle", row, 2);
+        if (![cx, cy, radius].every(Number.isFinite)) continue;
+        group.append(el("circle", { cx: num(cx), cy: num(cy), r: num(Math.abs(radius)), ...attrs }));
+      }
+      return group;
+    }
+    if (node.kind === "segments") {
+      let d = "";
+      for (let row = 0; row < rows; row++) {
+        const x0 = bufValue(node, "segments", row, 0);
+        const y0 = bufValue(node, "segments", row, 1);
+        const x1 = bufValue(node, "segments", row, 2);
+        const y1 = bufValue(node, "segments", row, 3);
+        if (![x0, y0, x1, y1].every(Number.isFinite)) continue;
+        d += `M${num(x0)} ${num(y0)}L${num(x1)} ${num(y1)}`;
+      }
+      group.append(el("path", { d, ...attrs, fill: "none" }));
+      return group;
+    }
+    const closed = node.kind === "polygon" || node.kind === "path";
+    const attrsOut = node.kind === "lines" ? { ...attrs, fill: "none" } : attrs;
+    const path = el("path", {
+      d: groupedPoints(node, "points", IDENTITY, closed),
+      ...(node.kind === "path" ? { "fill-rule": fillRule(node) } : {}),
+      ...attrsOut,
+    });
+    group.append(path);
+    return group;
+  }
+
   private enter(group: SVGGElement): void {
     this.stack.push(group);
   }
-
   private exit(): void {
     this.stack.pop();
   }
@@ -657,6 +852,37 @@ class Renderer {
     this.track(bbox);
   }
 
+  /**
+   * 箭头标记（IR 0.3）：箭翼是**同一个节点的附加图元**，不是新的 IR 叶子——
+   * 它在 DOM 里单独一个 `<path class="ir-arrow">`，**不带 `data-row`**，所以不参与
+   * 「IR 叶子数 == DOM 元素数」的计数与 hover 命中；图例 key 的隐藏走视口组的
+   * `data-hidden`，箭翼随组一起变暗（`web/viewer/src/styles.css`）。
+   */
+  private drawArrows(
+    node: IrNode,
+    parent: SVGElement,
+    gpar: Gpar,
+    matrix: Matrix,
+    scale: number,
+    groups: Point[][],
+    viewport: string,
+  ): void {
+    const spec = arrowSpec(node);
+    if (spec === null) return;
+    const d = arrowPath(groups, spec);
+    if (d === "") return;
+    const attrs = this.styleAttributes(node, matrix, scale, { fill: spec.closed });
+    if (spec.closed && attrs["fill"] === "none") {
+      const col = colourValue(gpar.col);
+      attrs["fill"] = col ?? "none";
+      if (col !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
+    }
+    const element = el("path", { d, class: "ir-arrow", ...attrs });
+    element.setAttribute("data-kind", "arrow");
+    element.setAttribute("data-vp", viewport);
+    parent.append(element);
+  }
+
   private drawLeaf(
     node: IrNode,
     id: string,
@@ -679,7 +905,7 @@ class Renderer {
           const a = mapPoint(matrix, x0, y0);
           const b = mapPoint(matrix, x1, y1);
           const box = normaliseBox(a[0], a[1], b[0], b[1]);
-          const attrs = styleAttributes(gpar, scale);
+          const attrs = this.styleAttributes(node, matrix, scale);
           if (isAxisAligned(matrix)) {
             // 轴对齐 → 真的 <rect>：DOM 小，也方便测试按元素数对账。
             this.emit(
@@ -728,7 +954,7 @@ class Renderer {
           const [px, py] = mapPoint(matrix, cx, cy);
           const rx = Math.abs(radius * scale);
           const box = { x0: px - rx, y0: py - rx, x1: px + rx, y1: py + rx };
-          const attrs = styleAttributes(gpar, scale);
+          const attrs = this.styleAttributes(node, matrix, scale);
           if (isUniform(matrix)) {
             this.emit(
               node,
@@ -752,11 +978,13 @@ class Renderer {
       }
       case "segments": {
         const subpaths: SubPath[] = [];
+        const pairs: Point[][] = [];
         for (let row = 0; row < rows; row++) {
           const a = mapPoint(matrix, bufValue(node, "segments", row, 0), bufValue(node, "segments", row, 1));
           const b = mapPoint(matrix, bufValue(node, "segments", row, 2), bufValue(node, "segments", row, 3));
           const sub = pushSubPath(subpaths, a);
           sub.segments.push(["L", [b[0], b[1]]]);
+          pairs.push([a, b]);
         }
         const d = pathData(subpaths, false);
         const box = boxOfPathData(d);
@@ -765,11 +993,12 @@ class Renderer {
           id,
           parent,
           viewport,
-          el("path", { d, ...styleAttributes(gpar, scale, { fill: false }) }),
+          el("path", { d, ...this.styleAttributes(node, matrix, scale, { fill: false }) }),
           0,
           rows,
           box,
         );
+        this.drawArrows(node, parent, gpar, matrix, scale, pairs, viewport);
         return;
       }
       case "lines":
@@ -778,9 +1007,10 @@ class Renderer {
       case "path": {
         const closed = kind === "polygon" || kind === "path";
         const d = groupedPoints(node, "points", matrix, closed);
-        const attrs = styleAttributes(gpar, scale, { fill: closed });
+        const attrs = this.styleAttributes(node, matrix, scale, { fill: closed });
         if (kind === "path") attrs["fill-rule"] = fillRule(node);
         if (kind === "lines") attrs["fill"] = "none";
+        const box = boxOfPathData(d);
         this.emit(
           node,
           id,
@@ -789,8 +1019,11 @@ class Renderer {
           el("path", { d, ...attrs }),
           0,
           rows,
-          boxOfPathData(d),
+          box,
         );
+        if (!closed) {
+          this.drawArrows(node, parent, gpar, matrix, scale, pointGroups(node, matrix), viewport);
+        }
         return;
       }
       case "xspline": {
@@ -802,7 +1035,7 @@ class Renderer {
           viewport,
           el("path", {
             d,
-            ...styleAttributes(gpar, scale, { fill: node.params["open"] !== true }),
+            ...this.styleAttributes(node, matrix, scale, { fill: node.params["open"] !== true }),
           }),
           0,
           rows,
@@ -830,7 +1063,7 @@ class Renderer {
           id,
           parent,
           viewport,
-          el("path", { d, ...styleAttributes(gpar, scale, { fill: false }) }),
+          el("path", { d, ...this.styleAttributes(node, matrix, scale, { fill: false }) }),
           0,
           rows,
           boxOfPathData(d),
@@ -838,25 +1071,32 @@ class Renderer {
         return;
       }
       case "curve": {
-        const subpaths = curveSubPaths(node, matrix, this.scene.size);
+        const groups = curvePointGroups(node, matrix, this.scene.size);
+        const subpaths: SubPath[] = [];
+        for (const group of groups) {
+          const sub = sampledPath(group);
+          if (sub !== null) subpaths.push(sub);
+        }
         const d = pathData(subpaths, false);
+        const box = boxOfPathData(d);
         this.emit(
           node,
           id,
           parent,
           viewport,
-          el("path", { d, ...styleAttributes(gpar, scale, { fill: node.params["open"] !== true }) }),
+          el("path", { d, ...this.styleAttributes(node, matrix, scale, { fill: node.params["open"] !== true }) }),
           0,
           rows,
-          boxOfPathData(d),
+          box,
         );
+        this.drawArrows(node, parent, gpar, matrix, scale, groups, viewport);
         return;
       }
       case "points": {
         const pch = node.params["pch"] as number;
         const size = node.params["size"] as number;
         const glyph = glyphFor(pch);
-        const attrs = styleAttributes(gpar, scale, {
+        const attrs = this.styleAttributes(node, matrix, scale, {
           fill: glyph.fill === "gpar",
           stroke: glyph.stroke,
         });
@@ -1063,6 +1303,67 @@ function boxOfPathData(d: string): Box {
 
 /** xspline：shape=0 等价于 Catmull-Rom（转成三次贝塞尔）；|shape|>0 向直线收拢。 */
 /** 按 `id` 把 points 缓冲切成若干组，组内保留原始点序（IR 的 bulk 口径）。 */
+/** 箭头标记（IR 0.3）：`ggcore.arrow` 的同一套几何，切向由端点相邻点给出。 */
+interface ArrowSpec {
+  ends: "first" | "last" | "both";
+  length: number;
+  angle: number;
+  closed: boolean;
+}
+
+function arrowSpec(node: IrNode): ArrowSpec | null {
+  const ends = node.params["arrow"];
+  if (ends === undefined || ends === null || ends === "none") return null;
+  const length = node.params["arrow_length"] as number;
+  if (!Number.isFinite(length) || length <= 0) return null;
+  const angle = node.params["arrow_angle"] as number;
+  return {
+    ends: ends as ArrowSpec["ends"],
+    length,
+    angle: Number.isFinite(angle) ? angle : 30,
+    closed: node.params["arrow_type"] === "closed",
+  };
+}
+
+function arrowHead(tip: Point, back: Point, spec: ArrowSpec): string {
+  const dx = tip[0] - back[0];
+  const dy = tip[1] - back[1];
+  const norm = Math.hypot(dx, dy);
+  if (!Number.isFinite(norm) || norm === 0) return "";
+  const ux = dx / norm;
+  const uy = dy / norm;
+  const radians = (spec.angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const b1: Point = [
+    tip[0] - spec.length * (ux * cos - uy * sin),
+    tip[1] - spec.length * (ux * sin + uy * cos),
+  ];
+  const b2: Point = [
+    tip[0] - spec.length * (ux * cos + uy * sin),
+    tip[1] - spec.length * (-ux * sin + uy * cos),
+  ];
+  if (spec.closed) {
+    return `M${num(tip[0])} ${num(tip[1])}L${num(b1[0])} ${num(b1[1])}L${num(b2[0])} ${num(b2[1])}Z`;
+  }
+  return `M${num(b1[0])} ${num(b1[1])}L${num(tip[0])} ${num(tip[1])}L${num(b2[0])} ${num(b2[1])}`;
+}
+
+function arrowPath(groups: Point[][], spec: ArrowSpec): string {
+  const parts: string[] = [];
+  for (const group of groups) {
+    const points = group.filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+    if (points.length < 2) continue;
+    if (spec.ends === "first" || spec.ends === "both") {
+      parts.push(arrowHead(points[0], points[1], spec));
+    }
+    if (spec.ends === "last" || spec.ends === "both") {
+      parts.push(arrowHead(points[points.length - 1], points[points.length - 2], spec));
+    }
+  }
+  return parts.join("");
+}
+
 function pointGroups(node: IrNode, matrix: Matrix): Point[][] {
   const points = node.bufs["points"];
   const ids = node.bufs["id"] ?? null;
@@ -1108,11 +1409,11 @@ function xsplinePath(node: IrNode, matrix: Matrix, page: [number, number]): stri
 }
 
 /** grid.curve：先翻到 R 坐标求控制点/采样，再翻回页面坐标（SIL-636）。 */
-function curveSubPaths(node: IrNode, matrix: Matrix, page: [number, number]): SubPath[] {
+function curvePointGroups(node: IrNode, matrix: Matrix, page: [number, number]): Point[][] {
   const ends = node.bufs["ends"];
   const open = node.params["open"] !== false;
   const height = page[1];
-  const subpaths: SubPath[] = [];
+  const groups: Point[][] = [];
   for (let row = 0; row < ends.rows; row++) {
     const x1 = ends.data[row * 4] as number;
     const y1 = ends.data[row * 4 + 1] as number;
@@ -1138,10 +1439,9 @@ function curveSubPaths(node: IrNode, matrix: Matrix, page: [number, number]): Su
       ];
     }
     const mapped = sampled.map(([x, y]) => mapPoint(matrix, x, height - y));
-    const sub = sampledPath(mapped);
-    if (sub !== null) subpaths.push(sub);
+    if (mapped.length >= 2) groups.push(mapped);
   }
-  return subpaths;
+  return groups;
 }
 
 function baselineAttribute(baseline: string): string {

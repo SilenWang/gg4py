@@ -30,13 +30,19 @@ from ggcore import registry
 from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
+from ggcore.annotations import LogticksAnnotation
+from ggcore.annotations import annotation_logticks as annotation_logticks
+from ggcore.arrow import arrow as arrow
 from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Guides, Labels, Scale, Theme
 from ggcore.coord import coord_munch as coord_munch
+from ggcore.fills import linear_gradient as linear_gradient
+from ggcore.fills import radial_gradient as radial_gradient
+from ggcore.fills import tile_pattern as tile_pattern
 from ggcore.layer import Layer, Position
 from ggcore.scales import scale_type as scale_type
-from ggcore.theme import merge_theme, theme_grey
+from ggcore.theme import merge_theme, theme_get
 
 __all__: list[str] = []
 
@@ -60,12 +66,14 @@ class ggplot:
         facet: Facet | None = None,
         labels: Mapping[str, Any] | None = None,
         position: Position | None = None,
+        annotations: tuple[Any, ...] | list[Any] | None = None,
         **kwargs: Any,
     ) -> None:
         if kwargs:
             unknown = ", ".join(sorted(kwargs))
             known = (
-                "data, mapping, layers, scales, guides, theme, coordinates, facet, labels, position"
+                "data, mapping, layers, scales, guides, theme, coordinates, facet, labels, "
+                "position, annotations"
             )
             raise TypeError(f"ggplot() 不认识这些参数：{unknown}；可用字段：{known}")
         self.data = data
@@ -73,13 +81,16 @@ class ggplot:
         self.layers: list[Layer] = list(layers) if layers is not None else []
         self.scales: dict[str, Scale] = dict(scales) if scales is not None else {}
         self.guides: dict[str, Guide] = dict(guides) if guides is not None else {}
-        # ggplot2 的默认主题是 theme_grey()；`p + theme_void()` 这类完整主题
-        # 整份替换它（merge_theme 的语义），局部 theme() 只合并元素。
-        self.theme: Theme = theme if theme is not None else theme_grey()
+        # 默认主题是 `theme_get()`（初值 theme_grey()；`theme_set()` 之后是新的
+        # 全局默认）。`p + theme_void()` 这类完整主题整份替换它（merge_theme
+        # 的语义），局部 theme() 只合并元素。
+        self.theme: Theme = theme if theme is not None else theme_get()
         self.coordinates: Coord = coordinates if coordinates is not None else Coord("cartesian")
         self.facet: Facet = facet if facet is not None else Facet("null")
         self.labels: dict[str, Any] = dict(frozen_mapping(labels)) if labels is not None else {}
         self.position: Position | None = position
+        #: `annotation_*()` 的集合（M2-S2）：不参与图层流水线，scene 的轴阶段绘制。
+        self.annotations: list[Any] = list(annotations or [])
 
     # -- 克隆 ---------------------------------------------------------------
 
@@ -96,6 +107,7 @@ class ggplot:
         clone.facet = self.facet
         clone.labels = dict(self.labels)
         clone.position = self.position
+        clone.annotations = list(self.annotations)
         return clone
 
     def __add__(self, component: Any) -> ggplot:
@@ -237,6 +249,13 @@ def _add_labels(component: Labels, plot: ggplot) -> ggplot:
     return new
 
 
+@_add_component.register(LogticksAnnotation)
+def _add_annotation(component: Any, plot: ggplot) -> ggplot:
+    new = plot.clone()
+    new.annotations.append(component)
+    return new
+
+
 @_add_component.register(Position)
 def _add_position(component: Position, plot: ggplot) -> ggplot:
     """`p + position_dodge()`：记成 plot 级默认位置调整。
@@ -303,6 +322,7 @@ def _export_registry_entries() -> list[str]:
     names = [
         "aes",
         "after_stat",
+        "arrow",
         "ggplot",
         "gg_add",
         "guides",

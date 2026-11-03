@@ -38,6 +38,7 @@ import numpy as np
 
 from ggcore import ir
 from ggcore.axis import (
+    DERIVE,
     axis_extent,
     axis_grobs,
     axis_ticks,
@@ -47,10 +48,18 @@ from ggcore.axis import (
     paint,
     text_line_cm,
 )
+from ggcore.axis_guide import (
+    axis_guide_extent,
+    axis_guide_grobs,
+    axis_guide_ticks,
+    axis_line_range,
+    guide_for,
+    polar_axis_grobs,
+)
 from ggcore.build import LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
 from ggcore.data import ColumnTable
-from ggcore.facet import FacetStrip, FacetTable
+from ggcore.facet import FacetStrip, FacetTable, StripPart
 from ggcore.grobs import (
     NullGrob,
     ZeroGrob,
@@ -114,6 +123,10 @@ class _FallbackMetrics:
         del text, font
         return 0.955 * float(fontsize) * float(cex) / 72.0
 
+    def descent(self, *, fontsize: float, cex: float = 1.0, font: str = "sans") -> float:
+        del font
+        return 0.22 * float(fontsize) * float(cex) / 72.0
+
 
 _FALLBACK_METRICS = _FallbackMetrics()
 
@@ -176,6 +189,9 @@ class PlotLayout:
     y_title_right_cm: float = 0.0
     secondary_x: bool = False
     secondary_y: bool = False
+    #: `strip.placement = "outside"` 时 strip 块所在的页面矩形（轴带之外）。
+    top_strip_band: Box | None = None
+    right_strip_band: Box | None = None
     #: 图例盒（M2-2）：每个方位的 `LegendBoxLayout`（行列尺寸 + 盒内偏移）
     #: 与它在页面上的矩形，二者一一对应。
     legend_box_layouts: tuple[Any, ...] = ()
@@ -248,7 +264,15 @@ def scene_from_build(
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover - FacetTable 一定覆盖每个 panel
             continue
-        children = _panel_children(prepared, prepared_layers, panel, params, theme, metrics)
+        children = _panel_children(
+            prepared,
+            prepared_layers,
+            panel,
+            params,
+            theme,
+            metrics,
+            panel_size_in=(box.width_cm / CM_PER_INCH, box.height_cm / CM_PER_INCH),
+        )
         if children:
             grobs.append(
                 g_tree(
@@ -321,12 +345,20 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
 
 
 def _secondary_title(build: PlotBuild, aesthetic: str, scale: Any) -> str | None:
-    """次轴的标题：`sec_axis(name=)` 优先，否则沿用主轴标题（R 的 waiver 口径）。"""
+    """次轴的标题（R `AxisSecondary$make_title()`）。
+
+    - `sec_axis(name="...")`：用这个名字；
+    - `None`（= R 的 `waiver()` / `NULL`，也是 `sec_axis()` 的缺省）：**不显示标题**
+      （R 给零高 `zeroGrob`，顶部不会多出 `xlab-t`）；
+    - `DERIVE`（= R 的 `derive()`，`dup_axis()` 的缺省）：沿用主轴标题。
+    """
     secondary = getattr(scale, "secondary_axis", None)
     name = getattr(secondary, "name", None) if secondary is not None else None
-    if name is not None:
-        return str(name)
-    return _axis_title_text(build, aesthetic)
+    if name is DERIVE:
+        return _axis_title_text(build, aesthetic)
+    if name is None:
+        return None
+    return str(name)
 
 
 def _legend_position(theme: ResolvedTheme) -> str | None:
@@ -408,9 +440,33 @@ def plot_layout(
             _panel_scale(build, panel, params.scale_key("bottom")), params, "bottom"
         )
         ticks_y = axis_ticks(_panel_scale(build, panel, params.scale_key("left")), params, "left")
+        guide_x = guide_for(build, "x")
+        guide_y = guide_for(build, "y")
         if params.polar is None:
-            x_axis = max(x_axis, axis_extent(theme, ticks_x, metrics=metrics))
-        y_axis = max(y_axis, axis_extent(theme, ticks_y, metrics=metrics))
+            guide_ticks_x = axis_guide_ticks(
+                _panel_scale(build, panel, params.scale_key("bottom")),
+                params,
+                "bottom",
+                guide_x,
+                theme,
+                base=ticks_x,
+            )
+            x_axis = max(
+                x_axis,
+                axis_guide_extent(theme, guide_ticks_x, guide_x, side="bottom", metrics=metrics),
+            )
+        guide_ticks_y = axis_guide_ticks(
+            _panel_scale(build, panel, params.scale_key("left")),
+            params,
+            "left",
+            guide_y,
+            theme,
+            base=ticks_y,
+        )
+        y_axis = max(
+            y_axis,
+            axis_guide_extent(theme, guide_ticks_y, guide_y, side="left", metrics=metrics),
+        )
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
         right_scale = _panel_scale(build, panel, params.scale_key("right"))
         if top_scale is not None and getattr(top_scale, "secondary_axis", None) is not None:
@@ -461,10 +517,21 @@ def plot_layout(
     content_top -= top_extent
     content_bottom += bottom_extent
 
+    table = build.facet_table(metrics=metrics, right_inside=secondary_y)
+    # `strip.placement = "outside"`：strip 放到轴的外侧（R 的 `attach_strips()`
+    # 里 shift=2）。没有轴的一侧两者视觉等价，这里只在「外侧」时把 strip 块
+    # 从面板区里让出来，画在轴带之外。
+    strip_band_top = table.strip_height_cm if table.top_placement == "outside" else 0.0
+    strip_band_right = table.strip_width_cm if table.right_placement == "outside" else 0.0
+    facet_kind = getattr(build.facet, "kind", "null")
+    strip_pad_x = _strip_switch_pad(theme, facet_kind) if x_axis_top > 0 and strip_band_top else 0.0
+    strip_pad_y = (
+        _strip_switch_pad(theme, facet_kind) if y_axis_right > 0 and strip_band_right else 0.0
+    )
     panel_bottom = content_bottom + x_axis + x_title
     panel_left = content_left + y_axis + y_title
-    panel_right = content_right - y_axis_right - y_title_right
-    panel_top = content_top - x_axis_top - x_title_top
+    panel_right = content_right - y_axis_right - y_title_right - strip_band_right - strip_pad_y
+    panel_top = content_top - x_axis_top - x_title_top - strip_band_top - strip_pad_x
     panel_area = Box(
         panel_left,
         panel_bottom,
@@ -477,7 +544,21 @@ def plot_layout(
             f"面板区 {panel_area.width_cm:.3f}×{panel_area.height_cm:.3f}cm"
             "（页太小，或主题里的 spacing 过大）"
         )
-    table = build.facet_table(metrics=metrics)
+    top_strip_band = (
+        Box(panel_left, content_top - strip_band_top, panel_right - panel_left, strip_band_top)
+        if strip_band_top > 0
+        else None
+    )
+    right_strip_band = (
+        Box(
+            panel_right + strip_pad_y,
+            panel_bottom,
+            strip_band_right,
+            panel_top - panel_bottom,
+        )
+        if strip_band_right > 0
+        else None
+    )
     panel_area = _aspect_panel_area(build, panel_area, table)
     facet_boxes = table.panel_boxes(panel_area.width_cm, panel_area.height_cm)
     panel_boxes = {
@@ -581,40 +662,43 @@ def plot_layout(
         y_title_right_cm=y_title_right,
         secondary_x=secondary_x,
         secondary_y=secondary_y,
+        top_strip_band=top_strip_band,
+        right_strip_band=right_strip_band,
     )
 
 
 def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:
-    """把面板区收成坐标要求的比例（`Coord$aspect()`），居中放置（M2-1）。
+    """把面板区收成 `respect = TRUE` 要求的等比例（R `Facet$init_gtable()`）。
 
-    R 的 `respect` 作用在**每个 panel 单元格**上：单元格高/宽 = `aspect`，strip /
-    spacing 的尺寸不变，多出来的空间在页面里居中。这里先用真实解析出的面板尺寸
-    反推固定开销（spacing + strip），再按 `aspect` 求最大的单元格，最后居中——
-    单面板与多面板同一套（`polar × facet` 的两块面板各自是正圆）。
+    R 把 aspect 折进行权重（`heights × |aspect|`）后交给 grid 的 `respect`：
+    null 宽与 null 高取**同一物理尺寸**，于是每个面板的高/宽 = 行权重 / 列权重
+    （`space = "free"` 时 = `ratio × yspan / xspan`）。这里只做等比例 null 的
+    最大内接矩形（等价 aspect = 1），多出来的空间居中；不再拿首面板的
+    `aspect_ratio` 去乘范围权重（SIL-759：那会把 `yspan / xspan` 乘两次）。
+
+    `respect = FALSE`（坐标自由）时原样返回。
     """
-    params = None
-    for _, item in _panels(build):
-        params = item
-        break
-    if params is None:
-        return area
-    try:
-        aspect = params.aspect_ratio
-    except Exception:
-        aspect = None
-    if aspect is None:
+    if not table.respect:
         return area
     boxes = table.panel_boxes(area.width_cm, area.height_cm)
     if not boxes:
         return area
-    width, height = next(iter(boxes.values())).width_cm, next(iter(boxes.values())).height_cm
     ncol = max(1, table.layout.ncol)
     nrow = max(1, table.layout.nrow)
-    extra_w = area.width_cm - ncol * width
-    extra_h = area.height_cm - nrow * height
-    cell = min(width, (area.height_cm - extra_h) / (nrow * aspect))
-    used_w = ncol * cell + extra_w
-    used_h = nrow * aspect * cell + extra_h
+    width_weights = table.width_weights or (1.0,) * ncol
+    height_weights = table.height_weights or (1.0,) * nrow
+    first = next(iter(boxes.values()))
+    scale_w = first.width_cm / width_weights[0] if width_weights[0] else first.width_cm
+    scale_h = first.height_cm / height_weights[0] if height_weights[0] else first.height_cm
+    extra_w = area.width_cm - scale_w * sum(width_weights)
+    extra_h = area.height_cm - scale_h * sum(height_weights)
+    # `respect = TRUE`：1 个 null 宽 = 1 个 null 高，取两块都能放下的公共尺寸。
+    cell = min(
+        (area.width_cm - extra_w) / sum(width_weights),
+        (area.height_cm - extra_h) / sum(height_weights),
+    )
+    used_w = cell * sum(width_weights) + extra_w
+    used_h = cell * sum(height_weights) + extra_h
     if abs(used_w - area.width_cm) < 1e-12 and abs(used_h - area.height_cm) < 1e-12:
         return area
     x = area.x_cm + (area.width_cm - used_w) / 2.0
@@ -715,6 +799,22 @@ def _inside_justification(theme: ResolvedTheme) -> tuple[float, float]:
     return (0.5, 0.5)
 
 
+def _strip_switch_pad(theme: ResolvedTheme, kind: str) -> float:
+    """`strip.placement = "outside"` 时 strip 与轴之间的间隙（cm）。
+
+    上游用 `strip.switch.pad.grid`（facet_grid）/ `strip.switch.pad.wrap`
+    （facet_wrap），且只在**有轴**的那一侧才留：R 的 `attach_strips()` 先看
+    `table_has_grob(table, "axis-t")`。
+    """
+    from ggcore.units import convert_height
+
+    name = "strip.switch.pad.grid" if kind == "grid" else "strip.switch.pad.wrap"
+    value = theme.get(name)
+    if value is None:
+        return 0.0
+    return float(np.asarray(convert_height(value, "cm", ctx=UnitContext())).sum())
+
+
 def _box_spacing_cm(theme: ResolvedTheme) -> float:
     from ggcore.units import convert_width
 
@@ -760,6 +860,8 @@ def _panel_children(
     params: PanelParams,
     theme: ResolvedTheme,
     metrics: Any,
+    *,
+    panel_size_in: tuple[float, float] | None = None,
 ) -> list[Any]:
     children: list[Any] = []
     for name, border_only in (("panel.background", False),):
@@ -790,25 +892,32 @@ def _panel_children(
             children.append(grob)
 
     layer_grobs: list[Any] = []
+    draw_params = params
+    if panel_size_in is not None:
+        draw_params = replace(
+            params,
+            panel_width_in=float(panel_size_in[0]),
+            panel_height_in=float(panel_size_in[1]),
+        )
     for layer in layers:
         data = _panel_rows(layer.data, panel)
         if data is None or data.nrows == 0:
             continue
         geom = _geom_of(layer)
         panel_layer = replace(layer, data=data)
-        grob = geom.draw(panel_layer, params, build.coord, theme, metrics)
+        grob = geom.draw(panel_layer, draw_params, build.coord, theme, metrics)
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)
-    if not layer_grobs:
-        return children
     if _clip_state(params.clip) == "on":
-        # 面板范围内的矩形裁剪（IR 里是 clip 节点；与视口裁剪取交）。
-        children.append(
-            clip_path(*layer_grobs, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")
-        )
-    else:
+        # 面板视口的 clip="on"：R 把背景、网格、边框与图层都放进面板视口裁剪，
+        # 面板边框的半条线宽因此被切在面板内（`theme_bw()` 的边缘就是靠这一步
+        # 与参考图对齐的）。IR 里是一个 clip 容器（与视口裁剪取交）。
         children.extend(layer_grobs)
+        if not children:
+            return []
+        return [clip_path(*children, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")]
+    children.extend(layer_grobs)
     return children
 
 
@@ -1100,9 +1209,27 @@ def _axis_grobs(
         scale_right = _panel_scale(build, panel, params.scale_key("right"))
         ticks_x = axis_ticks(scale_bottom, params, "bottom")
         ticks_y = axis_ticks(scale_left, params, "left")
-        grobs.extend(axis_grobs(theme, ticks_x, cell, metrics=metrics, name=f"axis-x-{panel}"))
-        grobs.extend(axis_grobs(theme, ticks_y, cell, metrics=metrics, name=f"axis-y-{panel}"))
-        grobs.extend(_axis_line_grobs(theme, cell, name=f"axis-line-{panel}"))
+        guide_x = guide_for(build, "x")
+        guide_y = guide_for(build, "y")
+        gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
+        gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
+        grobs.extend(
+            axis_guide_grobs(theme, gx, cell, guide_x, metrics=metrics, name=f"axis-x-{panel}")
+        )
+        grobs.extend(
+            axis_guide_grobs(theme, gy, cell, guide_y, metrics=metrics, name=f"axis-y-{panel}")
+        )
+        grobs.extend(
+            _axis_line_grobs(
+                theme,
+                cell,
+                name=f"axis-line-{panel}",
+                ranges={
+                    "bottom": axis_line_range(guide_x, gx),
+                    "left": axis_line_range(guide_y, gy),
+                },
+            )
+        )
         # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推。
         if scale_top is not None and getattr(scale_top, "secondary_axis", None) is not None:
             grobs.extend(
@@ -1124,8 +1251,32 @@ def _axis_grobs(
                     name=f"axis-y-sec-{panel}",
                 )
             )
+        for annotation in getattr(build, "annotations", ()) or ():
+            from ggcore.annotations import logticks_grobs
+
+            grobs.extend(
+                logticks_grobs(
+                    annotation,
+                    params,
+                    cell,
+                    name=f"annotation-logticks-{panel}",
+                )
+            )
         if params.polar is not None:
-            grobs.extend(_polar_theta_grobs(build, panel, params, theme, cell, metrics))
+            from ggcore.axis_guide import guide_for as _guide_for
+
+            theta_scale = _panel_scale(build, panel, params.polar.theta_axis)
+            grobs.extend(
+                polar_axis_grobs(
+                    theta_scale,
+                    params,
+                    theme,
+                    cell,
+                    _guide_for(build, "theta"),
+                    metrics=metrics,
+                    name=f"axis-theta-{panel}",
+                )
+            )
     area = layout.panel_area
     if x_title:
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
@@ -1190,58 +1341,21 @@ def _axis_grobs(
     return grobs
 
 
-def _polar_theta_grobs(
-    build: PlotBuild,
-    panel: int,
-    params: PanelParams,
+def _axis_line_grobs(
     theme: ResolvedTheme,
     box: CellBox,
-    metrics: Any,
+    *,
+    name: str,
+    ranges: Mapping[str, tuple[float, float] | None] | None = None,
 ) -> list[Any]:
-    """极坐标的 theta 标签（画在面板里、半径 0.45 处，`hjust = vjust = 0.5`）。
+    """`axis.line.x` / `axis.line.y`；`ranges` 给 `cap=` 裁出的端点（npc 0..1）。
 
-    与 R `CoordPolar$render_fg()` 同口径：标签用 `axis.text.x` 的样式，位置
-    `0.45·sin/cos + 0.5`；首尾重合时上游已把文字合并成 `"a/b"`（见
-    `ggcore.axis.polar_theta_ticks`）。
+    R 的轴线是 guide 的 decor（`GuideAxis$extract_decor()`），`cap=` 会把它收到
+    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。
     """
-    from ggcore.axis import polar_theta_ticks
-
-    polar = params.polar
-    assert polar is not None
-    scale = _panel_scale(build, panel, polar.theta_axis)
-    entries = polar_theta_ticks(scale, params)
-    if not entries:
-        return []
-    from ggcore.axis import _text_element
-
-    element = _text_element(theme, "bottom")
-    if not isinstance(element, ElementText):
-        return []
-    gp = gpar(
-        col=paint(element.colour) or "black",
-        fontsize=float(element.size or 8.8),
-        fontfamily=element.family or "",
-        font=_font_int(element.face),
-        lineheight=float(element.lineheight or 1.2),
-    )
-    return [
-        text_grob(
-            text,
-            box.x_cm + x_npc * box.width_cm,
-            box.y_cm + y_npc * box.height_cm,
-            hjust=0.5,
-            vjust=0.5,
-            default_units="cm",
-            gp=gp,
-            name=f"axis-theta-{panel}-{index}",
-        )
-        for index, (x_npc, y_npc, text) in enumerate(entries)
-    ]
-
-
-def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[Any]:
     from ggcore.grobs import segments_grob
 
+    ranges = ranges or {}
     grobs: list[Any] = []
     for side, element_name in (("bottom", "axis.line.x"), ("left", "axis.line.y")):
         element = theme.get(element_name)
@@ -1249,20 +1363,21 @@ def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[A
         if colour is None:
             continue
         lwd = _mm_to_pt(getattr(element, "linewidth", None))
+        low, high = ranges.get(side) or (0.0, 1.0)
+        if high - low <= 1e-12:
+            continue
         if side == "bottom":
-            coords = (
-                [box.x_cm, box.x_cm + box.width_cm],
-                [box.y_cm, box.y_cm],
-            )
+            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm
+            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm
         else:
-            coords = (
-                [box.x_cm, box.x_cm],
-                [box.y_cm, box.y_cm + box.height_cm],
-            )
+            x0, y0 = box.x_cm, box.y_cm + low * box.height_cm
+            x1, y1 = box.x_cm, box.y_cm + high * box.height_cm
         grobs.append(
             segments_grob(
-                coords[0],
-                coords[1],
+                x0,
+                y0,
+                x1,
+                y1,
                 default_units="cm",
                 gp=gpar(col=colour, lwd=lwd),
                 name=f"{name}-{side}",
@@ -1426,20 +1541,38 @@ def _strip_grobs(
     sizes = table.gtable.resolve(area.width_cm, area.height_cm, ctx=UnitContext(metrics=metrics))
     grobs: list[Any] = []
     for strip in table.strips:
-        grobs.extend(_one_strip(table, strip, theme, area, sizes))
+        grobs.extend(_one_strip(table, strip, theme, layout, area, sizes))
     return grobs
 
 
-def _one_strip(
+def _strip_box(
     table: FacetTable,
     strip: FacetStrip,
-    theme: ResolvedTheme,
+    layout: PlotLayout,
     area: Box,
     sizes: Any,
-) -> list[Any]:
+) -> Box | None:
+    """strip 单元格的页面矩形：gtable 单元格，或 `outside` 时的轴带之外。"""
+    if strip.outside:
+        if strip.side == "top":
+            return layout.top_strip_band
+        band = layout.right_strip_band
+        if band is None:
+            return None
+        # 右侧 strip 的竖向范围跟着该面板行（R 的 strip-r 与 panel 同高）。
+        boxes = [
+            box
+            for panel, box in layout.panel_boxes.items()
+            if _row_of(table.layout, panel) == strip.row
+        ]
+        if not boxes:
+            return None
+        y = min(box.y_cm for box in boxes)
+        top = max(box.top for box in boxes)
+        return Box(band.x_cm, y, band.width_cm, top - y)
     placement = next((row for row in table.gtable.layout if row.name == strip.name), None)
-    if placement is None:  # pragma: no cover - facet_table 保证有
-        return []
+    if placement is None:  # pragma: no cover - 非 outside 的 strip 一定有 placement
+        return None
     cell = table.gtable.region_box(
         placement.t,
         placement.l,
@@ -1449,42 +1582,71 @@ def _one_strip(
         height_cm=area.height_cm,
         sizes=sizes,
     )
-    box = Box(area.x_cm + cell.x_cm, area.y_cm + cell.y_cm, cell.width_cm, cell.height_cm)
-    grobs: list[Any] = []
+    return Box(area.x_cm + cell.x_cm, area.y_cm + cell.y_cm, cell.width_cm, cell.height_cm)
+
+
+def _row_of(layout: Any, panel: int) -> int:
+    return int(layout.row_of(panel))
+
+
+def _one_strip(
+    table: FacetTable,
+    strip: FacetStrip,
+    theme: ResolvedTheme,
+    layout: PlotLayout,
+    area: Box,
+    sizes: Any,
+) -> list[Any]:
+    box = _strip_box(table, strip, layout, area, sizes)
+    if box is None:
+        return []
     background_name = "strip.background.y" if strip.side == "right" else "strip.background.x"
     background = theme.get(background_name)
-    if isinstance(background, ElementRect):
-        fill = _paint(background.fill)
-        if fill is not None:
-            grobs.append(
-                rect_grob(
-                    x=unit(box.x_cm, "cm"),
-                    y=unit(box.y_cm, "cm"),
-                    width=unit(box.width_cm, "cm"),
-                    height=unit(box.height_cm, "cm"),
-                    hjust=0.0,
-                    vjust=0.0,
-                    gp=gpar(fill=fill, col=_paint(background.colour) or NA),
-                    name=strip.name,
-                )
-            )
     element = theme.get("strip.text.y" if strip.side == "right" else "strip.text.x")
-    if not isinstance(element, ElementText) or not strip.text:
-        return grobs
-    angle = float(element.angle or 0.0) if strip.side != "right" else float(element.angle or -90.0)
-    grobs.append(
-        text_grob(
-            strip.text,
-            unit(box.x_cm + box.width_cm / 2.0, "cm"),
-            unit(box.y_cm + box.height_cm / 2.0, "cm"),
-            hjust=float(element.hjust if element.hjust is not None else 0.5),
-            vjust=float(element.vjust if element.vjust is not None else 0.5),
-            rot=angle,
-            default_units="cm",
-            gp=_text_gpar(element),
-            name=f"{strip.name}.text",
+    angle = float(element.angle or 0.0) if isinstance(element, ElementText) else 0.0
+    parts = strip.parts or (StripPart("", strip.text, strip.fill),)
+    grobs: list[Any] = []
+    count = len(parts)
+    for index, part in enumerate(parts):
+        if strip.side == "top":
+            # 顶部：parts 自上而下排列，**最后一个变量最靠近面板**
+            # （R `weave_tables_row()`：`x + y ~ ...` 时 y 贴着面板、x 在最上）。
+            slot_h = box.height_cm / count
+            part_box = Box(box.x_cm, box.y_cm + (count - 1 - index) * slot_h, box.width_cm, slot_h)
+        else:
+            slot_w = box.width_cm / count
+            part_box = Box(box.x_cm + index * slot_w, box.y_cm, slot_w, box.height_cm)
+        name = strip.name if count == 1 else f"{strip.name}-{part.var}"
+        if isinstance(background, ElementRect) and part.fill is not None:
+            fill = _paint(part.fill)
+            if fill is not None:
+                grobs.append(
+                    rect_grob(
+                        x=unit(part_box.x_cm, "cm"),
+                        y=unit(part_box.y_cm, "cm"),
+                        width=unit(part_box.width_cm, "cm"),
+                        height=unit(part_box.height_cm, "cm"),
+                        hjust=0.0,
+                        vjust=0.0,
+                        gp=gpar(fill=fill, col=_paint(background.colour) or NA),
+                        name=name,
+                    )
+                )
+        if not isinstance(element, ElementText) or not part.text:
+            continue
+        grobs.append(
+            text_grob(
+                part.text,
+                unit(part_box.x_cm + part_box.width_cm / 2.0, "cm"),
+                unit(part_box.y_cm + part_box.height_cm / 2.0, "cm"),
+                hjust=float(element.hjust if element.hjust is not None else 0.5),
+                vjust=float(element.vjust if element.vjust is not None else 0.5),
+                rot=angle,
+                default_units="cm",
+                gp=_text_gpar(element),
+                name=f"{name}.text",
+            )
         )
-    )
     return grobs
 
 

@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "rotation", "scale-limits"]
+ci = true
+title = "guide：轴标签旋转 + 稀疏"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "angle=45 与 check.overlap 同时生效；轴带高度按 |w·sin|+|h·cos| 计算。"

@@ -1,0 +1,7 @@
+family = "geom-text"
+features = ["aes-mapping", "hjust", "scale-limits"]
+ci = true
+title = "text：hjust 0 / 0.5 / 1 的对齐"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "hjust 是美学而非参数：逐行取值经 compute_just() 折成锚点；文本宽度来自 M2-S1 的字体对齐结果。"

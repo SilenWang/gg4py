@@ -247,6 +247,40 @@ df_area_negative <- data.frame(
   stringsAsFactors = FALSE
 )
 
+# --- M2-6：2D 统计（bin_2d / bin_hex / summary_2d / summary_hex / contour /
+#     contour_filled / density_2d / density_2d_filled）----------------------
+df_2d <- data.frame(
+  x = c(1, 1, 2, 2, 2, 3, 4, 4, 4, 4),
+  y = c(1, 2, 2, 3, 4, 4, 1, 3, 4, 5),
+  z = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+)
+# x / y 各一行 NA：`Stat$compute_layer()` 在分箱前删掉（带 "Removed N rows" 警告）。
+df_2d_na <- rbind(
+  df_2d[1:8, ],
+  data.frame(x = NA_real_, y = 1, z = 11),
+  data.frame(x = 2, y = NA_real_, z = 12),
+  df_2d[9:10, ]
+)
+df_2d_grp <- cbind(df_2d, g = rep(c("a", "b"), each = 5))
+# z 有 NA：summary_2d 的 required_aes 含 z，删行后发警告。
+df_2d_zna <- df_2d
+df_2d_zna$z[c(2, 7)] <- NA_real_
+# 等值线用的规则网格：z = x/2 + y（无重复坐标，等值线顶点落在网格边上）。
+grid_contour <- expand.grid(x = 1:5, y = 1:4)
+grid_contour$z <- grid_contour$x * 0.5 + grid_contour$y
+grid_contour_na <- rbind(grid_contour[1:15, ], data.frame(x = 2, y = 2, z = NA_real_),
+                         grid_contour[17:20, ])
+# 2D 密度的散点（13 个观测：默认带宽走 MASS::bandwidth.nrd）。
+df_density2d <- data.frame(
+  x = c(1, 2, 3, 4, 5, 2, 3, 4, 5, 6, 1.5, 2.5, 3.5),
+  y = c(2, 3, 2, 4, 3, 5, 4, 5, 3, 2, 3.2, 4.1, 2.8)
+)
+df_density2d_na <- rbind(
+  df_density2d[1:10, ],
+  data.frame(x = NA_real_, y = 3),
+  df_density2d[11:13, ]
+)
+
 # ---------------------------------------------------------------------------
 # case
 # ---------------------------------------------------------------------------
@@ -440,6 +474,146 @@ cases$align_single <- record_case(
   ggplot(df_align, aes(x, y)) + geom_area(),
   "align：只有一组时原样通过（is_unique(group)）", "align"
 )
+
+# --- M2-6：2D 统计 ---------------------------------------------------------
+
+# bin_2d：默认 bins = 30（4.0.3 的 boundary 缺省 list(x = 0, y = 0)）。
+cases$bin2d_default <- record_case(
+  "bin2d_default",
+  ggplot(df_2d, aes(x, y)) + geom_bin_2d(),
+  "bin_2d：默认 bins = 30、boundary = 0", "bin_2d"
+)
+cases$bin2d_binwidth <- record_case(
+  "bin2d_binwidth",
+  ggplot(df_2d, aes(x, y)) + geom_bin_2d(binwidth = c(1, 1)),
+  "bin_2d：显式 binwidth = c(1, 1)", "bin_2d"
+)
+cases$bin2d_bins <- record_case(
+  "bin2d_bins",
+  ggplot(df_2d, aes(x, y)) + geom_bin_2d(bins = 4),
+  "bin_2d：bins = 4（x / y 各 4 箱）", "bin_2d"
+)
+cases$bin2d_na <- record_case(
+  "bin2d_na",
+  ggplot(df_2d_na, aes(x, y)) + geom_bin_2d(binwidth = c(1, 1)),
+  "bin_2d：x / y 各有一行 NA（stat 前删行）", "bin_2d"
+)
+cases$bin2d_group <- record_case(
+  "bin2d_group",
+  ggplot(df_2d_grp, aes(x, y, fill = g)) + geom_bin_2d(binwidth = c(1, 1)),
+  "bin_2d：两个 group 各自分箱", "bin_2d"
+)
+
+# bin_hex：默认 binwidth = diff(scale$dimension()) / 30。
+cases$bin_hex_default <- record_case(
+  "bin_hex_default",
+  ggplot(df_2d, aes(x, y)) + geom_hex(),
+  "bin_hex：默认 bins = 30（binwidth 由 scale 的 dimension 推）", "bin_hex"
+)
+cases$bin_hex_binwidth <- record_case(
+  "bin_hex_binwidth",
+  ggplot(df_2d, aes(x, y)) + geom_hex(binwidth = c(1, 1)),
+  "bin_hex：显式 binwidth = c(1, 1)", "bin_hex"
+)
+cases$bin_hex_na <- record_case(
+  "bin_hex_na",
+  ggplot(df_2d_na, aes(x, y)) + geom_hex(binwidth = c(1, 1)),
+  "bin_hex：x / y 各有一行 NA", "bin_hex"
+)
+
+# summary_2d / summary_hex：fun = mean（默认）/ sum。
+cases$summary2d_default <- record_case(
+  "summary2d_default",
+  ggplot(df_2d, aes(x, y, z = z)) + stat_summary_2d(),
+  "summary_2d：默认 bins = 30、fun = mean", "summary_2d"
+)
+cases$summary2d_binwidth <- record_case(
+  "summary2d_binwidth",
+  ggplot(df_2d, aes(x, y, z = z)) + stat_summary_2d(binwidth = c(1, 1)),
+  "summary_2d：显式 binwidth = c(1, 1)", "summary_2d"
+)
+cases$summary2d_sum <- record_case(
+  "summary2d_sum",
+  ggplot(df_2d, aes(x, y, z = z)) +
+    stat_summary_2d(binwidth = c(1, 1), fun = "sum"),
+  "summary_2d：fun = sum", "summary_2d"
+)
+cases$summary2d_na <- record_case(
+  "summary2d_na",
+  ggplot(df_2d_zna, aes(x, y, z = z)) + stat_summary_2d(binwidth = c(1, 1)),
+  "summary_2d：z 有 NA（required_aes 含 z，删行）", "summary_2d"
+)
+cases$summary_hex_default <- record_case(
+  "summary_hex_default",
+  ggplot(df_2d, aes(x, y, z = z)) + stat_summary_hex(),
+  "summary_hex：默认 bins = 30、fun = mean", "summary_hex"
+)
+cases$summary_hex_binwidth <- record_case(
+  "summary_hex_binwidth",
+  ggplot(df_2d, aes(x, y, z = z)) + stat_summary_hex(binwidth = c(1, 1)),
+  "summary_hex：显式 binwidth = c(1, 1)", "summary_hex"
+)
+
+# contour / contour_filled：等值带用 contourpy；对拍口径只钉层级边界。
+cases$contour_default <- record_case(
+  "contour_default",
+  ggplot(grid_contour, aes(x, y, z = z)) + geom_contour(),
+  "contour：默认 breaks（R 的 pretty(z_range, 10)）", "contour"
+)
+cases$contour_bins <- record_case(
+  "contour_bins",
+  ggplot(grid_contour, aes(x, y, z = z)) + geom_contour(bins = 4),
+  "contour：bins = 4", "contour"
+)
+cases$contour_binwidth <- record_case(
+  "contour_binwidth",
+  ggplot(grid_contour, aes(x, y, z = z)) + geom_contour(binwidth = 1),
+  "contour：binwidth = 1", "contour"
+)
+cases$contour_breaks <- record_case(
+  "contour_breaks",
+  ggplot(grid_contour, aes(x, y, z = z)) + geom_contour(breaks = c(2, 4, 6)),
+  "contour：显式 breaks = c(2, 4, 6)", "contour"
+)
+cases$contour_na <- record_case(
+  "contour_na",
+  ggplot(grid_contour_na, aes(x, y, z = z)) + geom_contour(bins = 4),
+  "contour：z 有 NA（required_aes 含 z，删行）", "contour"
+)
+cases$contour_filled <- record_case(
+  "contour_filled",
+  ggplot(grid_contour, aes(x, y, z = z)) + geom_contour_filled(bins = 4),
+  "contour_filled：bins = 4（level 是有序因子）", "contour_filled"
+)
+
+# density_2d / density_2d_filled：MASS::kde2d + 再走 contour。
+cases$density2d_default <- record_case(
+  "density2d_default",
+  ggplot(df_density2d, aes(x, y)) + geom_density_2d(),
+  "density_2d：默认 h（bandwidth.nrd）+ contour", "density_2d"
+)
+cases$density2d_h <- record_case(
+  "density2d_h",
+  ggplot(df_density2d, aes(x, y)) + geom_density_2d(h = c(1, 1), bins = 4),
+  "density_2d：显式 h = c(1, 1)、bins = 4", "density_2d"
+)
+cases$density2d_grid <- record_case(
+  "density2d_grid",
+  # contour = FALSE：只出密度网格（n = 20 让夹具小一些）。
+  ggplot(df_density2d, aes(x, y)) + stat_density_2d(contour = FALSE, n = 20),
+  "density_2d：contour = FALSE（密度网格本身）", "density_2d"
+)
+cases$density2d_na <- record_case(
+  "density2d_na",
+  ggplot(df_density2d_na, aes(x, y)) + stat_density_2d(contour = FALSE, n = 20),
+  "density_2d：x 有 NA（required_aes 含 x / y，删行）", "density_2d"
+)
+cases$density2d_filled <- record_case(
+  "density2d_filled",
+  ggplot(df_density2d, aes(x, y)) + geom_density_2d_filled(n = 30),
+  "density_2d_filled：填充等值带（n = 30）", "density_2d_filled"
+)
+
 
 # ---------------------------------------------------------------------------
 # docs/cases 的 5 张端到端参考图（theme_void 整页，svglite 4×3 in）

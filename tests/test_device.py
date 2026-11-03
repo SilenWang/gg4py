@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -28,10 +29,11 @@ import pytest
 import skia
 
 from ggcore import ir
+from ggcore.arrow import arrow, head_geometry
 from ggcore.device import DeviceError
-from ggcore.grobs import scene, text_grob
+from ggcore.grobs import curve_grob, scene, text_grob
 from ggcore.ir import Gpar, NodeKind, f32
-from ggcore.units import FixedMetrics
+from ggcore.units import FixedMetrics, unit
 from ggcore.viewport import Device, ViewportTree, gpar, viewport
 from ggskia import (
     SkiaPdfDevice,
@@ -40,6 +42,7 @@ from ggskia import (
     device_for,
 )
 from ggskia.cli import render as render_cli
+from ggskia.curves import curve_points
 from ggskia.pch import SYMBOLS, character_pch
 
 WIDTH_PT = 6 * 72.0
@@ -252,6 +255,96 @@ def test_fixed_metrics_scene_still_renders() -> None:
     tree.push(viewport("page", clip="off"))
     ir_scene = scene([text_grob("hi", gp=gpar(col="#000000"))], tree).to_ir_scene()
     assert ink(png_pixels(SkiaRasterDevice(*ir_scene.size).render(ir_scene))) > 5
+
+
+#: 曲线箭头的手算组（SIL-763 的审核口径）：三条曲率把「向哪边弯」都覆盖到。
+CURVE_ARROW_CURVATURES = (-0.4, 1.0, -1.0)
+
+
+def _curve_arrow_svg(curvature: float) -> tuple[str, tuple[float, float], np.ndarray]:
+    """一条带两端箭头的曲线 → （SVG 文本, 页面尺寸, 采样后的页面坐标）。"""
+    device = Device(4.0, 3.0)
+    tree = ViewportTree(device)
+    x1, y1, x2, y2 = 40.0, 180.0, 250.0, 40.0
+    grob = curve_grob(
+        unit(x1, "bigpts"),
+        unit(y1, "bigpts"),
+        unit(x2, "bigpts"),
+        unit(y2, "bigpts"),
+        curvature=curvature,
+        angle=90.0,
+        ncp=5,
+        shape=1.0,
+        square=False,
+        open=True,
+        default_units="bigpts",
+        gp=gpar(col="#4C78A8", lwd=1.0),
+        arrow=arrow(length=12.0, ends="both", type="open"),
+    )
+    ir_scene = scene(grob, tree).to_ir_scene()
+    svg = SkiaSvgDevice(*ir_scene.size).render(ir_scene).decode()
+    # 与 `_draw_curve` 同一套坐标：IR 的 y 是页面坐标（向下），曲线公式按 R 的
+    # y 向上求值，采样后再翻回页面坐标。
+    height = ir_scene.size[1]
+    page_y1 = height - y1
+    page_y2 = height - y2
+    sampled = curve_points(
+        x1,
+        height - page_y1,
+        x2,
+        height - page_y2,
+        curvature=curvature,
+        angle=90.0,
+        ncp=5,
+        shape=1.0,
+        square=False,
+        inflect=False,
+        open=True,
+        page=ir_scene.size,
+    )
+    sampled = np.column_stack((sampled[:, 0], height - sampled[:, 1]))
+    return svg, ir_scene.size, sampled
+
+
+def _svg_two_point_segments(svg: str) -> list[tuple[float, float, float, float]]:
+    """SVG 里的两点折线（箭翼就是 `drawLine` 出来的 `M…L…`）。"""
+    pattern = re.compile(r'd="M([-\d.]+) ([-\d.]+)L([-\d.]+) ([-\d.]+)"')
+    return [tuple(float(value) for value in match.groups()) for match in pattern.finditer(svg)]
+
+
+def _wing_rows(
+    sampled: np.ndarray, index: int, pair: tuple[tuple[float, float], tuple[float, float]]
+) -> set[tuple[float, float, float, float]]:
+    """一端的两支箭翼：`(端点 x, 端点 y, 底点 x, 底点 y)`，舍到 3 位小数。"""
+    tip = sampled[index]
+    return {
+        (round(tip[0], 3), round(tip[1], 3), round(base[0], 3), round(base[1], 3)) for base in pair
+    }
+
+
+@pytest.mark.parametrize("curvature", CURVE_ARROW_CURVATURES)
+def test_curve_arrow_tangents_follow_the_adjacent_sample_points(curvature: float) -> None:
+    """曲线两端各取**自己的**相邻点求切向，不是整条曲线的弦（SIL-763）。
+
+    旧实现把 `(sampled[0], sampled[-1])` 同时喂给两端，`last` 端拿到的是「另一端」，
+    箭翼整体偏转；这里把设备画出来的箭翼与手算的 `head_geometry`（相邻点）逐点对，
+    并显式断言它**不是**弦方向的几何。
+    """
+    svg, _size, sampled = _curve_arrow_svg(curvature)
+    segments = _svg_two_point_segments(svg)
+    assert len(segments) == 4  # ends="both"：两端各两支箭翼
+
+    first = head_geometry(*sampled[0], *sampled[1], length_pt=12.0, angle=30.0)
+    last = head_geometry(*sampled[-1], *sampled[-2], length_pt=12.0, angle=30.0)
+    expected = _wing_rows(sampled, 0, first) | _wing_rows(sampled, -1, last)
+    drawn = {tuple(round(value, 3) for value in segment) for segment in segments}
+    assert drawn == expected
+
+    # 弦方向（旧实现）在三条曲率上都与相邻点给出的几何明显不同。
+    chord_first = head_geometry(*sampled[0], *sampled[-1], length_pt=12.0, angle=30.0)
+    chord_last = head_geometry(*sampled[-1], *sampled[0], length_pt=12.0, angle=30.0)
+    chord = _wing_rows(sampled, 0, chord_first) | _wing_rows(sampled, -1, chord_last)
+    assert drawn != chord
 
 
 # ---------------------------------------------------------------------------

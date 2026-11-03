@@ -10,7 +10,60 @@ from ggcore import plot, registry
 from ggcore.layer import Geom, Layer
 
 EXPECTED = {
-    "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
+    "geom": (
+        # M1-7 的 9 个
+        "point",
+        "line",
+        "path",
+        "bar",
+        "col",
+        "area",
+        "histogram",
+        "boxplot",
+        "smooth",
+        # M2-S2：长尾 A（SIL-737，顺序 = registry.GEOM_SPECS 的登记顺序）
+        "abline",
+        "hline",
+        "vline",
+        "segment",
+        "curve",
+        "spoke",
+        "rect",
+        "tile",
+        "raster",
+        "polygon",
+        "ribbon",
+        "step",
+        "errorbar",
+        "errorbarh",
+        "linerange",
+        "pointrange",
+        "crossbar",
+        "blank",
+        "rug",
+        "map",
+        # M2-7 长尾 B（SIL-735）
+        "text",
+        "label",
+        "jitter",
+        "count",
+        "bin2d",
+        "bin_2d",
+        "hex",
+        "density",
+        "density_2d",
+        "density2d",
+        "density_2d_filled",
+        "density2d_filled",
+        "contour",
+        "contour_filled",
+        "dotplot",
+        "violin",
+        "qq",
+        "qq_line",
+        "quantile",
+        "function",
+    ),
     "stat": (
         "identity",
         "bin",
@@ -18,6 +71,18 @@ EXPECTED = {
         "boxplot",
         "smooth",
         "align",
+        "bin_2d",
+        "bin_hex",
+        "summary_2d",
+        "summary_hex",
+        "contour",
+        "contour_filled",
+        "density_2d",
+        "density_2d_filled",
+        "bin2d",
+        "binhex",
+        "summary2d",
+        "density2d",
         "qq",
         "qq_line",
         "ecdf",
@@ -189,8 +254,30 @@ EXPECTED = {
         "quickmap",
     ),
     "facet": ("null", "wrap", "grid"),
-    "guide": ("legend", "colourbar", "none"),
-    "theme": ("grey", "bw", "minimal", "void"),
+    "guide": (
+        "legend",
+        "colourbar",
+        "bins",
+        "coloursteps",
+        "colorsteps",
+        "none",
+        "axis",
+        "axis_logticks",
+        "axis_stack",
+        "axis_theta",
+    ),
+    "theme": (
+        "grey",
+        "gray",
+        "bw",
+        "classic",
+        "light",
+        "dark",
+        "linedraw",
+        "minimal",
+        "test",
+        "void",
+    ),
     "label": ("labs",),
 }
 
@@ -224,7 +311,7 @@ def test_default_names_are_registered_in_order(kind: str) -> None:
 def test_theme_names_is_derived_from_the_registry() -> None:
     # 常量是注册表的快照，不是手写清单（SIL-671：手写的三元组漏了 `bw`）。
     assert registry.THEME_NAMES == registry.registered("theme")
-    assert registry.THEME_NAMES == ("grey", "bw", "minimal", "void")
+    assert registry.THEME_NAMES == EXPECTED["theme"]
 
 
 def test_theme_names_tracks_register_and_unregister() -> None:
@@ -582,3 +669,21 @@ def test_a_component_class_name_must_match_its_registration() -> None:
     with pytest.raises(ValueError, match="不一致"):
         registry.register_geom("other", ChildGeom)
     assert "other" not in registry.registered("geom")
+
+
+def test_every_registered_theme_is_complete_and_resolves() -> None:
+    """注册表里的每个主题都能直接加到图上，并解析出完整元素树（M2-5）。"""
+    from ggcore.theme import ELEMENT_TREE, resolve_theme
+
+    p = plot.ggplot({"x": [1.0], "y": [2.0]})
+    for name in registry.THEME_NAMES:
+        theme = getattr(registry, f"theme_{name}")()
+        assert theme.complete is True, name
+        assert isinstance(theme.name, str), name
+        themed = p + theme
+        assert themed.theme is theme
+        resolved = resolve_theme(themed.theme)
+        assert set(resolved.elements) == set(ELEMENT_TREE), name
+        # `p.theme_<name>()` 与模块级函数同源（注册表的两个入口）。
+        method = getattr(p, f"theme_{name}")
+        assert method().theme.elements == theme.elements

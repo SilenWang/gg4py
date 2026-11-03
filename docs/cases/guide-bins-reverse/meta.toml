@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-bins", "guide-bins-reverse", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "guide：guide_bins(reverse=TRUE)"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "vertical bins 的 reverse=TRUE：标签 / 键格颜色 / 刻度一起翻转（R 的 1 - .value）。"

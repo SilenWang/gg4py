@@ -234,8 +234,8 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | 间距 | 主题元素 | 默认 |
 | --- | --- | --- |
 | 页面四周 | `plot.margin` | 5.5pt（0.1933cm） |
-| 刻度线长度 | `axis.ticks.length` | 2.75pt（0.0967cm） |
-| 刻度与标签 | `axis.text.x/y` 的 margin | 2.2pt |
+| 刻度线长度 | `axis.ticks.length` | 2.75pt（0.0967cm）；`axis.ticks.*` 是 `element_blank()` 时为 0（R 量的是 zeroGrob） |
+| 刻度与标签 | `axis.text.<aes>.<side>` 的 margin | 2.2pt（`theme_minimal()` 的 side-specific 元素是 4.95pt） |
 | 标签与轴标题 | `axis.title.x/y` 的 margin | 2.75pt |
 | 标题行 | `plot.title` 的行高 + margin(b) | 13.2pt 文字 + 5.5pt |
 | 面板之间 / strip 与面板 | `panel.spacing.x/y`、strip 元素 | 5.5pt（M1-6 的 facet 表） |
@@ -252,17 +252,102 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 钉住这一点；需要图例也消失请显式 `theme(legend.position = "none")` 或
 `guide = "none"`。
 
-## 8. 未实现（明确报错 / 不静默）
+## 8. guides 长尾（M2-S2 / SIL-739）
+
+### 8.1 `guide_colourbar()` 的 4.0.3 参数面
+
+`guide_colourbar()` 在 4.0.3 把一批老参数挪进了主题，本仓两套写法都认
+（guide 上的显式参数优先，与 R 的 `replace_null()` 同口径）：
+
+| 参数 | 4.0.3 的等价写法 | 说明 |
+| --- | --- | --- |
+| `nbin` / `display` | 同名 | `display` 是 `raster` / `rectangles` / `gradient`；缺省 `nbin` 按 display 取 300 / 300 / 15。旧写法 `raster=TRUE/FALSE` 在工厂里折成 `raster` / `rectangles` |
+| `barwidth` / `barheight` | `legend.key.width` / `legend.key.height` | 长轴缺省是短轴的 5 倍 |
+| `ticks.colour` | `legend.ticks` | 只改刻度线颜色；`ticks=FALSE` 仍保留标签（R 同） |
+| `frame.colour` | `legend.frame` | 主题里**没有显式写** `legend.frame` 时不画边框（R 的 `setup_elements()` 用 `element_blank()` 兜底） |
+| `title.position` | `legend.title.position` | `top` / `bottom` / `left` / `right`；标题**从不旋转**，左 / 右是普通横排文字 |
+| `draw.ulim` / `draw.llim` | 同名 | 只去掉首 / 尾的刻度与标签，色条仍按 limits 全量程画 |
+| `alpha` | 同名 | 混到白底上（与 svglite 白底等价） |
+
+刻度位置照 R 的 `extract_params()`：键值重标到**箱心**
+`(0.5, nbin - 0.5) / nbin`（`display = "gradient"` 时是 `(0, 1)`），不是 0..1。
+`tests/test_guide_long_r_parity.py` 用 `get_guide_data()` 的 `.value` 逐值对拍。
+
+### 8.2 `guide_bins()` / `guide_coloursteps()`
+
+两者都吃「连续色标 + 断点」，训练结果是 `BinnedKeys`：边界 = limits 两端 +
+范围内的断点，每箱的颜色取**箱心**的映射值。
+
+- `guide_bins`：每箱一格键（复用 `Geom.draw()`），标签落在箱的**边界**上；
+  R 的竖排 bins **低值在上**（`build_labels()` 先 `1 - .value`），与色条相反，
+  这里照搬。`show.limits` 控制首尾两个边界标签。
+  `reverse = TRUE` 照 `GuideBins$extract_params()` 统一翻转：键格颜色、边界
+  标签、刻度三者同向镜像（`docs/cases/guide-bins-reverse`）。
+- `guide_coloursteps`：分段色条。`even.steps=TRUE` 等宽，`FALSE` 按数据间距切；
+  `show.limits` 在两端补 limits 标签。
+- `get_guide_data()` 的形状也对拍：bins 是 `箱数 + 1` 行（最后一行的映射值是
+  NA），coloursteps 是断点行。
+
+R 4.0.3 没有 `guide_steps` / `guide_steps2` / `guide_stepsn` 这三个名字
+（`guide_colorsteps` 是 `guide_coloursteps` 的别名）；本仓只实现真实存在的
+API：`bins` / `coloursteps` / `colorsteps`。
+
+### 8.3 轴 guide（`ggcore.axis_guide`）
+
+`guides(x = guide_axis(...))` 走 `plot.guides`（键 = `x` / `y` / `theta`），
+由 scene 的轴阶段消费。`guide_axis()` 的参数与 R 一一对应：
+
+| 参数 | 行为 |
+| --- | --- |
+| `angle` | 标签旋转；锚点照 R 的 `label_angle_heuristic()`（bottom: `hjust=sine` / `vjust=cosine`，其余方位见 `_anchor()`）。主题 `axis.text.*(angle=)` 同样生效 |
+| `check.overlap` | 按 R 的 `axis_label_priority()`（首、尾、中点递归）保留，重叠的丢弃 |
+| `n.dodge` | 标签分 `n` 行 / 列；轴带按 `行数 × 标签盒` 加宽（R 的 `measure_grobs()`） |
+| `minor.ticks` | 画 `scale.minor_breaks()` 的刻度；`axis.minor.ticks.*` 的样式，长度是主轴刻度的 0.75（`Rel(0.75)` 在 guide 里消费） |
+| `guide_axis_logticks(long, mid, short, expanded, cap)` | 三档长度 = 倍数 × 主轴刻度长；位置来自 `scales::minor_breaks_log()` 的移植（`axis_guide.minor_breaks_log()`，含负数分支）。**即使区间里没有 long 刻度，轴带也按 long 留位**（R 用 `elements$major_length`）——这就是 M1 复验抓到的「最外两段缺失」口径 |
+| `guide_axis_stack(first, ...)` | 从内到外叠放多条轴；间距 = 主轴刻度长（R 的缺省） |
+| `guide_axis_theta(angle, minor.ticks)` | 极坐标 theta 标签：半径 0.45，`hjust = 0.5 - sin(θ+a)/2`、`vjust = 0.5 - cos(θ+a)/2`，角度按 `flip_text_angle()` 翻正 |
+
+`cap`（`none` / `both` / `upper` / `lower`）照 R 的
+`GuideAxis$extract_decor()`：轴线本来是整条边 `(-Inf, Inf)`，`upper` 把上端、
+`lower` 把下端、`both` 把两端收到**最外一根刻度**（`axis_line_range()` 算端点，
+scene 的 `_axis_line_grobs()` 按它裁 `axis.line.x` / `axis.line.y`）。
+`docs/cases/guide-axis-cap` 与 R 的 `expected.svg` 对拍（图级 1.5% 内）。
+`cap` 对 `guide_axis()` 同样生效。
+
+`preserve="top"/"bottom"` 是本仓给 `cap` 的别名（`upper` / `lower`）；
+ggplot2 4.0.3 **没有** `preserve` 这个参数名，只在 `guide_axis_logticks()` 的工厂里
+折成 `cap`。
+
+`guide_axis_theta(minor.ticks=TRUE)` 沿圆周画 `axis.minor.ticks` 样式的次刻度
+（半径 1、伸出 0.75 × `axis.ticks.length`，照 `theta_tickmarks()`）；离散 theta
+标度没有 minor breaks，与 R 一样不画。
+
+### 8.4 `annotation_logticks()`
+
+R 4.0.3 把它标成 superseded（推荐 `guide_axis_logticks()`），但它仍是一个
+`GeomLogticks` 图层。本仓的图层流水线假定每层都有数据表，所以落成 plot 级标注
+（`ggplot.annotations` → `PlotBuild.annotations` → scene 轴阶段）：
+
+```
+p + annotation_logticks(sides = "bl")
+```
+
+位置 / 三档长度 / `sides` / `outside` / `scaled` 都照 `GeomLogticks$draw_panel()`
+（`calc_logticks()` 的移植）。差别只在不参与图例、分面与 `inherit.aes`，与 R 的
+`show.legend = FALSE, inherit.aes = FALSE` 同义。案例
+`docs/cases/annotation-logticks` 与 R 的 `expected.svg` 逐像素对拍（图级 1.5%）。
+
+### 8.5 已知差异（长尾）
 
 | 能力 | 现状 |
 | --- | --- |
-| `guide_bins` / `guide_coloursteps` | 未注册；`guide_from_component()` 报 `GuideError` 并列出已实现的名字（M2-2 A 组 / SIL-739） |
 | secondary axis（`sec_axis()` / `dup_axis()`） | **M2-1 已实现**（`ggcore.axis.secondary_ticks()`，画在 top / right 槽）；极坐标下的 `r.sec` / `theta.sec` 仍报 `AxisError`，见 `docs/notes/coord.md` §12 |
-| 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
+| 极坐标带轴时的底部空轴行（≈0.24cm） | 仍不占位（`docs/notes/coord.md` §9）；`axis_theta` 的 case 用标签锚点 / 单测钉住，不比对整页高度 |
+| `guide_axis_theta` 与 `guide_axis_stack` 叠放 | 报 `ValueError`（R 用 `stack_offset` 沿半径推第二圈，未做） |
 | `legend.frame` / 高级图例盒子主题 | 只画 `legend.frame` 的描边与 `legend.box.background` 的矩形；`legend.box.just` / `legend.box` / `legend.box.margin` 已参与行列分配 |
-| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。 |
-| 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
-| 色条的 gtable 行列分解 | `LegendLayout` 也给色条填了行列数组，但逐项分解归 M2-2 A 组（`guide_bins` / `guide_coloursteps` 同一批）；本轮对拍只钉总尺寸 |
+| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。`display = "gradient"` 同样落成 15 条矩形，由 `docs/cases/guide-colourbar-gradient` 钉住视觉（图级 1.48%） |
+| 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 的 `legend.title.position` 已生效但标题**不旋转**，与竖向共用横排文字 |
+| 色条的 gtable 行列分解 | `LegendLayout` 只给普通图例填了 `col_widths_cm` / `row_heights_cm`；colourbar / coloursteps / bins 只钉总尺寸（`bar` + `ticks`），没有逐列数组 |
 | 同 `order` 的图例先后 | R 按 `rlang::hash()` 字符串排；ggcore 按美学顺序。需要确定顺序时显式 `guide_legend(order=)`（见 §2） |
 
 ## 9. 确定性
@@ -270,7 +355,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 轴、图例、标题都是既有 grob（`segments` / `text` / `rect` / `Geom.draw()` 的产物）
 拼出来的，没有新增 IR 字段；同一张图两次 `scene_from_plot()` → `ir.encode()` 的
 sha256 相等（`tests/test_guide.py::test_axis_and_legend_are_deterministic`，覆盖
-2×2 分面 + colour 图例 + 标题；9 个 geom 的旧断言仍在
+2×2 分面 + colour 图例 + 标题；9 个 M1-7 geom 的旧断言仍在（M2-S2 的 20 个 geom 另在 `tests/test_geom_longtail.py`）
 `tests/test_geom_draw.py`）。`pixi run gate:determinism` 的载荷也加上了同一份整页
 场景（`tools/gates/_determinism_child.py` 的 `plot_scene()`），三个
 `PYTHONHASHSEED` 进程的 `plot_digest` 必须一致。
@@ -283,8 +368,9 @@ sha256 相等（`tests/test_guide.py::test_axis_and_legend_are_deterministic`，
 
 ```bash
 pixi run -e refs refs:guide       # 重新生成 tests/fixtures/guide_r_reference.json（16 个 case）
+pixi run -e refs refs:guide-long  # guides 长尾夹具（27 个 case + 对数次刻度取值）
 pixi run -e refs Rscript tools/refs/cases_battery_ref.R guide-legend-top   # 只重画点名的 case
-pixi run test                     # 含 tests/test_axis.py / test_guide.py / test_guide_r_parity.py
+pixi run test                     # 含 test_axis / test_guide / test_guide_r_parity / test_guide_long*_r_parity
 pixi run render --scene <scene>.ggir.cbor --out report.png
 ```
 
@@ -292,7 +378,7 @@ pixi run render --scene <scene>.ggir.cbor --out report.png
 
 ```bash
 pixi run check                    # lint + test + 各 gate（含静态的 cases:matrix:check）
-pixi run cases:matrix             # 案例回归，必须 83/83 pass
+pixi run cases:matrix             # 案例回归，必须全绿（当前 116 个三文件 case）
 pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
 ```
 

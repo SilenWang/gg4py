@@ -66,6 +66,7 @@ from ggcore.facet import (
     PanelScaleSet,
     facet_from_component,
 )
+from ggcore.fills import FillSpec
 from ggcore.layer import Layer, Position
 from ggcore.registry import construct, registered, required_aes_groups
 from ggcore.scales import ScaleSet
@@ -117,12 +118,27 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        # M2-7 长尾 B：geom_count / geom_bin_2d / geom_hex / geom_density /
+        # geom_qq / geom_contour_filled 的 `Stat$default_aes`（与下面 M2-6 的
+        # 同名列合并成一份表；两边取值一致，`contour_filled` 用带 `order` 的版本）。
+        "sum": (("size", "n"),),
+        "bin2d": (("fill", "count"),),
+        "bin_2d": (("fill", "count"),),
+        "binhex": (("fill", "count"),),
+        "bin_hex": (("fill", "count"),),
+        "summary_2d": (("fill", "value"),),
+        "summary_hex": (("fill", "value"),),
+        "density": (("x", "density"), ("y", "density")),
+        "contour": (("order", "level"),),
+        "contour_filled": (("order", "level"), ("fill", "level")),
+        # `stat_density_2d` 的链式 contour **不经过** map_statistic()：密度族即使
+        # 做了等值线也不会有 `order` 列（上游 `StatDensity2d$compute_layer()`）。
+        "density_2d": (),
+        "density_2d_filled": (("fill", "level"),),
         # M2-6 的长尾 stat（`ggcore.stat_longtail.DEFAULT_AES` 的同一份表；
         # 这里内联是因为 build 在 import 期不能反向 import stat_longtail）。
         "qq": (("x", "theoretical"), ("y", "sample")),
         "ecdf": (("x", "ecdf"), ("y", "ecdf")),
-        "density": (("x", "density"), ("y", "density")),
-        "sum": (("size", "n"),),
     }
 )
 
@@ -477,6 +493,9 @@ def map_statistic(layer: Layer, statistic: ColumnTable, aesthetics: Aesthetics) 
         if name in dict(columns) or any(name == key for key, _ in aesthetics.deferred):
             continue
         if source not in stat_values:
+            # 空图层（例如等值线一层都没生成）：没有统计量可映射，列也就没有。
+            if nrows == 0:
+                continue
             raise BuildError(
                 f"stat {layer.stat.name!r} 的缺省映射 {name} = after_stat({source}) 找不到"
                 f"统计量 {source!r}；stat 输出列：{', '.join(stat_values)}"
@@ -524,7 +543,11 @@ def compute_position(
     if mapped.nrows == 0:
         return _EMPTY
     _check_required_aes(layer, mapped, index)
-    table = ColumnTable(_geom_setup(layer, mapped, raw), nrows=mapped.nrows)
+    columns = _geom_setup(layer, mapped, raw)
+    # `setup_data()` 可以改变行数（`geom_dotplot` 按 `count` 展开成点），所以行数
+    # 取 setup 之后的结果，不是 `mapped.nrows`。
+    nrows = int(columns[0][1].size) if columns else 0
+    table = ColumnTable(columns, nrows=nrows)
     position = _resolve_position(layer.position)
     table = _position_use_defaults(position, table, layer.params)
     return position.compute_layer(table)
@@ -635,6 +658,11 @@ def finish(layer: Layer, scaled: ColumnTable, index: int = 0) -> ColumnTable:
             continue
         columns = _put(columns, name, _default_column(value, scaled.nrows))
     for name, value in _aes_params(layer).items():
+        if isinstance(value, FillSpec):
+            # 渐变 / 图案是**一个对象**，不是逐行的标量：不进数据列，留在
+            # `layer.params` 里，画的时候由 geom 当整层的填充缺省值用
+            # （`docs/notes/ir.md` §6.1 的写方口径）。
+            continue
         columns = _put(columns, name, _value_column(value, scaled.nrows))
     return ColumnTable(columns, nrows=scaled.nrows)
 
@@ -871,6 +899,8 @@ class PlotBuild:
     guides: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     #: 每层合并后的原始映射（`aes()` 的原文）：图例标题与「哪些图层映射了这个美学」。
     raw_mappings: tuple[Mapping[str, Any], ...] = ()
+    #: `annotation_*()`（M2-S2）：scene 的轴阶段绘制，不进图层流水线。
+    annotations: tuple[Any, ...] = ()
     #: 文本度量（`ggcore.units.Metrics`）；`scene_from_build()` 注入，布局/图例用。
     metrics: Any = None
 
@@ -884,16 +914,37 @@ class PlotBuild:
         """`{PANEL: PanelParams}`（每面板一份）。"""
         return MappingProxyType({panel.panel: panel.panel_params for panel in self.panels})
 
-    def facet_table(self, metrics: Any = None) -> Any:
+    def facet_table(self, metrics: Any = None, *, right_inside: bool = False) -> Any:
         """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。
 
         `metrics` 给出时 strip 尺寸走真实字体度量（M1-7 的场景装配）。
+        `space = "free"` 需要逐面板范围：这里从各面板的 `PanelParams` 取
+        `x_range` / `y_range` 一起交给 `facet_table()`（上游 `init_gtable()` 的
+        `ranges` 参数）。`aspect` 按 R `draw_panels()` 解析（`facet_aspect()`）：
+        `coord_fixed(ratio=)` 与 `space = "free"` 同时存在时只折 `ratio`，
+        否则用首面板的 `Coord$aspect()`。
+
+        `right_inside=True` 把右侧 strip 从 `"outside"` 回退成 `"inside"`
+        （右侧有次轴带时 `plot_layout()` 用它避免 strip 压住次轴标签）。
         """
-        from ggcore.facet import facet_table
+        from ggcore.facet import facet_aspect, facet_table
 
         if self.layout is None or self.facet is None:
             raise BuildError("这张图没有分面布局；请先用 build_plot() 构建")
-        return facet_table(self.layout, self.facet, self.theme, metrics=metrics)
+        ranges = {
+            panel.panel: (panel.panel_params.x_range, panel.panel_params.y_range)
+            for panel in self.panels
+        }
+        params = self.panels[0].panel_params if self.panels else self.panel_params
+        return facet_table(
+            self.layout,
+            self.facet,
+            self.theme,
+            metrics=metrics,
+            ranges=ranges or None,
+            aspect=facet_aspect(self.facet, self.coord, params),
+            right_inside=right_inside,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1205,6 +1256,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         theme=plot.theme,
         labels=_plot_labels(plot),
         guides=_plot_guides(plot),
+        annotations=tuple(getattr(plot, "annotations", ()) or ()),
         raw_mappings=raw_mappings,
     )
 
@@ -1222,10 +1274,28 @@ def _plot_guides(plot: Any) -> Mapping[str, Any]:
 def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     """wrap / grid 的整图构建：布局 → 每面板标度 → 按 PANEL 切数据。"""
     coord = coord_from_component(plot.coordinates)
-    if (facet.free_x or facet.free_y) and getattr(coord, "ratio", None) is not None:
+    ratio = getattr(coord, "ratio", None)
+    space = str(getattr(facet, "space", "fixed") or "fixed")
+    # 只有 `facet_grid(space = "free")`（两维都 free）能配自由刻度 + `ratio`
+    # （R 4.0.3 `FacetGrid$draw_panels()`）：`space = "free_x"` / `"free_y"` 与
+    # `facet_wrap()` 的自由刻度在 R 里仍是
+    # `can't use free scales with coord_cartesian() with a fixed ratio argument`。
+    if (facet.free_x or facet.free_y) and ratio is not None:
+        if not (facet.kind == "grid" and space == "free"):
+            raise BuildError(
+                "自由刻度不能和 coord_fixed(ratio=…) 一起用"
+                '（上游同样报错：只有 facet_grid(space="free") 的两维自由刻度'
+                '能配 ratio；space="free_x"/"free_y" 与 facet_wrap 都会报错）'
+            )
+    # `coord_polar()` / `coord_radial()` 的面板范围不是普通 (x, y) 区间，
+    # R 4.0.3 在 `init_gtable()` 里算 space 权重时直接报
+    # `values must be length 1`（上游 bug）。gg4py 曾静默出非正圆面板；
+    # 按 parity 口径明确报错，不猜一个 R 自己都产生不了的结果。
+    if space != "fixed" and str(getattr(coord, "name", "")) in ("polar", "radial"):
         raise BuildError(
-            "自由刻度不能和 coord_fixed(ratio=…) 一起用"
-            "（上游同样报错：每个面板的范围不同，无法共用一个物理比例）"
+            f"coord_{getattr(coord, 'name', 'polar')}() 不能和 space={space!r} 一起用"
+            '（R 4.0.3 在 init_gtable() 里报 "values must be length 1"，'
+            "见 docs/notes/facet.md §7）"
         )
     layers = list(plot.layers)
     tables = [_resolve_data(plot, layer) for layer in layers]
@@ -1346,5 +1416,6 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         theme=plot.theme,
         labels=_plot_labels(plot),
         guides=_plot_guides(plot),
+        annotations=tuple(getattr(plot, "annotations", ()) or ()),
         raw_mappings=raw_mappings,
     )

@@ -1,0 +1,7 @@
+family = "geom-text"
+features = ["label-background", "scale-limits"]
+ci = true
+title = "label：背景框 + 内边距"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "labelGrob 的几何：padding[1]=max(padding, descent)、padding[3]=max(padding-descent,0)；背景 = 方角矩形（圆角 0.15 lines ≈ 2pt，IR 无 roundrect 节点）。"

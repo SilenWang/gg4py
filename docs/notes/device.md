@@ -15,6 +15,17 @@ ggplot2 自己不做设备。
   `tests/test_grob_cases.py`（16 张快照）
 - 冒烟图：`pixi run cases:device` → `docs/cases/device-smoke/current/`
 
+M2-S2 新增两件事：
+
+- **箭头**：`segments` / `polyline` / `curve` 节点的 `arrow*` 参数（`ir.md` §4.1）。
+  设备按端点切向画箭翼：线段 / 折线取端点相邻两点，曲线按采样后的端点取切向；
+  几何公式在 `ggcore.arrow.head_geometry()`（查看器逐行移植）。`open` 两条边、
+  `closed` 填色三角（填充用 gpar 的 `fill`）。
+- **位图的 SVG 路径**：SVG 只是把位图交出去，光栅化在后面（resvg / 浏览器）。
+  `interpolate = FALSE` 时 `SkiaSvgDevice` 先做最近邻放大，让 `<image>` 与目标
+  矩形 1:1、后续不再重采样——参考产线（svglite）也是先按设备像素铺好再嵌
+  （否则 2×2 的 `geom_raster` 会被平滑成一团，SIL-737 的 raster 用例 90%）。
+
 ## 1. 分层：协议在 `ggcore`，后端在包外
 
 X1 门禁要求 `src/ggcore/` 只 import 标准库 / numpy / cbor2——ggcore 是 Pyodide 里
@@ -47,8 +58,10 @@ device.render(scene)  # 上面三步的简写
 
    R 的 `gpar$lwd` **不是 pt**，是 1/96 inch：`grobs → IR` 那一步按
    `72/96 = 0.75` 折算（`ggcore.grobs._LWD_UNITS_TO_PT`），`lty` 的段长是
-   `lwd` 的倍数，跟着一起折。不折的话所有描边粗 4/3 倍——`lwd = 6` @150 ppi
-   实测 R 是 10 px 墨、设备会是 12 px（SIL-636）。
+   `lwd` 的倍数，跟着一起折——完整口径是 `pattern × max(lwd, 1) × 0.75`
+   （`lwd < 1` 的段长按 1 算，见 `docs/notes/scales.md` 的「lty 串的段长折算」）。
+   不折的话所有描边粗 4/3 倍——`lwd = 6` @150 ppi 实测 R 是 10 px 墨、设备会是
+   12 px（SIL-636）；段长漏乘 0.75 则所有虚线长 4/3 倍（SIL-763）。
 2. **页面尺寸是显式参数**：`draw_scene` 发现 `scene.size != device.size_pt` 直接
    报 `DeviceError`，不替场景改纸、不裁掉多出来的部分。
 3. **顺序与状态**：未 `open` 就 `draw_scene` / 重复 `open` / `close` 两次都报
@@ -76,6 +89,14 @@ E3 的结论：CanvasKit 只有栅格后端，PDF 走 HarfBuzz 轮廓）：
 
 页面底色在 M0 是白的（`clear(WHITE)`），不做透明背景；页眉页脚不参与场景遍历
 （快照工具的说明文字直接画在画布上）。
+
+渐变与图案（SIL-751）三路共用同一套绘制入口：渐变走 `skia.GradientShader`
+（`MakeLinear` / `MakeRadial` / `MakeTwoPointConical`，坐标是 IR 的节点局部坐标，
+`extend` 映射成 `TileMode`），图案走**逐 tile 裁剪 + 平移画内容**的矢量平铺
+（`_tile_path`，不落位图，单节点上限 `MAX_PATTERN_TILES`）。SVG 后端由 skia 自己
+序列化成 `<linearGradient>` / `<radialGradient>`，因此有两个**序列化器**缺口（不在
+我们这一层）：不写 `spreadMethod`、focal 渐变把 `fr` / `r` 写反——口径与影响见
+`docs/notes/ir.md` §6.1 的消费端缺口表。
 
 SVG 产物的 id（skia 给 `<clipPath>` 的 `cl_N`）是进程级递增的，同一进程里第二个
 画布会接着数。`SkiaSvgDevice._finish` 按出现顺序把它们重编号成 `cl_0…` 并同步改
@@ -243,7 +264,7 @@ M2-12 的 dash 口径（`DASH_UNIT = 4/3`，见 `docs/notes/viewer.md` §10.1）
 | 标签里的 `\n` | `grid.text` 断行 | M1 已支持：行距 1.44×fontsize、整块 vjust（M1-b） |
 | 非默认 `lineheight` | `gpar(lineheight)` | IR 的 `text` 节点没有 lineheight 字段，设备固定按缺省 1.2 画（M1-b 的 IR 缺口） |
 | 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
-| 渐变 / 图案填充 | grid 的 gpar 支持 | IR 的 gpar 只有 RGBA |
+| 渐变 / 图案填充 | grid 的 gpar 支持 | M2 已支持 `fill` 的 `linear` / `radial` / `pattern`（`ir.md` §6.1）：渐变走 shader、图案逐 tile 矢量平铺；skia 的 SVG 序列化器有两个已知缺口（`spreadMethod`、focal 的 `fr`/`r`） |
 | 透明背景 | 设备相关 | 页面固定白底 |
 | 多页 / 多文档 | PDF 支持 | 一台设备一页（M1-12 的 `ggsave` 也只出一页，见 `docs/notes/io.md` §4） |
 

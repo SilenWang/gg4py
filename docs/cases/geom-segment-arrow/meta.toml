@@ -1,0 +1,7 @@
+family = "geom-segment"
+features = ["aes-mapping", "colour-aes", "orientation-horizontal"]
+ci = true
+title = "geom_segment：两端闭合箭头（IR 0.3 的 arrow 标记）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "箭头是 IR 节点参数（arrow / arrow_length / arrow_angle / arrow_type），箭翼几何由 skia 与查看器各自按端点切向求值。"

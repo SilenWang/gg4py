@@ -1,0 +1,7 @@
+family = "geom-bin2d"
+features = ["aes-mapping", "scale-limits", "stat-identity"]
+ci = true
+title = "bin_2d：geom_bin_2d 别名"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`geom_bin_2d` 与 `geom_bin2d` 是同一实现的两个导出名。"
