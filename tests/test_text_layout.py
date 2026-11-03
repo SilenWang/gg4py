@@ -99,11 +99,18 @@ def test_missing_face_raises_and_lists_available_styles() -> None:
     assert catalog.resolve("Noto Sans CJK SC", 700, False).variation == 700
 
 
-def test_unknown_family_falls_back_to_the_sans_stack() -> None:
-    """R 的 svglite 默认写 "Arimo"：未登记字族回落缺省字面，不报错。"""
-    faces = resolve_stack("Arimo")
-    assert faces[0].family == "Noto Sans CJK SC"
-    assert resolve_stack("Arimo:bold")[0].variation == 700
+def test_unknown_family_falls_back_to_the_managed_default() -> None:
+    """未登记字族回落缺省字面（Arimo），不报错。
+
+    `Arimo` 本身现在是登记字族——R 的 svglite 把缺省字面写成它（M2-a），
+    conda-forge 只有 `Arimo-Italic-VF.ttf` 这一份文件（wght 轴只有 400），
+    所以粗体请求落同一份字面，不编造一个不存在的 `wght` 轴。
+    """
+    faces = resolve_stack("Helvetica")
+    assert faces[0].family == "Arimo"
+    assert resolve_stack("Arimo")[0].filename == "Arimo-Italic-VF.ttf"
+    assert resolve_stack("Arimo:bold")[0].weight == 700
+    assert resolve_stack("Arimo:bold")[0].variation is None
 
 
 def test_real_face_changes_advance() -> None:
@@ -209,7 +216,7 @@ def test_svg_multiline_has_paths_not_text() -> None:
 def test_emoji_runs_switch_face_mid_string() -> None:
     shaper = TextShaper()
     runs = shaper.runs("sans", "smile \U0001f600", 20.0)
-    assert [run.filename for run in runs] == ["NotoSansCJKsc-VF.ttf", "NotoColorEmoji.ttf"]
+    assert [run.filename for run in runs] == ["Arimo-Italic-VF.ttf", "NotoColorEmoji.ttf"]
     assert runs[0].text == "smile "
     assert runs[1].text == "\U0001f600"
     # 彩色位图 24.95 vs 单色轮廓 25.39（+1.8%），R/cairo 是 25.0。

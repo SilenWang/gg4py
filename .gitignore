@@ -32,6 +32,10 @@ docs/spike/e1_coldstart/static/
 # `pixi run viewer:sample` 重新生成）
 web/viewer/dist/
 web/viewer/samples/
+# 查看器的受管字体副本与 @font-face（`pixi run viewer:build` 从 rules.json 重建）
+web/viewer/fonts/
+web/viewer/fonts.css
+web/viewer/src/fonts.generated.ts
 # `pixi run viewer:shot` 的截图产物
 .viewer-shot/
 # `pixi run viewer:cases` 的逐 case 产物与报告

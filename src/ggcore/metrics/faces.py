@@ -89,6 +89,19 @@ FACE_SUFFIXES: Mapping[str, tuple[int, bool]] = {
 
 #: 受管字面。顺序 = 报错时列出的顺序，也是「同字重优先静态字面」的查找顺序。
 FAMILY_FACES: Mapping[str, tuple[FontFace, ...]] = {
+    # R 参考产线的默认拉丁字面（SIL-715 #6）。svglite 把 `sans` / `""` 解析成
+    # fontconfig 的第一个匹配族，在这套受管环境里就是 `Arimo`；conda-forge 只提供
+    # 这一份 Arimo 文件（font-ttf-noto 里的 `Arimo-Italic-VF.ttf`，wght 轴只有
+    # 400 一个实例、post.italicAngle = -12），所以「常规」和「粗体」都落到它：
+    # 请求 700 时没有真粗体，与 R 侧 fontconfig 只能拿到同一条字面的事实一致。
+    # 用哪份文件不是偏好问题——`expected.svg` 的 `textLength` 与该文件逐条对上
+    # （0.13% 以内），与 Arimo 正体差 0.86%（docs/notes/metrics-ledger.md · M2-a）。
+    "Arimo": (
+        FontFace("Arimo", "Arimo-Italic-VF.ttf", 400, False),
+        FontFace("Arimo", "Arimo-Italic-VF.ttf", 700, False),
+        FontFace("Arimo", "Arimo-Italic-VF.ttf", 400, True),
+        FontFace("Arimo", "Arimo-Italic-VF.ttf", 700, True),
+    ),
     "Noto Sans CJK SC": (
         FontFace("Noto Sans CJK SC", "NotoSansCJKsc-VF.ttf", 400, False, (100, 900)),
     ),

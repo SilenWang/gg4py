@@ -169,7 +169,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 
 | 方面 | 桌面（`ggskia` SVG） | 浏览器（本查看器） | 影响 |
 | --- | --- | --- | --- |
-| 文字 | 用受管字体度量，必要时按字步写 `tspan` | 系统字体栈 + 正常排版；diff 侧用同一份受管字体转轮廓 | 字宽 / 字面在浏览器里可能有 1 px 级差；对拍口径与桌面同一套 |
+| 文字 | 用受管字体度量，必要时按字步写 `tspan` | 同一份受管字体（`fonts.css` 的 `@font-face`，由 `tools/viewer/emit_fonts.py` 从 rules.json 生成）+ 正常排版 | 字宽 / 字面在浏览器里可能有 1 px 级差；对拍口径与桌面同一套 |
 | 文字基线 | cap height × 72.27/72（R 的 `strheight`） | 浏览器用 `dominant-baseline`；diff 侧按 `data-baseline` 还原同一 cap 口径 | gallery 截图有亚像素差；像素对拍不受影响 |
 | 多行行距 | grid 的 `lineheight`（IR 未携带） | 固定 1.2 | 非缺省行距表达不了（`ir.md` §7 · M1-b） |
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
@@ -190,7 +190,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 图例 entry 归属（key ↔ 标签 ↔ 图层） | 名字前缀 + 纵向对齐推断 | guide entry 字段或 key 组命名约定入 schema |
 | 图例点击 → 隐藏数据系列 | 只隐藏图例组本身 | level → 数据行 的映射 |
 | 多行行距 / `lineheight` | 固定 1.2 | `text.lineheight` |
-| 字体文件 | 浏览器系统字体栈 | 字体 blob 表（`ir.md` §12） |
+| 字体文件 | 受管字体副本（`web/viewer/fonts/`，`viewer:build` 从 `$CONDA_PREFIX/fonts` 复制；`font-family` 回退栈只含 rules.json 里的字族，**不含 `sans-serif`**） | 字体 blob 表（`ir.md` §12） |
 | 逐行 hover（单点 tooltip） | 节点级：`points` 一个节点一个 `<path>`，tooltip 给整段行范围 | 同一 path 内给子路径标 `data-row` + JS 命中测试（`elementFromPoint` 拿不到子路径），待 M2 |
 
 ## 10. 案例对拍（M1-16）

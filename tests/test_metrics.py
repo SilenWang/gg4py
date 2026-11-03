@@ -38,6 +38,9 @@ from ggshape import HarfBuzzBackend, harfbuzz_provider
 REPO = Path(__file__).resolve().parent.parent
 CORPUS = REPO / "docs" / "spike" / "corpus" / "labels_200.json"
 BUILD_TABLE = REPO / "tools" / "metrics" / "build_table.py"
+#: M2-S1 之前的共享栈（CJK 在前）。这几条断言量的是「script 分段」「grapheme
+#: cluster」本身，钉死旧栈才能继续用当初实测的像素数，不掺默认拉丁字面的变化。
+LEGACY_STACK = ("NotoSansCJKsc-VF.ttf", "NotoColorEmoji.ttf", "DejaVuSans.ttf")
 
 
 @pytest.fixture(scope="module")
@@ -152,19 +155,31 @@ def test_advance_matches_run_split(hb: MetricProvider) -> None:
     assert hb.advance("月份（万元）", 16) == pytest.approx(runs[0].width)
 
 
-def test_advance_splits_by_font_coverage_with_cjk_first(hb: MetricProvider) -> None:
-    """共享栈是 CJK → emoji → DejaVu：CJK 覆盖拉丁与空格，emoji 单独一段。"""
+def test_advance_splits_by_font_coverage_with_arimo_first(hb: MetricProvider) -> None:
+    """共享栈是 Arimo → CJK → emoji → DejaVu：拉丁归 Arimo，CJK 与 emoji 各一段。
+
+    Arimo 是 R/svglite 参考产线的默认拉丁字面（M2-a），排在栈首之后拉丁不再落进
+    CJK 字面——M1-f 记的「CJK 族里的拉丁窄 6%」随之消失。CJK 与 emoji 之间的
+    空格归 Arimo（它覆盖空格），所以那一段仍按「第一个覆盖的字族」切开。
+    """
     runs = hb.runs("Sales 月份 🌱", 16)
-    assert [run.font for run in runs] == ["NotoSansCJKsc-VF.ttf", "NotoColorEmoji.ttf"]
-    assert [run.text for run in runs] == ["Sales 月份 ", "🌱"]
+    assert [run.font for run in runs] == [
+        "Arimo-Italic-VF.ttf",
+        "NotoSansCJKsc-VF.ttf",
+        "Arimo-Italic-VF.ttf",
+        "NotoColorEmoji.ttf",
+    ]
+    assert [run.text for run in runs] == ["Sales ", "月份", " ", "🌱"]
 
 
 def test_mixed_script_run_is_shaped_per_script(hb: MetricProvider) -> None:
     """拉丁 + 朝鲜 jamo 同一个 run：jamo 必须按 Hangul 合成音节。
 
     整段按 Latin 排会让 jamo 拆成三个字形（61.78px @16），CanvasKit 是
-    32.34px；按 script 段切开后两端一致。
+    32.34px；按 script 段切开后两端一致。这里把字体栈钉成单 CJK 字族，
+    让这条断言量的是 script 分段本身，不掺默认栈（Arimo 在前会把拉丁分走）。
     """
+    hb = harfbuzz_provider(FontCatalog(), font_stack=LEGACY_STACK)
     mixed = "n=\u1100\u1161\u11a8"
     assert hb.strwidth(mixed, 16) == pytest.approx(32.34, rel=0.005)
     assert hb.strwidth("\u1100\u1161\u11a8", 16) == pytest.approx(14.72, rel=0.005)
@@ -198,6 +213,7 @@ def test_script_segments_keeps_grapheme_clusters_whole() -> None:
 
 def test_grapheme_clusters_measure_as_one_segment(hb: MetricProvider) -> None:
     """复验反例 @16px：整段 shaping 的宽度（按「复杂/非复杂」切开时全错）。"""
+    hb = harfbuzz_provider(FontCatalog(), font_stack=LEGACY_STACK)
     # 가 + 尾 jamo：整段合成一个字形 14.72；切成两段会量成 29.44。
     assert hb.strwidth("\uac00\u11a8", 16) == pytest.approx(14.72, rel=0.005)
     # م + ZWJ + ر：ZWJ 必须留在阿拉伯段里，17.40；切开会量成 17.63。
@@ -313,10 +329,24 @@ def test_table_and_harfbuzz_agree_on_the_corpus(hb: MetricProvider, table: Metri
             continue
         reference = hb.advance(text, 16)
         worst = max(worst, abs(table.advance(text, 16) - reference) / reference)
-    # 表不做 kerning：实测最大 2.374%，判据 5%（docs/notes/metrics-ledger.md · M0-7）。
-    # 2.374% 只是这份 200 条语料的结果，不是上界：绝对差 0.05–2.72 px @16px 随字对
-    # 而变，短标签相对差更大（`'To'` 单对 5.84%）。
-    assert worst < 0.05, f"fallback table drifts {worst:.2%} from HarfBuzz"
+    # v2 表建模字对 kerning：这份语料上逐条与 HarfBuzz 相同（M2-b），判据钉在 1%。
+    # M0-7 的 v1 表不做 kerning，同一份语料最大 2.374%。
+    assert worst < 0.01, f"fallback table drifts {worst:.2%} from HarfBuzz"
+
+
+def test_table_models_kerning(hb: MetricProvider, table: MetricProvider) -> None:
+    """字对 kerning 必须真的进表：`To` / `Total` 这类短串不给逐码点相加蒙混过去。"""
+    for text in ("To", "AV", "Total", "Width 0.00"):
+        reference = hb.advance(text, 16)
+        assert table.advance(text, 16) == pytest.approx(reference, rel=5e-4), text
+    # 反证：不带 kern 的逐码点相加在这两条上是偏宽的（`To` ≈ +6%）。
+    table_backend = table.backend
+    font = table_backend.fonts[DEFAULT_FONT_STACK[0]]
+    plain = float(table_backend._advance(font.filename, ord("T"))) + float(
+        table_backend._advance(font.filename, ord("o"))
+    )
+    assert table_backend._kern(font, ord("T"), ord("o")) < 0
+    assert plain + table_backend._kern(font, ord("T"), ord("o")) < plain
 
 
 def test_table_reports_complex_scripts_as_unsupported(table: MetricProvider) -> None:
