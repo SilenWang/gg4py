@@ -576,3 +576,19 @@ save_case("guide-colourbar", local({
     geom_point(shape = 19, size = 3.2) +
     fx(0, 1) + fy(0, 1) + theme_void()
 }))
+
+# --- extension -------------------------------------------------------------
+
+# `ext-custom-geom` 的 gg4py 侧只实现一个 `GeomMySegment` 子类；R 侧没有同名
+# geom，用等价的 geom_segment()（同数据、颜色、线宽、limits）作为外部参考。
+save_case("ext-custom-geom", local({
+  df <- data.frame(
+    x = c(0.08, 0.18, 0.28, 0.42, 0.56, 0.70),
+    y = c(0.20, 0.72, 0.42, 0.86, 0.16, 0.60),
+    xend = c(0.24, 0.34, 0.48, 0.66, 0.76, 0.92),
+    yend = c(0.78, 0.28, 0.64, 0.20, 0.58, 0.88)
+  )
+  ggplot(df, aes(x, y, xend = xend, yend = yend)) +
+    geom_segment(colour = "#4C78A8", linewidth = 0.8, lineend = "butt") +
+    fx(0, 1) + fy(0, 1) + theme_case()
+}))

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, ClassVar
+
 import pytest
 
 from ggcore import plot, registry
@@ -461,3 +463,91 @@ def test_params_route_to_layer_or_stat_only() -> None:
     stat_layer = plot.stat_count(bins=10)
     assert dict(stat_layer.params) == {}
     assert stat_layer.stat.params["bins"] == 10
+
+
+# ---------------------------------------------------------------------------
+# M2-9 扩展：组件类、内置名字保护、default_aes 继承
+# ---------------------------------------------------------------------------
+
+
+class ParentGeom(Geom):
+    """用来验证 `default_aes` 合并语义的父类。"""
+
+    name = "parent"
+    required_aes = ("x", "y")
+    default_aes: ClassVar[dict[str, Any]] = {"colour": "black", "linewidth": 0.5}
+
+
+class ChildGeom(ParentGeom):
+    name = "child"
+    default_aes: ClassVar[dict[str, Any]] = {"linewidth": 1.5, "alpha": 0.5}
+
+    def draw(self, build, panel, coord, theme, metrics):
+        del build, panel, coord, theme, metrics
+        raise AssertionError("contract-only test")
+
+
+class PointOverride(Geom):
+    """与内置 `point` 同名，用来验证 `allow_override=True` 的恢复路径。"""
+
+    name = "point"
+    required_aes = ("x", "y")
+    default_aes: ClassVar[dict[str, Any]] = {"colour": "red"}
+
+
+def test_default_aes_is_merged_without_mutating_the_parent() -> None:
+    child = ChildGeom()
+    assert child.required_aes == ("x", "y")
+    assert dict(child.default_aes) == {
+        "colour": "black",
+        "linewidth": 1.5,
+        "alpha": 0.5,
+    }
+    assert dict(ParentGeom.default_aes) == {"colour": "black", "linewidth": 0.5}
+
+
+def test_registering_a_component_class_gives_both_entry_points() -> None:
+    registry.register_geom("child", ChildGeom)
+    try:
+        entry = registry.entry_name("geom", "child")
+        assert callable(getattr(registry, entry)) and callable(getattr(plot, entry))
+        layer = registry.geom_child(colour="red")
+        assert isinstance(layer, Layer)
+        assert isinstance(layer.geom, ChildGeom)
+        assert layer.geom.name == "child"
+        assert dict(layer.geom.default_aes)["alpha"] == 0.5
+        assert layer.params["colour"] == "red"
+        assert plot.ggplot().geom_child().layers[0].geom.name == "child"
+    finally:
+        registry.unregister("geom", "child")
+    assert "child" not in registry.registered("geom")
+
+
+def test_third_party_registration_cannot_shadow_a_builtin_name() -> None:
+    with pytest.raises(ValueError, match="内置名字"):
+        registry.register_geom("point", PointOverride)
+
+    original = registry.GEOM_SPECS["point"]
+    registry.register_geom("point", PointOverride, allow_override=True)
+    try:
+        assert dict(registry.geom_point().geom.default_aes) == {"colour": "red"}
+    finally:
+        registry.unregister("geom", "point")
+
+    # unregister 恢复内置原件，而不是把 point 删掉。
+    restored = registry.geom_point().geom
+    assert restored.name == "point"
+    assert restored.required_aes == original.required_aes
+    assert "point" in registry.registered("geom")
+
+
+def test_unregistering_an_unshadowed_builtin_is_rejected() -> None:
+    with pytest.raises(ValueError, match="内置组件"):
+        registry.unregister("geom", "point")
+    assert "point" in registry.registered("geom")
+
+
+def test_a_component_class_name_must_match_its_registration() -> None:
+    with pytest.raises(ValueError, match="不一致"):
+        registry.register_geom("other", ChildGeom)
+    assert "other" not in registry.registered("geom")

@@ -37,6 +37,7 @@ families = [
   "annotation",
   "guide",
   "lab",
+  "extension",
 ]
 
 features = [
@@ -91,4 +92,5 @@ features = [
   "font-face",
   "multiline",
   "emoji-text",
+  "api-extension",
 ]
