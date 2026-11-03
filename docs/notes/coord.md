@@ -289,6 +289,11 @@ geom 侧唯一的分支点是 `panel.is_linear`（能力判断，不是 coord �
   样点 → 变换 → `extended_breaks()` → `np.interp()` 反演回主轴值 → npc。
   变换必须严格单调，否则报 `AxisError`。
 - `dup_axis()` 是 `sec_axis(identity)`：位置 / 标签与主轴完全相同。
+- 次轴标题（R `AxisSecondary$make_title()`，4.0.3 实测）：`sec_axis()` 的
+  `name` 缺省是 `waiver()`（gg4py 的 `None`）→ **不显示标题**（`name = NULL`
+  相同）；只有显式给名字才画标题。`dup_axis()` 的缺省是 `derive()`（gg4py 的
+  `DERIVE`）→ 沿用主轴标题。旧的 gg4py 把「没给名字」也当成沿用主轴，顶部会
+  多出 0.444cm 的 `xlab-t`（SIL-759）。
 - 次轴画在 **top / right** 槽（R 的 axis-t / axis-r），主轴仍是 bottom / left；
   两边的占位分别计算（`x_axis_top_cm` / `y_axis_right_cm` +
   `x_title_top_cm` / `y_title_right_cm`），次轴不会把主轴槽撑大。

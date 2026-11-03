@@ -5,6 +5,7 @@
 | 任务 | 脚本 | 拦截什么 | 失败样例 |
 | --- | --- | --- | --- |
 | `pixi run gate:imports` | `tools/gates/check_import_whitelist.py` | `src/ggcore/` 里出现白名单外的 import | `import pandas` |
+| `pixi run gate:contourpy-lazy` | `tools/gates/check_contourpy_lazy.py` | 非等值线的 2D stat 依赖 contourpy（缺包就炸） | `bin_2d` 在缺 contourpy 时 `ImportError` |
 | `pixi run gate:ir-json` | `tools/gates/check_ir_json.py` | ggcore 里出现 JSON 序列化调用 | `json.dumps(scene)` |
 | `pixi run gate:determinism` | `tools/gates/check_determinism.py` | 同输入序列化出不同字节 | 两个进程摘要不一致 |
 | `pixi run gate:metrics` | `tools/gates/check_metrics.py` | 双端文本度量不一致（M0-7，X5） | CanvasKit 把整串按主字族排版 |
@@ -30,11 +31,58 @@ X5 指的就是上表第 4 行（`gate:metrics`）：HarfBuzz 与 CanvasKit 对�
 - 标准库（`sys.stdlib_module_names`，外加 `__future__`）
 - `numpy`（计算内核）
 - `cbor2`（IR 的二进制编码；目前未引入，先放行）
+- `contourpy`（等值线 / 等值带的 marching-squares 内核，M2-6 起；见下节）
 - `ggcore` 自身
 
 其余一律失败，包括 pandas / pyarrow / polars / skia / matplotlib。理由：ggcore 是
 Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转成 IR，渲染后端在
 包外。门禁只做 AST 扫描，不执行被检查的代码。
+
+### 为什么放行 contourpy（M2-6）
+
+`stat_contour` / `stat_contour_filled` / `stat_density_2d` 的等值线要在
+`ggcore` 里算（它属于 stat，不是设备）。上游用 `isoband`，M2 排期已定用
+`contourpy`：纯 C++ 扩展 + numpy，无绘图库依赖，能在 Pyodide 里装。
+
+- **依赖声明**：`pixi.toml` 的 `[pypi-dependencies]` 声明 `contourpy = ">=1.3.3, <1.4"`
+  （`pixi add --pypi contourpy`），`pixi.lock` 一并提交。上界 `<1.4` 是**版本对齐**
+  而不是保守：浏览器侧 pin 的 `pyodide@314.0.7` 只提供 contourpy **1.3.3** 的 wasm
+  轮子（PyPI 的 contourpy 不发布 wasm 构建），桌面端如果解析到 1.4，两边就是两套
+  marching-squares 实现——「CPython 上对拍的几何」证明不了浏览器里的几何。见
+  SIL-758。
+- **Pyodide 可用性**：`pyodide@314.0.7` 的包索引里有 `contourpy` **1.3.3**
+  （`contourpy-1.3.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl`），浏览器端走
+  `loadPackage("contourpy")` 从本地目录装，不需要退回自实现 marching squares。
+  复核命令打印的是**版本**，不是包名出现次数：
+
+  ```bash
+  # 本地 staged 的那份索引（`pixi run spike:e1:assets` 从 npm pyodide@314.0.7 取，
+  # sha256 记在 static/manifest.json）：打印版本 + 轮子文件名。
+  pixi run python -c "import json; p=json.load(open('docs/spike/e1_coldstart/static/pyodide/pyodide-lock.json'))['packages']['contourpy']; print(p['version'], p['file_name'])"
+  # 同一条口径对 CDN 上的 v314.0.7 交叉核对（联网时用）：
+  curl -sS https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide-lock.json \
+    | pixi run python -c "import json,sys; p=json.load(sys.stdin)['packages']['contourpy']; print(p['version'], p['file_name'])"
+  ```
+
+  1.3.3 上本实现依赖的行为已实测一致：`contour_generator(..., name="serial",
+  corner_mask=False)` 的 `line_type = Separate`、`fill_type = OuterOffset`（`filled()`
+  的缺省填充类型）与 1.4.0 相同，三张网格（线性 / 三角 / 带 NAN）的 `lines()` /
+  `filled()` 顶点字节摘要逐位相同；`pixi run gate:pyodide` 里 CPython 与 Pyodide
+  （wasm）的 `stat_contour` / `stat_contour_filled` 产物摘要也相同。
+- **惰性加载**：`ggcore/contour.py` 顶层不 import contourpy，只有 `_generator()`
+  （等值线几何）才加载；`ggcore/stat2d.py` 也不在顶层导入 `ggcore.contour`，只有
+  contour 族与 `density_2d` 的 contour 分支才导入。所以缺 contourpy 时
+  `bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` 与
+  `density_2d(contour = FALSE)` 照常可用。回归由 `pixi run gate:contourpy-lazy`
+  （`tools/gates/check_contourpy_lazy.py`，挂在 `pixi run check` 里）与
+  `tests/test_stat2d_lazy_contourpy.py` 两层守着（SIL-758）。
+- **门禁覆盖**：`gate:pyodide` 现在会在 Pyodide 里真的跑一遍等值线——`run_ir.py`
+  额外产出 `stat_contour` / `stat_contour_filled` 的列摘要，两端（同版本 contourpy）
+  必须逐字节相同，并打印两端的 contourpy 版本；版本不同也算红。
+- **口径边界**：contourpy 与 isoband 在鞍点单元 / 闭合环拆分上不同，所以
+  `contour` 族的 R 对拍只钉「层级边界」（level / level_low / level_high /
+  level_mid），几何用自洽断言（顶点落在同一层级的线性插值上），不逐行比顶点。
+  详见 `docs/notes/stat.md` §9。
 
 包外后端的两个例证：`ggshape`（HarfBuzz 形状后端，M0-7）与 `ggskia`
 （PNG / SVG / PDF 设备，M0-8）。它们依赖 `uharfbuzz` / `skia-python`，协议留在

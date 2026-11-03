@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-grid", "facet-margins", "scale-limits"]
+ci = true
+title = "facet：grid margins"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "r × c 补上 (all) 行与 (all) 列 → 3×3 面板；边际面板吃掉整行 / 整列数据。"

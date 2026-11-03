@@ -34,7 +34,11 @@ PKG_VERSION = "314.0.7"
 
 # Wheels are needed for the baseline (numpy) and for the "+pandas" sensitivity
 # variant.  pyodide-lock.json gives the exact file name and sha256.
-WHEELS = ["numpy", "pandas", "python-dateutil", "pytz", "six"]
+#
+# `contourpy` 是 M2-6（SIL-758）加的：`gate:pyodide` 要在浏览器运行时里真的跑一遍
+# 等值线，光装 numpy 不够；它也是「桌面端 pin 的版本必须与浏览器一致」的那份证据
+# （pyodide@314.0.7 只给 1.3.3，见 pixi.toml 的注释）。
+WHEELS = ["numpy", "pandas", "python-dateutil", "pytz", "six", "contourpy"]
 
 # Tried in order; the first 200/206 wins.  jsdelivr is the canonical Pyodide
 # package host; the npmmirror copy is the fallback for networks where it is

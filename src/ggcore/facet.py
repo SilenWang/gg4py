@@ -17,8 +17,10 @@
 panel 行列、strip 文本、`panel.spacing` 摆好，:class:`FacetTable` 能直接回答
 「每个面板矩形在哪、strip 上写什么」。
 
-`margins = TRUE` 与 `space = "free"` 还没有实现（见
-`docs/notes/facet.md` 的账本）。
+M2-3 补全：`scales` 的逐面板范围、`space = "free"` 的 null 权重、
+`facet_grid(margins=)` 的 `(all)` 面板、`label_value` / `label_both` /
+`label_context` / `labeller()`、strip 的真实文字度量（含 angle）与
+`strip.placement` 都已实现对拍，见 `docs/notes/facet.md`。
 """
 
 from __future__ import annotations
@@ -33,7 +35,7 @@ from typing import Any
 import numpy as np
 
 from ggcore.aes import Aes
-from ggcore.axis import text_line_cm
+from ggcore.axis import margin_sides_cm, text_line_cm, text_width_cm
 from ggcore.components import Facet
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import eval_aes, parse_aes
@@ -47,7 +49,7 @@ from ggcore.theme import (
     Theme,
     resolve_theme,
 )
-from ggcore.units import Unit, UnitContext, convert_height, unit
+from ggcore.units import Unit, UnitContext, unit
 
 __all__ = [
     "FREE_SCALES",
@@ -63,8 +65,14 @@ __all__ = [
     "PanelMap",
     "PanelScaleSet",
     "PanelScales",
+    "StripPart",
+    "facet_aspect",
     "facet_from_component",
     "facet_table",
+    "label_both",
+    "label_context",
+    "label_value",
+    "labeller",
 ]
 
 #: `scales =` 的四个取值 → `(free_x, free_y)`（上游 `facet_*()` 的解析）。
@@ -77,11 +85,6 @@ FREE_SCALES: Mapping[str, tuple[bool, bool]] = {
 
 #: `facet_wrap(dir=)` 的 8 个方向（4.0.3 把 `h` / `v` 先折成其中四个）。
 _WRAP_DIRS = ("lt", "tl", "lb", "bl", "rt", "tr", "rb", "br")
-
-#: R `as.character()` 对单行文本的近似高度（em）。上游 strip 高度 =
-#: `stringHeight()` + 上下 margin；8.8pt 字号下 R 量的 8.4pt（≈0.955em）。
-#: M1-7 接上真实文字度量后换成 `MetricProvider.strheight()`。
-_STRIP_TEXT_EM = 0.955
 
 
 class FacetError(ValueError):
@@ -645,10 +648,19 @@ class FacetBase:
         """每个面板的 strip 文本（wrap：面板顶部；grid 另见 :func:`facet_table`）。"""
         return {panel: self._strip_text(layout, panel) for panel in layout.panel_ids}
 
+    def strip_labels(self, layout: FacetLayout, panel: int) -> dict[str, str]:
+        """一个面板的**逐变量**标签（上游每变量一条 strip）。
+
+        `label_both` / `label_context` 让标签带上变量名；多变量分面在 R 里是
+        多条 strip 叠在一起，不是一条多行文本，所以这里保留变量粒度。
+        """
+        values = {name: [layout.label(panel, name)] for name in layout.facet_vars}
+        labels = _labeller(self.labeller, values)
+        return {name: labels[name][0] for name in layout.facet_vars}
+
     def _strip_text(self, layout: FacetLayout, panel: int) -> str:
-        values = {name: layout.label(panel, name) for name in layout.facet_vars}
-        labels = _labeller(self.labeller, {name: [value] for name, value in values.items()})
-        return "\n".join(labels[name][0] or "" for name in layout.facet_vars)
+        labels = self.strip_labels(layout, panel)
+        return "\n".join(labels[name] or "" for name in layout.facet_vars)
 
 
 def _map_with_replication(
@@ -696,27 +708,135 @@ def _map_with_replication(
 
 
 def _labeller(labeller: Any, labels: Mapping[str, list[str]]) -> dict[str, list[str]]:
-    """`labeller` → `{变量名: [标签…]}`。
+    """`labeller` 参数 → `{变量名: [标签…]}`（上游 `validate_labeller()` 的调用面）。
 
-    支持 `"label_value"`（默认）、`{变量: {值: 标签}}` 映射与 `f(labels)`
-    函数（输入输出都是同一个 dict 形状，便于测试）。
+    支持上游 4.0.3 的常用形态：
+
+    - `"label_value"`（默认）/ `"label_both"` / `"label_context"`；
+    - `{"变量": {值: 标签}}` / `{"变量": 函数}` —— 逐变量覆盖；
+    - `{值: 标签}` —— 单变量简写（同一个值表作用到每个变量）；
+    - 函数 `f({变量: [值…]}) -> {变量: [标签…]}`（与 :func:`labeller` 的产物同形）。
     """
-    if labeller is None or labeller == "label_value":
-        return {name: list(values) for name, values in labels.items()}
-    if callable(labeller):
-        result = labeller({name: list(values) for name, values in labels.items()})
-        if not isinstance(result, Mapping):
-            raise FacetError("labeller 函数必须返回 {变量名: [标签…]}")
-        return {str(name): [str(item) for item in values] for name, values in result.items()}
-    if isinstance(labeller, Mapping):
-        out: dict[str, list[str]] = {}
+    function = _as_labeller(labeller)
+    result = function({name: list(values) for name, values in labels.items()})
+    if not isinstance(result, Mapping):
+        raise FacetError("labeller 必须返回 {变量名: [标签…]}")
+    out: dict[str, list[str]] = {}
+    for name, values in labels.items():
+        mapped = result.get(name)
+        if mapped is None:
+            mapped = values
+        if isinstance(mapped, str):
+            mapped = [mapped]
+        mapped = [str(item) for item in mapped]
+        if len(mapped) != len(values):
+            raise FacetError(
+                f"labeller 给变量 {name!r} 返回 {len(mapped)} 个标签，"
+                f"但该变量有 {len(values)} 个水平"
+            )
+        out[name] = mapped
+    return out
+
+
+def label_value(labels: Mapping[str, Any], multi_line: bool = True) -> dict[str, list[str]]:
+    """上游 `label_value()`：值本身就是标签。"""
+    del multi_line
+    return {name: [str(value) for value in values] for name, values in labels.items()}
+
+
+def label_both(
+    labels: Mapping[str, Any],
+    multi_line: bool = True,
+    sep: str = ": ",
+) -> dict[str, list[str]]:
+    """上游 `label_both()`：每条标签写成 `变量: 值`。"""
+    del multi_line
+    return {name: [f"{name}{sep}{value}" for value in values] for name, values in labels.items()}
+
+
+def label_context(
+    labels: Mapping[str, Any],
+    multi_line: bool = True,
+    sep: str = ": ",
+) -> dict[str, list[str]]:
+    """上游 `label_context()`：单变量等同 `label_value`，多变量等同 `label_both`。"""
+    if len(labels) == 1:
+        return label_value(labels, multi_line)
+    return label_both(labels, multi_line, sep)
+
+
+#: `labeller = "label_*"` 的字符串写法 → 函数（上游 `validate_labeller()`）。
+_NAMED_LABELLERS: Mapping[str, Any] = {
+    "label_value": label_value,
+    "label_both": label_both,
+    "label_context": label_context,
+}
+
+
+def _as_labeller(spec: Any) -> Any:
+    """任意 labeller 写法 → 统一签名的函数 `f({变量: [值…]}) -> {变量: [标签…]}`。
+
+    不认识的写法点名报错，不静默退回 `label_value`（标签错了却画得出来最难查）。
+    """
+    if spec is None:
+        return label_value
+    if isinstance(spec, str):
+        if spec not in _NAMED_LABELLERS:
+            raise FacetError(
+                f"labeller 只能是 {', '.join(_NAMED_LABELLERS)}、"
+                "{{变量: labeller}}、{值: 标签} 或函数，"
+                f"收到 {spec!r}"
+            )
+        return _NAMED_LABELLERS[spec]
+    if isinstance(spec, Mapping):
+        if all(isinstance(value, Mapping) or callable(value) for value in spec.values()):
+            return labeller(**{str(key): value for key, value in spec.items()})
+        # `{值: 标签}` 简写：同一个值表作用到每个变量。
+        table = {str(key): str(value) for key, value in spec.items()}
+
+        def _by_value(labels: Mapping[str, Any]) -> dict[str, list[str]]:
+            return {
+                name: [table.get(str(value), str(value)) for value in values]
+                for name, values in labels.items()
+            }
+
+        return _by_value
+    if callable(spec):
+        return spec
+    raise FacetError(f"不认识的 labeller 写法 {spec!r}（label_* / 映射 / 函数）")
+
+
+def labeller(
+    _default: Any = "label_value",
+    multi_line: bool = True,
+    sep: str = ": ",
+    **overrides: Any,
+) -> Any:
+    """上游 `labeller(..., .default = label_value)`：逐变量覆盖，其余走默认。
+
+    ```python
+    labeller(a={"q": "Q", "p": "P"}, b="label_both")
+    ```
+    """
+    del multi_line, sep
+    default = _as_labeller(_default)
+    per_var = {str(name): _as_labeller(spec) for name, spec in overrides.items()}
+
+    def apply(labels: Mapping[str, Any]) -> dict[str, list[str]]:
+        base = default({name: list(values) for name, values in labels.items()})
+        out: dict[str, list[str]] = {
+            str(name): [str(v) for v in vals] for name, vals in base.items()
+        }
         for name, values in labels.items():
-            table = labeller.get(name, {})
-            if not isinstance(table, Mapping):
-                raise FacetError(f"labeller[{name!r}] 必须是 {{值: 标签}} 映射")
-            out[name] = [str(table.get(value, value)) for value in values]
+            if name not in per_var:
+                out.setdefault(name, [str(value) for value in values])
+                continue
+            mapped = per_var[name]({name: list(values)})
+            labels_for_var = mapped.get(name, [str(value) for value in values])
+            out[name] = [str(item) for item in labels_for_var]
         return out
-    raise FacetError(f"不认识的 labeller 写法 {labeller!r}（label_value / 映射 / 函数）")
+
+    return apply
 
 
 @dataclass(frozen=True, slots=True)
@@ -758,18 +878,18 @@ class FacetWrap(FacetBase):
             raise FacetError(
                 f"strip.position = {self.strip_position!r} 尚未实现；M1-6 只支持 'top'"
             )
-        if self.space not in ("fixed", "free", "free_x", "free_y"):
+        if self.space not in ("fixed", "free_x", "free_y"):
             raise FacetError(
-                f"space 只能是 'fixed' / 'free' / 'free_x' / 'free_y'，收到 {self.space!r}"
+                "facet_wrap 的 space 只能是 'fixed' / 'free_x' / 'free_y'（上游不接受 "
+                f"'free'），收到 {self.space!r}"
             )
-        if self.space != "fixed":
-            # 上游按面板范围给 null 单位分配权重；当前 gtable 只有等宽面板。
-            # 报错而不是静默按 fixed 画（见 docs/notes/facet.md §7 的后续任务）。
-            raise FacetError(
-                f"facet_wrap(space = {self.space!r}) 尚未实现：面板宽高要按数据范围"
-                "分配 null 权重，留给后续任务 M1-6+「facet space 的面板尺寸约束」；"
-                "M1-6 只支持 'fixed'"
-            )
+        if self.space == "free_x":
+            # 上游：space = "free_x" 强制一行（列宽按 x 范围分配），并忽略 nrow/ncol。
+            object.__setattr__(self, "nrow", 1)
+            object.__setattr__(self, "ncol", None)
+        elif self.space == "free_y":
+            object.__setattr__(self, "ncol", 1)
+            object.__setattr__(self, "nrow", None)
 
     def compute_layout(self, data: Sequence[ColumnTable] | ColumnTable) -> FacetLayout:
         layers = _as_layers(data)
@@ -805,22 +925,13 @@ class FacetGrid(FacetBase):
     col_vars: tuple[FacetVar, ...] = ()
     as_table: bool = True
     space: str = "fixed"
-    margins: bool = False
+    margins: bool | tuple[str, ...] = False
     kind: str = "grid"
 
     def __post_init__(self) -> None:
-        if self.margins:
-            # TODO(M1-6+)：`margins = TRUE` 要在 base 上 reshape_add_margins()
-            # 追加「全部」行/列；M1-6 先支持 FALSE。
-            raise FacetError("facet_grid(margins = True) 尚未实现（M1-6 只支持 False）")
         if self.space not in ("fixed", "free", "free_x", "free_y"):
             raise FacetError(
                 f"space 只能是 'fixed' / 'free' / 'free_x' / 'free_y'，收到 {self.space!r}"
-            )
-        if self.space != "fixed":
-            raise FacetError(
-                f"space = {self.space!r} 尚未实现；M1-6 只支持 'fixed'"
-                "（space = 'free' 会按范围分配面板宽高）"
             )
         both = {var.name for var in self.row_vars} & {var.name for var in self.col_vars}
         if both:
@@ -828,6 +939,37 @@ class FacetGrid(FacetBase):
                 f"分面变量只能出现在 rows 或 cols 之一，重复：{', '.join(sorted(both))}"
             )
         object.__setattr__(self, "facet_vars", self.row_vars + self.col_vars)
+        margins = self.margins
+        if isinstance(margins, str):
+            margins = (margins,)
+        if isinstance(margins, (list, tuple, set, frozenset)):
+            names = tuple(str(name) for name in margins)
+            known = {var.name for var in self.facet_vars}
+            unknown = [name for name in names if name not in known]
+            if unknown:
+                raise FacetError(
+                    f"margins 里的变量不在分面变量中：{', '.join(unknown)}"
+                    f"（分面变量：{', '.join(sorted(known)) or '无'}）"
+                )
+            object.__setattr__(self, "margins", names)
+        elif margins is not None and not isinstance(margins, bool):
+            raise FacetError(f"margins 只能是逻辑值或变量名序列，收到 {margins!r}")
+
+    # -- margins ------------------------------------------------------------
+
+    @property
+    def margin_sets(self) -> tuple[tuple[str, ...], ...]:
+        """需要替换成 `"(all)"` 的变量集合（上游 `reshape_margins()`）。
+
+        例：`rows = ("a", "b")`、`cols = ("g",)`、`margins = True` →
+        `((), ("a", "b"), ("b",), ("g",), ("a", "b", "g"), ("b", "g"))`
+        —— 空集是普通面板，其余每个集合追加一批 margin 面板。
+        """
+        return _margin_sets(
+            tuple(var.name for var in self.row_vars),
+            tuple(var.name for var in self.col_vars),
+            self.margins,
+        )
 
     def compute_layout(self, data: Sequence[ColumnTable] | ColumnTable) -> FacetLayout:
         layers = _as_layers(data)
@@ -842,6 +984,13 @@ class FacetGrid(FacetBase):
         col_levels = _dimension_combos(layers, self.col_vars, self.drop, levels)
         if not self.as_table:
             row_levels = list(reversed(row_levels))
+        margin_sets = self.margin_sets
+        margin_layout = any(margin_sets)
+        if margin_layout:
+            # margins 把分面值写成字符（`"(all)"` 与其它值同列）；map_data()
+            # 也用 `_label()` 的口径比对，见 FacetGrid.map_data()。
+            row_levels = _with_margins(row_levels, row_names, margin_sets)
+            col_levels = _with_margins(col_levels, col_names, margin_sets)
 
         rows: list[tuple[int, int, dict[str, Any], dict[str, str]]] = []
         row_index = {value: index + 1 for index, value in enumerate(row_levels)}
@@ -850,6 +999,11 @@ class FacetGrid(FacetBase):
             for col_value in col_levels:
                 combo = dict(zip(row_names, row_value, strict=True)) if row_names else {}
                 combo.update(dict(zip(col_names, col_value, strict=True)) if col_names else {})
+                if margin_layout:
+                    combo = {
+                        name: value if value == _ALL else _label(value)
+                        for name, value in combo.items()
+                    }
                 row = row_index[row_value]
                 col = col_index[col_value]
                 label = {var.name: _label(combo[var.name]) for var in self.facet_vars}
@@ -873,6 +1027,43 @@ class FacetGrid(FacetBase):
             ncol=len(col_levels),
         )
 
+    def map_data(self, data: ColumnTable, layout: FacetLayout) -> PanelMap:
+        """margins：一行数据同时落进普通面板与它所属的每个 margin 面板。"""
+        if not any(self.margin_sets) or not self.facet_vars:
+            return FacetBase.map_data(self, data, layout)
+        missing = _missing_vars(data, self.facet_vars)
+        if missing:
+            # 缺少分面变量的层走通用的「按布局水平复制」路径（margin 面板不复制）。
+            return FacetBase.map_data(self, data, layout)
+        names = [var.name for var in self.facet_vars]
+        key_map = {
+            tuple(layout.value(panel, name) for name in names): panel for panel in layout.panel_ids
+        }
+        values = {
+            var.name: [_label(value) for value in var.values(data)] for var in self.facet_vars
+        }
+        margin_sets = self.margin_sets
+        panel_out: list[int] = []
+        row_out: list[int] = []
+        for index in range(data.nrows):
+            keys: list[tuple[str, ...]] = [tuple(values[name][index] for name in names)]
+            for margin in margin_sets:
+                if not margin:
+                    continue
+                key = tuple(_ALL if name in margin else values[name][index] for name in names)
+                if key not in keys:
+                    keys.append(key)
+            for key in keys:
+                panel = key_map.get(key)
+                if panel is None:  # pragma: no cover - 布局保证所有组合都在
+                    continue
+                panel_out.append(panel)
+                row_out.append(index)
+        return PanelMap(
+            panels=np.array(panel_out, dtype=np.int64),
+            rows=np.array(row_out, dtype=np.int64),
+        )
+
 
 def _as_layers(data: Sequence[ColumnTable] | ColumnTable) -> list[ColumnTable]:
     if isinstance(data, ColumnTable):
@@ -881,6 +1072,82 @@ def _as_layers(data: Sequence[ColumnTable] | ColumnTable) -> list[ColumnTable]:
     if not layers:
         return [ColumnTable()]
     return layers
+
+
+#: margins 面板的分面值（上游 `reshape_add_margins()` 的 `"(all)"`）。
+_ALL = "(all)"
+
+
+def _margin_sets(
+    row_names: Sequence[str],
+    col_names: Sequence[str],
+    margins: bool | tuple[str, ...] | None,
+) -> tuple[tuple[str, ...], ...]:
+    """`margins` → 需要替换成 `"(all)"` 的变量集合（上游 `reshape_margins()`）。
+
+    顺序照 `expand.grid()`：第一个维度变化最快，空集（普通面板）排第一。
+    `rows = ("a", "b")`、`cols = ("g",)`、`margins = True` 得到
+    `((), ("a", "b"), ("b",), ("g",), ("a", "b", "g"), ("b", "g"))`
+    —— 与 R 4.0.3 的 `reshape_margins()` 输出逐项一致（多变量的部分 margin 是
+    从第一个被指定的变量到该维末尾的**后缀**）。
+    """
+    if margins is False or margins is None:
+        return ()
+    if margins is True:
+        wanted = {str(name) for name in (*row_names, *col_names)}
+    elif isinstance(margins, str):  # pragma: no cover - 归一化在 __post_init__
+        wanted = {margins}
+    else:
+        wanted = {str(name) for name in margins}
+    per_dim: list[tuple[tuple[str, ...], ...]] = []
+    for dim in (tuple(row_names), tuple(col_names)):
+        suffixes: list[tuple[str, ...]] = [()]
+        for index, name in enumerate(dim):
+            if name in wanted:
+                suffix = dim[index:]
+                if suffix not in suffixes:
+                    suffixes.append(suffix)
+        per_dim.append(tuple(suffixes))
+    if not any(len(suffixes) > 1 for suffixes in per_dim):
+        return ()
+    sets: list[tuple[str, ...]] = []
+    for col_suffix in per_dim[1]:
+        for row_suffix in per_dim[0]:
+            merged = (*row_suffix, *col_suffix)
+            if merged not in sets:
+                sets.append(merged)
+    return tuple(sets)
+
+
+def _with_margins(
+    levels: Sequence[tuple[Any, ...]],
+    names: Sequence[str],
+    margin_sets: Sequence[tuple[str, ...]],
+) -> list[tuple[Any, ...]]:
+    """给一个 grid 维度补上 margin 组合，并按「原顺序 + `(all)` 最后」排序。"""
+    if not names:
+        return list(levels)
+    order: dict[str, dict[Any, int]] = {name: {} for name in names}
+    for level in levels:
+        for name, value in zip(names, level, strict=True):
+            order[name].setdefault(value, len(order[name]))
+    out = list(levels)
+    for level in levels:
+        values = dict(zip(names, level, strict=True))
+        for margin in margin_sets:
+            affected = [name for name in names if name in margin]
+            if not affected:
+                continue
+            candidate = tuple(_ALL if name in affected else value for name, value in values.items())
+            if candidate not in out:
+                out.append(candidate)
+    out.sort(
+        key=lambda level: tuple(
+            (1, 0) if value == _ALL else (0, order[name][value])
+            for name, value in zip(names, level, strict=True)
+        )
+    )
+    return out
 
 
 def _dimension_combos(
@@ -1038,7 +1305,7 @@ def facet_from_component(component: Facet | FacetBase | None) -> FacetBase:
             col_vars=_facet_vars(params.get("cols")),
             as_table=as_table,
             space=str(params.get("space", "fixed")),
-            margins=bool(params.get("margins", False)),
+            margins=params.get("margins", False),
         )
     raise FacetError(f"分面 {name!r} 尚未实现（已实现：null / wrap / grid）")
 
@@ -1061,8 +1328,27 @@ class _Grob:
 
 
 @dataclass(frozen=True, slots=True)
+class StripPart:
+    """strip 里的一段：多变量分面时**每个变量一段**（上游逐变量堆叠/并排）。
+
+    `text` 是该变量的标签（`label_value` 的口径；`label_both` 已带变量名）。
+    """
+
+    var: str
+    text: str
+    fill: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FacetStrip:
-    """一条 strip：`side` 是 `"top"` / `"right"`，`text` 已按 labeller 折行。"""
+    """一条 strip 单元格：`side` 是 `"top"` / `"right"`。
+
+    `parts` 按**绘制顺序**排列：顶部 strip 自上而下堆叠（最后一个变量最靠近
+    面板，R 的 `weave_tables_row()`），右侧 strip 自左向右并排、同样最后一个
+    变量最靠近面板（R `build_strip(horizontal = FALSE)` 先 `rev()` 行变量再
+    `weave_tables_col()`，所以 `x + y ~ .` 的右侧第一格是 `y`）。单变量时只有
+    一段，`text` 与 `parts[0].text` 相同。
+    """
 
     name: str
     side: str
@@ -1072,6 +1358,13 @@ class FacetStrip:
     col: int
     #: `strip.background.x` / `.y` 的 fill（`element_blank()` 时为 None）。
     fill: str | None = None
+    parts: tuple[StripPart, ...] = ()
+    #: `strip.placement = "outside"`：单元格不在 gtable 里，画在轴带之外。
+    outside: bool = False
+
+    @property
+    def vars(self) -> tuple[str, ...]:
+        return tuple(part.var for part in self.parts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1083,8 +1376,21 @@ class FacetTable:
     panels: tuple[tuple[int, int, int, int, int], ...]
     """`(PANEL, t, l, b, r)`，1 起。"""
     strips: tuple[FacetStrip, ...]
+    #: 顶部 strip 块的总高（cm；多变量时是各变量 strip 的堆叠高度之和）。
     strip_height_cm: float
+    #: 右侧 strip 块的总宽（cm；多变量时是各变量 strip 的宽度之和）。
     strip_width_cm: float = 0.0
+    #: 面板列的 null 权重（`space = "free"` 时来自逐面板范围差；否则全是 1）。
+    width_weights: tuple[float, ...] = ()
+    #: 面板行的 null 权重。
+    height_weights: tuple[float, ...] = ()
+    #: `strip.placement` 的解析值（`"inside"` / `"outside"`），按 top / right。
+    top_placement: str = "inside"
+    right_placement: str = "inside"
+    #: grid 的 `respect = TRUE`：null 宽与 null 高取同一物理尺寸（R `init_gtable()`）。
+    respect: bool = False
+    #: `init_gtable()` 的 `aspect_ratio`（已折进行权重）；`respect=False` 时为 None。
+    aspect_ratio: float | None = None
 
     def panel_boxes(
         self,
@@ -1120,11 +1426,27 @@ def facet_table(
     facet: FacetBase | None = None,
     theme: Theme | ResolvedTheme | None = None,
     metrics: Any = None,
+    ranges: Mapping[int, tuple[Sequence[float] | None, Sequence[float] | None]] | None = None,
+    *,
+    aspect: float | None = None,
+    right_inside: bool = False,
 ) -> FacetTable:
-    """布局 → 面板 gtable（panel 行列 + 顶部/右侧 strip + panel.spacing）。
+    """布局 → 面板 gtable（panel 行列 + strip + panel.spacing）。
 
-    `metrics` 给出时 strip 的行高 / 列宽用**真实字体度量**（`Metrics.strheight`，
-    M1-7）；不给时退回 `_STRIP_TEXT_EM` 近似（M1-6 的对拍口径）。
+    `ranges` 给出每个面板的 `(x_range, y_range)`（`PanelParams` 的量）时，
+    `space = "free"` 的面板按范围差分配 null 权重（上游 `Facet$init_gtable()`）。
+
+    `aspect` 是 R `init_gtable(aspect_ratio =)` 的那个值（**已解析**：`coord_fixed`
+    的 `ratio`，或 `coord$aspect(ranges[[1]])`）。按上游口径折进**行权重**
+    （`heights × |aspect|`），并令 `respect = TRUE`（null 宽 = null 高）；这样
+    `space = "free"` 时每个面板的高/宽自动等于 `ratio × yspan / xspan`，不会被
+    再乘一次范围。`None` = 不等比例（`respect = FALSE`，行列权重都是原值）。
+
+    `right_inside` 把右侧 strip 强制回退成 `"inside"`：右侧有次轴带时
+    `strip.placement = "outside"` 会压到次轴标签上（见 `docs/notes/facet.md` §7）。
+
+    strip 的尺寸走 `_strip_extent()`：真实 `stringWidth`（有 `metrics` 时）/ 行高，
+    随文字角度与变量个数变化——多变量分面每个变量一条 strip（堆叠/并排）。
     """
     facet = facet_from_component(facet) if facet is not None else FacetNull()
     resolved = theme if isinstance(theme, ResolvedTheme) else resolve_theme(theme or Theme())
@@ -1133,46 +1455,112 @@ def facet_table(
 
     nrow, ncol = layout.nrow, layout.ncol
     if facet.kind == "wrap":
-        has_top = bool(layout.facet_vars)
+        top_names: tuple[str, ...] = layout.facet_vars
+        right_names: tuple[str, ...] = ()
     elif facet.kind == "grid":
-        has_top = bool(getattr(facet, "col_vars", ()))
+        top_names = tuple(var.name for var in getattr(facet, "col_vars", ()))
+        right_names = tuple(var.name for var in getattr(facet, "row_vars", ()))
     else:
-        has_top = False
-    has_right = facet.kind == "grid" and bool(getattr(facet, "row_vars", ()))
-    # 顶部 strip 跟 `strip.text.x`、右侧 strip 跟 `strip.text.y`（尺寸与背景各走
-    # 自己的元素；`strip.background.x/.y` 继承自 `strip.background`）。
-    strip_h = (
-        _strip_extent(resolved, "strip.text.x", horizontal=False, metrics=metrics)
-        if has_top
-        else 0.0
+        top_names, right_names = (), ()
+
+    top_fill = _strip_fill(resolved, "strip.background.x") if top_names else None
+    right_fill = _strip_fill(resolved, "strip.background.y") if right_names else None
+
+    # 顶部 / 右侧的锚点：wrap 是每个面板，grid 是每列 / 每行（取该行/列首个面板）。
+    top_anchors: list[tuple[int, int, int]] = []
+    if top_names:
+        if facet.kind == "wrap":
+            top_anchors = [
+                (panel, layout.row_of(panel), layout.col_of(panel)) for panel in layout.panel_ids
+            ]
+        else:
+            top_anchors = [
+                (layout.panels_in_col(col)[0], 1, col)
+                for col in range(1, ncol + 1)
+                if layout.panels_in_col(col)
+            ]
+    right_anchors: list[tuple[int, int, int]] = []
+    if right_names:
+        right_anchors = [
+            (layout.panels_in_row(row)[0], row, 1)
+            for row in range(1, nrow + 1)
+            if layout.panels_in_row(row)
+        ]
+
+    top_labels = {
+        panel: _labels_for(layout, facet, panel, top_names) for panel, _, _ in top_anchors
+    }
+    right_labels = {
+        panel: _labels_for(layout, facet, panel, right_names) for panel, _, _ in right_anchors
+    }
+
+    def _extents(
+        names: Sequence[str],
+        labels: Mapping[int, Mapping[str, str]],
+        element: str,
+        horizontal: bool,
+    ) -> dict[str, float]:
+        out: dict[str, float] = {}
+        for name in names:
+            texts = [values[name] for values in labels.values() if name in values]
+            out[name] = _strip_extent(
+                resolved, element, horizontal=horizontal, metrics=metrics, texts=texts
+            )
+        return out
+
+    top_extents = _extents(top_names, top_labels, "strip.text.x", False)
+    right_extents = _extents(right_names, right_labels, "strip.text.y", True)
+    strip_h = float(sum(top_extents.values()))
+    strip_w = float(sum(right_extents.values()))
+
+    # `space = "free"`：面板宽高按范围差分配（上游 `init_gtable()` 读 ROW==1 /
+    # COL==1 的面板范围；wrap 的 space 只能是 free_x / free_y，行列数因此是 1）。
+    # `aspect` 按上游口径折进**行权重**（`heights × |aspect|`）并开 `respect`：
+    # null 宽 = null 高，面板高/宽因此是 `aspect × yspan / xspan`（free 时每列 /
+    # 行权重已是范围差，不能再拿 `aspect_ratio` 乘一次，见 SIL-759）。
+    space = str(getattr(facet, "space", "fixed") or "fixed")
+    respect = aspect is not None
+    aspect_scale = 1.0 if aspect is None else abs(float(aspect))
+    width_weights = tuple(
+        _span_weight(ranges, layout, col=col, axis="x") if space in ("free", "free_x") else 1.0
+        for col in range(1, ncol + 1)
     )
-    strip_w = (
-        _strip_extent(resolved, "strip.text.y", horizontal=True, metrics=metrics)
-        if has_right
-        else 0.0
+    height_weights = tuple(
+        (_span_weight(ranges, layout, row=row, axis="y") if space in ("free", "free_y") else 1.0)
+        * aspect_scale
+        for row in range(1, nrow + 1)
     )
-    top_fill = _strip_fill(resolved, "strip.background.x") if has_top else None
-    right_fill = _strip_fill(resolved, "strip.background.y") if has_right else None
+    top_placement = str(resolved.get("strip.placement.x") or "inside")
+    right_placement = str(resolved.get("strip.placement.y") or "inside")
+    if right_inside and right_names:
+        # 右侧有次轴带时 `outside` 会压到次轴标签上；M2-1 把次轴版式收好之前
+        # 显式回退 inside（strip 占 gtable 列，落在面板与次轴之间，不重叠）。
+        right_placement = "inside"
+    # `outside` 的 strip 不占 gtable 行列：它画在轴带之外，空间由整页版式
+    # （`plot_layout()`）另算。
+    outside_top = bool(top_names) and top_placement == "outside"
+    outside_right = bool(right_names) and right_placement == "outside"
+
     # wrap 的每个面板行上方都有一条 strip；grid 的顶部 strip 只有一行。
-    strip_each_row = has_top and facet.kind == "wrap"
+    strip_each_row = bool(top_names) and facet.kind == "wrap" and not outside_top
 
     widths: list[Unit] = []
-    for col in range(ncol):
-        if col:
+    for col in range(1, ncol + 1):
+        if col > 1:
             widths.append(spacing_x)
-        widths.append(unit(1.0, "null"))
+        widths.append(unit(width_weights[col - 1], "null"))
     heights: list[Unit] = []
     for row in range(1, nrow + 1):
         if row > 1:
             heights.append(spacing_y)
-        if has_top and (strip_each_row or row == 1):
+        if strip_each_row or (top_names and not outside_top and row == 1):
             heights.append(unit(strip_h, "cm"))
-        heights.append(unit(1.0, "null"))
-    if has_right:
+        heights.append(unit(height_weights[row - 1], "null"))
+    if right_names and not outside_right:
         widths.append(unit(strip_w, "cm"))
 
     def _row(row: int) -> int:
-        base = 2 if has_top else 1
+        base = 2 if (top_names and not outside_top) else 1
         stride = 2 + (1 if strip_each_row else 0)
         return base + stride * (row - 1)
 
@@ -1192,23 +1580,29 @@ def facet_table(
         grobs.append(_Grob("panel", name, panel=panel))
         panels.append((panel, top, left, top, left))
         # grid 的顶部 strip 只有一行（每列一条）；wrap 每个面板行都有一条。
-        if has_top and (facet.kind != "grid" or row == 1):
-            text = _panel_label(layout, facet, panel)
+        if top_names and (facet.kind != "grid" or row == 1):
+            labels = top_labels[panel]
+            parts = tuple(
+                StripPart(name, labels[name], top_fill) for name in top_names if name in labels
+            )
+            text = "\n".join(part.text for part in parts)
             strip_name = f"strip-t-{col}-{row}" if facet.kind == "wrap" else f"strip-t-{col}"
-            placements.append(
-                Placement(
-                    t=top - 1,
-                    l=left,
-                    b=top - 1,
-                    r=left,
-                    z=2,
-                    clip="off",
-                    name=strip_name,
+            if not outside_top:
+                placements.append(
+                    Placement(
+                        t=top - 1,
+                        l=left,
+                        b=top - 1,
+                        r=left,
+                        z=2,
+                        clip="off",
+                        name=strip_name,
+                    )
                 )
-            )
-            grobs.append(
-                _Grob("strip", strip_name, text=text, panel=panel, side="top", fill=top_fill)
-            )
+            if not outside_top:
+                grobs.append(
+                    _Grob("strip", strip_name, text=text, panel=panel, side="top", fill=top_fill)
+                )
             strips.append(
                 FacetStrip(
                     name=strip_name,
@@ -1218,38 +1612,54 @@ def facet_table(
                     row=row,
                     col=col,
                     fill=top_fill,
+                    parts=parts,
+                    outside=outside_top,
                 )
             )
 
-    if has_right:
+    if right_names:
         right = len(widths)
         for row in range(1, nrow + 1):
             panels_in_row = layout.panels_in_row(row)
             if not panels_in_row:
                 continue
-            text = _row_label(layout, facet, panels_in_row[0])
+            panel = panels_in_row[0]
+            labels = right_labels[panel]
+            # R `build_strip(horizontal = FALSE)` 对右侧 strip 先 `rev()` 行变量再
+            # `weave_tables_col()`：最后一个变量在最左（最靠近面板）。顶部堆叠
+            # 不反转（R 的 `horizontal = TRUE` 分支直接 weave）。
+            parts = tuple(
+                StripPart(name, labels[name], right_fill)
+                for name in reversed(right_names)
+                if name in labels
+            )
+            text = "\n".join(part.text for part in parts)
             name = f"strip-r-{row}"
             t = _row(row)
-            placements.append(Placement(t=t, l=right, b=t, r=right, z=2, clip="off", name=name))
-            grobs.append(
-                _Grob(
-                    "strip",
-                    name,
-                    text=text,
-                    panel=panels_in_row[0],
-                    side="right",
-                    fill=right_fill,
+            if not outside_right:
+                placements.append(Placement(t=t, l=right, b=t, r=right, z=2, clip="off", name=name))
+            if not outside_right:
+                grobs.append(
+                    _Grob(
+                        "strip",
+                        name,
+                        text=text,
+                        panel=panel,
+                        side="right",
+                        fill=right_fill,
+                    )
                 )
-            )
             strips.append(
                 FacetStrip(
                     name=name,
                     side="right",
                     text=text,
-                    panel=panels_in_row[0],
+                    panel=panel,
                     row=row,
                     col=0,
                     fill=right_fill,
+                    parts=parts,
+                    outside=outside_right,
                 )
             )
 
@@ -1268,33 +1678,93 @@ def facet_table(
         strips=tuple(strips),
         strip_height_cm=strip_h,
         strip_width_cm=strip_w,
+        width_weights=width_weights,
+        height_weights=height_weights,
+        top_placement=top_placement,
+        right_placement=right_placement,
+        respect=respect,
+        aspect_ratio=aspect,
     )
 
 
-def _panel_label(layout: FacetLayout, facet: FacetBase, panel: int) -> str:
-    if facet.kind == "grid":
-        names = tuple(var.name for var in getattr(facet, "col_vars", ()))
-    else:
-        names = layout.facet_vars
-    return _label_for(layout, facet, panel, names)
+def facet_aspect(
+    facet: FacetBase | None,
+    coord: Any,
+    params: Any,
+) -> float | None:
+    """`init_gtable()` 的 `aspect_ratio`（R `FacetGrid$draw_panels` 的解析）。
+
+    上游 4.0.3 的顺序：
+
+    - `space` 两维都 free（只有 grid 的 `"free"`）且坐标不自由（`coord_fixed`）：
+      `aspect = coord$ratio`——**不是** `coord$aspect()`，范围差已经由行列权重承担；
+    - 其余情形：`aspect = coord$aspect(ranges[[1]])`，即首个面板的
+      `PanelParams.aspect_ratio`（`ratio × yspan / xspan`；polar 是 1）。
+
+    自由刻度与 `coord_fixed` 的非法组合在 `build._build_plot_facets()` 就报错，
+    这里不重复判定（`params` 为 None 时给 None）。
+    """
+    if facet is None or getattr(facet, "kind", "null") == "null":
+        return params.aspect_ratio if params is not None else None
+    space = str(getattr(facet, "space", "fixed") or "fixed")
+    ratio = getattr(coord, "ratio", None)
+    if ratio is not None and space == "free":
+        return abs(float(ratio))
+    return params.aspect_ratio if params is not None else None
 
 
-def _row_label(layout: FacetLayout, facet: FacetBase, panel: int) -> str:
-    names = tuple(var.name for var in getattr(facet, "row_vars", ()))
-    return _label_for(layout, facet, panel, names)
-
-
-def _label_for(
+def _labels_for(
     layout: FacetLayout,
     facet: FacetBase,
     panel: int,
     names: Sequence[str],
-) -> str:
+) -> dict[str, str]:
+    """一个面板在给定变量集合上的逐变量标签（走 labeller）。"""
     if not names:
-        return ""
+        return {}
     values = {name: [layout.label(panel, name)] for name in names}
     labels = _labeller(facet.labeller, values)
-    return "\n".join(labels[name][0] or "" for name in names)
+    return {name: labels[name][0] for name in names}
+
+
+def _span_weight(
+    ranges: Mapping[int, tuple[Sequence[float] | None, Sequence[float] | None]] | None,
+    layout: FacetLayout,
+    *,
+    col: int | None = None,
+    row: int | None = None,
+    axis: str,
+) -> float:
+    """一个面板列 / 行的 null 权重 = 该面板范围差（上游 `init_gtable()`）。
+
+    x 权重取 `ROW == 1` 的面板（grid 每列顶端；wrap 的 space=free_x 只有一行），
+    y 权重取 `COL == 1` 的面板。找不到时退回该列 / 行里第一个面板，再退回 1。
+    """
+    if not ranges:
+        return 1.0
+    order = [1, None]
+    for wanted_row in order:
+        for panel in layout.panel_ids:
+            if col is not None and layout.col_of(panel) != col:
+                continue
+            if row is not None and layout.row_of(panel) != row:
+                continue
+            if axis == "x" and wanted_row is not None:
+                if layout.row_of(panel) != wanted_row:
+                    continue
+            if axis == "y" and wanted_row is not None:
+                if layout.col_of(panel) != wanted_row:
+                    continue
+            entry = ranges.get(panel)
+            if entry is None:
+                continue
+            spread = entry[0] if axis == "x" else entry[1]
+            if spread is None or len(spread) < 2:
+                continue
+            value = abs(float(spread[1]) - float(spread[0]))
+            if value > 0:
+                return value
+    return 1.0
 
 
 def _unit_cm(resolved: ResolvedTheme, name: str) -> Unit:
@@ -1312,36 +1782,43 @@ def _strip_extent(
     *,
     horizontal: bool = False,
     metrics: Any = None,
+    texts: Sequence[str] = (),
 ) -> float:
-    """strip 的高/宽（cm）：文本行高 + 上下（左右）margin。空白元素为 0。
+    """strip 单元格的宽（`horizontal=True`）/ 高（cm），含 margin。空白元素为 0。
 
-    有 `metrics` 时走 `Metrics.strheight()`（真实 ascent + descent，英寸）；
-    否则用 M1-6 的 `_STRIP_TEXT_EM` 近似（对拍夹具的历史口径）。
+    口径照 grid 的 `widthDetails()` / `heightDetails()`：
+
+    - 文字不旋转（angle 0 / 180）：宽 = 最宽一行的 `stringWidth`，高 = 行高 × 行数；
+    - 文字旋转 90°（`strip.text.y` 默认 -90）：两者对调——宽 = 行高 × 行数，
+      高 = 最宽一行的宽度。grid 的旋转不改变文字本身的量测，只是把「横/竖」换位。
+
+    行高用 `text_line_cm()`（`TEXT_LINE_EM` = R 的 `stringHeight()` + descent，
+    见 docs/notes/guide.md）；宽度走 `text_width_cm()`：有 `metrics` 时是真实
+    `stringWidth`，没有时按 `FALLBACK_CHAR_EM` 估。
+
+    SIL-715 #8：旧实现对**列宽**也套 `TEXT_LINE_EM`（7.87pt），而 `theme_void()`
+    的 strip 文字是 angle 0，`stringWidth("u")` 只有 4.909pt（R 4.0.3 + svglite；
+    `t` 只有 2.45pt）——`.facet-grid-ab` 的右 strip 列因此偏宽 3pt，面板整体
+    左移。这里按真实宽度量。
     """
     element = resolved[element_name]
     if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
         return 0.0
     size = float(element.size or 0.0)
-    if metrics is not None:
-        # 真实渲染路径：文字行高与轴 / 图例的文本行同一常量（`TEXT_LINE_EM`
-        # = R 的 stringHeight() + font_descent() = 0.894em，见
-        # docs/notes/guide.md）。旧实现用 `metrics.strheight()`，那只是 cap
-        # height（0.735em），strip 行比 R 矮 1.4pt：分面的面板行因此高 1.4pt、
-        # 竖向图例中心偏 0.7pt（SIL-725 的量测口径）。
-        text_cm = text_line_cm(size)
-    else:
-        # 无度量时保留 M1-6 的历史近似口径（对拍夹具按这个口径冻结）。
-        text_cm = size * _STRIP_TEXT_EM * 2.54 / 72.0
-    margin = element.margin
-    if margin is None:
-        return text_cm
-    ctx = UnitContext()
-    sides = (margin.l, margin.r) if horizontal else (margin.t, margin.b)
-    extra = 0.0
-    for side in sides:
-        if side is not None:
-            extra += float(np.asarray(convert_height(side, "cm", ctx=ctx)).sum())
-    return text_cm + extra
+    # 主题没写 family 时按设备的默认 sans（与 svglite 的 Arimo 同度量）量宽；
+    # `text_width_cm()` 的缺省字面是布局用的 Noto Sans，比 R 的 'u' 宽 10%。
+    family = element.family or "sans"
+    angle = float(element.angle or 0.0)
+    # grid 的 `rot` 只在绘制时生效，量测时把 90° / 270° 当成「横竖对调」。
+    rotated = abs(angle % 180.0) > 1e-9
+    lines = [text for text in texts if text] or [""]
+    widest = max(text_width_cm(text, size, metrics, family) for text in lines)
+    row_count = max((text.count("\n") + 1 for text in texts if text), default=1)
+    line = text_line_cm(size) * row_count
+    mt, mr, mb, ml = margin_sides_cm(element.margin)
+    if horizontal:
+        return (line if rotated else widest) + ml + mr
+    return (widest if rotated else line) + mt + mb
 
 
 def _strip_fill(resolved: ResolvedTheme, element_name: str) -> str | None:
