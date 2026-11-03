@@ -1,0 +1,7 @@
+family = "geom-path"
+features = ["aes-mapping", "scale-limits", "stat-ellipse"]
+ci = true
+title = "ellipse：正态数据椭圆 + 原始点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_ellipse 的端到端：type = 'norm' 的 51 段路径；type='t' 的 MASS::cov.trob 由 refs:stat-longtail 逐值对拍。"

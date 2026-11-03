@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "scale-limits", "stat-density"]
+ci = true
+title = "density：核密度曲线（nrd0 带宽）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_density 的端到端：density / scaled / count / wdensity 列全部逐值对拍（density_* 六个 case）。"

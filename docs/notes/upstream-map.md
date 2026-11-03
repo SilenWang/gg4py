@@ -44,7 +44,7 @@ Python 模块，反之亦然。
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
-| `ggcore.stat.base` | `R/stat-.R:74` | `Stat` | 未实现 |
+| `ggcore.stat` / `ggcore.stat_longtail` | `R/stat-*.R` | `StatBin` / `StatCount` / `StatBoxplot` / `StatSmooth` / `StatAlign`（M1-8）+ `StatQq` / `StatQqLine` / `StatEcdf` / `StatEllipse` / `StatQuantile` / `StatSummary` / `StatSummaryBin` / `StatSum` / `StatUnique` / `StatDensity` / `StatYdensity` / `StatFunction` / `StatConnect` / `StatManual`（M2-6） | 已实现（口径与已知差异见 `docs/notes/stat.md` §9 / §10） |
 | `ggcore.scale` | `R/scale-.R:461` | `Scale` | 未实现 |
 | `ggcore.scale.continuous` | `R/scale-.R:106` | `continuous_scale()` | 未实现 |
 | `ggcore.coord`（`CartesianCoord`） | `R/coord-cartesian-.R:78` | `coord_cartesian()` | 已实现（M1-5：范围 / expand / clip / 越界计数，见 `docs/notes/coord.md`） |
