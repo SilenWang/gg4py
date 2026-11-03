@@ -35,9 +35,11 @@ box   <- roundrectGrob(x, y + (0.5 - vjust) * height,
                        just = c(hjust, 0.5), r = r, gp = rect.gp)
 ```
 
-IR 没有圆角矩形节点：背景用 `rectGrob` 的同形矩形表达，`label.r`（默认
-0.15 lines ≈ 2pt）的圆角在 72dpi 下不足 1.5px，记进 `docs/notes/geom.md`
-的已知差异。文字的宽度 / 高度来自 `build.metrics`（M2-S1 的字体对齐结果），
+IR 没有圆角矩形节点：背景用同形矩形表达，`label.r`（默认 0.15 lines ≈ 2pt）的
+圆角在 72dpi 下不足 1.5px，记进 `docs/notes/geom.md` 的已知差异。`angle != 0`
+时照 R 的「box + text 一起进带 angle 的 viewport」：四角在英寸坐标里绕锚点旋转
+后写成一个 4 点 `polygonGrob`，文字用同一刚体变换（锚点跟着转、`rot = angle`），
+长标签不会溢出背景框（SIL-765）。文字的宽度 / 高度来自 `build.metrics`（M2-S1 的字体对齐结果），
 不在 geom 里另测。
 """
 
