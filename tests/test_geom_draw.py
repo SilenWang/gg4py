@@ -22,7 +22,12 @@ import pytest
 from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.geom import GeomError, registered_renderers, renderer_for
+from ggcore.geom import (
+    GeomError,
+    build_only_renderers,
+    registered_renderers,
+    renderer_for,
+)
 from ggcore.geom.scene import scene_from_build, scene_from_plot
 from ggcore.plot import aes, ggplot
 
@@ -100,9 +105,14 @@ def _clips(ir_scene) -> list[tuple[float, float, float, float]]:
 
 
 def test_renderer_registry_covers_every_registered_geom() -> None:
-    # M2-S2：注册表里的每一个 geom 都必须有绘制实现（29 个 = M1-7 的 9 个 +
-    # 长尾 A 的 20 个）。两边顺序一致，缺一个就红。
-    assert registered_renderers() == registry.registered("geom")
+    # M2-S2：注册表里的每一个 geom 都必须有绘制实现（M1-7 的 9 个 + 长尾 A 的
+    # 20 个），或者明确登记在 build-only 表里（M2-6 的 5 个 2D 族；`tile` 已由
+    # 长尾 A 实现）。两边顺序一致，缺一个就红。
+    build_only = set(build_only_renderers())
+    assert registered_renderers() == tuple(
+        name for name in registry.registered("geom") if name not in build_only
+    )
+    assert build_only <= set(registry.registered("geom"))
     assert renderer_for("col").name == "col"
     with pytest.raises(GeomError, match="没有绘制实现"):
         renderer_for("violin")

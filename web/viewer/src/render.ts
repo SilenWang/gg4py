@@ -862,6 +862,7 @@ class Renderer {
     node: IrNode,
     parent: SVGElement,
     gpar: Gpar,
+    matrix: Matrix,
     scale: number,
     groups: Point[][],
     viewport: string,
@@ -870,7 +871,7 @@ class Renderer {
     if (spec === null) return;
     const d = arrowPath(groups, spec);
     if (d === "") return;
-    const attrs = styleAttributes(gpar, scale, { fill: spec.closed });
+    const attrs = this.styleAttributes(node, matrix, scale, { fill: spec.closed });
     if (spec.closed && attrs["fill"] === "none") {
       const col = colourValue(gpar.col);
       attrs["fill"] = col ?? "none";
@@ -997,7 +998,7 @@ class Renderer {
           rows,
           box,
         );
-        this.drawArrows(node, parent, gpar, scale, pairs, viewport);
+        this.drawArrows(node, parent, gpar, matrix, scale, pairs, viewport);
         return;
       }
       case "lines":
@@ -1021,7 +1022,7 @@ class Renderer {
           box,
         );
         if (!closed) {
-          this.drawArrows(node, parent, gpar, scale, pointGroups(node, matrix), viewport);
+          this.drawArrows(node, parent, gpar, matrix, scale, pointGroups(node, matrix), viewport);
         }
         return;
       }
@@ -1088,7 +1089,7 @@ class Renderer {
           rows,
           box,
         );
-        this.drawArrows(node, parent, gpar, scale, groups, viewport);
+        this.drawArrows(node, parent, gpar, matrix, scale, groups, viewport);
         return;
       }
       case "points": {

@@ -483,18 +483,17 @@ def test_contour_deduplicates_duplicate_grid_points() -> None:
 
 
 def test_2d_geoms_are_build_only_and_name_the_followup() -> None:
+    # `geom_tile` 的完整实现已在 SIL-737 落地（`geom.rect.TileRenderer`），所以
+    # build-only 表里只剩其余 5 个 2D 族（SIL-758 第 4 条）。
     assert build_only_renderers() == (
-        "tile",
         "hex",
         "contour",
         "contour_filled",
         "density_2d",
         "density_2d_filled",
     )
-    # 绘制归属要准确：`geom_tile` 已在 SIL-737 落地，其余 5 个归 SIL-735
-    # （SIL-758 第 4 条；之前 6 个一律点名 SIL-735）。
-    with pytest.raises(GeomError, match="SIL-737"):
-        renderer_for("tile").draw(None, None, None, None, None, None)
+    assert renderer_for("tile").name == "tile"
+    assert "tile" not in build_only_renderers()
     for name in ("hex", "contour", "contour_filled", "density_2d", "density_2d_filled"):
         with pytest.raises(GeomError, match="SIL-735") as raised:
             renderer_for(name).draw(None, None, None, None, None, None)

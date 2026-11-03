@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# SIL-751 的参考图产线：渐变 / 图案填充的 3 条 case（ggplot2 4.0.3 + svglite，4 × 3 in）。
+# SIL-751 的参考图产线：渐变 / 图案填充的 4 条 case（ggplot2 4.0.3 + svglite，4 × 3 in）。
 #
 #   pixi run -e refs refs:gradient-cases
 #   Rscript tools/refs/gradient_cases_ref.R viewer-pattern            # 只重画点名的
@@ -59,6 +59,23 @@ save_case("viewer-gradient-linear",
   ggplot(df, aes(cls, v)) +
     geom_col(
       fill = linearGradient(c("#132B43", "#56B1F7"), stops = c(0, 1),
+                            x1 = 0, y1 = 0, x2 = 1, y2 = 0),
+      colour = NA
+    ) +
+    scale_x_discrete() + fy(0, 1) + theme_case()
+)
+
+# --- 线性渐变：4 档 + 中间档带 alpha ------------------------------------------
+
+# 现有三条都是「2 档、无 alpha」。这条守两件容易被写死掉的事：
+# - 档数 > 2 时 stop 表按 offset 排序、中间档真的插在中间；
+# - 单档的 alpha（#56B1F780 → 0.50）落在 stop-opacity 上，不是整条渐变的
+#   fill-opacity——所以同一根柱子上能同时看到「半透明的中段」与「不透明的两端」。
+save_case("viewer-gradient-stops-alpha",
+  ggplot(df, aes(cls, v)) +
+    geom_col(
+      fill = linearGradient(c("#132B43", "#56B1F780", "#F4A582", "#B31D28"),
+                            stops = c(0, 0.3, 0.7, 1),
                             x1 = 0, y1 = 0, x2 = 1, y2 = 0),
       colour = NA
     ) +

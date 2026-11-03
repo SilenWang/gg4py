@@ -6,7 +6,8 @@ M2-6 交付的是 8 个 2D stat；它们的默认 geom（`tile` / `hex` / `conto
 就是 `geom_tile` 派生的）。真正的绘制不在这里，`draw()` 直接点名**归属任务**，
 不静默画一个空图：
 
-- `geom_tile` 的绘制在 **SIL-737**（M2-S2 geom 长尾 A，带 `docs/cases/geom-tile`）；
+- `geom_tile` 的完整实现已经由 **SIL-737**（M2-S2 geom 长尾 A）落在
+  `ggcore.geom.rect.TileRenderer`，所以**不在**本模块的 build-only 表里；
 - 其余 5 个（`hex` / `contour` / `contour_filled` / `density_2d` /
   `density_2d_filled`）归 **SIL-735**（M2-S2 geom 长尾 B · 2D 族）。
 
@@ -21,9 +22,9 @@ from typing import Any, ClassVar
 import numpy as np
 
 from ggcore.data import Column, ColumnTable
-from ggcore.geom.base import GeomError, GeomRenderer, panel_resolution
+from ggcore.geom.base import GeomError, GeomRenderer
 
-__all__ = ["BUILD_ONLY_RENDERERS", "BuildOnlyRenderer", "ContourRenderer", "TileRenderer"]
+__all__ = ["BUILD_ONLY_RENDERERS", "BuildOnlyRenderer", "ContourRenderer"]
 
 
 class BuildOnlyRenderer(GeomRenderer):
@@ -46,49 +47,6 @@ class BuildOnlyRenderer(GeomRenderer):
             f"绘制归 {self.followup}。"
             "当前可用于 ggplot_build() 的逐列对拍与数据校验。"
         )
-
-
-class TileRenderer(BuildOnlyRenderer):
-    """`geom_tile`：宽度 / 高度 → 四角（上游 `GeomTile$setup_data()`）。
-
-    绘制已在 SIL-737（M2-S2 geom 长尾 A）实现，所以 `draw()` 的报错指向那里，
-    而不是本任务的后续 2D 族（SIL-735）。
-    """
-
-    name: ClassVar[str] = "tile"
-    followup: ClassVar[str] = "SIL-737（M2-S2 geom 长尾 A）"
-    non_missing_aes: ClassVar[tuple[str, ...]] = ("xmin", "xmax", "ymin", "ymax")
-
-    def setup_data(self, data: ColumnTable, params: dict[str, Any]) -> ColumnTable:
-        width_column = self._size(data, "width", params.get("width"), 1.0)
-        height_column = self._size(data, "height", params.get("height"), 1.0)
-        x = _numeric(data, "x")
-        y = _numeric(data, "y")
-        width = width_column
-        height = height_column
-        columns = [(name, data.column(name)) for name in data.names]
-        columns = [(name, column) for name, column in columns if name not in ("width", "height")]
-        columns.extend(
-            [
-                ("xmin", _column(x - width / 2.0)),
-                ("xmax", _column(x + width / 2.0)),
-                ("ymin", _column(y - height / 2.0)),
-                ("ymax", _column(y + height / 2.0)),
-            ]
-        )
-        return ColumnTable(columns, nrows=data.nrows)
-
-    def _size(self, data: ColumnTable, target: str, param: Any, default: float) -> np.ndarray:
-        """`compute_data_size()`：数据里有这一列就原样用，否则 `resolution * default`。"""
-        if target in data:
-            values = _numeric(data, target)
-            if np.all(np.isnan(values)):
-                values = np.full(data.nrows, panel_resolution(data, target) * default)
-            return values
-        if param is not None:
-            return np.full(data.nrows, float(param))
-        axis = "x" if target == "width" else "y"
-        return np.full(data.nrows, panel_resolution(data, axis) * default)
 
 
 class ContourRenderer(BuildOnlyRenderer):
@@ -140,7 +98,6 @@ class Density2dFilledRenderer(BuildOnlyRenderer):
 
 #: 只有 build 级的 geom（`draw()` 点名归属任务：`tile` → SIL-737，其余 → SIL-735）。
 BUILD_ONLY_RENDERERS: dict[str, GeomRenderer] = {
-    "tile": TileRenderer(),
     "hex": HexRenderer(),
     "contour": ContourRenderer(),
     "contour_filled": ContourFilledRenderer(),

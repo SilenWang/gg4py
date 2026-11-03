@@ -926,7 +926,8 @@ def _same_gradient_key(left: tuple[Any, ...], right: tuple[Any, ...] | None) -> 
     if right is None or len(left) != len(right) or left[0] != right[0]:
         return False
     return all(
-        math.isclose(float(a), float(b), abs_tol=1e-3) for a, b in zip(left[1:], right[1:])
+        math.isclose(float(a), float(b), abs_tol=1e-3)
+        for a, b in zip(left[1:], right[1:], strict=False)
     )
 
 
@@ -984,7 +985,6 @@ def _rewrite_svg_gradients(svg: bytes, fills: Sequence[Any]) -> bytes:
         )
 
     return _SVG_GRADIENT_TAG.sub(replace, text).encode("utf-8")
-
 
 
 class SkiaSvgDevice(_SkiaDevice):

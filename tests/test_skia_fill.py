@@ -232,3 +232,58 @@ def test_solid_fill_svg_output_is_unchanged() -> None:
     svg = _svg(_scene(_rect(10.0, 10.0, 190.0, 50.0, (228, 87, 86, 255))))
     assert "Gradient" not in svg
     assert "<defs" not in svg
+
+
+def test_gradient_is_embedded_in_pdf_as_a_shading() -> None:
+    """PDF 侧的渐变验收：不能只断言 `%PDF` 开头，要看到 shading 本身。
+
+    skia 的 PDF 后端把渐变写成 `/Pattern` → `/Shading`：轴向是 `ShadingType 2`，
+    径向（含 focal）是 `ShadingType 3`，端点坐标 / 端点颜色 / `Extend` 都在
+    对象字典里（未压缩，可以直接按文本断言）。工具链里没有 PDF 光栅器
+    （统一栅格只装 resvg），所以这是**结构级**的最小验收：坐标写反、渐变被
+    丢掉、只画端点色，这几种都会让它变红。
+    """
+    linear = ir.LinearGradient(
+        stops=[(0.0, (255, 0, 0, 255)), (1.0, (0, 0, 255, 255))],
+        start=(10.0, 10.0),
+        end=(80.0, 10.0),
+    )
+    text = SkiaPdfDevice(WIDTH, HEIGHT).render(_scene(_rect(10.0, 10.0, 190.0, 90.0, linear)))
+    payload = text.decode("latin-1")
+    assert "/ShadingType 2" in payload
+    assert "/Coords [10 10 80 10]" in payload
+    assert "/C0 [1 0 0]" in payload and "/C1 [0 0 1]" in payload
+    assert "/Extend [true true]" in payload  # pad：两端都延展最后一档
+
+    focal = ir.RadialGradient(
+        stops=[(0.0, (255, 0, 0, 255)), (0.5, (0, 255, 0, 255)), (1.0, (0, 0, 255, 255))],
+        center=(100.0, 60.0),
+        radius=40.0,
+        focal=(92.0, 60.0, 4.0),
+    )
+    radial = SkiaPdfDevice(WIDTH, HEIGHT).render(_scene(_rect(10.0, 10.0, 190.0, 110.0, focal)))
+    payload = radial.decode("latin-1")
+    assert "/ShadingType 3" in payload
+    # PDF 的径向坐标顺序是「焦点圆 → 主圆」：fx fy fr cx cy r。
+    assert "/Coords [92 60 4 100 60 40]" in payload
+    # 3 档 → 分段函数（FunctionType 3）+ 一个分界点。
+    assert "/FunctionType 3" in payload and "/Bounds [.5]" in payload
+
+
+def test_pdf_repeat_gradient_is_not_the_pad_shading() -> None:
+    """`extend = repeat` 在 PDF 里走 function-based shading（`ShadingType 1`）。"""
+
+    def pdf(extend: str) -> str:
+        fill = ir.LinearGradient(
+            stops=[(0.0, (255, 0, 0, 255)), (1.0, (0, 0, 255, 255))],
+            start=(10.0, 10.0),
+            end=(80.0, 10.0),
+            extend=extend,
+        )
+        scene = _scene(_rect(10.0, 10.0, 190.0, 90.0, fill))
+        return SkiaPdfDevice(WIDTH, HEIGHT).render(scene).decode("latin-1")
+
+    pad, repeat = pdf("pad"), pdf("repeat")
+    assert "/ShadingType 2" in pad
+    assert "/ShadingType 1" in repeat
+    assert pad != repeat

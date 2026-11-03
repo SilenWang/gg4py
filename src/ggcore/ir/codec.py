@@ -341,9 +341,7 @@ def _node_from_obj(raw: Any, *, tolerant: bool, minor: int, path: str) -> Node:
     if "gpar" in raw:
         if not spec.gpar:
             raise IRDecodeError(f"{path}（{kind.value}）不携带 gpar")
-        gpar = _gpar_from_obj(
-            raw["gpar"], path=f"{path}.gpar", tolerant=tolerant, minor=minor
-        )
+        gpar = _gpar_from_obj(raw["gpar"], path=f"{path}.gpar", tolerant=tolerant, minor=minor)
 
     params_raw = raw.get("params", {})
     if not isinstance(params_raw, Mapping):
@@ -386,9 +384,7 @@ def _node_from_obj(raw: Any, *, tolerant: bool, minor: int, path: str) -> Node:
     if not isinstance(children_raw, Sequence) or isinstance(children_raw, (str, bytes)):
         raise IRDecodeError(f"{path}.children 必须是数组")
     children = [
-        _node_from_obj(
-            child, tolerant=tolerant, minor=minor, path=f"{path}.children[{index}]"
-        )
+        _node_from_obj(child, tolerant=tolerant, minor=minor, path=f"{path}.children[{index}]")
         for index, child in enumerate(children_raw)
     ]
 

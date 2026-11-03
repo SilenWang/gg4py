@@ -136,7 +136,7 @@ def wire_deep(value: object) -> object:
             rows = np.frombuffer(value["data"], dtype="<f4")
             rows = rows.reshape(tuple(value["shape"]))
             return [
-                {"offset": round(float(row[0]), 6), "colour": [int(round(v)) for v in row[1:]]}
+                {"offset": round(float(row[0]), 6), "colour": [round(float(v)) for v in row[1:]]}
                 for row in rows
             ]
         return {key: wire_deep(item) for key, item in value.items()}
