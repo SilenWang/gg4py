@@ -1,0 +1,9 @@
+family = "geom-point"
+features = ["shape-aes", "scale-discrete"]
+ci = true
+title = "point：pch 0..25 全部 26 个符号"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """逐符号守 R `engine.c::GESymbol()` 的几何常量：半径 `0.375 × size`
+（不是 size/2）、三角形 `TRC0/TRC1/TRC2`、菱形 `DMDC`、方 `SQRC`、小圆 `SMALL`；
+21..25 用 `fill` 填充 + `col` 描边，其余按 grid 的实心 / 空心两档。"""

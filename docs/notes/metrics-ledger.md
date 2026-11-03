@@ -374,7 +374,7 @@ resvg 72 dpi）。
 前两条归 SIL-715 #7（report-style case 覆盖盲区）与 #8（facet 列宽用文本高度近似），
 本 task 明确不碰 gtable / 布局。
 
-case 集（`pixi run viewer:cases`，61 条全绿；括号里是 M1 出口时的读数）：
+case 集（`pixi run viewer:cases`，M2-12 起 82 条全绿；括号里是 M1 出口时的读数）：
 `text-bold-italic` 1.25% → **0.51%**、`theme-grey-basic` 1.8695% → **1.73%**、
 `theme-minimal-basic` 1.8727% → **1.70%**、`guide-colourbar` 1.7409% → **1.63%**、
 `geom-text-cjk` 0.17% → 0.17%、`text-emoji` 1.67% → 1.69%。

@@ -576,3 +576,84 @@ save_case("guide-colourbar", local({
     geom_point(shape = 19, size = 3.2) +
     fx(0, 1) + fy(0, 1) + theme_void()
 }))
+
+# --- extension -------------------------------------------------------------
+
+# `ext-custom-geom` 的 gg4py 侧只实现一个 `GeomMySegment` 子类；R 侧没有同名
+# geom，用等价的 geom_segment()（同数据、颜色、线宽、limits）作为外部参考。
+save_case("ext-custom-geom", local({
+  df <- data.frame(
+    x = c(0.08, 0.18, 0.28, 0.42, 0.56, 0.70),
+    y = c(0.20, 0.72, 0.42, 0.86, 0.16, 0.60),
+    xend = c(0.24, 0.34, 0.48, 0.66, 0.76, 0.92),
+    yend = c(0.78, 0.28, 0.64, 0.20, 0.58, 0.88)
+  )
+  ggplot(df, aes(x, y, xend = xend, yend = yend)) +
+    geom_segment(colour = "#4C78A8", linewidth = 0.8, lineend = "butt") +
+    fx(0, 1) + fy(0, 1) + theme_case()
+}))
+
+# --- guide（M2-2，SIL-738）：合并 / override / 方位 / 多图例 ------------------
+
+.save_guide_data <- function() {
+  data.frame(
+    x = c(0.12, 0.28, 0.44, 0.60, 0.76, 0.88, 0.22, 0.38, 0.54, 0.70),
+    y = c(0.18, 0.42, 0.30, 0.66, 0.50, 0.80, 0.74, 0.56, 0.86, 0.24),
+    g = c("a", "b", "c", "a", "b", "c", "a", "b", "c", "a"),
+    h = c("p", "q", "p", "q", "p", "q", "p", "q", "p", "q")
+  )
+}
+
+save_case("guide-legend-merge-fill", local({
+  df <- .save_guide_data()
+  ggplot(df, aes(x, y, colour = g, fill = g)) +
+    geom_point(shape = 21, size = 2.8) +
+    scale_colour_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    scale_fill_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    guides(colour = "legend", fill = "legend") +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))
+
+save_case("guide-legend-override", local({
+  df <- .save_guide_data()
+  ggplot(df, aes(x, y, colour = g)) +
+    geom_point(size = 2.4) +
+    scale_colour_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    guides(colour = guide_legend(override.aes = list(colour = "black", shape = 17))) +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))
+
+save_case("guide-legend-top", local({
+  df <- .save_guide_data()
+  df$y <- c(0.42, 0.66, 0.50, 0.80, 0.74, 0.56, 0.86, 0.24, 0.18, 0.30)
+  ggplot(df, aes(x, y, colour = g)) +
+    geom_point(size = 2.4) +
+    scale_colour_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    fx(0, 1) + fy(0, 1) + theme_void() +
+    theme(legend.position = "top")
+}))
+
+save_case("guide-legend-inside", local({
+  df <- .save_guide_data()
+  ggplot(df, aes(x, y, colour = g)) +
+    geom_point(size = 2.4) +
+    scale_colour_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    fx(0, 1) + fy(0, 1) + theme_void() +
+    theme(
+      legend.position = "inside",
+      legend.position.inside = c(0.72, 0.78)
+    )
+}))
+
+save_case("guide-legend-two", local({
+  df <- .save_guide_data()
+  ggplot(df, aes(x, y, colour = g, fill = h)) +
+    geom_point(shape = 21, size = 2.8) +
+    scale_colour_manual(values = c(a = "#F8766D", b = "#00BA38", c = "#619CFF")) +
+    scale_fill_manual(values = c(p = "#F8766D", q = "#00BA38")) +
+    guides(
+      fill = guide_legend(order = 1),
+      colour = guide_legend(order = 2)
+    ) +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))

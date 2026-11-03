@@ -1,14 +1,15 @@
 # 图例与主轴（guide / axis）
 
 `ggcore.guide` 与 `ggcore.axis` 是 ggplot2 4.0.3 的 `guide_legend` / `guide_colourbar`
-与 `guide_axis` 的对等物，M1-11 落地。整页装配在
+/ `guide_custom` 与 `guide_axis` 的对等物，M1-11 落地、M2-2（SIL-738）补齐
+`guides()` 入口 / key 合并 / 多美学图例 / override / 图例盒布局。整页装配在
 `ggcore.geom.scene.plot_layout()` / `scene_from_build()`：
 
 ```
 page（plot.margin）
 ├── plot.background
 ├── plot.title
-├── legend 盒（right / left / top / bottom）
+├── legend 盒（right / left / top / bottom / inside；多方位可并存）
 ├── 每个面板：panel.background / panel.border / 图层 / strip
 │   └── axis.ticks.* / axis.text.*（每个面板自己的标度）
 └── x / y 轴标题（整块面板区一份）
@@ -22,27 +23,64 @@ page（plot.margin）
 
 | gg4py | R 4.0.3 | 说明 |
 | --- | --- | --- |
-| `GuideLegend` | `guide_legend()` | 离散键；`direction` / `nrow` / `ncol` / `byrow` / `override_aes` / `keywidth` / `keyheight` / `reverse` / `order` |
-| `GuideColourbar` | `guide_colourbar()` | 连续色条；`barwidth` / `barheight` / `nbin` / `ticks` |
+| `GuideLegend` | `guide_legend()` | 离散键；`direction` / `nrow` / `ncol` / `byrow` / `override_aes` / `keywidth` / `keyheight` / `reverse` / `order` / `position` / `title_position` / `title_hjust` / `title_vjust` / `label_position` / `label_hjust` / `label_vjust` / `subtitle` |
+| `GuideColourbar` | `guide_colourbar()` | 连续色条；`barwidth` / `barheight` / `nbin` / `ticks` / `position` |
+| `GuideCustom` | `guide_custom()` | 任意 grob（或 `(width_cm, height_cm) -> grob` 可调用对象）放进图例盒，不绑定标度 |
 | `GuideNone` | `guide = "none"` | 该美学不画图例 |
-| `GuideBuild` | `guide$train()` 的产物 | 一张要画的图例：美学、标题、键、参与绘制的图层 |
+| `GuideBuild` | `guide$train()` 的产物 | 一张要画的图例：美学、标题、键、参与绘制的图层、`position` |
 | `GuideKey` | `params$key` 的一行 | 标签 + 断点原值 + 各美学映射后的值 |
 
 `plot.guides` 里的组件（`components.Guide`：注册名 + 参数）经
-`guide_from_component()` 转成实现。未注册的名字（比如 `guide_bins`）明确报
-`GuideError`，不降级成 `guide_legend`。
+`guide_from_component()` 转成实现；`guides(...)`（`ggcore.plot`）产生
+`components.Guides`，`p + guides(...)` 按美学把条目写进 `plot.guides`（后加替换
+先加，值 `None` = 取消 plot 级设置、回落到 `scale_*(guide=)`，值 `False` 按
+`"none"` 处理）。条目值可以是字符串、注册表组件、`Guide` 实现，也可以是
+`guide_custom()` 这种无标度 guide（键名任意，如 `guides(custom = ...)`）。
 
 `scale_*(guide = )` 也认（SIL-705）：字符串（`"none"` / `"legend"` /
 `"colourbar"`）、`components.Guide`（`registry.guide_legend(...)`）与
 `ggcore.guide` 的 `Guide` 实例（`guide_legend(...)`）三种写法等价；
 `plot.guides` 里同美学的条目优先于它（`build_guides()` 先查 `plot.guides`，
-没有条目才回落到 `scale.params["guide"]`）。
+没有条目才回落到 `scale.params["guide"]`）。通过
+`registry.register_guide(name, ComponentSubclass)` 登记的自定义类型也能用字符串
+点名（组件子类覆写 `build_guide()`，见下）；未注册的名字（比如 `guide_bins`）
+明确报 `GuideError`，不降级。
 
-## 2. 合并规则（照 `Guide$merge()`）
+### 扩展点（与 M2-9 的注册表扩展 API 对齐）
+
+| 方法 | R 4.0.3 | 默认行为 |
+| --- | --- | --- |
+| `Guide.train(build, aesthetic, scale)` | `Guide$train()` | 从标度的 breaks / map / labels 提取键，返回 `GuideBuild` |
+| `Guide.transform(keys)` | `Guide$transform()` | 恒等（色条之类的变换在这里做） |
+| `Guide.geom(layer)` | `Guide$geom()` | 返回 `None`：键图形复用图层自己的 `Geom.draw()` |
+| `Guide.gengrob(guide_build, build, theme, layout)` | `Guide$draw()` / `guide_gengrob` | 画成 grob 列表（默认 `legend_grob()`） |
+| `Guide.draw_keys(...)`（M2-9） | 无直接对等物 | 不实现；实现时 key 区由它画，标题 / 背景仍走默认路径 |
+
+注册路径是 M2-9 的 `registry.register_guide(name, ComponentSubclass)`：
+组件子类覆写 `build_guide()` 返回运行期 `Guide` 实例（`docs/notes/extension.md`
+的「自定义 guide」一节有完整示例）。`tests/test_guide.py` 的 `_DescribeGuide`
+与 `test_registered_guide_component_uses_build_guide_and_draw_keys` 是两组最小示例。
+`guide_custom()` 就是 `GuideCustom` 覆盖 `train()`（返回 `None`）与
+`gengrob()` 的一个实例。
+
+### 方位（`position`）
+
+`guide_legend(position=)` / `guide_colourbar(position=)` / `guide_custom(position=)`
+覆盖整张图的 `legend.position`；不同 guide 可以落在不同方位。对齐 R 4.0.3：
+
+- `right` / `left` → 竖排盒（`legend.box` 默认 `vertical`），在 panel 行里垂直居中；
+- `top` / `bottom` → 横排盒（默认 `horizontal`），水平居中；
+- `inside` → 用 `legend.position.inside = c(x, y)`（npc）+ `legend.justification.inside`
+  锚在面板区内，**不占版面**；`legend.position = c(x, y)` 等价于 inside。
+
+## 2. 合并规则（照 `Guide$merge()` / `Guides$merge()`）
 
 R 4.0.3 的判据是 `hashables = (title, key$.label, name)`：**标题、按键标签、guide
-类型三者都相同**才合并。`params$key <- cbind(params$key, new_key)` 把两个美学的
-键值并到同一行，`params$aesthetic <- union(...)`；绘制时按图层顺序把每个图层的
+类型三者都相同**才合并；`Guides$merge()` 分组用的键是 `order` + 这三个值的 hash
+（`orders[orders == 0] <- 99`，即没写 order 的排在显式 order 之后）。
+`params$key <- cbind(params$key, new_key)` 把两个美学的键值并到同一行（只保留
+第一个 guide 的 `.label` / `.value`），`params$aesthetic <- union(...)`；
+`override.aes` 先到先得，重名的后来者被忽略并告警。绘制时按图层顺序把每个图层的
 key 图形叠在同一个 key 格里。
 
 ggcore 的实现（`build_guides()`）：
@@ -56,8 +94,17 @@ ggcore 的实现（`build_guides()`）：
    `geom_point(colour = "red")`（常量）不进；`show_legend = False` 的图层排除；
 4. `guide = "none"`（`plot.guides` 或 `scale_*(guide = )`）或
    `legend.position = "none"` 直接没有图例；
-5. 合并：`kind` + 标题 + 标签序列相同且美学不重叠 → 合成一张（`_can_merge`）；
-6. 按 `order` 排序，同 order 按美学顺序（colour 先于 shape）。
+5. 每个美学 `guide.train()` → `GuideBuild`；再按 `order` + `(kind, title, 标签序列)`
+   分组，组内 `Reduce(merge)`（`_merge_guides` / `_merge`）；
+6. `guide_custom()` 不绑标度，单独收集，按 `(title, grob 身份, 尺寸, order, position)`
+   去重后与普通 guide 一起排序；
+7. 排序键：`(order == 0 ? 99 : order, 美学顺序)`，显式 order 小的在前。
+
+**与 R 的一处已知差异**：`order` 相同（多为两张都没写 order）时，R 用
+`rlang::hash()`（xxhash）的字符串排先后，属于不可复现的内部值；ggcore 固定按
+美学顺序（colour 先于 fill / shape）。两张图例同侧叠放时这会改变谁在上/左；
+需要与 R 完全一致的顺序时显式给 `guide_legend(order=)`（新增的
+`guide-legend-two` case 就是这么钉的）。
 
 由此得到三种典型结果（`tests/test_guide.py` 钉住）：
 
@@ -66,6 +113,7 @@ ggcore 的实现（`build_guides()`）：
 | `colour = g` | 1 张 |
 | `colour = g, fill = h`（不同变量） | 2 张，竖向叠放，`legend.spacing`（11pt）隔开 |
 | `colour = g, shape = g`（同一变量） | 1 张，键同时带 colour 与 shape，键数不变 |
+| `colour = g, fill = g`（同一变量） | 1 张，键同时带描边与填充（`guide-legend-merge-fill`） |
 
 ## 3. key 的绘制：复用 `Geom.draw()`
 
@@ -100,40 +148,54 @@ colour 图例，键用 1.5mm 的默认点大小）。
 | --- | --- | --- |
 | key 宽 / 高 | `legend.key.width/height`（1.2 lines） | 1.2 × 12pt × 1.2 = 17.28pt = **0.6096cm** |
 | key 行距 | 竖排方向 R 把 `legend.key.spacing.y` 置 0 | 0 |
-| key 与标签的横向间距 | `legend.key.spacing.x`（5.5pt） | 0.1933cm |
+| key 与标签的间距 | `legend.key.spacing`（5.5pt）折进标签的 margin：标签列宽 = 间距 + 文字宽 | 0.1933cm |
+| 网格列之间的间距 | `legend.key.spacing.x`（5.5pt，只在 ncol > 1 时占一列） | 0.1933cm |
 | 图例内边距 | `legend.margin`（5.5pt 四边） | 0.1933cm |
-| 标题行 | 文字行高 0.955em + `legend.key.spacing`（5.5pt） | 11pt 时 0.564cm（R 0.5573） |
+| 标题占位 | `legend.title` 的行高 + 朝内容一侧的 `legend.key.spacing`（top/bottom 是一行，left/right 是一列） | 11pt 时 R 0.5573cm |
+| 标签 / 标题的对齐 | `title_hjust` / `title_vjust` / `label_hjust` / `label_vjust`（缺省取 `legend.title` / `legend.text` 的 hjust/vjust） | 标题 hjust = 0；标签按方位（left → 1，其余 → 0） |
 | 标签宽 | `Metrics.strwidth()`（没有度量时 0.6em/字符） | — |
 | 图例盒与面板的间隙 | `legend.box.spacing`（11pt） | 0.3866cm |
-| 多张图例之间 | `legend.spacing`（11pt） | 0.3866cm |
+| 多张图例之间 | `legend.spacing`（11pt）；横排用 `legend.spacing.x`，竖排用 `legend.spacing.y` | 0.3866cm |
+| 图例盒内边距 | `legend.box.margin` | 0 |
 | 色条（竖向） | 宽 = `legend.key.width`，高 = **5 ×** `legend.key.height` | 0.6096 × 3.048cm |
 | 色条（横向） | 宽 = **5 ×** `legend.key.width`，高 = `legend.key.height`；断点标签排在色条下方一行 | 3.048 × 0.6096cm（R 的盒高 1.487cm） |
+| 横排键网格 | 未给 nrow/ncol 时 `nrow = ceil(n / 5)`；竖排 `ncol = ceil(n / 20)` | — |
+
+`LegendLayout.col_widths_cm` / `row_heights_cm` 按 **R 的 gtable 分解**给出列宽 /
+行高：`[legend.margin 左] [标题列] [键列, 标签列, (间距, 键列, 标签列)…] [标题列] [legend.margin 右]`，
+行同理。标签侧的间距折在标签列里（R `measure_grobs()` 的 interleave 口径），
+所以 ncol = 1 时没有单独的间距列，ncol ≥ 2 时列与列之间才出现一列 `spacing_x`。
+`LegendBoxLayout` 再按 `legend.box` / `legend.box.just` / `legend.spacing.*`
+把同一方位的图例排成 `gtable_col`（竖排）或 `gtable_row`（横排）。
+`tests/test_guide_r_parity.py::test_legend_row_and_column_sizes_match_r` 逐项对拍
+R 的 `guide$widths / heights`（容差 0.05cm）。
 
 文字行高取 **0.894em**（`TEXT_LINE_EM`）：R 4.5.3 + svglite 的
 `stringHeight()` + `font_descent()` 在 8.8 / 11 / 20pt 上都是 0.894em
 （Arimo 的 cap height 0.691em + descent 0.203em）。旧值 0.955em 是 **pdf 设备**
 （Helvetica）的口径，用它排 4×3 svglite 参考图时轴带高 1.2pt、面板底边整条错。
 
-列宽里的**拉丁文字**用 `LAYOUT_LATIN_FONT`（受管字体栈里的拉丁字面 Noto Sans）
-量宽度：R 的 sans 是 Helvetica 口径（数字 0.556em），主字面 Noto Sans CJK SC
-只有 0.50em，直接用会把 y 轴标签列排窄 1pt、面板左边界偏 1px。这里只量列宽 /
-图例标签盒，IR 的 `text.width` 仍由绘制端按自己的字面量。
+列宽里的**拉丁文字**用 `LAYOUT_LATIN_FONT = "Arimo"` 量宽度（M2-a 把参考产线的
+默认拉丁字面定位成 Arimo，与绘制端 `ggskia.text.SANS_FAMILY` 同一字面）。
+之前用 Noto Sans 时 `gear` 这类字符串宽 7%（`g` 的字面差），图例盒 / y 轴列宽
+整体偏；换回 Arimo 后 16 个 `refs:guide` case 的行列尺寸全部落在 0.5mm 内。
+这里只量列宽 / 图例标签盒，IR 的 `text.width` 仍由绘制端按自己的字面量。
 
 ### 与 R 的实测差（7×7in，容差要求 ≤ 0.5mm）
 
 | 量 | gg4py | R 4.0.3 | 差 |
 | --- | --- | --- | --- |
-| `axis-l` 列宽 | 0.5290cm | 0.5270cm | 0.02mm |
+| `axis-l` 列宽 | 0.5193cm | 0.5270cm | 0.08mm |
 | `axis-b` 行高 | 0.4517cm | 0.4718cm | 0.20mm |
 | `ylab-l` 列宽 | 0.4438cm | 0.4606cm | 0.17mm |
 | `xlab-b` 行高 | 0.4438cm | 0.4606cm | 0.17mm |
-| `title` 行高 | 0.6380cm | 0.6235cm | 0.15mm |
-| 离散图例盒 | 1.3670 × 2.7558cm | 1.3660 × 2.7727cm | 0.01 / 0.17mm |
-| 色条图例盒 | 1.7220 × 3.9750cm | 1.7191 × 3.9919cm | 0.03 / 0.17mm |
+| 离散图例盒 | 1.3622 × 2.7558cm | 1.3660 × 2.7727cm | 0.04 / 0.17mm |
+| 色条图例盒 | 1.7075 × 3.9750cm | 1.7191 × 3.9919cm | 0.12 / 0.17mm |
 
-剩余差异几乎都在**文字宽度**上：R 的 pdf 设备把 `sans` 解析成 Helvetica（数字
-0.556em），我们的设备量表是 DejaVu/Noto（数字约 0.52em）。换成同一个字体后
-差值会继续缩小；口径本身（`Metrics.strwidth`）不变。
+换回 Arimo 后**宽度**差已经到 0.1mm 量级；剩余差异几乎都在**文字行高**上
+（0.894em 与 R 的 0.878em 差 0.017em，11pt 时约 0.17mm），所以竖向尺寸系统性
+偏小一点。口径本身（`Metrics.strwidth` / `text_line_cm`）不变；16 个
+`refs:guide` case 的图例行列都落在 0.5mm 容差内。
 
 ### 整页表的结构
 
@@ -194,15 +256,14 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 
 | 能力 | 现状 |
 | --- | --- |
-| `guide_bins` / `guide_coloursteps` | 未注册；`guide_from_component()` 报 `GuideError` 并列出已实现的名字 |
+| `guide_bins` / `guide_coloursteps` | 未注册；`guide_from_component()` 报 `GuideError` 并列出已实现的名字（M2-2 A 组 / SIL-739） |
 | secondary axis（`sec_axis()` / `dup_axis()`） | **M2-1 已实现**（`ggcore.axis.secondary_ticks()`，画在 top / right 槽）；极坐标下的 `r.sec` / `theta.sec` 仍报 `AxisError`，见 `docs/notes/coord.md` §12 |
-| `legend.position = "inside"` | `plot_layout()` 报 `GuideError`，点名「面板内定位未实现」 |
-| `legend.position = c(x, y)`（数值坐标） | 同上 |
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
-| `legend.frame` / 高级图例盒子主题（`legend.box.just` 等） | 只画 `legend.frame` 的描边；`legend.box.background` 只画矩形 |
+| `legend.frame` / 高级图例盒子主题 | 只画 `legend.frame` 的描边与 `legend.box.background` 的矩形；`legend.box.just` / `legend.box` / `legend.box.margin` 已参与行列分配 |
 | 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。 |
 | 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
-| `override_aes` 的高级形态（逐键不同值） | 只支持标量覆盖所有键 |
+| 色条的 gtable 行列分解 | `LegendLayout` 也给色条填了行列数组，但逐项分解归 M2-2 A 组（`guide_bins` / `guide_coloursteps` 同一批）；本轮对拍只钉总尺寸 |
+| 同 `order` 的图例先后 | R 按 `rlang::hash()` 字符串排；ggcore 按美学顺序。需要确定顺序时显式 `guide_legend(order=)`（见 §2） |
 
 ## 9. 确定性
 
@@ -221,7 +282,8 @@ sha256 相等（`tests/test_guide.py::test_axis_and_legend_are_deterministic`，
 ## 10. 复现
 
 ```bash
-pixi run -e refs refs:guide       # 重新生成 tests/fixtures/guide_r_reference.json
+pixi run -e refs refs:guide       # 重新生成 tests/fixtures/guide_r_reference.json（16 个 case）
+pixi run -e refs Rscript tools/refs/cases_battery_ref.R guide-legend-top   # 只重画点名的 case
 pixi run test                     # 含 tests/test_axis.py / test_guide.py / test_guide_r_parity.py
 pixi run render --scene <scene>.ggir.cbor --out report.png
 ```
@@ -230,7 +292,7 @@ pixi run render --scene <scene>.ggir.cbor --out report.png
 
 ```bash
 pixi run check                    # lint + test + 各 gate（含静态的 cases:matrix:check）
-pixi run cases:matrix             # 案例回归，必须 20/20 pass
+pixi run cases:matrix             # 案例回归，必须 83/83 pass
 pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
 ```
 

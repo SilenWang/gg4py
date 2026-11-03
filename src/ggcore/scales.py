@@ -2615,6 +2615,9 @@ def scale_from_component(spec: Scale) -> ScaleBase:
     reject_unsupported_scale(name)
     family = SCALE_FAMILIES.get(name)
     if family is None:
+        builder = getattr(spec, "build_scale", None)
+        if callable(builder) and getattr(type(spec), "build_scale", None) is not Scale.build_scale:
+            return builder()
         raise ScaleError(f"未知的标度名 {name!r}（registry.SCALE_SPECS 里没有）")
     merged = {**SCALE_DEFAULTS[name], **params}
     if family == "discrete":

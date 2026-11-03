@@ -13,7 +13,8 @@ pixi run viewer:build     # npm install typescript + tsc → web/viewer/dist/（
 pixi run viewer:sample    # 2×2 分面 + 图例 → web/viewer/samples/*.ggir.cbor
 pixi run viewer:shot      # 真 Chromium 打开 index.html 截图（--hover 带 tooltip）
 pixi run viewer:browsers  # 装 Playwright 的 Chromium（$HOME 只读 → 装在仓库里）
-pixi run viewer:cases     # 61 条案例逐条过 viewer + 与 expected.svg 像素对拍 + gallery
+pixi run viewer:cases     # 全部 ci = true 的案例逐条过 viewer + 与 expected.svg 像素对拍 + gallery
+pixi run viewer:parity    # 同一份 IR：skia SVG 设备 × 浏览器 DOM SVG 的语义对拍（§10.2）
 ```
 
 手测：起一个静态服务器（`file://` 下浏览器会拦 ES module），打开
@@ -29,6 +30,7 @@ pixi run viewer:cases     # 61 条案例逐条过 viewer + 与 expected.svg 像�
 | `src/curves.ts` | `xspline` / `curve` 的 R 公式移植（与 `ggskia.curves` 同一套） |
 | `src/interact.ts` | hover tooltip、图例 key 开关（节点组隐藏 / 显示） |
 | `src/main.ts` | 文件加载（拖拽 + `<input type=file>`）、状态栏、错误展示 |
+| `tools/viewer/parity.py` | 同一份 IR 的两条渲染腿对拍（skia SVG × DOM SVG，§10.2） |
 
 `main.ts` 还认 `index.html?scene=gallery/<case>.ggir.cbor`：gallery 的卡片用它自动
 打开同一张图和同一套 hover / 图例交互。`scene` 是**相对 viewer 根目录**的路径，
@@ -94,8 +96,16 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 - `font` 是已解析的单个字族 key，浏览器补系统栈：
   `"<font>", "Noto Sans CJK SC", "DejaVu Sans", sans-serif`。
 
-**不**用 `textLength` 去强行对齐 IR 的 `width`：拉伸字形会破坏观感，宽度差异按
-`docs/notes/snapshot-policy.md` 的文字容差处理（与桌面设备同一套账）。
+**不**用 `textLength` / `lengthAdjust` 去强行对齐 IR 的 `width`（M2-12 定的口径）：
+
+- 两端的字面已经是同一份受管字体（§8），浏览器的 advance 与 IR 的 `width` 只差
+  亚像素；`textLength` 只会把这点差**重新分配**成字距，对 CJK 尤其难看。
+- 实测（`viewer:cases`，与 R 的 svglite 参考图比）：`text-multiline` 0.03%、
+  `text-bold-italic` 0.006%、`geom-text-cjk` 0.17%——没有一处靠拉伸过线。
+- 一旦哪天真的需要（例如 IR 的 `width` 来自另一种度量后端），正确做法是写
+  `textLength` + `lengthAdjust="spacing"`（只调字距、不动字形），而不是
+  `spacingAndGlyphs`；`ggdiff.svgtext.inline_text_paths` 已经按这个口径实现，
+  对拍侧与渲染侧不会各说各话。
 
 ## 5. 散点（`points` / pch）
 
@@ -173,6 +183,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 文字基线 | cap height × 72.27/72（R 的 `strheight`） | 浏览器用 `dominant-baseline`；diff 侧按 `data-baseline` 还原同一 cap 口径 | gallery 截图有亚像素差；像素对拍不受影响 |
 | 多行行距 | grid 的 `lineheight`（IR 未携带） | 固定 1.2 | 非缺省行距表达不了（`ir.md` §7 · M1-b） |
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
+| 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1） | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
 | `arrow`（v0.3 标记属性） | 设备按端点切向画箭翼 | `render.ts` 的 `arrowPath()`（与 `ggcore.arrow.head_geometry()` 同一公式） | 箭翼是节点的附加 `<path class="ir-arrow">`，不带 `data-row`（不参与叶子计数 / hover） |
 | 结构 | 每个 IR 节点一段 `<g>`，几何在局部坐标 | 几何烘焙到页面坐标，容器不带 transform | 像素等价，DOM 结构不同（IR 不承诺对齐 svglite，`ir.md` §12） |
@@ -211,9 +222,11 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 `../index.html?scene=gallery/<case>.ggir.cbor`（资产在 `web/viewer/gallery/`），
 点进去就是同一套 hover / 图例开关。
 
-2026-11-02 全量结果（61 条三文件 case）：**pass 61 / fail 0 / error 0 / skip 0**。
-SIL-723 之后 `theme-grey-basic` / `theme-minimal-basic` / `guide-colourbar` 也翻成
-`ci = true`：三条分别是 1.79% / 1.76% / 1.67%（viewer 侧）。
+2026-11-03 全量结果（82 条三文件 case）：**pass 82 / fail 0 / error 0 / skip 0**。
+M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
+`viewer-pch-all` 0.48% / `viewer-alpha-fill` 0.00% / `viewer-alpha-overlap` 0.00%），
+参考图由 `tools/refs/viewer_cases_ref.R`（`pixi run -e refs refs:viewer-cases`）单独
+生成——那份脚本只新增、不重写历史 `expected.svg`。
 
 ### 10.1 支持矩阵
 
@@ -239,11 +252,43 @@ SIL-723 之后 `theme-grey-basic` / `theme-minimal-basic` / `guide-colourbar` �
 | `bezier` | 支持 | 每 4 个控制点一段三次贝塞尔 |
 | `curve` `curvature` / `angle` / `ncp` / `shape` / `square` / `inflect` / `open` | 支持 | 先翻 R 坐标求值再翻回页面坐标（SIL-636） |
 | gpar `fill` / `col` / `alpha` | 支持 | `#rrggbb` + `fill-opacity` / `stroke-opacity` |
-| gpar `lwd` / `lty` / `lineend` / `linejoin` / `linemitre` | 支持 | 线宽 / 虚线按 √\|det\| 缩放；linecap / linejoin / miterlimit 原样 |
-| 渐变 / 图案 / mask / 箭头 | 不支持 | IR v0 没有这些字段（`ir.md` §12）；渐变条按实现缺口归 M2 |
+| gpar `lwd` / `lty` / `lineend` / `linejoin` / `linemitre` | 支持 | 线宽按 √\|det\| 缩放；`lty` 段长再乘 4/3（svglite 口径，见下）；`lwd = 0` 不描边（SVG 的零宽语义，skia 的 hairline 已在 M2-12 关掉） |
+| gpar `alpha` 合成 | 支持 | 乘进 `fill-opacity` / `stroke-opacity`（元素级），不写整页 `opacity`；`viewer-alpha-overlap` 守重叠带的源覆盖顺序 |
+| 渐变 / 图案 / mask / 箭头 | 不支持 | IR v0 没有这些字段（`ir.md` §12）；渐变条目前由色条光栅（`<image>`）承担，箭头归 M2-7 的标注族 |
 | 嵌入字体文件 | 不支持 | 浏览器用系统栈；diff 侧用受管字体转轮廓（§8） |
 | 图例 key → 数据系列 | 降级 | 只隐藏图例组本身，IR 没有 level → 行映射 |
 | 逐行 hover（bulk `points`） | 降级 | 节点级 tooltip，给 `1–N` 行范围；M2 做子路径命中 |
+| 自定义 geom 的新节点种类 | 支持（走既有原语） | 自定义 geom 在 `draw` 里组合 `rect` / `path` / `text` … 就能落进 TS；**不**开放任意 `kind`（未知 kind 两档都报错，`ir.md` §3）——静默丢图元比报错更糟 |
+
+**`lty` 的 4/3 折算**：IR 的段长是「lwd 的倍数 × pt 口径的 lwd」，而 svglite 写
+`stroke-dasharray` 时只把线宽折成 pt、段长仍按 1/96 in 的数值写（`docs/notes/scales.md`
+的「lty 串的段长折算」）。两渲染器都乘 `DASH_UNIT = 4/3`
+（`web/viewer/src/render.ts` 与 `src/ggskia/skia.py` 同值），`lwd = 0` 都不描边。
+实测：`geom-line-width` 1.31% → 0.13%，`scale-linetype-discrete` 1.25% → 0.06%，
+`viewer-linetype-all` 3.70% → 0.43%。
+
+### 10.2 两条渲染腿对拍（M2-12）
+
+`pixi run viewer:parity` 把**同一份 IR** 分别交给 `SkiaSvgDevice` 与浏览器查看器，
+再比归一化后的结果（报告入库：`docs/notes/viewer-parity.md`；
+CI 只跑 12 条子集：`viewer:parity:ci`，挂在 `pixi run check` 上）。
+
+为什么不逐元素比字符串：两条腿的元素切分口径不同——skia 的矢量后端把文字画成
+**每个字形一条 `<path>`**，查看器写 `<text>`（对拍前用 `ggdiff.svgtext.inline_text_paths`
+换成轮廓，一条文本一行）；`rect` 在 skia 里是 `<path>`、在查看器里是真 `<rect>`；
+虚线在 skia 里会被 SVGCanvas **展开成填充多边形**。所以判据分三层：
+
+| 层 | 量 | 阈值 | 抓什么 |
+| --- | --- | --- | --- |
+| 颜色集合 | 两侧已绘制元素的最终涂色 `(#rrggbb, opacity)` 集合 | 必须完全相等 | 涂错色、少一层、透明度错 |
+| 位置 | 墨迹包围盒四边 / 亮度加权重心的差 | ≤ 1 pt | 整体位移、错位 |
+| 墨迹差 | 两侧 PNG 二值墨迹的对称差（1 px 形态学容差） | ≤ 0.5% | 画丢 / 画多 / 线宽 / 虚线 / 形状 |
+
+线宽与虚线不进「颜色集合」是刻意的：它们在同语义下的 SVG 表达本来就不同，
+差异由墨迹差兜住。`--selftest` 做负向对照（平移 2 pt、换一种颜色），
+两条判据都必须变红——保证「全绿」不是判据没在看。
+
+2026-11-03 结果：**82 / 82 pass**，最大墨迹差 0.238%（`docs/notes/viewer-parity.md`）。
 
 ## 11. 测试
 
@@ -268,8 +313,13 @@ SIL-723 之后 `theme-grey-basic` / `theme-minimal-basic` / `guide-colourbar` �
 `tests/test_viewer_cases.py` 用 `viewer:cases` 跑两条真实案例（col + CJK text），
 断言汇总、gallery 与零 wasm；它和上面的浏览器测试都要求 `viewer:build`。
 
+`tests/test_viewer_parity.py` 不启浏览器，只守 §10.2 的归一化与判据本身：
+样式继承 / SVG 缺省值 / 透明命中区、1 px 容差下「同形不同抗锯齿」算 0、
+4 px 位移必须被抓到、空页没有墨迹，以及 `--selftest` 的两条负向对照。
+
 CI 走 `pixi run check` 的子集任务 `viewer:cases:ci`（=`--sample 12 --min-pass 12`）：
 按族轮转覆盖 12 条代表 case（点 / 柱 / 面积 / 直方图 / 箱线图 / 平滑 / 文本 /
-分面 / 图例 / 标度 / 曲线），避免全量 61 条把每个 PR 拖慢。`check` 之前先跑
+分面 / 图例 / 标度 / 曲线），避免全量 82 条把每个 PR 拖慢；同一子集还跑
+`viewer:parity:ci`（12 条 + 负向对照）。`check` 之前先跑
 `viewer:build` / `viewer:browsers`；浏览器缺失时用例 `pytest.skip`（skipped
 消息写明装浏览器的任务名），不会把门禁染红。

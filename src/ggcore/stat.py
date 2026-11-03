@@ -114,6 +114,16 @@ _FLIP_NAMES: Mapping[str, str] = {
 # ---------------------------------------------------------------------------
 
 
+def _custom_stat(stat: Any) -> Callable[..., ColumnTable] | None:
+    """子类覆写了 `compute_panel()` 时返回它；内置的 `Stat` 走下方分派。"""
+    from ggcore.layer import Stat
+
+    method = getattr(type(stat), "compute_panel", None)
+    if method is None or method is Stat.compute_panel:
+        return None
+    return stat.compute_panel
+
+
 def compute_stat(
     layer: Any,
     aesthetics: Any,
@@ -131,6 +141,9 @@ def compute_stat(
     name = layer.stat.name
     if name == "identity":
         return aesthetics.table
+    custom = _custom_stat(layer.stat)
+    if custom is not None:
+        return custom(aesthetics.table, scales=scales)
     if name not in IMPLEMENTED_STATS:
         raise BuildError(
             f"stat {name!r} 尚未实现；已实现：{', '.join(IMPLEMENTED_STATS)}"
