@@ -246,14 +246,149 @@ ggplot(tbl, aes(x="cls", group=1, y=after_stat("prop"))) + geom_bar()
 | `stat_count` 的连续 x 宽度 | 沿用 geom 的 `resolution(x) × 0.9`（R 用 `discrete = TRUE`，差异只在连续 x 且非唯一值时出现） | 后续 |
 | `outliers` 的 list 列 | 用 `str` + `c(...)` 文本 | `ColumnTable` 加 list kind 时改 |
 
-## 9. 验收口径
+## 9. 长尾 B（M2-6）：实现一览
+
+M2-6 的 14 个 stat 在 `src/ggcore/stat_longtail.py`，派发仍从
+`ggcore.stat.compute_stat()` 进来（`_LONGTAIL` 里的名字转过去）。参数校验一律
+**构造 / 计算时点名报错**，不静默退化。各 stat 的默认 geom 照 4.0.3 的
+`stat_*` 构造器（`registry.STAT_GEOMS`）；`step` / `violin` / `pointrange` /
+`quantile` / `function` / `abline` 这几个默认 geom 属于 M2-7，落地之前用它们做
+缺省值的 `stat_*()` 会在**构造时**报错并点名可用的 `geom=`。
+
+### 9.1 `stat_qq` / `stat_qq_line`
+
+- 输入是 `sample` 美学；`quantiles` 缺省 `ppoints(n)`（n ≤ 10 用 `3/8`，否则
+  `1/2`），长度必须等于样本数；样本**升序**输出（`sample` 列）。
+- `distribution` 收字符串别名（`norm` / `t` / `unif` / `exp` / `logis` /
+  `cauchy`，也认带 `q` 的名字）或任意 `p → 分位数` 的可调用；分布参数走
+  `dparams`（`norm` 的 `mean`/`sd`、`t` 的 `df`、`unif` 的 `min`/`max`、
+  `exp` 的 `rate`、`logis`/`cauchy` 的 `location`/`scale`），不认识的键点名报错。
+- 正态分位数是 Acklam 近似 + 一步 Halley（`erfc`）修正，逐值差 ≤ 1e-15；
+  t 分位数复用 `ggcore.stat.t_quantile()`（下尾按 `qt(p) = -qt(1-p)` 补）。
+- `stat_qq_line` 过 `line.p`（缺省 `c(0.25, 0.75)`）两点：
+  `slope = diff(y)/diff(x)`、`intercept = y[1] - slope·x[1]`，`x` 取
+  `range(theoretical)`；`fullrange = TRUE` 时取 x 标度的 `dimension()`。
+  输出 `x, y, slope, intercept`，`sample` 进 `dropped_aes`（不告警）。
+
+### 9.2 `stat_ecdf`
+
+- 网格：`n = NULL` 时用 `unique0(x)`（出现顺序），否则
+  `seq(min, max, length.out = n)`；`pad = TRUE`（缺省）两端补 `-Inf` / `Inf`。
+- 权重：`weight` 美学按上游 `wecdf()` 聚合到唯一值 → 阶梯函数
+  （`approxfun(method = "constant", f = 0, yleft = 0, yright = 1)`）；非有限权重
+  按 0 处理并告警，权重和为 0 报错。
+- 输出 `x, y, ecdf, flipped_aes`；横向（只映射 y）时 `flipped_aes = TRUE` 并把
+  两列换回去。±Inf 是列里真实的值（IR / SVG 侧照常表达）。
+
+### 9.3 `stat_ellipse`
+
+- `type = "t"`（缺省）/ `"norm"` / `"euclid"`；`level = 0.95`、`segments = 51`
+  （输出 `segments + 1` 个点）。
+- `"norm"` = `stats::cov.wt()`（权重先归一到和为 1，无偏分母
+  `1 - Σw²`）；`"euclid"` 把协方差换成 `min(diag) · I`、半径用
+  `level / max(chol)`；`"t"` 是 `MASS::cov.trob()` 的逐行移植（`nu = 5`、
+  `maxit = 25`、`tol = 0.01`，注意 R 的 `X` 用的是**上一轮**的 `loc`，移植保持
+  同一顺序），对拍逐值差 7.6e-15。
+- 半径 `sqrt(2 · qf(level, 2, n-1))`；`qf` 用 `qbeta` 的二分反解（`_betai`），
+  不引 scipy。协方差不是正定 / 点数 < 4 时按上游的口径告警并给 NA 行。
+- 加权：`weight` 先归一到和为 1，再乘 `n` 传给 `cov.trob`（与 R 一致）。
+
+### 9.4 `stat_quantile`
+
+- `method` 只实现 `"rq"`（线性分位数回归，`quantreg::rq` 的 `y ~ x` 口径）；
+  `"rqss"` / 其他 formula 明确报错并点名（上游 `check_installed("quantreg")`）。
+- 求解用 Barrowman 的 IRLS：权重按 **tau 非对称**
+  （`r ≥ 0` 用 `tau/|r|`，`r < 0` 用 `(1-tau)/|r|`），到 `1e-15` 收敛；对拍
+  `quantreg` 6.1 的最大差 7.7e-13。`method.args` 只收 `max_iter` / `tol`。
+- 预测网格 `xseq` 缺省 `seq(min, max, length.out = 100)`；每个分位数输出
+  `x, y, quantile, group`，`group` **是字符**（上游
+  `paste(group, quantile, sep = "-")`）——`geom/line.py` 的 `setup_data()` 因此
+  按字符排序列（`_order_key()` / `_group_key()`），不再硬转 float。
+
+### 9.5 `stat_summary` / `stat_summary_bin`
+
+- `fun.data` 优先，其次 `fun` / `fun.min` / `fun.max`，都没有时按上游缺省
+  `mean_se()`（并告警）。字符串别名：`mean` / `median` / `sd` / `var` / `min` /
+  `max` / `sum` / `length` / `first` / `last`；`fun.data` 另有 `mean_se` /
+  `mean_cl_normal` / `mean_sdl` / `median_hilow`（Hmisc 那四个包装的闭式口径）。
+- `fun.args` 是映射，作为额外关键字参数传给汇总函数；点号参数在 Python 里也
+  可以写成下划线（`fun_data` / `fun_min` / `fun_max` / `fun_args`）。
+- `stat_summary` 按 `(group, x)` 汇总，x 升序；输出
+  `x, group, y, ymin, ymax` + 组内恒定列 + `flipped_aes`。
+- `stat_summary_bin` 先按 `bins` / `binwidth` / `breaks`（与 `stat_bin` 同一套
+  `_compute_bins()`）分箱，`bin` 列是 R 的 `cut()` 区间文本（`dig.lab = 3`
+  起跳，格式与 `formatC()` 一致），`x` 取箱中心、`width` 取箱宽。
+
+### 9.6 `stat_sum` / `stat_unique`
+
+- `stat_sum`：按 `(x, y, group, 其余映射美学)` 计数，`weight` 加权；输出
+  `PANEL, x, y, group, …, n, prop`（`prop = n / 该 group 的 Σ|n|`，与
+  `vec_ave(n, group, prop.table)` 一致）。`default_aes` 把 `size` 映射到
+  `after_stat(n)`，这就是 `geom_count()` 的口径。
+- `stat_unique`：`unique0(data)`（保留首次出现的行序），列与输入一致。
+
+### 9.7 `stat_density` / `stat_ydensity`
+
+- 密度**不是**直接核求和：`stats::density()` 在 R 4.5 里是「BinDist 线性分摊到
+  2n 网格 + FFT + 线性插值」，直接求和与它的相对差有 7e-5。这里照
+  `massdist.c` 的 `BinDist` 与 `density.default()` 的同一套参数
+  （`ext = 4`、`n = max(n, 512)`、`n > 512` 时取 2 的幂、`kords` 的镜像、
+  `pmax(0, ·)/length(y)`、`approx`）重写，逐值差 ≤ 1e-15。
+- 带宽：`bw` 收 `"nrd0"`（缺省，`bw.nrd0` 的 `!(lo <- min(...))` 退化口径也照抄）
+  / `"nrd"` 或正数；`adjust` 乘上去。`kernel` 只实现 `"gaussian"`（其余核是同一条
+  FFT 路径的纯算术，按需再加）。`ucv` / `bcv` / `sj` 明确报错。
+- `from` / `to`：`trim = FALSE` 取 x 标度的 `dimension()`，`trim = TRUE` 取数据
+  范围。`bounds` 的有限端按上游 `reflect_density()` 折回界外的尾巴。
+- 输出 `x, density, scaled, ndensity, count, wdensity, n`（`n` 是整数列）；
+  `scaled = density/max`、`count = density·n`、`wdensity = density·Σw`。
+- `stat_ydensity`：`trim = TRUE`（缺省）时 from/to 取数据范围，`FALSE` 时两端各
+  扩 3 个带宽；`scale` 收 `area` / `count` / `width` → `violinwidth`；分位线
+  （`quantiles = c(0.25, 0.5, 0.75)`，`NULL` 关闭）按 `approx()` 在密度网格上
+  插值后追加行，此时 `n` 被抬成 double（上游 `vec_c()` 的结果）。
+
+### 9.8 `stat_function` / `stat_connect` / `stat_manual` / `stat_spoke`
+
+- `stat_function`：空数据补一行 `group = 1`（上游
+  `ensure_nonempty_data()`），`fun` 收可调用或 `sin` / `cos` / `tan` / `exp` /
+  `log` / `sqrt` / `abs` / `identity` 的字符串别名；网格 `seq(xlim 或 x 标度
+  dimension, length.out = n)`（缺省 `n = 101`）。连续 x 标度先反变换再求值，连续
+  y 标度再正变换；离散 x 标度直接用网格值。
+- `stat_connect`：`connection` 收 `hv` / `vh` / `mid` / `linear` 或 2 列数值矩阵；
+  按 x 排序后在每一对相邻点之间插 `m` 个点（`connection` 的每一行是一个
+  (xjust, yjust) 对），首尾按 `connection[1, ] == c(0, 0)` / 末行 `== c(1, 1)`
+  补原始端点。
+- `stat_manual`：`fun` 收到「列名 → numpy 数组」的映射（NA 是 `nan` / `None`），
+  返回映射或 `ColumnTable`；`args` 是映射；缺省是恒等。
+- `stat_spoke`：4.0.3 里已是 `lifecycle::deprecate_stop()`，注册项保留但调用即
+  报错并指向 `geom_spoke()`（角度 / 半径是 geom 的参数，归 M2-7）。
+
+## 10. M2-6 的已知差异 / 未实现
+
+| 能力 | 现状 | 去向 |
+| --- | --- | --- |
+| `stat_qq` 的 `distribution` 为任意 R 函数 | 只支持 6 个字符串别名与 Python 可调用 | 需要 R 函数桥接时再加 |
+| `stat_ellipse(type = "t")` | `MASS::cov.trob()` 的移植（`nu = 5` 固定） | `nu` / `maxit` 还不是参数 |
+| `stat_quantile(method = "rqss")` | `BuildError` 点名 | 需要 `quantreg::rqss` 的平滑样条 |
+| `stat_quantile` 的其他 formula | `BuildError` 点名 | 需要完整设计矩阵 |
+| `stat_density(kernel = …)` 非 gaussian | `BuildError` 点名 | 同一条 FFT 路径的纯算术 |
+| `stat_density(bw = "ucv" / "bcv" / "sj")` | `BuildError` 点名 | 需要 R 的交叉验证实现 |
+| `stat_summary` 的 Hmisc 四个包装 | 用闭式口径实现（`mean_se` / `mean_cl_normal` / `mean_sdl` / `median_hilow`），不依赖 Hmisc | — |
+| `stat_ydensity` 的加权分位线 | 告警并按未加权分位计算（上游同样告警） | 需要加权分位 |
+| `stat_spoke` | 与上游一致：`deprecate_stop()` | 用 `geom_spoke()`（M2-7） |
+
+## 11. 验收口径
 
 ```bash
-pixi run -e refs refs:stat        # 夹具 + 5 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
-pixi run pytest tests/test_stat_r_parity.py -q
-pixi run cases:matrix             # 5 张 stat case 逐张 render + diff
-pixi run check                    # 全量门禁
+pixi run -e refs refs:stat             # 5 张 M1-8 的 expected.svg + 夹具
+pixi run -e refs refs:stat-longtail    # 14 张 M2-6 的 expected.svg + 夹具
+pixi run pytest tests/test_stat_r_parity.py tests/test_stat_longtail_r_parity.py -q
+pixi run cases:matrix                  # stat case 逐张 render + diff
+pixi run check                         # 全量门禁
 ```
+
+`refs:stat-longtail` 依赖 refs 环境的 `r-mass`（`type = "t"`）与 `r-quantreg`
+（`rq`）——两者只活在 refs 特性里，dev / prod 不会带上。夹具把 ±Inf 的位置记在
+`pos_inf` / `neg_inf`（1 起），因为 JSON 的 `null` 既表示 NA 也表示非有限值。
 
 夹具记录 `ggplot_build(p)$data[[1]]` 的列名、列序、kind、逐值（NA / NaN 写
 `null`）与 build / draw 两段 warning。比较口径：列名与列序完全一致；数值

@@ -184,11 +184,11 @@ def test_bin_stat_is_the_default_for_geom_histogram() -> None:
 
 
 def test_unimplemented_stat_is_rejected_not_silently_identity() -> None:
-    # M1-8 起 bin / boxplot / smooth / align 都是真的；不认识的 stat 名仍然报错，
-    # 消息里列出已实现的 stat，不静默当成 identity。
-    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(stat="ecdf")
+    # M1-8 / M2-6 之后 bin / boxplot / smooth / align / ecdf … 都是真的；还没排到的
+    # stat 名（2D 族归 M2-6 的另一半）仍然报错并列出已实现的 stat，不静默当成 identity。
+    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(stat="contour")
     aesthetics = compute_aesthetics(plot, plot.layers[0])
-    with pytest.raises(BuildError, match="ecdf"):
+    with pytest.raises(BuildError, match="contour"):
         compute_stat(plot.layers[0], aesthetics)
 
 

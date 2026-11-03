@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "scale-limits", "stat-summary-bin"]
+ci = true
+title = "summary_bin：原始点 + 分箱均值点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_summary_bin 的端到端：bins = 4 的箱边界与箱标签由 refs:stat-longtail 的 sumbin_* 逐值对拍。"
