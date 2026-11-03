@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "guide-none", "lab-axis-title"]
+ci = true
+title = "上游快照：position guide titles"
+source = "upstream:tests/testthat/_snaps/guide-axis/position-guide-titles.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。"

@@ -30,7 +30,7 @@ page viewport（整页，plot.background）
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -39,8 +39,6 @@ import numpy as np
 from ggcore import ir
 from ggcore.axis import (
     DERIVE,
-    axis_extent,
-    axis_grobs,
     axis_ticks,
     axis_title_extent,
     axis_title_grob,
@@ -50,6 +48,7 @@ from ggcore.axis import (
     text_line_cm,
 )
 from ggcore.axis_guide import (
+    AUTO,
     axis_guide_extent,
     axis_guide_grobs,
     axis_guide_ticks,
@@ -353,6 +352,22 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
     return None
 
 
+def _guide_title(guide: Any, default: str | None) -> str | None:
+    """guide 的 `title` 覆盖轴标题（R：guide 的设定优先于标度名）。
+
+    `AUTO`（缺省）= 用 `default`；`None` = 不显示标题（`guide_none()` 的缺省）；
+    其它值原样作为标题。
+    """
+    if guide is None:
+        return default
+    title = getattr(guide, "title", AUTO)
+    if title is AUTO:
+        return default
+    if title is None:
+        return None
+    return str(title)
+
+
 def _secondary_title(build: PlotBuild, aesthetic: str, scale: Any) -> str | None:
     """次轴的标题（R `AxisSecondary$make_title()`）。
 
@@ -491,29 +506,59 @@ def plot_layout(
         )
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
         right_scale = _panel_scale(build, panel, params.scale_key("right"))
-        if top_scale is not None and getattr(top_scale, "secondary_axis", None) is not None:
+        if has_secondary_axis(build, "x", top_scale):
             secondary_x = True
-            ticks_top = axis_ticks(top_scale, params, "top", secondary=True)
-            x_axis_top = max(x_axis_top, axis_extent(theme, ticks_top, metrics=metrics))
+            guide_top = secondary_axis_guide(build, "x", top_scale)
+            ticks_top = axis_guide_ticks(
+                top_scale,
+                params,
+                "top",
+                guide_top,
+                theme,
+                secondary=getattr(top_scale, "secondary_axis", None) is not None,
+                base=_secondary_ticks(build, top_scale, params, "top", "x"),
+            )
+            x_axis_top = max(
+                x_axis_top,
+                axis_guide_extent(theme, ticks_top, guide_top, side="top", metrics=metrics),
+            )
             x_title_top = max(
                 x_title_top,
                 axis_title_extent(
                     theme,
                     "top",
-                    _secondary_title(build, params.scale_key("top"), top_scale),
+                    _guide_title(
+                        secondary_axis_guide(build, "x", top_scale),
+                        _secondary_title(build, params.scale_key("top"), top_scale),
+                    ),
                     metrics=metrics,
                 ),
             )
-        if right_scale is not None and getattr(right_scale, "secondary_axis", None) is not None:
+        if has_secondary_axis(build, "y", right_scale):
             secondary_y = True
-            ticks_right = axis_ticks(right_scale, params, "right", secondary=True)
-            y_axis_right = max(y_axis_right, axis_extent(theme, ticks_right, metrics=metrics))
+            guide_right = secondary_axis_guide(build, "y", right_scale)
+            ticks_right = axis_guide_ticks(
+                right_scale,
+                params,
+                "right",
+                guide_right,
+                theme,
+                secondary=getattr(right_scale, "secondary_axis", None) is not None,
+                base=_secondary_ticks(build, right_scale, params, "right", "y"),
+            )
+            y_axis_right = max(
+                y_axis_right,
+                axis_guide_extent(theme, ticks_right, guide_right, side="right", metrics=metrics),
+            )
             y_title_right = max(
                 y_title_right,
                 axis_title_extent(
                     theme,
                     "right",
-                    _secondary_title(build, params.scale_key("right"), right_scale),
+                    _guide_title(
+                        secondary_axis_guide(build, "y", right_scale),
+                        _secondary_title(build, params.scale_key("right"), right_scale),
+                    ),
                     metrics=metrics,
                 ),
             )
@@ -1236,6 +1281,54 @@ def _text_gpar(element: ElementText) -> gpar:
 # ---------------------------------------------------------------------------
 
 
+def secondary_axis_guide(build: PlotBuild, aesthetic: str, scale: Any) -> Any:
+    """次轴（top / right）的轴 guide。
+
+    与 R 的优先级一致：`guides(<aes>.sec = guide_axis(...))` 最高，其次是
+    `dup_axis(guide = guide_axis(...))` / `sec_axis(guide = ...)` 上的那份；
+    都没有时返回 `None`（`axis_guide_ticks()` 按缺省 `guide_axis()` 处理）。
+    """
+    from ggcore.axis_guide import axis_guide_from_component
+
+    guides = getattr(build, "guides", None) or {}
+    key = f"{aesthetic}.sec"
+    for name, component in guides.items():
+        owner = getattr(component, "aesthetic", None)
+        if owner == key or (owner is None and name == key):
+            return axis_guide_from_component(component)
+    secondary = getattr(scale, "secondary_axis", None) if scale is not None else None
+    guide = getattr(secondary, "guide", None) if secondary is not None else None
+    if guide is not None:
+        return axis_guide_from_component(guide)
+    return None
+
+
+def has_secondary_axis(build: PlotBuild, aesthetic: str, scale: Any) -> bool:
+    """top / right 是否画一条次轴。
+
+    R 4.0.3 有两条来路：`sec_axis()` / `dup_axis()` 挂在标度上，或者只在
+    `guides(<aes>.sec = ...)` 里给一份轴 guide —— 后者会画一条**恒等的**次轴
+    （没有标题），`axis-guides-with-capped-ends` / `stacked-axes` 走的就是这条路。
+    """
+    if scale is None:
+        return False
+    if getattr(scale, "secondary_axis", None) is not None:
+        return True
+    guides = getattr(build, "guides", None) or {}
+    key = f"{aesthetic}.sec"
+    return any(
+        getattr(component, "aesthetic", None) == key
+        or (getattr(component, "aesthetic", None) is None and name == key)
+        for name, component in guides.items()
+    )
+
+
+def _secondary_ticks(build: PlotBuild, scale: Any, params: Any, side: str, aesthetic: str):
+    """次轴刻度：有 `sec_axis()` 走变换，只有 guide 时沿用主轴断点（恒等）。"""
+    secondary = getattr(scale, "secondary_axis", None) is not None
+    return axis_ticks(scale, params, side, secondary=secondary)
+
+
 def _axis_grobs(
     build: PlotBuild,
     theme: ResolvedTheme,
@@ -1243,8 +1336,10 @@ def _axis_grobs(
     metrics: Any,
 ) -> list[Any]:
     grobs: list[Any] = []
-    x_title = _axis_title_text(build, "x")
-    y_title = _axis_title_text(build, "y")
+    guide_x = guide_for(build, "x")
+    guide_y = guide_for(build, "y")
+    x_title = _guide_title(guide_x, _axis_title_text(build, "x"))
+    y_title = _guide_title(guide_y, _axis_title_text(build, "y"))
     for panel, params in _panels(build):
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover
@@ -1256,8 +1351,6 @@ def _axis_grobs(
         scale_right = _panel_scale(build, panel, params.scale_key("right"))
         ticks_x = axis_ticks(scale_bottom, params, "bottom")
         ticks_y = axis_ticks(scale_left, params, "left")
-        guide_x = guide_for(build, "x")
-        guide_y = guide_for(build, "y")
         gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
         gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
         grobs.extend(
@@ -1266,6 +1359,53 @@ def _axis_grobs(
         grobs.extend(
             axis_guide_grobs(theme, gy, cell, guide_y, metrics=metrics, name=f"axis-y-{panel}")
         )
+        # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推；
+        # guide 优先级与主轴一致：`guides(x.sec = ...)` → `dup_axis(guide = ...)`
+        # → 默认 `guide_axis()`（R 的 `scale$secondary.axis$guide`）。
+        guide_top = secondary_axis_guide(build, "x", scale_top)
+        guide_right = secondary_axis_guide(build, "y", scale_right)
+        gx_top = None
+        gy_right = None
+        if has_secondary_axis(build, "x", scale_top):
+            gx_top = axis_guide_ticks(
+                scale_top,
+                params,
+                "top",
+                guide_top,
+                theme,
+                secondary=getattr(scale_top, "secondary_axis", None) is not None,
+                base=_secondary_ticks(build, scale_top, params, "top", "x"),
+            )
+            grobs.extend(
+                axis_guide_grobs(
+                    theme,
+                    gx_top,
+                    cell,
+                    guide_top,
+                    metrics=metrics,
+                    name=f"axis-x-sec-{panel}",
+                )
+            )
+        if has_secondary_axis(build, "y", scale_right):
+            gy_right = axis_guide_ticks(
+                scale_right,
+                params,
+                "right",
+                guide_right,
+                theme,
+                secondary=getattr(scale_right, "secondary_axis", None) is not None,
+                base=_secondary_ticks(build, scale_right, params, "right", "y"),
+            )
+            grobs.extend(
+                axis_guide_grobs(
+                    theme,
+                    gy_right,
+                    cell,
+                    guide_right,
+                    metrics=metrics,
+                    name=f"axis-y-sec-{panel}",
+                )
+            )
         grobs.extend(
             _axis_line_grobs(
                 theme,
@@ -1274,30 +1414,19 @@ def _axis_grobs(
                 ranges={
                     "bottom": axis_line_range(guide_x, gx),
                     "left": axis_line_range(guide_y, gy),
+                    "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
+                    "right": axis_line_range(guide_right, gy_right)
+                    if gy_right is not None
+                    else None,
                 },
+                sides=(
+                    "bottom",
+                    "left",
+                    *(("top",) if gx_top is not None else ()),
+                    *(("right",) if gy_right is not None else ()),
+                ),
             )
         )
-        # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推。
-        if scale_top is not None and getattr(scale_top, "secondary_axis", None) is not None:
-            grobs.extend(
-                axis_grobs(
-                    theme,
-                    axis_ticks(scale_top, params, "top", secondary=True),
-                    cell,
-                    metrics=metrics,
-                    name=f"axis-x-sec-{panel}",
-                )
-            )
-        if scale_right is not None and getattr(scale_right, "secondary_axis", None) is not None:
-            grobs.extend(
-                axis_grobs(
-                    theme,
-                    axis_ticks(scale_right, params, "right", secondary=True),
-                    cell,
-                    metrics=metrics,
-                    name=f"axis-y-sec-{panel}",
-                )
-            )
         for annotation in getattr(build, "annotations", ()) or ():
             from ggcore.annotations import logticks_grobs
 
@@ -1359,7 +1488,8 @@ def _axis_grobs(
             fake = CellBox(1, 1, 1, 1, box.x_cm, box.y_cm, box.width_cm, box.height_cm)
             if layout.secondary_x:
                 scale = _panel_scale(build, panel, params.scale_key("top"))
-                title = _secondary_title(build, params.scale_key("top"), scale)
+                guide = secondary_axis_guide(build, "x", scale)
+                title = _guide_title(guide, _secondary_title(build, params.scale_key("top"), scale))
                 grob = axis_title_grob(
                     theme,
                     "top",
@@ -1373,7 +1503,10 @@ def _axis_grobs(
                     grobs.append(grob)
             if layout.secondary_y:
                 scale = _panel_scale(build, panel, params.scale_key("right"))
-                title = _secondary_title(build, params.scale_key("right"), scale)
+                guide = secondary_axis_guide(build, "y", scale)
+                title = _guide_title(
+                    guide, _secondary_title(build, params.scale_key("right"), scale)
+                )
                 grob = axis_title_grob(
                     theme,
                     "right",
@@ -1394,18 +1527,31 @@ def _axis_line_grobs(
     *,
     name: str,
     ranges: Mapping[str, tuple[float, float] | None] | None = None,
+    sides: Sequence[str] = ("bottom", "left"),
 ) -> list[Any]:
     """`axis.line.x` / `axis.line.y`；`ranges` 给 `cap=` 裁出的端点（npc 0..1）。
 
     R 的轴线是 guide 的 decor（`GuideAxis$extract_decor()`），`cap=` 会把它收到
-    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。
+    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。`sides` 决定画哪
+    几条：主轴总有 bottom / left，有次轴时再加 top / right（R 里次轴自己的 guide
+    也带 decor）。
     """
     from ggcore.grobs import segments_grob
 
     ranges = ranges or {}
+    elements = {
+        "bottom": ("axis.line.x.bottom", "axis.line.x"),
+        "top": ("axis.line.x.top", "axis.line.x"),
+        "left": ("axis.line.y.left", "axis.line.y"),
+        "right": ("axis.line.y.right", "axis.line.y"),
+    }
     grobs: list[Any] = []
-    for side, element_name in (("bottom", "axis.line.x"), ("left", "axis.line.y")):
-        element = theme.get(element_name)
+    for side in sides:
+        element = None
+        for element_name in elements[side]:
+            element = theme.get(element_name)
+            if element is not None:
+                break
         colour = paint(getattr(element, "colour", None))
         if colour is None:
             continue
@@ -1416,9 +1562,15 @@ def _axis_line_grobs(
         if side == "bottom":
             x0, y0 = box.x_cm + low * box.width_cm, box.y_cm
             x1, y1 = box.x_cm + high * box.width_cm, box.y_cm
-        else:
+        elif side == "top":
+            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm + box.height_cm
+            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm + box.height_cm
+        elif side == "left":
             x0, y0 = box.x_cm, box.y_cm + low * box.height_cm
             x1, y1 = box.x_cm, box.y_cm + high * box.height_cm
+        else:
+            x0, y0 = box.right, box.y_cm + low * box.height_cm
+            x1, y1 = box.right, box.y_cm + high * box.height_cm
         grobs.append(
             segments_grob(
                 x0,

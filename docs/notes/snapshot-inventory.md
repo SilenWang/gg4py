@@ -4,16 +4,16 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**141**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**170**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **147** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**151**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**160**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **137** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `guide-axis` | m2-closeout | 23 | 0 | 23 |
 | `geom-violin` | m2-closeout | 14 | 0 | 14 |
+| `guide-axis` | m2-closeout | 23 | 10 | 13 |
 | `geom-raster` | m2-closeout | 12 | 0 | 12 |
 | `coord-polar` | m2-closeout | 11 | 0 | 11 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
@@ -52,7 +52,7 @@
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
-| **合计** | — | 311 | 141 | 170 |
+| **合计** | — | 311 | 151 | 160 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -97,6 +97,16 @@
 | `geom-dotplot/stack-up.svg` | `upstream-geom-dotplot-stack-up` |
 | `geom-dotplot/stackratio-1-5.svg` | `upstream-geom-dotplot-stackratio-1-5` |
 | `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg` | `upstream-geom-dotplot-variable-linetype-size` |
+| `guide-axis/axis-guides-basic.svg` | `upstream-guide-axis-axis-guides-basic` |
+| `guide-axis/axis-guides-negative-rotation.svg` | `upstream-guide-axis-axis-guides-negative-rotation` |
+| `guide-axis/axis-guides-positive-rotation.svg` | `upstream-guide-axis-axis-guides-positive-rotation` |
+| `guide-axis/axis-guides-vertical-negative-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-negative-rotation` |
+| `guide-axis/axis-guides-vertical-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-rotation` |
+| `guide-axis/axis-guides-zero-breaks.svg` | `upstream-guide-axis-axis-guides-zero-breaks` |
+| `guide-axis/axis-guides-zero-rotation.svg` | `upstream-guide-axis-axis-guides-zero-rotation` |
+| `guide-axis/guide-titles-with-coord-transform.svg` | `upstream-guide-axis-guide-titles-with-coord-transform` |
+| `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
+| `guide-axis/thick-axis-lines.svg` | `upstream-guide-axis-thick-axis-lines` |
 | `guide-colorbar/combined-colour-and-fill-aesthetics.svg` | `upstream-guide-colorbar-combined-aesthetics` |
 | `guide-colorbar/customized-colorbar.svg` | `upstream-guide-colorbar-customized` |
 | `guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg` | `upstream-guide-colorbar-white-to-red` |
@@ -567,35 +577,133 @@ plotmath 表达式标签（`expression()`）未支持。
 
 </details>
 
-### `guide-axis` — 23 条 · SIL-715 · m2-closeout
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-轴 guide 的角度 / 叠放 / 稀疏 / 次刻度 / logtick 定制（23 条）未逐条复刻。
+G1b 实测 15%：`guide_axis_stack()` 的两层轴能画（间距 = 主轴刻度长），但叠放后的**轴带宽度**仍按单层算，R 按 `guide_axis_stack` 的 measured gtable 累加。
+
+<details><summary>快照</summary>
+
+- `guide-axis/stacked-axes.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reorder(model, hwy)` 的38 个离散水平（均值序已按 R 的 `levels(reorder())` 写死）在逐面板 y 轴带里错位，属 G7 的`facet-` 簇口径，不在轴 guide 这一簇。
 
 <details><summary>快照</summary>
 
 - `guide-axis/align-facet-labels-facets-horizontal.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇。
+
+<details><summary>快照</summary>
+
 - `guide-axis/align-facet-labels-facets-vertical.svg`
-- `guide-axis/axis-guides-basic.svg`
-- `guide-axis/axis-guides-check-overlap.svg`
-- `guide-axis/axis-guides-negative-rotation.svg`
-- `guide-axis/axis-guides-positive-rotation.svg`
-- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
-- `guide-axis/axis-guides-vertical-negative-rotation.svg`
-- `guide-axis/axis-guides-vertical-rotation.svg`
-- `guide-axis/axis-guides-with-capped-ends.svg`
-- `guide-axis/axis-guides-zero-breaks.svg`
-- `guide-axis/axis-guides-zero-rotation.svg`
-- `guide-axis/guide-axis-customization.svg`
-- `guide-axis/guide-axis-theta-in-cartesian-coordinates.svg`
-- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
-- `guide-axis/guide-titles-with-coord-transform.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 2.22%（阈值 2%）：同上——次轴的 `n.dodge` 两条标签行 + R 的空标题行未进版式，面板顶边差 17.3pt；差 0.22 个百分点，不是阈值问题。
+
+<details><summary>快照</summary>
+
 - `guide-axis/guides-specified-in-guides.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 3.05%：`n.dodge = 2` 的竖轴标签在 R 里占两列（26.7pt），本仓的 `plot_layout` 仍按一列（14.7pt）留位，面板左边界差 12pt。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guide-axis-customization.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 3.49%：`check_overlap` 的**标签保留集合**已和上游一致（1/3/5/7/10/12/15/17/20），剩下的是 R 把整组轴当 grid 单元画时的字形/轴线半像素差；再调就到阈值内但会改 `guide_axis` 的公共排版。
+
+<details><summary>快照</summary>
+
+- `guide-axis/axis-guides-check-overlap.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 3.58%：`n.dodge = 2` 的分行位置对，差在长标签（10 位数字）在面板边缘的半像素落点。
+
+<details><summary>快照</summary>
+
+- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 54.9%：`coord_radial()` 下的 `guide_axis_theta(angle=)` 标签锚点（R 的`flip_text_angle()` + 半径 0.45）与我们的极坐标轴差异仍大，见 `docs/notes/coord.md` §12。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 7.65%：`cap=` 的轴线端点已对，但 R 在次轴（top/right）上方额外留了一行空轴标题（17.3pt，`xlab-t` 空行），本仓的版式不占这一行，面板顶边因此高 17.3pt。
+
+<details><summary>快照</summary>
+
+- `guide-axis/axis-guides-with-capped-ends.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 实测 8.71%：直角坐标下的 `axis_theta` 四条轴能画（颜色分开），但 R 的 theta 轴在笛卡尔坐标里退化成带角度的普通轴，标签锚点不同于 `axis_theta` 的极坐标口径。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guide-axis-theta-in-cartesian-coordinates.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 未纳管：`label_math()` 的 plotmath 标签 + 负长度的 `axis.ticks.length.x.top` 已能画，但 `axis.minor.ticks.length.y.right = 5cm` 会把次轴带撑到 5cm，R 的 gtable 与我们的轴带宽度分配不一致（实测 >10%）。
+
+<details><summary>快照</summary>
+
 - `guide-axis/guides-with-minor-ticks.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 未纳管：`transform_compose(transform_log10(), transform_reverse())` 与`coord_transform(x = transform_pseudo_log())` 两个变换都还没有（`scales.py` / `coord.py`把 pseudo_log 记在 M3-2），logticks 本身已能画。
+
+<details><summary>快照</summary>
+
 - `guide-axis/logtick-axes-with-customisation.svg`
-- `guide-axis/position-guide-titles.svg`
-- `guide-axis/stacked-axes.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+G1b 未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「报 ValueError / 未做」，两层 theta 轴要在半径上推第二圈（`stack_offset`）。
+
+<details><summary>快照</summary>
+
 - `guide-axis/stacked-radial-axes.svg`
-- `guide-axis/thick-axis-lines.svg`
 
 </details>
 
