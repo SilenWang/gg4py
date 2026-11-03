@@ -246,7 +246,18 @@ EXPECTED = {
     ),
     "facet": ("null", "wrap", "grid"),
     "guide": ("legend", "colourbar", "none"),
-    "theme": ("grey", "bw", "minimal", "void"),
+    "theme": (
+        "grey",
+        "gray",
+        "bw",
+        "classic",
+        "light",
+        "dark",
+        "linedraw",
+        "minimal",
+        "test",
+        "void",
+    ),
     "label": ("labs",),
 }
 
@@ -280,7 +291,7 @@ def test_default_names_are_registered_in_order(kind: str) -> None:
 def test_theme_names_is_derived_from_the_registry() -> None:
     # 常量是注册表的快照，不是手写清单（SIL-671：手写的三元组漏了 `bw`）。
     assert registry.THEME_NAMES == registry.registered("theme")
-    assert registry.THEME_NAMES == ("grey", "bw", "minimal", "void")
+    assert registry.THEME_NAMES == EXPECTED["theme"]
 
 
 def test_theme_names_tracks_register_and_unregister() -> None:
@@ -638,3 +649,21 @@ def test_a_component_class_name_must_match_its_registration() -> None:
     with pytest.raises(ValueError, match="不一致"):
         registry.register_geom("other", ChildGeom)
     assert "other" not in registry.registered("geom")
+
+
+def test_every_registered_theme_is_complete_and_resolves() -> None:
+    """注册表里的每个主题都能直接加到图上，并解析出完整元素树（M2-5）。"""
+    from ggcore.theme import ELEMENT_TREE, resolve_theme
+
+    p = plot.ggplot({"x": [1.0], "y": [2.0]})
+    for name in registry.THEME_NAMES:
+        theme = getattr(registry, f"theme_{name}")()
+        assert theme.complete is True, name
+        assert isinstance(theme.name, str), name
+        themed = p + theme
+        assert themed.theme is theme
+        resolved = resolve_theme(themed.theme)
+        assert set(resolved.elements) == set(ELEMENT_TREE), name
+        # `p.theme_<name>()` 与模块级函数同源（注册表的两个入口）。
+        method = getattr(p, f"theme_{name}")
+        assert method().theme.elements == theme.elements

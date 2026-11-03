@@ -877,15 +877,15 @@ def _panel_children(
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)
-    if not layer_grobs:
-        return children
     if _clip_state(params.clip) == "on":
-        # 面板范围内的矩形裁剪（IR 里是 clip 节点；与视口裁剪取交）。
-        children.append(
-            clip_path(*layer_grobs, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")
-        )
-    else:
+        # 面板视口的 clip="on"：R 把背景、网格、边框与图层都放进面板视口裁剪，
+        # 面板边框的半条线宽因此被切在面板内（`theme_bw()` 的边缘就是靠这一步
+        # 与参考图对齐的）。IR 里是一个 clip 容器（与视口裁剪取交）。
         children.extend(layer_grobs)
+        if not children:
+            return []
+        return [clip_path(*children, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")]
+    children.extend(layer_grobs)
     return children
 
 
@@ -1326,20 +1326,19 @@ def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[A
         if colour is None:
             continue
         lwd = _mm_to_pt(getattr(element, "linewidth", None))
+        # 轴线沿面板边界：x 轴在底边、y 轴在左边（`theme_classic()` 的视觉主体）。
         if side == "bottom":
-            coords = (
-                [box.x_cm, box.x_cm + box.width_cm],
-                [box.y_cm, box.y_cm],
-            )
+            x0, y0 = box.x_cm, box.y_cm
+            x1, y1 = box.x_cm + box.width_cm, box.y_cm
         else:
-            coords = (
-                [box.x_cm, box.x_cm],
-                [box.y_cm, box.y_cm + box.height_cm],
-            )
+            x0, y0 = box.x_cm, box.y_cm
+            x1, y1 = box.x_cm, box.y_cm + box.height_cm
         grobs.append(
             segments_grob(
-                coords[0],
-                coords[1],
+                x0,
+                y0,
+                x1,
+                y1,
                 default_units="cm",
                 gp=gpar(col=colour, lwd=lwd),
                 name=f"{name}-{side}",
