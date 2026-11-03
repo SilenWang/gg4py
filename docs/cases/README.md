@@ -248,15 +248,14 @@ M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) +
 | `theme` | `grey-basic` / `minimal-basic` / `void-basic`（同一份数据，只换主题） |
 | `guide` | `legend-single` / `legend-merged`（colour + shape）/ `colourbar` |
 
-`ci = false` 的三条是**已知实现缺口**，参考图照常入库，接上能力后把 `ci` 翻成
-`true` 即可（matrix 的“跳过”不是绿，只是不跑）。缺口统一登记在
-**SIL-715（M2 缺口池）**，下表「缺口池」列是池里的第几条：
+SIL-723 在 M1 内结掉了 SIL-715 的 #1/#2/#3：这三条从 `ci = false` 翻成
+`true`，61 条 case 现在全部进矩阵（“跳过”不是绿，只是不跑）：
 
-| case | 缺口 | 缺口池 |
-| --- | --- | --- |
-| `theme-grey-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 | SIL-715 #1 |
-| `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-715 #2 |
-| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） | SIL-715 #3 |
+| case | 原缺口 | 现状 | 图级 / 均值 |
+| --- | --- | --- | --- |
+| `theme-grey-basic` | `panel.grid.major/minor` 未绘制 | SIL-723 已修 | 1.87% / 0.16% |
+| `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-723 已修 | 1.87% / 0.16% |
+| `guide-colourbar` | 色条只覆盖断点色阶；细矩形在 resvg 下有白缝 | SIL-723 已修 | 1.74% / 0.31% |
 
 另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考），同样归在
 SIL-715（M2 缺口池）：

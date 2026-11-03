@@ -107,20 +107,27 @@ colour 图例，键用 1.5mm 的默认点大小）。
 | 色条（竖向） | 宽 = `legend.key.width`，高 = **5 ×** `legend.key.height` | 0.6096 × 3.048cm |
 | 色条（横向） | 宽 = **5 ×** `legend.key.width`，高 = `legend.key.height`；断点标签排在色条下方一行 | 3.048 × 0.6096cm（R 的盒高 1.487cm） |
 
-文字行高取 0.955em（`TEXT_LINE_EM`，与 `ggcore.facet` 的 strip 同一常量）：R 的
-`stringHeight()` + `font_descent()` 在 8.8/11/20pt 上量出来都是 ≈0.94–0.96em。
+文字行高取 **0.894em**（`TEXT_LINE_EM`）：R 4.5.3 + svglite 的
+`stringHeight()` + `font_descent()` 在 8.8 / 11 / 20pt 上都是 0.894em
+（Arimo 的 cap height 0.691em + descent 0.203em）。旧值 0.955em 是 **pdf 设备**
+（Helvetica）的口径，用它排 4×3 svglite 参考图时轴带高 1.2pt、面板底边整条错。
+
+列宽里的**拉丁文字**用 `LAYOUT_LATIN_FONT`（受管字体栈里的拉丁字面 Noto Sans）
+量宽度：R 的 sans 是 Helvetica 口径（数字 0.556em），主字面 Noto Sans CJK SC
+只有 0.50em，直接用会把 y 轴标签列排窄 1pt、面板左边界偏 1px。这里只量列宽 /
+图例标签盒，IR 的 `text.width` 仍由绘制端按自己的字面量。
 
 ### 与 R 的实测差（7×7in，容差要求 ≤ 0.5mm）
 
 | 量 | gg4py | R 4.0.3 | 差 |
 | --- | --- | --- | --- |
-| `axis-l` 列宽 | 0.4973cm | 0.5270cm | 0.30mm |
-| `axis-b` 行高 | 0.4704cm | 0.4718cm | 0.01mm |
-| `ylab-l` 列宽 | 0.4672cm | 0.4606cm | 0.07mm |
-| `xlab-b` 行高 | 0.4672cm | 0.4606cm | 0.07mm |
+| `axis-l` 列宽 | 0.5290cm | 0.5270cm | 0.02mm |
+| `axis-b` 行高 | 0.4517cm | 0.4718cm | 0.20mm |
+| `ylab-l` 列宽 | 0.4438cm | 0.4606cm | 0.17mm |
+| `xlab-b` 行高 | 0.4438cm | 0.4606cm | 0.17mm |
 | `title` 行高 | 0.6380cm | 0.6235cm | 0.15mm |
-| 离散图例盒 | 1.3512 × 2.7793cm | 1.3660 × 2.7727cm | 0.15 / 0.07mm |
-| 色条图例盒 | 1.6746 × 3.9985cm | 1.7191 × 3.9919cm | 0.45 / 0.07mm |
+| 离散图例盒 | 1.3670 × 2.7558cm | 1.3660 × 2.7727cm | 0.01 / 0.17mm |
+| 色条图例盒 | 1.7220 × 3.9750cm | 1.7191 × 3.9919cm | 0.03 / 0.17mm |
 
 剩余差异几乎都在**文字宽度**上：R 的 pdf 设备把 `sans` 解析成 Helvetica（数字
 0.556em），我们的设备量表是 DejaVu/Noto（数字约 0.52em）。换成同一个字体后
@@ -135,6 +142,13 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 面板区里解析。区域语义一一对应（夹具的 `structure.regions` 记录了 R 的区域名，
 `test_page_layout_covers_the_r_gtable_regions` 断言我们实现了同一组），但**行列数
 不同**——像素级差异来自各区域的尺寸（上面那张表），不是表格行数。
+
+**竖向图例的纵向位置**：R 的 guide 列挂在**面板行**上（strip 在 gtable 里是独立
+行，`guide-box-right` 的 `t`/`b` 只跨 panel 行），所以居中区 = 所有面板单元格的
+并集，顶部 / 底部 strip 带不算；分面时图例比整个 `panel_area` 的中心低半个 strip
+（2×2 + `theme_grey` 的 R 报告图：strip 16.66pt，中心 112.28 vs 103.95）。
+`tests/test_guide.py::test_vertical_legend_is_centred_on_the_panel_rows` 钉 ±0.1pt，
+单面板（没有 strip，panel 行 == `panel_area`）不许因此移动。SIL-725。
 
 ## 5. 轴
 
@@ -179,12 +193,12 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | 能力 | 现状 |
 | --- | --- |
 | `guide_bins` / `guide_coloursteps` | 未注册；`guide_from_component()` 报 `GuideError` 并列出已实现的名字 |
-| secondary axis（`sec_axis()`） | 未注册；没有 API，不会静默忽略 |
+| secondary axis（`sec_axis()` / `dup_axis()`） | 明确报错：`scale_x_continuous(sec.axis = ...)`（`+` 与方法链两条入口）在构造时抛 `ScaleError`；`scale_from_component()` 解析时兜底。SIL-723 之前是静默忽略 |
 | `legend.position = "inside"` | `plot_layout()` 报 `GuideError`，点名「面板内定位未实现」 |
 | `legend.position = c(x, y)`（数值坐标） | 同上 |
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
 | `legend.frame` / 高级图例盒子主题（`legend.box.just` 等） | 只画 `legend.frame` 的描边；`legend.box.background` 只画矩形 |
-| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12）；改成 `nbin` 个等高矩形。**不是无缝的**：细条在当前 `resvg` 下每像素覆盖率不足，整条比 R 的 1×300 位图偏白约 30%（`guide-colourbar` 实测图级 3.9%，因此标 `ci = false`，见 `docs/cases/README.md`）。修法：IR 加渐变节点，或让色条走 `raster_grob` 的位图。缺口池：**SIL-715 #3**（M2 缺口池，IR 渐变 + guide）。 |
+| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。 |
 | 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
 | `override_aes` 的高级形态（逐键不同值） | 只支持标量覆盖所有键 |
 

@@ -33,6 +33,7 @@ from typing import Any
 import numpy as np
 
 from ggcore.aes import Aes
+from ggcore.axis import text_line_cm
 from ggcore.components import Facet
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import eval_aes, parse_aes
@@ -1310,18 +1311,14 @@ def _strip_extent(
         return 0.0
     size = float(element.size or 0.0)
     if metrics is not None:
-        text_cm = (
-            float(
-                metrics.strheight(
-                    "",
-                    fontsize=size,
-                    cex=1.0,
-                    font=element.family or "sans",
-                )
-            )
-            * 2.54
-        )
+        # 真实渲染路径：文字行高与轴 / 图例的文本行同一常量（`TEXT_LINE_EM`
+        # = R 的 stringHeight() + font_descent() = 0.894em，见
+        # docs/notes/guide.md）。旧实现用 `metrics.strheight()`，那只是 cap
+        # height（0.735em），strip 行比 R 矮 1.4pt：分面的面板行因此高 1.4pt、
+        # 竖向图例中心偏 0.7pt（SIL-725 的量测口径）。
+        text_cm = text_line_cm(size)
     else:
+        # 无度量时保留 M1-6 的历史近似口径（对拍夹具按这个口径冻结）。
         text_cm = size * _STRIP_TEXT_EM * 2.54 / 72.0
     margin = element.margin
     if margin is None:

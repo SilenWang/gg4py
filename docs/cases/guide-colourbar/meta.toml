@@ -1,7 +1,7 @@
 family = "guide"
 features = ["aes-mapping", "colour-aes", "guide-colourbar", "scale-gradient", "scale-limits"]
-ci = false
+ci = true
 title = "guide：colourbar"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项：guide 的渐变条由 256 条细矩形拼成，resvg 下每像素覆盖率不足 → 整条偏白（实测图级差异 3.9%）；点本身与 R 逐色一致。缺口池 SIL-715 #3（IR 渐变 + guide）。"
+notes = "SIL-723 已修：色条按标度 limits 的全量程取 Lab 色（不再是断点色阶），相邻小矩形重叠 1pt 消除 resvg 白缝；图级 1.74% / 均值 0.31%。缺口池 SIL-715 #3 关闭。"

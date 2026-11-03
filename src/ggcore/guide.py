@@ -30,7 +30,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any
@@ -86,6 +86,11 @@ AUTO: Any = object()
 
 _POINTS_PER_INCH = 72.0
 _CM_PER_INCH = 2.54
+
+#: 色条相邻小矩形多铺的长度（1pt）。R 用 1×nbin 的位图，天然没有缝；我们只能是
+#: 矩形，0.34pt 高的条各自抗锯齿时白底会从缝里透出来（整条偏白 ~30%）。
+#: 多铺 1pt 让后画的条盖住缝，颜色仍按全量程取样。
+_BAND_OVERLAP_CM = 1.0 / _POINTS_PER_INCH * _CM_PER_INCH
 
 
 class GuideError(ValueError):
@@ -287,6 +292,9 @@ class GuideBuild:
     layers: tuple[int, ...]
     #: 连续标度的范围（色条刻度按它定位）；离散为 None。
     limits: tuple[float, float] | None = None
+    #: 标度自己的连续调色板（`positions in 0..1 → colour`）。色条按**全量程**
+    #: 取色时用它，与数据映射同一个插值（连续 colour 是 Lab）。
+    palette: Callable[[Sequence[float]], Sequence[str]] | None = None
 
     @property
     def kind(self) -> str:
@@ -466,6 +474,7 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
         limits = None
         if not bool(getattr(scale, "discrete", False)):
             limits = tuple(float(item) for item in scale.limits())
+        palette = getattr(scale, "palette", None)
         candidates.append(
             GuideBuild(
                 guide=guide,
@@ -476,6 +485,7 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
                 ),
                 layers=layers,
                 limits=limits,
+                palette=palette if callable(palette) else None,
             )
         )
 
@@ -534,6 +544,7 @@ def _merge(left: GuideBuild, right: GuideBuild) -> GuideBuild:
         keys=keys,
         layers=layers,
         limits=left.limits,
+        palette=left.palette if left.palette is not None else right.palette,
     )
 
 
@@ -1158,27 +1169,32 @@ def _colourbar_grobs(
     *,
     name: str,
 ) -> list[Any]:
-    """渐变条：`nbin` 个 1/nbin 高的小矩形（R 用 rasterGrob；IR 里两者都是矩形）。"""
+    """渐变条：`nbin` 个 1/nbin 高的小矩形（R 用 rasterGrob；IR 里两者都是矩形）。
+
+    颜色**按标度的全量程**取（`GuideBuild.palette`，与数据映射同一个 Lab 插值），
+    不是按断点键的颜色插值：`limits = (16.2, 30.3)` 的标度要把深端也画出来。
+    相邻矩形多铺 `_BAND_OVERLAP_CM`，否则 0.34pt 高的相邻条在 resvg 里各自
+    抗锯齿、白底从缝里透出来（整条偏白约 30%）。
+    """
     guide = guide_build.guide
     assert isinstance(guide, GuideColourbar)
     box = layout.bar
     assert box is not None
-    keys = guide_build.keys
-    values = [key.values.get("colour", key.values.get("fill")) for key in keys]
-    colours = [value if isinstance(value, str) else "#808080" for value in values]
     nbin = int(guide.nbin)
     grobs: list[Any] = []
-    steps = _gradient_stops(colours, nbin)
+    steps = _colourbar_colours(guide_build, nbin)
+    overlap = _BAND_OVERLAP_CM
     horizontal = layout.direction == "horizontal"
     if horizontal:
         # 横向：从左到右铺 nbin 个竖条（左端是最小值 / reverse 后是最大值）。
         step_w = box.width_cm / nbin
         for index, colour in enumerate(steps):
+            extra = overlap if index < nbin - 1 else 0.0
             grobs.append(
                 rect_grob(
                     box.x_cm + index * step_w,
                     box.y_cm,
-                    step_w,
+                    step_w + extra,
                     box.height_cm,
                     just=("left", "bottom"),
                     default_units="cm",
@@ -1189,12 +1205,13 @@ def _colourbar_grobs(
     else:
         step_h = box.height_cm / nbin
         for index, colour in enumerate(steps):
+            extra = overlap if index < nbin - 1 else 0.0
             grobs.append(
                 rect_grob(
                     box.x_cm,
                     box.y_cm + index * step_h,
                     box.width_cm,
-                    step_h,
+                    step_h + extra,
                     just=("left", "bottom"),
                     default_units="cm",
                     gp=gpar(fill=colour, col=NA),
@@ -1283,6 +1300,30 @@ def _colourbar_grobs(
                 )
             )
     return grobs
+
+
+def _colourbar_colours(guide_build: GuideBuild, nbin: int) -> list[str]:
+    """色条 `nbin` 个位置的颜色（低 → 高；`reverse = TRUE` 时反过来）。
+
+    有标度调色板时按 **limits 全量程**等距取色（端点是标度最小值 / 最大值），
+    与数据映射同一套插值；没有调色板（手工构造的 `GuideBuild`）才退回按断点
+    键的颜色插值。
+    """
+    guide = guide_build.guide
+    assert isinstance(guide, GuideColourbar)
+    if nbin <= 0:
+        return []
+    palette = guide_build.palette
+    if palette is not None:
+        positions = [0.5] if nbin == 1 else [index / (nbin - 1) for index in range(nbin)]
+        colours = [str(colour) for colour in palette(positions)]
+        if len(colours) == nbin:
+            if guide.reverse:
+                colours.reverse()
+            return colours
+    values = [key.values.get("colour", key.values.get("fill")) for key in guide_build.keys]
+    colours = [value if isinstance(value, str) else "#808080" for value in values]
+    return _gradient_stops(colours, nbin)
 
 
 def _gradient_stops(colours: Sequence[str], nbin: int) -> list[str]:

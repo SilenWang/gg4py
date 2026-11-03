@@ -33,9 +33,9 @@
 | `scale` | `scale-colour-default`<br>`scale-colour-gradient`<br>`scale-limits-drop`<br>`scale-x-log10`<br>`scale-y-log10` | `scale-colour-default` | — | `scale-colour-default`<br>`scale-colour-gradient` | — | — | — | — | — | — | `scale-x-log10`<br>`scale-y-log10` | `scale-colour-default` | `scale-colour-gradient`<br>`scale-limits-drop`<br>`scale-x-log10`<br>`scale-y-log10` | `scale-colour-gradient` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 5 |
 | `coord` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | `facet` | `facet-grid-ab`<br>`facet-wrap-2x2`<br>`facet-wrap-free-x`<br>`facet-wrap-free-y` | — | — | — | — | — | — | — | — | — | — | — | `facet-grid-ab`<br>`facet-wrap-2x2`<br>`facet-wrap-free-x`<br>`facet-wrap-free-y` | — | — | `facet-wrap-2x2`<br>`facet-wrap-free-x`<br>`facet-wrap-free-y` | `facet-grid-ab` | `facet-wrap-free-x`<br>`facet-wrap-free-y` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | 4 |
-| `theme` | `theme-grey-basic` ⏭<br>`theme-minimal-basic` ⏭<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | — | `theme-grey-basic` ⏭<br>`theme-minimal-basic` ⏭<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | `theme-grey-basic` ⏭<br>`theme-minimal-basic` ⏭<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | 3 |
+| `theme` | `theme-grey-basic`<br>`theme-minimal-basic`<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | — | `theme-grey-basic`<br>`theme-minimal-basic`<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | `theme-grey-basic`<br>`theme-minimal-basic`<br>`theme-void-basic` | — | — | — | — | — | — | — | — | — | — | 3 |
 | `annotation` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| `guide` | `guide-colourbar` ⏭<br>`guide-legend-merged`<br>`guide-legend-single` | — | — | `guide-colourbar` ⏭<br>`guide-legend-merged`<br>`guide-legend-single` | — | — | `guide-legend-merged` | — | — | — | — | — | `guide-colourbar` ⏭<br>`guide-legend-merged`<br>`guide-legend-single` | `guide-colourbar` ⏭ | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | `guide-legend-merged`<br>`guide-legend-single` | `guide-legend-merged` | `guide-colourbar` ⏭ | — | — | — | — | — | — | — | 3 |
+| `guide` | `guide-colourbar`<br>`guide-legend-merged`<br>`guide-legend-single` | — | — | `guide-colourbar`<br>`guide-legend-merged`<br>`guide-legend-single` | — | — | `guide-legend-merged` | — | — | — | — | — | `guide-colourbar`<br>`guide-legend-merged`<br>`guide-legend-single` | `guide-colourbar` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | `guide-legend-merged`<br>`guide-legend-single` | `guide-legend-merged` | `guide-colourbar` | — | — | — | — | — | — | — | 3 |
 | `lab` | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
 | **合计** | 58 | 17 | — | 16 | 1 | 2 | 2 | 2 | 2 | 1 | 2 | 9 | 45 | 2 | — | 3 | 1 | 2 | 4 | 6 | 4 | 4 | 4 | 2 | 5 | 1 | — | 4 | — | 3 | 2 | 1 | 1 | — | — | — | 1 | 1 | 1 | 1 | 61 |
 
@@ -118,7 +118,7 @@
 | `geom-smooth-se` | `geom-smooth` | `aes-mapping`<br>`alpha-aes`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-smooth-span` | `geom-smooth` | `aes-mapping`<br>`stat-smooth`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `geom-text-cjk` | `geom-text` | `aes-mapping`<br>`colour-aes`<br>`cjk-text` | png 0.014 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
-| `guide-colourbar` | `guide` | `aes-mapping`<br>`colour-aes`<br>`guide-colourbar`<br>`scale-gradient`<br>`scale-limits` | png 0.02 | 否 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `guide-colourbar` | `guide` | `aes-mapping`<br>`colour-aes`<br>`guide-colourbar`<br>`scale-gradient`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `guide-legend-merged` | `guide` | `aes-mapping`<br>`colour-aes`<br>`shape-aes`<br>`guide-legend`<br>`guide-merged`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `guide-legend-single` | `guide` | `aes-mapping`<br>`colour-aes`<br>`guide-legend`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `scale-colour-default` | `scale` | `aes-mapping`<br>`aes-grouping`<br>`colour-aes`<br>`scale-discrete` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
@@ -134,8 +134,8 @@
 | `text-bold-italic` | `geom-text` | `font-face` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-emoji` | `geom-text` | `emoji-text` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `text-multiline` | `geom-text` | `multiline` | 默认（X4） | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
-| `theme-grey-basic` | `theme` | `aes-mapping`<br>`theme-complete`<br>`scale-limits` | png 0.02 | 否 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
-| `theme-minimal-basic` | `theme` | `aes-mapping`<br>`theme-complete`<br>`scale-limits` | png 0.02 | 否 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `theme-grey-basic` | `theme` | `aes-mapping`<br>`theme-complete`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
+| `theme-minimal-basic` | `theme` | `aes-mapping`<br>`theme-complete`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 | `theme-void-basic` | `theme` | `aes-mapping`<br>`theme-complete`<br>`scale-limits` | png 0.02 | 是 | `expected.svg` | svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2) | ok |
 
 ## 未登记的族 / 特性

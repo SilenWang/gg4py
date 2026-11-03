@@ -1,7 +1,7 @@
 family = "theme"
 features = ["aes-mapping", "theme-complete", "scale-limits"]
-ci = false
+ci = true
 title = "theme：theme_minimal 完整主题"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项同 theme-grey-basic：panel.grid.major/minor 缺失（minimal 的视觉主体就是网格线）；缺口池 SIL-715 #2（theme 网格线）。"
+notes = "SIL-723 已修：浅灰主/次网格线与 theme_grey 同一条绘制路径；图级 1.87% / 均值 0.16%。缺口池 SIL-715 #2 关闭。"

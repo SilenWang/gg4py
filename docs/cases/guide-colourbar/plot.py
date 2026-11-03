@@ -1,8 +1,7 @@
 """guide：连续 colourbar（渐变条 + 刻度 + 标签）。
 
-**ci = false**：渐变条在 IR 里是 256 条 0.34pt 的细矩形，resvg 光栅化后整体
-偏白约 30%（R/svglite 用 1×300 的位图）。差值集中在色条自身，属于渲染口径
-问题而不是 guide 的数据口径——参考图照常生成，待渲染侧修好后翻 ci = true。
+色条按标度 limits 的全量程取 Lab 色（SIL-723），相邻细矩形重叠 1pt 消除
+resvg 白缝；图级差异 1.74%。
 """
 
 from ggcore.plot import (

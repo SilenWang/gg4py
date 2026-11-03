@@ -1,8 +1,7 @@
 """theme：`theme_grey()` 完整主题（灰面板 + 主轴 + 网格）。
 
-**ci = false**：当前渲染器还没有画 `panel.grid.*`（见 matrix 缺口清单的
-“theme 网格线”），网格线整片缺失会让图级差异远超 2%。参考图仍然照常生成，
-等 M2 把网格线接上后把 `ci` 翻成 true 即可。
+`panel.grid.major/minor` 由 SIL-723 接进 `ggcore.geom.scene`（位置取面板标度
+断点、minor 取中点），图级差异 1.87%。
 """
 
 from ggcore.plot import (

@@ -39,7 +39,7 @@ from ggcore.guide import (
     legend_layout,
 )
 from ggcore.plot import aes, ggplot
-from ggcore.theme import Theme, resolve_theme
+from ggcore.theme import Theme, element_text, margin, resolve_theme
 from ggcore.theme import theme as make_theme
 from ggcore.units import UnitContext, convert_height, convert_width, unit
 
@@ -607,3 +607,159 @@ def _walk(scene: ir.Scene):
         node = stack.pop()
         yield node
         stack.extend(node.children)
+
+
+# ---------------------------------------------------------------------------
+# SIL-723：色条按标度 limits 的全量程取色（不是断点色的插值）
+# ---------------------------------------------------------------------------
+
+
+def _colourbar_plot(*, limits=(16.2, 30.3), reverse: bool = False):
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([0.1, 0.2, 0.3, 0.4, 0.5]))),
+            ("y", Column("float", np.array([0.2, 0.5, 0.3, 0.7, 0.4]))),
+            ("v", Column("float", np.array([20.0, 22.0, 25.0, 27.0, 30.0]))),
+        ]
+    )
+    return (
+        ggplot(table, aes(x="x", y="y", colour="v"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_colour_gradient(limits=limits)
+        + registry.guide_colourbar("colour", nbin=64, reverse=reverse)
+        + registry.theme_void()
+    )
+
+
+def _bar_fills(plot) -> list[str]:
+    build, theme_value, guides, layouts = _layout(plot)
+    grobs = legend_grob(guides[0], build, theme_value, layouts[0], name="g")
+    return [grob.gp.fill for grob in grobs if ".bar-" in grob.name]
+
+
+def test_colourbar_samples_the_full_scale_range() -> None:
+    """`limits = (16.2, 30.3)`：色条首末是这个范围端点的颜色，不是最低断点 20 的色。"""
+    fills = _bar_fills(_colourbar_plot())
+    assert len(fills) == 64
+    # 缺省 low / high（`#132B43` / `#56B1F7`）：全量程端点必须都在色条里。
+    assert fills[0] == "#132B43"
+    assert fills[-1] == "#56B1F7"
+    # 最低断点 20 的色（约 t = 0.27）不是端点——旧实现把色条画成 20..30，端点是它。
+    scale = build_plot(_colourbar_plot()).scales.scale("colour")
+    assert scale is not None
+    at_lowest_break = scale.palette([0.0])[0]
+    assert at_lowest_break == fills[0]  # 只是一个 sanity check（palette 起点）
+    assert fills[0] != "#22496C"  # 断点 20 的色不是色条低端
+
+
+def test_colourbar_reverse_flips_the_full_range() -> None:
+    normal = _bar_fills(_colourbar_plot())
+    flipped = _bar_fills(_colourbar_plot(reverse=True))
+    assert flipped == list(reversed(normal))
+    assert flipped[0] == "#56B1F7" and flipped[-1] == "#132B43"
+
+
+def test_colourbar_endpoints_match_the_data_mapping() -> None:
+    """色条端点 = 标度 limits 的端点色（与 `scale.map()` 同一条 palette）。"""
+    plot = _colourbar_plot()
+    build = build_plot(plot)
+    scale = build.scales.scale("colour")
+    assert scale is not None
+    endpoints = scale.palette([0.0, 1.0])
+    fills = _bar_fills(plot)
+    assert (fills[0], fills[-1]) == (endpoints[0], endpoints[1])
+    # 低值 20 的颜色确实出现在色条里（旧实现只覆盖断点色阶，仍会有；关键是端点）。
+    low_value = scale.map(Column("float", np.array([20.0]))).values.tolist()[0]
+    assert low_value in fills
+
+
+def test_scale_colour_gradient_aliases_are_registered() -> None:
+    """`scale_colour_gradient` / `scale_fill_gradient` 与 `*_continuous` 同义。"""
+    assert registry.scale_colour_gradient().name == "colour_gradient"
+    assert registry.scale_fill_gradient().name == "fill_gradient"
+    table = data()
+    p = ggplot(table, aes(x="x", y="y"))
+    # 方法链入口与 `+` 入口产生同一实现（同一个注册表）。
+    by_method = p.scale_colour_gradient(low="#000000")
+    by_plus = p + registry.scale_colour_gradient(low="#000000")
+    assert next(iter(by_method.scales.values())).name == "colour_gradient"
+    assert next(iter(by_plus.scales.values())).name == "colour_gradient"
+    from ggcore.scales import GradientScale, scale_from_component
+
+    scale = scale_from_component(registry.scale_fill_gradient(limits=(0, 1)))
+    assert isinstance(scale, GradientScale)
+
+
+# ---------------------------------------------------------------------------
+# SIL-725：竖向图例在 **panel 行**里居中（不含 facet 的顶部 / 底部 strip 带）
+# ---------------------------------------------------------------------------
+
+#: 1pt 对应的 cm（断言容差用 pt 表达）。
+PT_CM = 2.54 / 72.0
+
+
+def _facet_legend_layout(*, strip_double: bool = False):
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + registry.facet_wrap(("h",), ncol=2)  # 3 个面板 → 2 个 panel 行
+    )
+    if strip_double:
+        # strip 行高 = 文本行高 + 上下 margin：字号与 margin 同时翻倍 ≈ 两倍行高。
+        plot = plot + make_theme(
+            **{"strip.text": element_text(size=17.6, margin=margin(8.8, 8.8, 8.8, 8.8))}
+        )
+    return plot_layout(build_plot(plot), width_in=6, height_in=4, metrics=METRICS)
+
+
+def _center_cm(boxes) -> float:
+    return (min(box.y_cm for box in boxes) + max(box.top for box in boxes)) / 2.0
+
+
+def _panel_rows_center_cm(layout) -> float:
+    return (
+        min(box.y_cm for box in layout.panel_boxes.values())
+        + max(box.top for box in layout.panel_boxes.values())
+    ) / 2.0
+
+
+def _panel_area_center_cm(layout) -> float:
+    return layout.panel_area.y_cm + layout.panel_area.height_cm / 2.0
+
+
+def test_vertical_legend_is_centred_on_the_panel_rows() -> None:
+    """2×2 facet + 竖向 colour 图例：盒中心 = panel 行中心（±0.1pt）。
+
+    修前挂在整个 `panel_area` 上，而 `panel_area` 含顶部 strip 带，中心因此比
+    panel 行中心高半个 strip（本图 ≈ 8pt）。
+    """
+    layout = _facet_legend_layout()
+    center = _center_cm(layout.legend_boxes)
+    assert center == pytest.approx(_panel_rows_center_cm(layout), abs=0.1 * PT_CM)
+    # panel 行中心明显低于 panel_area 中心：修回旧写法这里会变红。
+    assert _panel_area_center_cm(layout) - center > 0.1  # cm
+    assert abs(center - _panel_area_center_cm(layout)) > 0.1 * PT_CM
+
+
+def test_single_panel_vertical_legend_keeps_the_panel_area_centre() -> None:
+    """没有 strip 时 panel 行 == panel_area：单面板图不能因为这次改动移动。"""
+    plot = ggplot(data(), aes(x="x", y="y", colour="g")) + registry.geom_point()
+    layout = plot_layout(build_plot(plot), width_in=6, height_in=4, metrics=METRICS)
+    assert list(layout.panel_boxes) == [1]
+    center = _center_cm(layout.legend_boxes)
+    assert center == pytest.approx(_panel_area_center_cm(layout), abs=0.1 * PT_CM)
+    assert center == pytest.approx(_panel_rows_center_cm(layout), abs=0.1 * PT_CM)
+
+
+def test_legend_centre_follows_the_panel_rows_when_the_strip_grows() -> None:
+    """strip 行翻倍 → 面板行整体下移，图例中心跟着面板行走（不是钉在 panel_area）。"""
+    base = _facet_legend_layout()
+    doubled = _facet_legend_layout(strip_double=True)
+    for layout in (base, doubled):
+        assert _center_cm(layout.legend_boxes) == pytest.approx(
+            _panel_rows_center_cm(layout), abs=0.1 * PT_CM
+        )
+    assert _panel_rows_center_cm(doubled) < _panel_rows_center_cm(base) - 0.1
+    assert _center_cm(doubled.legend_boxes) < _center_cm(base.legend_boxes) - 0.1

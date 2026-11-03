@@ -55,9 +55,20 @@ __all__ = [
     "tick_paint",
 ]
 
-#: R 的 `stringHeight()` + `font_descent()` ≈ 0.955em（见 docs/notes/guide.md）。
-#: 8.8pt 的 axis.text 在 R 里量出 8.4pt 的行高，这里是同一口径。
-TEXT_LINE_EM = 0.955
+#: R 的 `stringHeight()` + `font_descent()`：R 4.5.3 + svglite 在 8.8 / 11 / 20pt 上
+#: 量出来都是 **0.894em**（Arimo 的 cap height 0.691em + descent 0.203em）。旧值
+#: 0.955em 是 pdf 设备（Helvetica）量出来的，用它排 4×3 的 svglite 参考图时
+#: 轴带高出 1.2pt，面板底边整条错位——`pixi run diff theme-grey-basic` 的
+#: 网格线因此偏 1px。见 docs/notes/guide.md「轴」。
+TEXT_LINE_EM = 0.8945
+
+#: 布局列宽里「拉丁文字」的度量字面。R 的缺省 sans 是 Helvetica 口径
+#: （数字 0.556em，`1.5` @8.8pt 量 12.20pt）；受管字体栈的主字面 Noto Sans CJK SC
+#: 把拉丁数字排成 0.50em（同一串 11.20pt），照样排下去 y 轴标签列会窄 1pt、
+#: 面板左边界整列偏 1px。这里只**量宽度**（列宽 / 图例标签盒），不换绘制字面：
+#: IR 的 `text.width` 仍由绘制端按自己的字面量（`docs/notes/guide.md`
+#: 「与 R 的实测差」记着这条差）。
+LAYOUT_LATIN_FONT = "Noto Sans"
 
 #: 没有 `Metrics` 时每字符的宽度（em）。只在布局估算里用，渲染宽度由 IR 文本节点
 #: 自带的 `text.width` 决定；有度量时一律走 `Metrics.strwidth()`。
@@ -123,7 +134,7 @@ def text_width_cm(
                     line,
                     fontsize=float(size_pt),
                     cex=1.0,
-                    font=str(family or "sans"),
+                    font=str(family or LAYOUT_LATIN_FONT),
                 )
             )
             for line in lines
@@ -265,9 +276,13 @@ def tick_paint(theme: ResolvedTheme, side: str) -> tuple[str, float, int] | None
 
 
 def tick_length_cm(theme: ResolvedTheme, side: str) -> float:
-    """`axis.ticks.length` → cm（无刻度元素时为 0）。"""
-    if tick_paint(theme, side) is None:
-        return 0.0
+    """`axis.ticks.length` → cm（轴带里**始终**给刻度留这段位置）。
+
+    R 的 `gtable` 在 `axis.ticks = element_blank()`（`theme_minimal()`）时照样
+    把 `axis.ticks.length` 算进 axis-b / axis-l：`theme_grey()` 与
+    `theme_minimal()` 的 `axis-b` 都是 12.87pt（R 4.5.3 + svglite 实测）。
+    刻度本身画不画由 :func:`tick_paint` 决定，与这里的占位无关。
+    """
     value = theme.get("axis.ticks.length.x" if side == "bottom" else "axis.ticks.length.y")
     if value is None:
         return 0.0

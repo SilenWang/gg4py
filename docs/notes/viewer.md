@@ -31,7 +31,9 @@ pixi run viewer:cases     # 61 条案例逐条过 viewer + 与 expected.svg 像�
 | `src/main.ts` | 文件加载（拖拽 + `<input type=file>`）、状态栏、错误展示 |
 
 `main.ts` 还认 `index.html?scene=gallery/<case>.ggir.cbor`：gallery 的卡片用它自动
-打开同一张图和同一套 hover / 图例交互。
+打开同一张图和同一套 hover / 图例交互。`scene` 是**相对 viewer 根目录**的路径，
+所以图片 / IR 资产放在 `<viewer>/gallery/`（`tools/viewer/cases.py` 的
+`gallery_assets_dir()`），卡片链接是 `../index.html?scene=gallery/...`。
 
 ## 2. IR kind → SVG 元素
 
@@ -205,15 +207,12 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 
 产物在 `.viewer-cases/`（不入库）：逐 case 的 IR / SVG / PNG、`report.md` /
 `report.json`；gallery 在 `web/viewer/dist/gallery.html`，卡片链到
-`index.html?scene=gallery/<case>.ggir.cbor`，点进去就是同一套 hover / 图例开关。
+`../index.html?scene=gallery/<case>.ggir.cbor`（资产在 `web/viewer/gallery/`），
+点进去就是同一套 hover / 图例开关。
 
-2026-11-02 全量结果（61 条三文件 case）：**pass 58 / fail 0 / skip 3**。
-3 条 skip 是 SIL-709 已登记的**实现缺口**，不是 viewer 缺口：
-
-| case | 缺口 | 归到 |
-| --- | --- | --- |
-| `theme-grey-basic` / `theme-minimal-basic` | `panel.grid.major/minor` 解析了但没绘制 | M2 |
-| `guide-colourbar` | 渐变条仍是 256 条 0.34pt 细矩形，resvg 光栅化偏白 | M2 |
+2026-11-02 全量结果（61 条三文件 case）：**pass 61 / fail 0 / error 0 / skip 0**。
+SIL-723 之后 `theme-grey-basic` / `theme-minimal-basic` / `guide-colourbar` 也翻成
+`ci = true`：三条分别是 1.79% / 1.76% / 1.67%（viewer 侧）。
 
 ### 10.1 支持矩阵
 
