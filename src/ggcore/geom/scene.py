@@ -601,6 +601,16 @@ def plot_layout(
         rows_top = max(box.top for box in panel_boxes.values())
         panel_rows = Box(panel_area.x_cm, rows_bottom, panel_area.width_cm, rows_top - rows_bottom)
 
+    # 横向图例（top / bottom）的水平居中区同理是**panel 单元格的并集**：
+    # facet_grid 的行 strip 自带一列（`strip.placement = "inside"` 时它在
+    # `panel_area` 里面），R 的 guide-box-bottom 只跨 panel 列，不跨 strip 列。
+    # 拿 `panel_area` 居中会把图例往右推半个 strip 宽（SIL-743：margins 3×3）。
+    panel_cols = panel_area
+    if panel_boxes:
+        cols_left = min(box.x_cm for box in panel_boxes.values())
+        cols_right = max(box.right for box in panel_boxes.values())
+        panel_cols = Box(cols_left, panel_area.y_cm, cols_right - cols_left, panel_area.height_cm)
+
     legend_boxes: list[Box | None] = [None] * len(guides)
     legend_box_origins: list[Box] = []
     legend_box_layouts: list[Any] = []
@@ -615,6 +625,7 @@ def plot_layout(
             inner=inner,
             panel_area=panel_area,
             panel_rows=panel_rows,
+            panel_cols=panel_cols,
             content_top=content_top,
             spacing=spacing,
             caption_cm=caption_cm,
@@ -713,6 +724,7 @@ def _place_legend_box(
     inner: Box,
     panel_area: Box,
     panel_rows: Box,
+    panel_cols: Box,
     content_top: float,
     spacing: float,
     caption_cm: float,
@@ -724,7 +736,9 @@ def _place_legend_box(
     垂直居中：R 把 guide-box 挂在 panel 行上的 0.5null 里，facet 的顶部 / 底部
     strip 带不在这一行，所以分面时图例比整个 `panel_area` 的中心低半个 strip。
     横向（top / bottom）贴着内容区的上/下边缘：top 在副标题行之下
-    （`content_top` 已经扣掉了 `legend.box.spacing`），bottom 在注脚之上。
+    （`content_top` 已经扣掉了 `legend.box.spacing`），bottom 在注脚之上；
+    水平居中用 `panel_cols`（panel 单元格的并集），与 R 的 guide-box 只跨
+    panel 列（不跨 facet 的行 strip 列）一致。
     inside 用 `legend.position.inside`（npc）+ `legend.justification.inside`
     锚在面板区内，不占版面。
     """
@@ -740,11 +754,11 @@ def _place_legend_box(
         return Box(x, y, width, height)
     if position == "top":
         y = content_top + spacing
-        x = panel_area.x_cm + (panel_area.width_cm - width) / 2.0
+        x = panel_cols.x_cm + (panel_cols.width_cm - width) / 2.0
         return Box(x, y, width, height)
     if position == "bottom":
         y = inner.y_cm + caption_cm
-        x = panel_area.x_cm + (panel_area.width_cm - width) / 2.0
+        x = panel_cols.x_cm + (panel_cols.width_cm - width) / 2.0
         return Box(x, y, width, height)
     # inside
     anchor_x, anchor_y = _inside_position(theme)

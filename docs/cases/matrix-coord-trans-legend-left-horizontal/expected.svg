@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='288.00pt' height='216.00pt' viewBox='0 0 288.00 216.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA='>
+    <rect x='0.00' y='0.00' width='288.00' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<rect x='0.00' y='0.00' width='288.00' height='216.00' style='stroke-width: 0.00; stroke: none;' />
+</g>
+<defs>
+  <clipPath id='cpNzguMDV8Mjg4LjAwfDAuMDB8MjE2LjAw'>
+    <rect x='78.05' y='0.00' width='209.95' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpNzguMDV8Mjg4LjAwfDAuMDB8MjE2LjAw)'>
+<circle cx='109.55' cy='88.21' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='172.53' cy='35.28' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<circle cx='235.51' cy='63.26' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='120.04' cy='48.69' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<circle cx='183.03' cy='108.00' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='246.01' cy='28.94' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<circle cx='130.54' cy='79.39' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='193.52' cy='22.80' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<circle cx='256.51' cy='55.81' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='141.04' cy='41.86' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<circle cx='204.02' cy='97.69' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='267.01' cy='35.28' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+</g>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<text x='0.00' y='111.78' style='font-size: 11.00px; font-family: "Arimo";' textLength='6.12px' lengthAdjust='spacingAndGlyphs'>g</text>
+<circle cx='20.24' cy='108.00' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='53.37' cy='108.00' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<text x='34.36' y='111.03' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>p</text>
+<text x='67.49' y='111.03' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>q</text>
+</g>
+</g>
+</svg>

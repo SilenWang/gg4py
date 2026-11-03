@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='288.00pt' height='216.00pt' viewBox='0 0 288.00 216.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA='>
+    <rect x='0.00' y='0.00' width='288.00' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<rect x='0.00' y='0.00' width='288.00' height='216.00' style='stroke-width: 0.00; stroke: none;' />
+</g>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8NTUuNTZ8MjE2LjAw'>
+    <rect x='0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000' y='55.56' width='288.00' height='160.44' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8NTUuNTZ8MjE2LjAw)'>
+<circle cx='43.20' cy='159.85' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<circle cx='129.60' cy='103.69' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<polygon points='216.00,131.25 219.93,138.05 212.07,138.05 ' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='57.60,115.20 61.53,122.00 53.67,122.00 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='144.00' cy='175.89' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='230.40,91.14 234.33,97.94 226.47,97.94 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='72.00' cy='151.82' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='158.40,83.11 162.33,89.91 154.47,89.91 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='244.80' cy='127.76' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='86.40,107.18 90.33,113.98 82.47,113.98 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='172.80' cy='167.87' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='259.20,99.16 263.13,105.96 255.27,105.96 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+</g>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<text x='112.75' y='8.71' style='font-size: 11.00px; font-family: "Arimo";' textLength='6.12px' lengthAdjust='spacingAndGlyphs'>g</text>
+<circle cx='121.39' cy='23.97' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='121.39' cy='41.25' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<text x='135.51' y='27.00' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>p</text>
+<text x='135.51' y='44.28' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>q</text>
+<text x='147.60' y='8.71' style='font-size: 11.00px; font-family: "Arimo";' textLength='5.50px' lengthAdjust='spacingAndGlyphs'>s</text>
+<circle cx='156.24' cy='23.97' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #000000;' />
+<polygon points='156.24,36.72 160.17,43.52 152.31,43.52 ' style='stroke-width: 0.71; stroke: none; fill: #000000;' />
+<text x='170.36' y='27.00' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>u</text>
+<text x='170.36' y='44.28' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.41px' lengthAdjust='spacingAndGlyphs'>v</text>
+</g>
+</g>
+</svg>

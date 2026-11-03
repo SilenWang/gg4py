@@ -242,6 +242,22 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | 图例盒与面板 | `legend.box.spacing` | 11pt |
 | 多图例之间 | `legend.spacing` | 11pt |
 
+### 6.1 图例盒挂在哪一格
+
+R 的 guide-box 不进 `panel_area` 的居中逻辑，而是挂在 gtable 的**具体行列**上：
+
+- `guide-box-right` / `-left` 的 t..b = panel 行（顶部 / 底部 strip 行不算），所以
+  竖向图例的中心是 **panel 行的中心**，不是整个面板区的中心——分面时二者差半条
+  strip（M1 的「分面竖向图例上移」，SIL-724）。
+- `guide-box-top` / `-bottom` 的 l..r = panel **列**。`facet_grid` 的行 strip 自成
+  一列（`strip.placement = "inside"` 时它在面板区里面），所以拿整个 `panel_area`
+  居中会把图例往右推半个 strip 宽（SIL-743 修：`matrix-facet-grid-margins-*`
+  2.12% → 1.76%）。
+
+`ggcore.geom.scene` 用 `panel_rows` / `panel_cols` 两个「面板单元格的并集」分别
+实现这两条；`tests/test_cases_matrix_combos.py` 用 2×2 分面 × 极坐标的 case 钉住
+行高、键间距与居中。
+
 ## 7. `theme_void()`：轴消失，图例保留
 
 任务初稿写的是「`theme_void()` 下轴/图例都消失」，但 **ggplot2 4.0.3 的

@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-polar", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
+ci = false
+title = "2×2 facet_wrap × coord_polar × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-715 #7 的极坐标变体：分面 × 极坐标 × 默认主题的 grid / 面板尺寸组合。"

@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-grid", "coord-cartesian", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
+ci = false
+title = "2×2 facet_grid × coord_cartesian × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-715 #7 report-style 的 facet_grid 变体：行列 strip + 双轴标题 + 默认主题。"

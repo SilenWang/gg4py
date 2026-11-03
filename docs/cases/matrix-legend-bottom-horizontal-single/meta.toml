@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-cartesian", "scale-limits", "legend-pos-bottom", "guide-direction-horizontal", "legend-single"]
+ci = true
+title = "coord_cartesian × 下侧横排单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "图例位置 × 排布方向 × 图例个数的整格（theme_void，只留图例与面板）。"

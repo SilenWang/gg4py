@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-radial", "scale-limits", "legend-pos-right", "guide-direction-auto", "legend-single"]
+ci = true
+title = "2×2 facet_wrap × coord_radial × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "分面 × 坐标的整格：面板矩阵、strip 与坐标变换同时生效。"

@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-polar", "scale-limits", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title"]
+ci = true
+title = "2×2 facet_wrap × coord_polar × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M1 复验抓到过「分面竖向图例上移」：2×2 分面 + 极坐标 + 右竖排图例，键与面板同高居中。"

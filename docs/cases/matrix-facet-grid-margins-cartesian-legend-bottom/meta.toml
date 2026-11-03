@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-grid", "facet-margins", "coord-cartesian", "scale-limits", "legend-pos-bottom", "guide-direction-auto", "legend-single"]
+ci = true
+title = "facet_grid(margins) × coord_cartesian × 下侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "margins = TRUE 的 (all) 边际面板 × 底部图例。"

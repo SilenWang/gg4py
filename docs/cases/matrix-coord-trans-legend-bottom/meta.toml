@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-trans", "scale-limits", "legend-pos-bottom", "guide-direction-auto", "legend-single"]
+ci = true
+title = "coord_trans(sqrt) × 下侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "coord_trans(y = sqrt) × 底部图例：断点标签仍是未变换的取值。"

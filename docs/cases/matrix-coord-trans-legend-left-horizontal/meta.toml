@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-trans", "scale-limits", "legend-pos-left", "guide-direction-horizontal", "legend-single"]
+ci = true
+title = "coord_trans(sqrt) × 左侧横排单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "coord_trans × 左侧横排图例（位置与排布方向交叉）。"

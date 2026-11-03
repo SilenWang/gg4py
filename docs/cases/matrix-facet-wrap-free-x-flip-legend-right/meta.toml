@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "facet-free", "coord-flip", "legend-pos-right", "guide-direction-auto", "legend-single"]
+ci = true
+title = "facet_wrap(free_x) × coord_flip × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "free_x × coord_flip：每个分面各自的 x 范围，翻转后落在 y 轴。"
