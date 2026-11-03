@@ -605,6 +605,16 @@ save_case("facet-grid-rows-label-both", local({
 .save_theme_case("theme-minimal-basic", theme_minimal(), "#00BA38")
 .save_theme_case("theme-void-basic", theme_void(), "#619CFF")
 
+# M2-5 的主题切换对照：同一份数据 × 六套主题。参考图与 plot.py 的
+# `theme_<name>()` 一字不差（数据、点、limits、legend.position 都相同），
+# 差异只剩主题本身——面板底色、网格、边框/轴线、刻度颜色。
+.save_theme_case("theme-bw-basic", theme_bw(), "#F8766D")
+.save_theme_case("theme-classic-basic", theme_classic(), "#00BA38")
+.save_theme_case("theme-light-basic", theme_light(), "#619CFF")
+.save_theme_case("theme-dark-basic", theme_dark(), "#F8766D")
+.save_theme_case("theme-linedraw-basic", theme_linedraw(), "#00BA38")
+.save_theme_case("theme-test-basic", theme_test(), "#619CFF")
+
 # --- guide -----------------------------------------------------------------
 
 save_case("guide-legend-single", local({
