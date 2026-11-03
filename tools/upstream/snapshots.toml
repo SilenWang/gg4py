@@ -211,7 +211,7 @@ reason = "`stat_sum()` 的 crossbar 汇总未复刻。"
 [groups.theme]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "本批次纳管 8 套主题 + 5 个 `base_size = 33` 变体（另 3 个见下方单条归口）；其余 theme 快照（spacing / margin / 元素样式 / aspect.ratio）未复刻，其中 `aspect.ratio` 主题元素尚未支持，已单列进 SIL-715。"
+reason = "SIL-792 把 18 条纳管（8 套主题 + 3 个 `base_size = 33` 变体 + spacing / margins / 刻度长度 / 四边轴样式 / aspect.ratio 六条 / 标题与注脚对齐 / strip 与旋转标签 / 横向图例间距）；剩 8 条按缺口单列在下面。"
 
 [snapshots."theme/theme-bw.svg"]
 case = "upstream-theme-bw"
@@ -249,18 +249,86 @@ case = "upstream-theme-void"
 [snapshots."theme/theme-void-large.svg"]
 case = "upstream-theme-void-large"
 
-[snapshots."theme/theme-bw-large.svg"]
-reason = "`base_size = 33` 下 geom 缺省尺寸没跟着 `theme$pointsize` 走（4.0 的 `from_theme()`）：点径与线宽仍按 11pt 画，实测图级 2.27% / 均值 0.53%。归口 SIL-715 的 `from_theme()` 条目。"
-
-[snapshots."theme/theme-classic-large.svg"]
-reason = "同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.22% / 均值 1.05%（均值也超 1% 门）。"
-
-[snapshots."theme/theme-linedraw-large.svg"]
-reason = "同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.09% / 均值 0.43%。"
-
 [snapshots."theme/theme-linedraw.svg"]
 case = "upstream-theme-linedraw"
 
+[snapshots."theme/theme-bw-large.svg"]
+case = "upstream-theme-bw-large"
+
+[snapshots."theme/theme-classic-large.svg"]
+case = "upstream-theme-classic-large"
+
+[snapshots."theme/theme-linedraw-large.svg"]
+case = "upstream-theme-linedraw-large"
+
+[snapshots."theme/strip-styling.svg"]
+case = "upstream-theme-strip-styling"
+
+[snapshots."theme/rotated-x-axis-tick-labels.svg"]
+case = "upstream-theme-rotated-x-axis-tick-labels"
+
+[snapshots."theme/titles-aligned-to-entire-plot.svg"]
+case = "upstream-theme-titles-aligned-to-entire-plot"
+
+[snapshots."theme/caption-aligned-to-entire-plot.svg"]
+case = "upstream-theme-caption-aligned-to-entire-plot"
+
+[snapshots."theme/large-spacing.svg"]
+case = "upstream-theme-large-spacing"
+
+[snapshots."theme/large-margins.svg"]
+case = "upstream-theme-large-margins"
+
+[snapshots."theme/ticks-length.svg"]
+case = "upstream-theme-ticks-length"
+
+[snapshots."theme/axes-styling.svg"]
+case = "upstream-theme-axes-styling"
+
+[snapshots."theme/height-is-3-times-width.svg"]
+case = "upstream-theme-height-is-3-times-width"
+
+[snapshots."theme/width-is-3-times-height.svg"]
+case = "upstream-theme-width-is-3-times-height"
+
+[snapshots."theme/height-is-3-times-width-2-wrap-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-wrap-facets"
+
+[snapshots."theme/height-is-3-times-width-2-column-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-column-facets"
+
+[snapshots."theme/height-is-3-times-width-2-row-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-row-facets"
+
+[snapshots."theme/height-is-3-times-width-2x2-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2x2-facets"
+
+[snapshots."theme/horizontal-legends-placed-apart.svg"]
+case = "upstream-theme-horizontal-legends-placed-apart"
+
+[snapshots."theme/theme-with-inverted-colours.svg"]
+reason = "`plot.tag` 还没有渲染（R 的 `table_add_tag()` 会为 tag 单开一行），所以整页版式比上游少一行；色板与面板背景已对。修好 tag 后重测，预期进档。"
+
+[snapshots."theme/legends-at-all-sides-with-justification.svg"]
+reason = "需要 `mtcars` 完整夹具（`hp` / `gear` / `wt` 三列本仓还没有内联），且用 `legend.location = 'plot'` 把图例挂在整页而不是面板行；`legend.justification.<side>` 已实现。"
+
+[snapshots."theme/stretched-vertical-legends.svg"]
+reason = "`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。"
+
+[snapshots."theme/stretched-horizontal-legends.svg"]
+reason = "同 `stretched-vertical-legends`：`legend.key.width` 的 `null` 单位未实现。"
+
+[snapshots."theme/vertical-legends-placed-apart.svg"]
+reason = "`legend.spacing.y = unit(1, 'null')` 要在 guide-box 内分配剩余高度；本仓的 `legend_box_layout()` 只按固定 cm 累加（横向的 `spacing.x` 版`horizontal-legends-placed-apart` 已纳管）。"
+
+[snapshots."theme/custom-strip-elements-can-render.svg"]
+reason = "上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。"
+
+[snapshots."theme/point-elements.svg"]
+reason = "`element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。"
+
+[snapshots."theme/polygon-elements.svg"]
+reason = "`element_polygon()` 的 `element_grob()` 渲染（两段 `id` 的 pathgrob），同 `point-elements`，是裸 grob 快照。"
 [snapshots."guides/facet-grid-legend-on-left.svg"]
 case = "upstream-guides-facet-grid-legend-left"
 

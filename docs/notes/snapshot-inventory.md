@@ -4,21 +4,21 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**123**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**188**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **165** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**141**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**170**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **147** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `theme` | m2-closeout | 39 | 13 | 26 |
 | `guide-axis` | m2-closeout | 23 | 0 | 23 |
 | `geom-violin` | m2-closeout | 14 | 0 | 14 |
 | `geom-raster` | m2-closeout | 12 | 0 | 12 |
 | `coord-polar` | m2-closeout | 11 | 0 | 11 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
+| `theme` | m2-closeout | 39 | 31 | 8 |
 | `sec-axis` | m2-closeout | 7 | 0 | 7 |
 | `aes` | m2-closeout | 6 | 0 | 6 |
 | `labels` | m2-closeout | 6 | 0 | 6 |
@@ -52,7 +52,7 @@
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
-| **合计** | — | 311 | 123 | 188 |
+| **合计** | — | 311 | 141 | 170 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -170,7 +170,21 @@
 | `scales-breaks-labels/numeric-log.svg` | `upstream-scales-numeric-log` |
 | `scales-breaks-labels/numeric-polar.svg` | `upstream-scales-numeric-polar` |
 | `scales-breaks-labels/numeric.svg` | `upstream-scales-numeric` |
+| `theme/axes-styling.svg` | `upstream-theme-axes-styling` |
+| `theme/caption-aligned-to-entire-plot.svg` | `upstream-theme-caption-aligned-to-entire-plot` |
+| `theme/height-is-3-times-width-2-column-facets.svg` | `upstream-theme-height-is-3-times-width-2-column-facets` |
+| `theme/height-is-3-times-width-2-row-facets.svg` | `upstream-theme-height-is-3-times-width-2-row-facets` |
+| `theme/height-is-3-times-width-2-wrap-facets.svg` | `upstream-theme-height-is-3-times-width-2-wrap-facets` |
+| `theme/height-is-3-times-width-2x2-facets.svg` | `upstream-theme-height-is-3-times-width-2x2-facets` |
+| `theme/height-is-3-times-width.svg` | `upstream-theme-height-is-3-times-width` |
+| `theme/horizontal-legends-placed-apart.svg` | `upstream-theme-horizontal-legends-placed-apart` |
+| `theme/large-margins.svg` | `upstream-theme-large-margins` |
+| `theme/large-spacing.svg` | `upstream-theme-large-spacing` |
+| `theme/rotated-x-axis-tick-labels.svg` | `upstream-theme-rotated-x-axis-tick-labels` |
+| `theme/strip-styling.svg` | `upstream-theme-strip-styling` |
+| `theme/theme-bw-large.svg` | `upstream-theme-bw-large` |
 | `theme/theme-bw.svg` | `upstream-theme-bw` |
+| `theme/theme-classic-large.svg` | `upstream-theme-classic-large` |
 | `theme/theme-classic.svg` | `upstream-theme-classic` |
 | `theme/theme-dark-large.svg` | `upstream-theme-dark-large` |
 | `theme/theme-dark.svg` | `upstream-theme-dark` |
@@ -178,11 +192,15 @@
 | `theme/theme-gray.svg` | `upstream-theme-gray` |
 | `theme/theme-light-large.svg` | `upstream-theme-light-large` |
 | `theme/theme-light.svg` | `upstream-theme-light` |
+| `theme/theme-linedraw-large.svg` | `upstream-theme-linedraw-large` |
 | `theme/theme-linedraw.svg` | `upstream-theme-linedraw` |
 | `theme/theme-minimal-large.svg` | `upstream-theme-minimal-large` |
 | `theme/theme-minimal.svg` | `upstream-theme-minimal` |
 | `theme/theme-void-large.svg` | `upstream-theme-void-large` |
 | `theme/theme-void.svg` | `upstream-theme-void` |
+| `theme/ticks-length.svg` | `upstream-theme-ticks-length` |
+| `theme/titles-aligned-to-entire-plot.svg` | `upstream-theme-titles-aligned-to-entire-plot` |
+| `theme/width-is-3-times-height.svg` | `upstream-theme-width-is-3-times-height` |
 
 ## 已知缺口
 
@@ -701,62 +719,80 @@ pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。
 
 ### `theme` — 1 条 · SIL-715 · m2-closeout
 
-`base_size = 33` 下 geom 缺省尺寸没跟着 `theme$pointsize` 走（4.0 的 `from_theme()`）：点径与线宽仍按 11pt 画，实测图级 2.27% / 均值 0.53%。归口 SIL-715 的 `from_theme()` 条目。
+`element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。
 
 <details><summary>快照</summary>
 
-- `theme/theme-bw-large.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.09% / 均值 0.43%。
-
-<details><summary>快照</summary>
-
-- `theme/theme-linedraw-large.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.22% / 均值 1.05%（均值也超 1% 门）。
-
-<details><summary>快照</summary>
-
-- `theme/theme-classic-large.svg`
-
-</details>
-
-### `theme` — 23 条 · SIL-715 · m2-closeout
-
-本批次纳管 8 套主题 + 5 个 `base_size = 33` 变体（另 3 个见下方单条归口）；其余 theme 快照（spacing / margin / 元素样式 / aspect.ratio）未复刻，其中 `aspect.ratio` 主题元素尚未支持，已单列进 SIL-715。
-
-<details><summary>快照</summary>
-
-- `theme/axes-styling.svg`
-- `theme/caption-aligned-to-entire-plot.svg`
-- `theme/custom-strip-elements-can-render.svg`
-- `theme/height-is-3-times-width-2-column-facets.svg`
-- `theme/height-is-3-times-width-2-row-facets.svg`
-- `theme/height-is-3-times-width-2-wrap-facets.svg`
-- `theme/height-is-3-times-width-2x2-facets.svg`
-- `theme/height-is-3-times-width.svg`
-- `theme/horizontal-legends-placed-apart.svg`
-- `theme/large-margins.svg`
-- `theme/large-spacing.svg`
-- `theme/legends-at-all-sides-with-justification.svg`
 - `theme/point-elements.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+`element_polygon()` 的 `element_grob()` 渲染（两段 `id` 的 pathgrob），同 `point-elements`，是裸 grob 快照。
+
+<details><summary>快照</summary>
+
 - `theme/polygon-elements.svg`
-- `theme/rotated-x-axis-tick-labels.svg`
-- `theme/stretched-horizontal-legends.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。
+
+<details><summary>快照</summary>
+
 - `theme/stretched-vertical-legends.svg`
-- `theme/strip-styling.svg`
-- `theme/theme-with-inverted-colours.svg`
-- `theme/ticks-length.svg`
-- `theme/titles-aligned-to-entire-plot.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+`legend.spacing.y = unit(1, 'null')` 要在 guide-box 内分配剩余高度；本仓的 `legend_box_layout()` 只按固定 cm 累加（横向的 `spacing.x` 版`horizontal-legends-placed-apart` 已纳管）。
+
+<details><summary>快照</summary>
+
 - `theme/vertical-legends-placed-apart.svg`
-- `theme/width-is-3-times-height.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+`plot.tag` 还没有渲染（R 的 `table_add_tag()` 会为 tag 单开一行），所以整页版式比上游少一行；色板与面板背景已对。修好 tag 后重测，预期进档。
+
+<details><summary>快照</summary>
+
+- `theme/theme-with-inverted-colours.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。
+
+<details><summary>快照</summary>
+
+- `theme/custom-strip-elements-can-render.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+同 `stretched-vertical-legends`：`legend.key.width` 的 `null` 单位未实现。
+
+<details><summary>快照</summary>
+
+- `theme/stretched-horizontal-legends.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
+需要 `mtcars` 完整夹具（`hp` / `gear` / `wt` 三列本仓还没有内联），且用 `legend.location = 'plot'` 把图例挂在整页而不是面板行；`legend.justification.<side>` 已实现。
+
+<details><summary>快照</summary>
+
+- `theme/legends-at-all-sides-with-justification.svg`
 
 </details>

@@ -727,3 +727,48 @@ def test_every_stage_is_separately_addressable() -> None:
     assert tuple(layer.stages) == STAGES
     assert all(isinstance(item, ColumnTable) for item in layer.stages.values())
     assert isinstance(layer.dropped_missing, Mapping)
+
+
+# ---------------------------------------------------------------------------
+# from_theme()：geom 缺省尺寸跟着主题走（SIL-792）
+# ---------------------------------------------------------------------------
+
+
+def test_from_theme_scales_point_and_line_defaults_with_base_size() -> None:
+    """`theme_bw(base_size = 33)`：点径 / 线宽按 `theme$geom` 放大（R 4.0 的
+    `from_theme()`）。
+
+    `theme_grey(11)` 下 `pointsize = 1.5`、`borderwidth = base_line_size = 0.5`，
+    与 4.0 之前的常量相等；`base_size = 33` 时二者按 `33 / 11` 与 `33 / 22` 走。
+    """
+    from ggcore.theme import theme_bw, theme_grey
+
+    base = build_plot(ggplot(table(), aes(x="displ", y="hwy")) + geom_point())
+    assert values_of(base.layers[0].data, "size") == [1.5] * 5
+    assert values_of(base.layers[0].data, "stroke") == [0.5] * 5
+    assert values_of(base.layers[0].data, "shape") == [19.0] * 5
+
+    large = build_plot(
+        ggplot(table(), aes(x="displ", y="hwy")) + geom_point() + theme_bw(base_size=33)
+    )
+    assert values_of(large.layers[0].data, "size") == [4.5] * 5
+    assert values_of(large.layers[0].data, "stroke") == [1.5] * 5
+
+    line = build_plot(
+        ggplot(table(), aes(x="displ", y="hwy")) + geom_line() + theme_grey(base_size=33)
+    )
+    assert values_of(line.layers[0].data, "linewidth") == [1.5] * 5
+
+
+def test_from_theme_reads_the_geom_element_override() -> None:
+    """`theme(**{"geom.point": element_geom(...)})` 覆盖单类 geom 的缺省值。"""
+    from ggcore.theme import element_geom, theme
+
+    plot = (
+        ggplot(table(), aes(x="displ", y="hwy"))
+        + geom_point()
+        + theme(**{"geom.point": element_geom(pointsize=2.0, borderwidth=1.0)})
+    )
+    data = build_plot(plot).layers[0].data
+    assert values_of(data, "size") == [2.0] * 5
+    assert values_of(data, "stroke") == [1.0] * 5

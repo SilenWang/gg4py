@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aspect-ratio"]
+ci = true
+title = "上游快照：width is 3 times height"
+source = "upstream:tests/testthat/_snaps/theme/width-is-3-times-height.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：theme(aspect.ratio = 1 / 3)。"

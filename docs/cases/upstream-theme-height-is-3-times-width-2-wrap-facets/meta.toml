@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aspect-ratio", "facet-wrap"]
+ci = true
+title = "上游快照：height is 3 times width, 2 wrap facets"
+source = "upstream:tests/testthat/_snaps/theme/height-is-3-times-width-2-wrap-facets.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：aspect.ratio + facet_wrap()。"

@@ -160,10 +160,11 @@ text_load = Σ  len(text_i) × (font_size_i / 11px)²
    刚好够用，再宽就是放水；
 2. 5 条 heavy（`base_size = 33` 的主题变体）实测最大 1.77%，按 2% 判也是绿，
    所以它们的 `tolerance` 仍写 `0.02`，没有用 2.5% 那一档；
-3. 2.5% 只是 heavy 档的**上限**，留给将来字号更大的图；真正需要它的是三条
-   实测 2.09–2.27% 的 `base_size = 33` 快照，但那三条超阈的原因是**实现缺口**
-   （geom 缺省尺寸没跟 `theme$pointsize` 走，4.0 的 `from_theme()`），已按缺口
-   归口 SIL-715，**没有**用分档把它们放绿。
+3. 2.5% 只是 heavy 档的**上限**，留给将来字号更大的图；曾经需要它的三条
+   实测 2.09–2.27% 的 `base_size = 33` 快照（`theme-bw-large` / `theme-classic-large`
+   / `theme-linedraw-large`）超阈的原因是**实现缺口**——geom 缺省尺寸没跟
+   `theme$pointsize` 走（4.0 的 `from_theme()`）。SIL-792 补上 `from_theme()` 后
+   三条实测 0.86%–1.50%，按 2% 判绿，**没有**用分档把它们放绿。
 
 ### 硬约束
 

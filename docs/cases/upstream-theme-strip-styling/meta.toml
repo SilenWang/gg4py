@@ -1,0 +1,7 @@
+family = "theme"
+features = ["facet-grid", "strip-styling"]
+ci = true
+title = "上游快照：strip_styling"
+source = "upstream:tests/testthat/_snaps/theme/strip-styling.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：strip.background.x / .y 独立着色；无图层（geom_blank）。"

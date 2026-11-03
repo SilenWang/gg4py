@@ -52,6 +52,7 @@ __all__ = [
     "ElementPolygon",
     "ElementRect",
     "ElementText",
+    "FromTheme",
     "Margin",
     "Rel",
     "ResolvedTheme",
@@ -206,7 +207,88 @@ class ElementGeom(Element):
     fontsize: float | Rel | None = None
     pointsize: float | Rel | None = None
     pointshape: int | str | None = None
+    #: `colour` / `fill` 为 NULL 时由 `from_theme(colour %||% ink)` 回落到 ink / paper。
+    colour: str | _NotAvailable | None = None
+    fill: str | _NotAvailable | None = None
     inherit_blank: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class FromTheme:
+    """`from_theme(<expr>)`：geom 的 `default_aes` 在构建期从 `theme$geom` 取值。
+
+    ggplot2 4.0 起，geom 的缺省美学不再是写死的常量，而是引用 `element_geom()`
+    的字段（`R/geom-point.R`: `size = from_theme(pointsize)`）。这样
+    `theme_bw(base_size = 33)` 之类的放大才会带动点径 / 线宽。
+
+    表达式支持上游 `default_aes` 里出现的四种写法：
+
+    - 裸字段：`pointsize` / `borderwidth` / `linetype`；
+    - `%||%` 回落：`colour %||% ink`、`fill %||% paper`；
+    - 混合色：`fill %||% col_mix(ink, paper, 0.35)`；
+    - 倍数：`borderwidth * 2`、`pointsize / 3`。
+
+    求值时机是 `build.finish()`（图层数据补齐缺省列），因此 `ggplot_build()`
+    的列值与上游一致，geom 渲染器不必再各自猜缺省。
+    """
+
+    expr: str
+    #: 数值字段按 R 的 double 收（`pointshape` 在 R 侧是数值，不是整数）。
+    numeric: bool = False
+    #: 与主题值同色时改用这个 R 字面量：`resolve_theme()` 会把颜色规范化成
+    #: `#000000`，而 R 的 `build` 数据里 `colour` 列仍是 `default_aes` 的
+    #: `"black"`。同色只影响写法，不影响出图。
+    literal: str | None = None
+
+    def evaluate(self, element: Any) -> Any:
+        """在 `theme$geom` 元素上求值；`element` 不是 `ElementGeom` 时返回 None。"""
+        if not isinstance(element, ElementGeom):
+            return None
+        for candidate in self.expr.split("%||%"):
+            value = _eval_theme_expr(candidate.strip(), element)
+            if value is not None:
+                if self.numeric and isinstance(value, numbers.Integral):
+                    return float(value)
+                if (
+                    self.literal is not None
+                    and isinstance(value, str)
+                    and _same_colour(value, self.literal)
+                ):
+                    return self.literal
+                return value
+        return None
+
+
+def _same_colour(first: str, second: str) -> bool:
+    try:
+        return _canonical_colour(first) == _canonical_colour(second)
+    except (ValueError, ThemeError):
+        return first == second
+
+
+def _eval_theme_expr(expr: str, element: ElementGeom) -> Any:
+    """`<field> [*|/ n]`、`col_mix(ink, paper, a)` 或 `NA`；其余写法直接报错。"""
+    if expr in ("NA", "NULL"):
+        return None
+    if expr.startswith("col_mix(") and expr.endswith(")"):
+        parts = [part.strip() for part in expr[len("col_mix(") : -1].split(",")]
+        if len(parts) != 3:
+            raise ThemeError(f"from_theme() 的 col_mix() 需要三个参数：{expr!r}")
+        first, second = getattr(element, parts[0], None), getattr(element, parts[1], None)
+        if first is None or second is None:
+            return None
+        return _mix_colour(str(first), str(second), float(parts[2]))
+    for operator in ("*", "/"):
+        if operator in expr:
+            field, _, number = expr.partition(operator)
+            base = getattr(element, field.strip(), None)
+            if base is None:
+                return None
+            factor = float(number)
+            return float(base) * factor if operator == "*" else float(base) / factor
+    if expr not in ElementGeom.__dataclass_fields__:
+        raise ThemeError(f"from_theme() 不认识的字段 {expr!r}")
+    return getattr(element, expr)
 
 
 @dataclass(frozen=True, slots=True)
@@ -530,12 +612,19 @@ def element_geom(
     fontsize: float | Rel | None = None,
     pointsize: float | Rel | None = None,
     pointshape: int | str | None = None,
+    colour: str | _NotAvailable | None = None,
+    fill: str | _NotAvailable | None = None,
     *,
+    color: str | _NotAvailable | None = None,
     inherit_blank: bool = False,
 ) -> ElementGeom:
     """图层默认样式（4.0.3 的 `element_geom`）；`fontsize` 在 ggcore 里是 pt。"""
+    if color is not None:
+        colour = color
     for name, value in (("ink", ink), ("paper", paper), ("accent", accent)):
         _check_colour(name, value)
+    _check_colour("colour", colour)
+    _check_colour("fill", fill)
     _check_size("linewidth", linewidth)
     _check_size("borderwidth", borderwidth)
     _check_linetype("linetype", linetype)
@@ -556,6 +645,8 @@ def element_geom(
         fontsize=fontsize,
         pointsize=pointsize,
         pointshape=pointshape,
+        colour=colour,
+        fill=fill,
         inherit_blank=inherit_blank,
     )
 
@@ -813,7 +904,13 @@ def element_tree() -> Mapping[str, ElementDef]:
 
 
 def _check_element(name: str, value: Any) -> None:
-    node = ELEMENT_TREE[name]
+    node = ELEMENT_TREE.get(name)
+    if node is None:
+        # 上游 `theme()` 接受未登记的 `geom.<class>`（`R/theme.R: check_theme`）：
+        # 它们只参与 `eval_from_theme()` 的逐 geom 覆盖。
+        if not name.startswith("geom."):
+            raise ThemeError(f"未知主题元素 {name!r}")
+        node = ElementDef("geom")
     if value is None or isinstance(value, ElementBlank):
         return
     if node.kind in _ELEMENT_KINDS:
@@ -843,9 +940,12 @@ def theme(complete: bool = False, **elements: Any) -> Theme:
 
     - `theme(**{"panel.grid": element_blank()})` → 画空白；
     - `theme(**{"panel.grid": None})` → 删除该元素，解析时回落到父元素；
-    - 未知元素名直接报错（ggplot2 对拼写错误同样报错）。
+    - 未知元素名直接报错（ggplot2 对拼写错误同样报错）；`geom.<class>` 例外，
+      与上游一致（未登记的逐 geom 覆盖也收）。
     """
-    unknown = [name for name in elements if name not in ELEMENT_TREE]
+    unknown = [
+        name for name in elements if name not in ELEMENT_TREE and not name.startswith("geom.")
+    ]
     if unknown:
         available = ", ".join(sorted(ELEMENT_TREE))
         raise ThemeError(
@@ -1181,7 +1281,30 @@ def resolve_theme(theme: Theme, metrics: Metrics | None = None) -> ResolvedTheme
     root_values = theme_grey(base_size=base.base_size).elements
     cache: dict[str, Any] = {}
     resolved = {name: _resolve_one(base, name, cache, root_values) for name in ELEMENT_TREE}
+    resolved.update(_resolve_geom_classes(base, resolved, root_values))
     return ResolvedTheme(elements=frozen_mapping(resolved), metrics=metrics, theme=base)
+
+
+def _resolve_geom_classes(
+    theme: Theme, resolved: Mapping[str, Any], root_values: Mapping[str, Any]
+) -> dict[str, Any]:
+    """未登记的 `geom.<class>`：以解析后的 `geom` 为底合并（`eval_from_theme()`）。
+
+    `calc_element()` 只认元素树里的名字，逐 geom 覆盖走的是 `eval_from_theme()`
+    里的 `combine_elements(theme[[cls]], el)`；这里提前折成具体元素，构建期
+    （`build.finish()`）直接取值。声明顺序无关，子类后合并即覆盖。
+    """
+    base = resolved.get("geom")
+    extras: dict[str, Any] = {}
+    for name, value in theme.elements.items():
+        if not name.startswith("geom.") or not isinstance(value, Element):
+            continue
+        merged = _combine(value, base)
+        half = _resolve_root_rels(merged, root_values, "geom")
+        extra = _resolve_value(half)
+        if isinstance(extra, ElementGeom):
+            extras[name] = extra
+    return extras
 
 
 # ---------------------------------------------------------------------------

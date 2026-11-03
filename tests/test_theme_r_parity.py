@@ -75,10 +75,7 @@ _KINDS = {
 }
 
 #: 夹具里有、Python 侧刻意不建模的键（都恒为 null）。这份名单只能缩小。
-_KNOWN_ONLY_IN_EXPECTED = {
-    ("geom", "colour"),
-    ("geom", "fill"),
-}
+_KNOWN_ONLY_IN_EXPECTED: set[tuple[str, str]] = set()
 
 #: 每套主题至少要有这么多元素（M2-5 的验收线：元素树覆盖完整）。
 MIN_ELEMENTS_PER_THEME = 100

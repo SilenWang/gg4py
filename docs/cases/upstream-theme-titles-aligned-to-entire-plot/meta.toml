@@ -1,0 +1,7 @@
+family = "theme"
+features = ["plot-title-position"]
+ci = true
+title = "上游快照：titles aligned to entire plot"
+source = "upstream:tests/testthat/_snaps/theme/titles-aligned-to-entire-plot.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：plot.title.position = 'plot'。"

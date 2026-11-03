@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aspect-ratio", "facet-grid"]
+ci = true
+title = "上游快照：height is 3 times width, 2x2 facets"
+source = "upstream:tests/testthat/_snaps/theme/height-is-3-times-width-2x2-facets.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：aspect.ratio + facet_grid(f1 ~ f2)。"

@@ -1,0 +1,7 @@
+family = "theme"
+features = ["theme-spacing"]
+ci = true
+title = "上游快照：large spacing"
+source = "upstream:tests/testthat/_snaps/theme/large-spacing.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：theme(spacing = unit(1, 'cm'))。"

@@ -2226,8 +2226,10 @@ def legend_layout(
     row_label = [0.0] * nrow
     for row, col, index in cells:
         col_label[col] = max(col_label[col], label_w[index])
-        if text_position in ("top", "bottom"):
-            row_label[row] = max(row_label[row], label_h)
+        # R 把 key 与标签放进同一个 gtable 行：行高 = max(key 高度, 标签高度)。
+        # 字号放大到 key 比文字还矮时（`base_size = 33` 的 `theme_bw` 族），
+        # 行高必须跟着文字走，否则图例整体会比上游矮一截。
+        row_label[row] = max(row_label[row], label_h)
 
     grid_cols: list[float] = []
     key_col_index: list[int] = []
@@ -2336,20 +2338,23 @@ def legend_layout(
     key_cells: list[LegendKeyCell] = []
     for row, col, index in cells:
         cell_top = row_top(key_row_index[row])
-        key_box = _Box(col_left(key_col_index[col]), cell_top - key_h, key_w, key_h)
+        # key 与标签同处一个 gtable 行、都按中心对齐（R 的 `gtable` 缺省 vjust）：
+        # 行高由两者中更高的一边决定，矮的一边在行内居中，而不是贴底。
+        row_h = grid_rows[key_row_index[row]]
+        key_box = _Box(col_left(key_col_index[col]), cell_top - (row_h + key_h) / 2.0, key_w, key_h)
         if text_position == "right":
             label_box = _Box(
                 col_left(label_col_index[col]) + label_pad_x,
-                cell_top - key_h,
+                cell_top - (row_h + label_h) / 2.0,
                 label_text_w[index],
-                key_h,
+                label_h,
             )
         elif text_position == "left":
             label_box = _Box(
                 col_left(label_col_index[col]) + label_pad_x,
-                cell_top - key_h,
+                cell_top - (row_h + label_h) / 2.0,
                 label_text_w[index],
-                key_h,
+                label_h,
             )
         elif text_position == "top":
             label_box = _Box(

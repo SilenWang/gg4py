@@ -78,20 +78,22 @@ def test_inventory_burndown_is_generated_from_the_toml() -> None:
     assert SNAPSHOTS.check_report() == []
 
 
-def test_large_base_size_outliers_stay_gaps() -> None:
-    """三条实测超 2% 的大字号快照是**实现缺口**，不能用分档放绿（SIL-715）。"""
+def test_large_base_size_outliers_are_admitted_without_widening_bands() -> None:
+    """三条大字号快照曾是**实现缺口**，修好 `from_theme()` 后按 2% 档纳管（SIL-792）。
+
+    这条测试守的是反方向：它们必须真的成为 case（不再靠缺口条目躺在台账里），
+    也就不能再拿 heavy 档的 2.5% 当退路。
+    """
     rows = {
         row["path"]: row
         for row in SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), SNAPSHOTS.load_dispositions())
     }
-    for path in (
-        "theme/theme-bw-large.svg",
-        "theme/theme-classic-large.svg",
-        "theme/theme-linedraw-large.svg",
+    for path, case in (
+        ("theme/theme-bw-large.svg", "upstream-theme-bw-large"),
+        ("theme/theme-classic-large.svg", "upstream-theme-classic-large"),
+        ("theme/theme-linedraw-large.svg", "upstream-theme-linedraw-large"),
     ):
-        assert rows[path]["case"] is None, path
-        assert rows[path]["issue"] == "SIL-715"
-        assert "from_theme" in rows[path]["reason"]
+        assert rows[path]["case"] == case, path
 
 
 def test_band_ceilings_are_monotonic_and_never_below_two_percent() -> None:

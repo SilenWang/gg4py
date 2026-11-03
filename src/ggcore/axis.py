@@ -428,11 +428,17 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     if bool(getattr(sa, "is_identity", False)):
         breaks = tuple(scale.breaks())
         labels = tuple(scale.labels())
-        values = [float(value) for value in breaks if value is not None]
-        positions = [params.position_of(axis, value) for value in values]
+        # `breaks()` 里的越界项是 `None`（R 的 `NA`），标签与它逐位对齐；
+        # 先配对再丢 None，不能先滤断点再 zip（长度会错位）。
+        values = [
+            (float(value), label)
+            for value, label in zip(breaks, labels, strict=False)
+            if value is not None
+        ]
+        positions = [params.position_of(axis, value) for value, _ in values]
         pairs = [
             (position, str(label))
-            for position, label in zip(positions, labels, strict=True)
+            for position, (_, label) in zip(positions, values, strict=True)
             if label is not None and str(label) and -1e-9 <= position <= 1.0 + 1e-9
         ]
         return AxisTicks(
@@ -608,7 +614,17 @@ def tick_length_cm(theme: ResolvedTheme, side: str) -> float:
     `theme_minimal()` 的 `axis-b` 都是 12.87pt（R 4.5.3 + svglite 实测）。
     刻度本身画不画由 :func:`tick_paint` 决定，与这里的占位无关。
     """
-    value = theme.get("axis.ticks.length.x" if _horizontal(side) else "axis.ticks.length.y")
+    side_names = {
+        "bottom": ("axis.ticks.length.x.bottom", "axis.ticks.length.x"),
+        "top": ("axis.ticks.length.x.top", "axis.ticks.length.x"),
+        "left": ("axis.ticks.length.y.left", "axis.ticks.length.y"),
+        "right": ("axis.ticks.length.y.right", "axis.ticks.length.y"),
+    }.get(side, ())
+    value = None
+    for name in (*side_names, "axis.ticks.length"):
+        value = theme.get(name)
+        if value is not None:
+            break
     if value is None:
         return 0.0
     context = UnitContext()

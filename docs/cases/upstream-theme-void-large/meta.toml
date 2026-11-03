@@ -1,5 +1,5 @@
 family = "theme"
-features = ["aes-mapping", "facet-wrap", "legend-right", "theme-theme_void_large"]
+features = ["aes-mapping", "facet-wrap", "legend-right", "theme-void", "base-size-33"]
 ci = true
 title = "上游快照：theme_void_large"
 source = "upstream:tests/testthat/_snaps/theme/theme-void-large.svg"
