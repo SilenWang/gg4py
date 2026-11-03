@@ -1053,7 +1053,7 @@ def _compute_panel_stages(
     raw: ColumnTable | None = None,
     scales: Any = None,
 ) -> _Stages:
-    """阶段 2–4：identity stat / position 保持原行序，其余按 PANEL 分组。"""
+    """阶段 2–4：stat 按 PANEL 分组；position 整层调用一次（自己拆面板）。"""
     if aesthetics.empty:
         return _Stages(index, layer, aesthetics, _EMPTY, _EMPTY, _EMPTY)
     if layer.stat.name == "identity":
@@ -1071,18 +1071,13 @@ def _compute_panel_stages(
             ]
         )
     mapped = map_statistic(layer, statistic, aesthetics)
-    if layer.position.name in ("identity", "nudge"):
-        # 上游这两个是**图层级**实现（不拆面板）；nudge 的逐行向量因此按全层行号
-        # 对齐，`use_defaults()` 也只在整层上跑一次。
-        positioned = compute_position(layer, mapped, index, raw)
-    else:
-        panel_ids = _panel_ids_of(mapped)
-        positioned = _concat_tables(
-            [
-                compute_position(layer, _slice_table(mapped, rows), index, raw)
-                for _, rows in _panel_slices(panel_ids)
-            ]
-        )
+    # 位置调整在**整层**上调用一次：上游 `Layer$compute_position()` 只调
+    # `position$compute_layer(data, params, layout)`，由 position 自己完成
+    # 「整层 `setup_params()` / `setup_data()` → 逐面板 `compute_panel()` →
+    # 按原行序拼回」。外面再按 PANEL 预切片会让 `setup_params()` 拿到的只有
+    # 单面板数据：`dodge*(preserve = "single")` 的 `n`、`jitterdodge` 的
+    # `ndodge`、`jitter(seed = NULL)` 抽的 seed 都会逐面板各算一次（SIL-764 / SIL-770）。
+    positioned = compute_position(layer, mapped, index, raw)
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
 
 
@@ -1148,7 +1143,11 @@ def build_plot(plot: ggplot) -> PlotBuild:
 
     `facet_null` 走与 M1-5 完全相同的单面板路径（输出逐字节不变）；wrap / grid
     先 `compute_layout()`，再按 PANEL 切数据跑同一套六阶段，位置标度按
-    `free_x` / `free_y` 分配给面板（wrap）或行/列（grid）。
+    `free_x` / `free_y` 分配给面板（wrap）或行/列（grid）。位置调整本身在
+    **整层**上只调一次 `compute_position()`：面板内外的区分由
+    `Position.compute_layer()` 负责（上游 `dapply(data, "PANEL", …)` 的口径），
+    否则 `setup_params()` 里的全层统计量（`dodge(preserve = "single")` 的
+    `n`、`jitterdodge` 的 `ndodge`、`jitter` 的随机 seed）会逐面板各算一次。
     """
     facet = facet_from_component(plot.facet)
     if not facet.is_null:

@@ -30,7 +30,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from ggcore import plot, registry
+from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
+from ggcore.position import POSITION_FACTORIES, PositionDodge, PositionJitterdodge
 from ggcore.registry import construct
 
 REPO = Path(__file__).resolve().parents[1]
@@ -349,3 +352,145 @@ def test_parity_has_teeth(reference: dict) -> None:
         atol=TOLERANCE,
         equal_nan=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# build_plot() 流水线：位置调整在**整层**调用（SIL-764 / SIL-770）
+#
+# 上面几节直接调 `Position.compute_layer()`，输入本来就是整层表；真实流水线
+# 若在调用前按 PANEL 预切片，`setup_params()` 就只会看到单面板数据，全层口径
+# 的 `n` / `ndodge` / seed 全部退化。下面三条断言都走 `build_plot()`，把这条
+# 接线钉死（把 `_compute_panel_stages()` 改回逐面板调用就会红）。
+# ---------------------------------------------------------------------------
+
+
+def _str_column(values: list[str]) -> Column:
+    return Column("str", np.array(values, dtype=object))
+
+
+def _faceted_uneven_table() -> ColumnTable:
+    """R `faceted_uneven`（tools/refs/position_ref.R）：A 面板最多 2 组，B 面板 3 组。"""
+    return ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]))),
+            ("g", _str_column(["p", "p", "q", "p", "q", "r", "p"])),
+            ("f", _str_column(["a", "a", "a", "b", "b", "b", "b"])),
+        ]
+    )
+
+
+def _faceted_even_table() -> ColumnTable:
+    """R `faceted`（同上）：两个面板各 4 行，x 图案相同。"""
+    return ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]))),
+            ("g", _str_column(["p", "q", "p", "q", "p", "q", "p", "q"])),
+            ("f", _str_column(["a", "a", "a", "a", "b", "b", "b", "b"])),
+        ]
+    )
+
+
+def test_build_plot_dodge2_preserve_single_uses_whole_layer_n(reference: dict) -> None:
+    """`dodge2(preserve="single")` × facet_wrap：`n` 是全层 3，不是逐面板 2。"""
+    case = _case(reference, "dodge2_preserve_single_two_panels")
+    p = (
+        plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", fill="g"))
+        + plot.geom_col(position=plot.position_dodge2(preserve="single"))
+        + plot.facet_wrap(("f",))
+    )
+    data = build_plot(p).layers[0].data
+
+    expected = {spec["name"]: spec for spec in case["output"]}
+    assert data.column("PANEL").values.tolist() == _column(expected["PANEL"]).values.tolist()
+    for name in ("x", "xmin", "xmax"):
+        assert np.allclose(
+            _values(data, name),
+            _values(_table([expected[name]]), name),
+            rtol=0,
+            atol=TOLERANCE,
+            equal_nan=True,
+        ), name
+    # 钉住最容易被逐面板切片掰弯的那两列：PANEL 1 的 x=2 两根柱按 n=3 分槽。
+    assert _values(data, "x")[1:3] == pytest.approx([1.85, 2.15], abs=TOLERANCE)
+
+
+def test_build_plot_dodge_preserve_single_uses_whole_layer_n() -> None:
+    """`dodge(preserve="single")` 分面：`n` 也是全层 3（逐面板会把 A 算成 2）。"""
+    seen: list[dict] = []
+
+    class _RecordingDodge(PositionDodge):
+        def setup_params(self, table, params):  # type: ignore[override]
+            resolved = super().setup_params(table, params)
+            seen.append(resolved)
+            return resolved
+
+    original = POSITION_FACTORIES["dodge"]
+    registry.register_position(
+        "dodge",
+        lambda **kwargs: _RecordingDodge(params=kwargs),
+        allow_override=True,
+    )
+    try:
+        p = (
+            plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", fill="g"))
+            + plot.geom_col(position=plot.position_dodge(preserve="single"))
+            + plot.facet_wrap(("f",))
+        )
+        build_plot(p)
+    finally:
+        registry.register_position("dodge", original, allow_override=True)
+
+    assert len(seen) == 1, "setup_params() 必须整层只跑一次（逐面板会看到 2 次）"
+    assert seen[0]["n"] == pytest.approx(3.0, abs=TOLERANCE)
+
+
+def test_build_plot_jitter_without_seed_reuses_one_seed_per_panel() -> None:
+    """`jitter(seed=None)`：整层抽一次 seed，两个面板按行序重置同一个 seed。"""
+    p = (
+        plot.ggplot(_faceted_even_table(), plot.aes(x="x", y="y"))
+        + plot.geom_point(position=plot.position_jitter())
+        + plot.facet_wrap(("f",))
+    )
+    data = build_plot(p).layers[0].data
+    original = np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0])
+    offsets = _values(data, "x") - original
+    # 每个面板 4 行、x 图案相同：同序号行的偏移必须相同（seed 每面板重置）。
+    assert offsets[:4] == pytest.approx(offsets[4:], abs=TOLERANCE)
+    assert not np.allclose(offsets[:4], 0.0)
+
+
+def test_build_plot_jitterdodge_default_width_uses_whole_layer_ndodge() -> None:
+    """`jitterdodge` 缺省 `jitter.width` = `0.4 / (ndodge + 2)`，`ndodge` 按全层。
+
+    A 面板最多 2 组、B 面板 3 组：逐面板会把 A 算成 `0.4 / 4 = 0.1`，全层口径
+    两个面板都必须是 `0.4 / 5 = 0.08`。这里用一个记录参数的位置子类观察
+    `setup_params()`：既要求只被调用一次（整层），也要求宽度是 0.08。
+    """
+    seen: list[dict] = []
+
+    class _RecordingJitterdodge(PositionJitterdodge):
+        def setup_params(self, table, params):  # type: ignore[override]
+            resolved = super().setup_params(table, params)
+            seen.append(resolved)
+            return resolved
+
+    original = POSITION_FACTORIES["jitterdodge"]
+    registry.register_position(
+        "jitterdodge",
+        lambda **kwargs: _RecordingJitterdodge(params=kwargs),
+        allow_override=True,
+    )
+    try:
+        p = (
+            plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", group="g"))
+            + plot.geom_point(position=plot.position_jitterdodge())
+            + plot.facet_wrap(("f",))
+        )
+        build_plot(p)
+    finally:
+        registry.register_position("jitterdodge", original, allow_override=True)
+
+    assert len(seen) == 1, "setup_params() 必须整层只跑一次（逐面板会看到 2 次）"
+    assert seen[0]["jitter_width"] == pytest.approx(0.4 / (3 + 2), abs=TOLERANCE)

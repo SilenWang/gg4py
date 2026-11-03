@@ -138,6 +138,11 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 - `fill` / `dodge` / `dodge2` / `jitter` / `nudge`：`compute_position()` 按名字
   查注册表分派（`registry.construct("position", …)`），与 `position_*()` /
   `p.position_*()` 同源。boxplot 的缺省 `dodge2` 现在开箱可用。
+- **分面时的调用层级**：`compute_position()` 在**整层**上只调一次（传入带
+  `PANEL` 的整层表），由 `Position.compute_layer()` 自己完成「整层
+  `setup_params()` / `setup_data()` → 逐面板 `compute_panel()` → 按原行序拼回」；
+  build 侧**不预切片**。否则全层统计量（`dodge(2)(preserve = "single")` 的
+  `n`、`jitterdodge` 的 `ndodge`、`jitter` 的 seed）会逐面板各算一次（SIL-770）。
 
 ## 6. ScaleSet（M1-4 起是真实标度）
 
