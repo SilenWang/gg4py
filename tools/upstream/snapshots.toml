@@ -135,7 +135,7 @@ reason = "`geom_smooth()` 的 ribbon 开关未逐条复刻。"
 
 [groups."geom-text"]
 issue = "SIL-715"
-owner = "m2-closeout"
+owner = "m3"
 reason = "plotmath 表达式标签（`expression()`）未支持。"
 
 [groups."geom-violin"]
@@ -175,7 +175,7 @@ reason = "这条快照是把 17 个 `draw_key_*` 拼成 gtable 后画的，不�
 
 [groups.patterns]
 issue = "SIL-715"
-owner = "m2-closeout"
+owner = "m3"
 reason = "pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。"
 
 [groups."position-stack"]
@@ -929,13 +929,20 @@ case = "upstream-coord-polar-reversed"
 # 未纳管的 4 条（`coord_radial()` 的轴体系，卡点见各条 reason）
 
 [snapshots."coord-polar/bottom-half-circle-with-rotated-text.svg"]
+owner = "m3"
 reason = "SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。"
 
 [snapshots."coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"]
+owner = "m3"
 reason = 'SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。'
 
 [snapshots."coord-polar/inner-radius-with-all-axes.svg"]
+owner = "m3"
 reason = "SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。"
 
 [snapshots."coord-polar/partial-with-all-axes.svg"]
+owner = "m3"
 reason = 'SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。'
+
+[snapshots."facet-labels/parsed-facet-labels.svg"]
+owner = "m3"
