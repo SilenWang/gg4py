@@ -7,10 +7,12 @@ pandas DataFrame / Arrow Table / dict of arrays 三种输入在 `ggio.frame` 里
 本模块是 X1 边界内的代码：只 import 标准库 + numpy，pandas / pyarrow 一律留在包外
 （`tools/gates/check_import_whitelist.py`）。口径见 `docs/notes/data.md`：
 
-- `kind` 是语义类型：float / int / bool / str / categorical / datetime / timedelta；
+- `kind` 是语义类型：float / int / bool / str / categorical / datetime / date /
+  timedelta。`datetime` 与 `date` 都是数值缓冲，但日历单位不同（前者「秒」、
+  后者「天」），默认标度解析靠这一位选 `trans = "time"` / `"date"`；
 - 数值缓冲是 float32 / float64，源端给 float32 就保留 float32（`int` 的 kind 仍是
   int，只是以 float64 的 bulk 表承载；datetime / timedelta 是自 epoch 起的秒，
-  `datetime.date` 口径是「天」）；
+  date 是自 epoch 起的天）；
 - 离散列的 `levels` 是**标度顺序**：categorical 用输入给的显式顺序，普通字符串列
   按升序去重（ggplot2 离散标度的缺省顺序）；
 - 缺失只进 `na_mask`，数值缓冲里用 0 / False / "" 占位（IR 侧只认 mask）。
@@ -27,10 +29,10 @@ import numpy as np
 __all__ = ["COLUMN_KINDS", "Column", "ColumnTable"]
 
 #: 允许的语义类型。顺序即文档顺序。
-COLUMN_KINDS = ("float", "int", "bool", "str", "categorical", "datetime", "timedelta")
+COLUMN_KINDS = ("float", "int", "bool", "str", "categorical", "datetime", "date", "timedelta")
 
 _KINDS = frozenset(COLUMN_KINDS)
-_NUMERIC = frozenset({"float", "int", "datetime", "timedelta"})
+_NUMERIC = frozenset({"float", "int", "datetime", "date", "timedelta"})
 _DISCRETE = frozenset({"str", "categorical"})
 
 
@@ -55,7 +57,7 @@ class Column:
     kind:
         ``COLUMN_KINDS`` 之一。
     values:
-        一维 bulk 缓冲。float / int / datetime / timedelta 是 float32/float64；
+        一维 bulk 缓冲。float / int / datetime / date / timedelta 是 float32/float64；
         bool 是 ``bool``；str 是 numpy unicode 数组；categorical 是 int32 的
         ``levels`` 下标（code）。
     levels:

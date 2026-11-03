@@ -43,7 +43,7 @@ dict of arrays   ─┘
 
 | 字段 | 含义 |
 | --- | --- |
-| `kind` | `float` / `int` / `bool` / `str` / `categorical` / `datetime` / `timedelta` |
+| `kind` | `float` / `int` / `bool` / `str` / `categorical` / `datetime` / `date` / `timedelta` |
 | `values` | 一维 bulk 缓冲；数值是 float32/float64，`int` 以 float64 承载，categorical 是 int32 code，`str` 是 numpy unicode 数组 |
 | `levels` | 离散列的标度顺序（categorical 显式顺序；str 升序去重），不含 NA |
 | `na_mask` | bool 数组，True = 缺失 |
@@ -72,9 +72,14 @@ dict of arrays   ─┘
 | numpy `datetime64[ns]` / pandas datetime（含 `DatetimeTZDtype`）/ arrow timestamp | `datetime` | float64 秒，自 1970-01-01 **UTC**（POSIXct） |
 | 带时区的值 | 同上 | 先转 UTC 再算秒 |
 | python `datetime.datetime` | `datetime` | 秒；naive 一律按 UTC 解释 |
-| python `datetime.date` | `datetime` | **天**，自 1970-01-01 起 |
-| arrow `date32/date64` | `datetime` | 天（走 python `date` 口径） |
+| python `datetime.date` | `date` | **天**，自 1970-01-01 起 |
+| arrow `date32/date64` | `date` | 天（走 python `date` 口径） |
 | numpy `timedelta64` / pandas timedelta / python `timedelta` | `timedelta` | float64 秒 |
+
+`date` 与 `datetime` 分成两个 kind 是为了**默认标度解析**（SIL-800）：前者选
+`trans = "date"`、后者选 `trans = "time"`，与 R 的 `scale_type()` 区分 `Date` /
+`POSIXct` 一致。pandas 的日期列只有 `datetime64`，所以 pandas 路径给的是
+`datetime`（POSIXct 口径）；要 Date 口径请用 python `datetime.date` / arrow date。
 
 秒数用 float64 承载，纳秒级精度在 2^53 之外会丢（2020 年已属正常范围），这是
 「IR 只认 float32/float64 bulk 缓冲」的代价，也在 IR 之前就固定下来。
@@ -85,8 +90,8 @@ dict of arrays   ─┘
 - 数值缓冲里用 **0** 占位，bool 用 `False`，字符串用 `""`，categorical 用 code 0
   ——IR 侧只认 mask，占位值不参与计算；`Column` 构造时校验这条不变量；
 - **带类型**的全缺列保留原类型：pandas `datetime64` / `boolean` / `Categorical`，
-  arrow `timestamp` / `date` / `boolean` / `dictionary` → `datetime` / `bool` /
-  `categorical` + 全 True 的 mask（pandas 与 arrow 两侧同一结果）；
+  arrow `timestamp` / `date` / `boolean` / `dictionary` → `datetime` / `date` /
+  `bool` / `categorical` + 全 True 的 mask（pandas 与 arrow 两侧同一结果）；
 - **没有类型信息**的全缺列（dict 的 `[None, None]`、pandas object 列、arrow
   `null` 类型）统一落成 `float` + 全 True 的 mask，三路一致；字符串全缺列
   （pandas string / arrow string）同样落 `float`（字符串没有可区分的标度类型）；

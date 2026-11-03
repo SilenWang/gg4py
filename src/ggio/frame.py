@@ -12,8 +12,9 @@
 
 - 普通字符串列按升序去重成 `levels`；pandas `Categorical` 保留 categories 顺序，
   落成 categorical 的 int32 code + levels；NA 只进 `na_mask`，不进 levels。
-- `datetime64[ns]` → 自 1970-01-01 UTC 起的秒（POSIXct）；带时区的先转 UTC；
-  python `datetime.date` → 自 1970-01-01 起的天数；`timedelta64` → 秒。
+- `datetime64[ns]` → 自 1970-01-01 UTC 起的秒（POSIXct，`kind = "datetime"`）；
+  带时区的先转 UTC；python `datetime.date` / arrow `date32/date64` →
+  自 1970-01-01 起的天（`kind = "date"`）；`timedelta64` → 秒。
 - NaN / None / pd.NA / NaT / arrow null 一律进 `na_mask`，缓冲里用 0 占位。
 - arrow / pandas 的整型保 `int` kind；**有缺失**的整型列退化为 float + mask。
 - 数值缓冲跟随源端 dtype：源端 float32 三路都保 float32（dict / pandas / arrow
@@ -337,7 +338,9 @@ def _infer_objects(values: Sequence[Any], name: str) -> Column:
             dtype=np.float64,
             count=len(items),
         )
-        return Column("datetime", data, na_mask=mask)
+        # 「天」与 datetime 的「秒」是两套日历单位：kind 分开，默认标度才知道该建
+        # `trans = "date"`（R 的 Date 自动就是 scale_*_date）。
+        return Column("date", data, na_mask=mask)
 
     # family == "timedelta"
     data = np.fromiter(
@@ -429,8 +432,10 @@ def _column_from_arrow_array(array: Any, pa: Any, name: str) -> Column:
         all_missing = np.ones(len(array), dtype=bool)
         if pa.types.is_boolean(arrow_type):
             return Column("bool", np.zeros(len(array), dtype=np.bool_), na_mask=all_missing)
-        if pa.types.is_timestamp(arrow_type) or pa.types.is_date(arrow_type):
+        if pa.types.is_timestamp(arrow_type):
             return Column("datetime", np.zeros(len(array), dtype=np.float64), na_mask=all_missing)
+        if pa.types.is_date(arrow_type):
+            return Column("date", np.zeros(len(array), dtype=np.float64), na_mask=all_missing)
 
     if (
         pa.types.is_string(arrow_type)
@@ -439,7 +444,8 @@ def _column_from_arrow_array(array: Any, pa: Any, name: str) -> Column:
         or pa.types.is_date(arrow_type)
     ):
         # 字符串列本来就是 object；arrow timestamp → python datetime（秒），
-        # arrow date → python date（天）。pandas 的日期列是 datetime64，走秒口径。
+        # arrow date → python date（天，`kind = "date"`）。pandas 的日期列是
+        # datetime64，走秒口径。
         return _infer_objects(np.asarray(array.to_pylist(), dtype=object), name)
 
     if (

@@ -24,6 +24,7 @@ def test_column_kinds_are_the_documented_set() -> None:
         "str",
         "categorical",
         "datetime",
+        "date",
         "timedelta",
     )
 

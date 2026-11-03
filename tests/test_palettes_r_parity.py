@@ -239,9 +239,9 @@ def test_scale_type_matches_r(reference: dict) -> None:
     """`scale_type()` 的 R 取值：character / factor / numeric / logical。
 
     R 还有两条非离散的：有序 factor → `("ordinal", "discrete")`、`Date` →
-    `("date", "continuous")`。`ggcore.Column` 目前没有 ordered / date 标记
-    （日期标度归 M2-4 A），所以这两项按 `docs/notes/scales.md` §9 记为未支持，
-    这里只钉住能表达的那四类 + `datetime` 列。
+    `("date", "continuous")`。`ggcore.Column` 没有 ordered 标记（记在
+    `docs/notes/scales.md` §2）；`Date` 自 SIL-800 起落成 `kind = "date"`，
+    下面的 :func:`test_scale_type_for_columns` 逐条断言。
     """
     assert scale_type(("a", "b")) == tuple(reference["scale_type"]["character"])
     assert scale_type(("a", "b", "c")) == tuple(reference["scale_type"]["factor"])
@@ -259,5 +259,6 @@ def test_scale_type_for_columns() -> None:
     assert scale_type(Column("bool", np.array([True, False]))) == ("discrete",)
     categorical = Column("categorical", np.array([0, 1], dtype=np.int32), levels=("a", "b"))
     assert scale_type(categorical) == ("discrete",)
+    assert scale_type(Column("date", np.array([0.0, 1.0]))) == ("date", "continuous")
     assert scale_type(Column("datetime", np.array([0.0, 1.0]))) == ("datetime", "continuous")
     assert scale_type(Column("timedelta", np.array([0.0, 1.0]))) == ("continuous",)

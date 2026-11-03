@@ -35,6 +35,7 @@ M1-4 打底 15 个名字；M2-4 A（SIL-731）按族补齐连续侧，注册表�
 
 from __future__ import annotations
 
+import datetime as _dt
 import itertools
 import math
 import warnings
@@ -498,7 +499,7 @@ def _is_missing(values: np.ndarray) -> np.ndarray:
 
 def _numeric_values(column: Column) -> np.ndarray:
     """列 → 数值数组（NA / 非数值 → NaN）。"""
-    if column.kind in ("float", "int", "datetime", "timedelta"):
+    if column.kind in ("float", "int", "datetime", "date", "timedelta"):
         values = np.asarray(column.values, dtype=np.float64).copy()
         values[column.na_mask] = np.nan
         return values
@@ -2703,6 +2704,8 @@ def scale_type(value: Any) -> tuple[str, ...]:
         kind = value.kind
         if kind in ("int", "float"):
             return ("continuous",)
+        if kind == "date":
+            return ("date", "continuous")
         if kind == "datetime":
             return ("datetime", "continuous")
         if kind == "timedelta":
@@ -2715,6 +2718,10 @@ def scale_type(value: Any) -> tuple[str, ...]:
     if isinstance(value, (int, float)):
         return ("continuous",)
     items = list(value) if not isinstance(value, (int, float)) else []
+    if items and all(isinstance(item, _dt.datetime) for item in items):
+        return ("datetime", "continuous")
+    if items and all(isinstance(item, _dt.date) for item in items):
+        return ("date", "continuous")
     if items and all(isinstance(item, str) for item in items):
         return ("discrete",)
     if items and all(isinstance(item, bool) for item in items):
@@ -2889,29 +2896,38 @@ def scale_from_component(spec: Scale) -> ScaleBase:
 
 
 def _default_scale(aesthetic: str, column: Column | None) -> ScaleBase | None:
-    """默认标度解析（上游 `ggplot_add.defaults` / `plot@scales$add_missing`）。"""
+    """默认标度解析（上游 `ggplot_add.defaults` / `plot@scales$add_missing`）。
+
+    日期时间列按**日历单位**选变换：`Date`（`kind = "date"`，天）→
+    `trans = "date"`，`POSIXct`（`kind = "datetime"`，秒）→ `trans = "time"`。
+    R 的 `find_scale()` 会为这两类找 `scale_<aes>_date` / `_datetime`，所以
+    日期列不写 `scale_*_date()` 时断点 / 标签也走 `pretty.Date()`，而不是数值的
+    `extended_breaks()`。
+    """
     kind = column.kind if column is not None else "float"
     discrete = column.is_discrete if column is not None else False
     if kind == "bool":
         discrete = True
+    calendar_trans = {"date": "date", "datetime": "time"}.get(kind)
+    params = {"trans": calendar_trans} if calendar_trans is not None else None
     if aesthetic in POSITION_AESTHETICS:
         if discrete:
             return PositionDiscreteScale(aesthetic)
-        return PositionContinuousScale(aesthetic)
+        return PositionContinuousScale(aesthetic, params)
     if aesthetic in ("colour", "fill"):
         if discrete:
             return HueScale(aesthetic)
-        return GradientScale(aesthetic)
+        return GradientScale(aesthetic, params)
     if aesthetic == "size":
-        return SizeScale(aesthetic)
+        return SizeScale(aesthetic, params)
     if aesthetic == "alpha":
-        return AlphaScale(aesthetic)
+        return AlphaScale(aesthetic, params)
     if aesthetic == "shape":
         return ShapeScale(aesthetic)
     if aesthetic == "linetype":
         return LinetypeScale(aesthetic)
     if aesthetic == "linewidth":
-        return LinewidthScale(aesthetic)
+        return LinewidthScale(aesthetic, params)
     return None
 
 

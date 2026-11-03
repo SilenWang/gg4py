@@ -1,0 +1,7 @@
+family = "scale"
+features = ["scale-date"]
+ci = true
+title = "Date 列不写 scale_x_date()：默认标度就是 date"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-800：两侧都不写 scale_x_date()，断点走 pretty.Date()；数据是上游 dates-along-x-default-breaks 的 set.seed(321) 导出。"

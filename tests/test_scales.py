@@ -272,6 +272,69 @@ def test_default_scale_resolution() -> None:
     assert resolved("group", numeric) is None
 
 
+def test_default_scale_uses_the_calendar_unit() -> None:
+    """Date / POSIXct 列不写 `scale_*_date()` 时也走日历断点（SIL-800）。
+
+    断点 / 标签口径取自 `tests/fixtures/scales_r_reference.json` 的 `x_date_default`
+    （R 的 `scale_x_date()` 默认值），证明默认标度解析选对了 `trans`。
+    """
+
+    def resolved(aesthetic: str, col: Column) -> object:
+        scales = ScaleSet()
+        scales.train(col, aesthetic)
+        return scales.scale(aesthetic)
+
+    dates = Column("date", np.array([18266.0, 18798.0]))
+    stamps = Column("datetime", np.array([1577837580.0, 1577864820.0]))
+    date_scale = resolved("x", dates)
+    time_scale = resolved("x", stamps)
+    assert isinstance(date_scale, PositionContinuousScale)
+    assert date_scale.transform_.name == "date"
+    assert isinstance(time_scale, PositionContinuousScale)
+    assert time_scale.transform_.name == "time"
+    # 非位置美学同样按日历单位选 trans（R 的 scale_colour_date / scale_size_date）。
+    for aesthetic in ("colour", "size", "alpha", "linewidth"):
+        assert resolved(aesthetic, dates).transform_.name == "date"
+        assert resolved(aesthetic, stamps).transform_.name == "time"
+
+    scales = ScaleSet()
+    scales.train(dates, "x")
+    assert [value for value in scales.breaks("x") if value is not None] == [
+        18262.0,
+        18444.0,
+        18628.0,
+        18809.0,
+    ]
+    assert scales.labels("x") == (
+        "2019-07",
+        "2020-01",
+        "2020-07",
+        "2021-01",
+        "2021-07",
+        "2022-01",
+    )
+
+
+def test_build_uses_the_date_axis_without_an_explicit_scale() -> None:
+    """整条 build 管线：Date 列不写标度，x 轴仍是日期断点 / ISO 标签。"""
+    dates = Column("date", np.array([18266.0, 18798.0]))
+    y = Column("float", np.array([0.2, 0.8]))
+    t = ColumnTable([("d", dates), ("y", y)])
+    plot = ggplot(t, aes(x="d", y="y")) + geom_point()
+    build = build_plot(plot)
+    scale = build.scales.scale("x")
+    assert isinstance(scale, PositionContinuousScale)
+    assert scale.transform_.name == "date"
+    assert build.scales.labels("x") == (
+        "2019-07",
+        "2020-01",
+        "2020-07",
+        "2021-01",
+        "2021-07",
+        "2022-01",
+    )
+
+
 def test_position_aliases_share_the_axis_scale() -> None:
     scales = ScaleSet()
     scales.train(column([1.0, 2.0, 3.0]), "x")

@@ -682,14 +682,14 @@ def _normalize(value: Any, ctx: _Context, node: ast.AST | None) -> np.ndarray:
 def _column_array(column: Column) -> np.ndarray:
     """列 → 求值用的 ndarray。
 
-    - 数值列（float / int / datetime / timedelta）：保留源 dtype（float32 仍
+    - 数值列（float / int / datetime / date / timedelta）：保留源 dtype（float32 仍
       float32），缺失写 `NaN`；
     - bool：无缺失给 bool 数组；有缺失退化成 float（1.0 / 0.0 / NaN），这样
       算术与比较仍然可用；
     - str / categorical：object 数组，元素是 Python `str`，缺失写 `None`
       （分组比较与 `==` 都按值走）。
     """
-    if column.kind in ("float", "int", "datetime", "timedelta"):
+    if column.kind in ("float", "int", "datetime", "date", "timedelta"):
         values = np.array(column.values, copy=True)
         if column.na_mask.any():
             values[column.na_mask] = np.nan

@@ -98,6 +98,11 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 （上游 `ScaleDiscrete$map()` 只处理离散值），所以柱子的 `xmin = x - width/2`
 不会被离散水平编码吃掉。
 
+日期列（`kind = "date"` / `"datetime"`）不走上面的 identity 分支：位置 / colour /
+fill / size / alpha / linewidth 的默认标度都带日历变换（`date` → `trans = "date"`、
+`datetime` → `trans = "time"`），断点与标签按 `pretty.Date()` / `pretty.POSIXt()`
+取，细则见 §9。
+
 注册表现在是 **129 个名字**（M1-4 的 15 个 + M2-4 A 新增 64 个 + B 新增的离散 /
 色板 54 个；两边重名的 `size_area` / `radius` / `linewidth_*` / `*_distiller`
 只登记一次）。`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的
@@ -132,9 +137,9 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 
 `scale_type()` 不是标度构造器，是「一个向量该用哪类标度」的查询函数：
 `Column("float")` → `("continuous",)`、字符 / 逻辑 / categorical →
-`("discrete",)`、datetime 列 → `("datetime", "continuous")`。R 的
-`("ordinal", "discrete")`（有序 factor）与 `("date", "continuous")` 依赖
-ordered / Date 标记，`ggcore.Column` 还没有这两种标记（日期标度归 M2-4 A），
+`("discrete",)`、`date` 列 → `("date", "continuous")`、datetime 列 →
+`("datetime", "continuous")`（SIL-800）。R 的 `("ordinal", "discrete")`（有序
+factor）仍依赖 ordered 标记，`ggcore.Column` 还没有它，
 `tests/test_palettes_r_parity.py` 里钉住 R 侧的取值并注明未支持。
 
 ## 3. limits / expand
@@ -374,16 +379,15 @@ hue 的十六进制值与 R 4.0.3 **逐字节相同**：n = 2 → `#F8766D #00BF
 `size_date` / `alpha_datetime` …）时是同一个 `datetime_scale` 的实现，只是
 palette 换成对应的连续调色板（渐变 / area / 线性）。
 
-**已知缺口（SIL-790 发现）**：`ggio` 把 `Date` 与 `POSIXct` 都归一成
-`kind = "datetime"`（前者是天、后者是秒，见 `docs/notes/data.md`），所以默认标度
-解析（`scales._default_scale()`）**分不出**该建 `trans = "date"` 还是 `"time"`，
-现在两者都落到 identity 连续标度——日期列不加 `scale_x_date()` 时，断点是
-`extended_breaks()` 的数值（标签 `"15400"` 这种）。R 的默认标度是
-`scale_x_date()` / `scale_x_datetime()`。修法要给 `Column` 加「日历单位」标记
-（或恢复 `date` kind），跨 `ggio` / `data.py` / 几个数值 kind 判定点，不在
-SIL-790 的文件范围内；`scale_date` 的 8 条 case 因此显式写 `scale_*_date()`
-（与 R 测试里隐含的默认标度等价），`docs/notes/snapshot-inventory.md` 的两条
-「default breaks」也按这个口径复刻。
+**默认标度按日历单位解析（SIL-800）**：`ggio` 把 `Date` 归一成
+`kind = "date"`（自 1970-01-01 起的**天**）、`POSIXct` 归一成
+`kind = "datetime"`（**秒**，见 `docs/notes/data.md`），所以默认标度解析
+（`scales._default_scale()`）给日期列建 `trans = "date"`、给 datetime 列建
+`trans = "time"`——与 R 的 `find_scale()` 找 `scale_<aes>_date` / `_datetime` 同义。
+日期列不写 `scale_x_date()` 时，断点也是 `pretty.Date()` 的日历步长、标签是
+ISO 日期，不再退回 `extended_breaks()` 的数值。位置 / colour / fill / size /
+alpha / linewidth 六类美学都走这条规则；端到端 case 是
+`docs/cases/scale-date-implicit-default-breaks`（R 侧同样不写标度）。
 
 ## 10. 与 R 对拍
 

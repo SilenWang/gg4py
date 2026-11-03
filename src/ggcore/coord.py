@@ -107,7 +107,7 @@ _AXIS_OF = {
 }
 
 #: 数值列的类型（位置数据经过标度映射后都是 float，这里也接受整型 / 布尔）。
-_NUMERIC_KINDS = frozenset({"float", "int", "bool", "datetime", "timedelta"})
+_NUMERIC_KINDS = frozenset({"float", "int", "bool", "datetime", "date", "timedelta"})
 
 _TWO_PI = 2.0 * math.pi
 
