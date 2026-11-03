@@ -110,6 +110,26 @@ colour 图例，键用 1.5mm 的默认点大小）。
 文字行高取 0.955em（`TEXT_LINE_EM`，与 `ggcore.facet` 的 strip 同一常量）：R 的
 `stringHeight()` + `font_descent()` 在 8.8/11/20pt 上量出来都是 ≈0.94–0.96em。
 
+**轴文字 / 轴标题例外（SIL-721）**：R 的轴 grob 是 `element_grob(element_text, ...)`，
+它的高度是 **字号 × `lineheight`**（`axis.text` / `axis.title` 继承 `text` 的
+0.9），不是 `stringHeight()` 的 cap height，也不是 0.955em。实测
+（`ggplotGrob()`，`svglite` 4×3in）：
+
+| 行 | R 实测 | 公式 |
+| --- | ---: | --- |
+| `axis-b` | 12.8708pt | 刻度 2.75 + `axis.text` 行 7.92（8.8 × 0.9）+ margin 2.2 |
+| `xlab-b` | 12.6365pt | `axis.title` 行 9.89（11 × 0.9）+ margin 2.75 |
+| `axis-l` | 17.2146pt | 刻度 2.75 + `stringWidth("1.5")` 12.2646 + margin 2.2 |
+| `ylab-l` | 12.6365pt | `axis.title` 行 9.89 + margin 2.75 |
+
+`ggcore.axis.axis_line_cm()` 就是 `字号 × lineheight`；`text_line_cm()` 留给
+标题 / 图例行（那几行走的是 `titleGrob`，≈0.92–0.96em，不能混用）。
+
+轴的元素按**位置专属名**取（`axis.text.y.left` / `axis.ticks.x.bottom` /
+`axis.title.y.left`），与 R 的 `theme_suffix` 一致：`theme_minimal()` 只覆盖
+`.left` / `.bottom`（y 标签右 margin 2.2 → 4.95，同时抹掉 2.75pt 刻度线），
+读父元素 `axis.text.y` 会把这块 margin 丢掉。
+
 ### 与 R 的实测差（7×7in，容差要求 ≤ 0.5mm）
 
 | 量 | gg4py | R 4.0.3 | 差 |
@@ -125,6 +145,28 @@ colour 图例，键用 1.5mm 的默认点大小）。
 剩余差异几乎都在**文字宽度**上：R 的 pdf 设备把 `sans` 解析成 Helvetica（数字
 0.556em），我们的设备量表是 DejaVu/Noto（数字约 0.52em）。换成同一个字体后
 差值会继续缩小；口径本身（`Metrics.strwidth`）不变。
+
+### 文字宽度对像素对拍的影响（SIL-721 实测）
+
+参考图由 R + svglite 出，`sans` 解析成 **Arimo**（Arial 度量）；产品缺省的
+`sans` 是 **Noto Sans CJK SC**（见 `ggskia/text.py` 的 `SANS_FAMILY`，为了 CJK
+覆盖）。两者数字宽度差 8%：
+
+| 文本 | R（Arimo） | gg4py（Noto Sans CJK SC） | 差 |
+| --- | ---: | ---: | ---: |
+| `"1.5"` @8.8pt | 12.2646pt | 11.1985pt | **1.066pt** |
+| `"1.5"` @11pt | 15.3700pt | 14.0029pt | 1.367pt |
+
+`axis-l` 列宽 = 刻度 + 最宽标签 + margin，所以面板左边会比 R 多出 ~1pt；面板
+高度那两条（`axis-b` / `xlab-b`）在改用「字号 × lineheight」后已经对齐到
+0.1pt 以内。
+
+后果是**长网格线的像素对拍**：`theme-grey-basic` 的面板窄 0.97pt，13 条纵向
+网格线整体偏 0–0.97px（横线只偏 ≤0.07px），图级差异因此卡在 5.92%；把面板矩形
+强行对到 R 的 `35.219 / 247.302 / 179.650` 后同一份 SVG 的差异是 **1.88%**
+（网格本身正确）。要真正压到 ≤2% 需要「缺省拉丁字面与 Arimo 度量一致」——
+这是一次字体层改动（`ggskia/text.SANS_FAMILY` + 度量表），不在 guides/theme 的
+范围里。
 
 ### 整页表的结构
 

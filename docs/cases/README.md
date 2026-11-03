@@ -250,13 +250,15 @@ M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) +
 
 `ci = false` 的三条是**已知实现缺口**，参考图照常入库，接上能力后把 `ci` 翻成
 `true` 即可（matrix 的“跳过”不是绿，只是不跑）。缺口统一登记在
-**SIL-715（M2 缺口池）**，下表「缺口池」列是池里的第几条：
+**SIL-715（M2 缺口池）**，下表「缺口池」列是池里的第几条。注意前两条的网格线
+已经画好了（SIL-721），挡住 `ci` 的是轴标签列宽的**字体度量差**——翻 `ci` 之前
+要把面板矩形对到 R 的实测值，先确认图级 ≤2%（SIL-721 实测 1.88%）。
 
 | case | 缺口 | 缺口池 |
 | --- | --- | --- |
-| `theme-grey-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 | SIL-715 #1 |
-| `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-715 #2 |
-| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） | SIL-715 #3 |
+| `theme-grey-basic` | `panel.grid.major/minor` 已画（SIL-721，SIL-715 #1 结掉）；剩下的 5.92% 是**轴标签列宽的字体度量差**：参考图用 Arimo（`"1.5"`=12.2646pt），产品缺省 `sans` 是 Noto Sans CJK SC（11.1985pt），面板窄 0.97pt，13 条纵向网格线整体偏 0–0.97px。面板对到 R 的实测值时同一份 SVG 是 1.88% | SIL-715 #6（缺省拉丁字面的度量对等） |
+| `theme-minimal-basic` | 同上（6.38%）；同一条修复里还改了轴读位置专属元素，修前 16.03% | SIL-715 #6 |
+| `guide-colourbar` | 色条端点取的是断点色而不是标度 limits（t≈0.27–0.97），已由 SIL-722 修 | SIL-715 #3 |
 
 另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考），同样归在
 SIL-715（M2 缺口池）：

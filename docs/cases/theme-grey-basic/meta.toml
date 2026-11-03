@@ -4,4 +4,4 @@ ci = false
 title = "theme：theme_grey 完整主题"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项：panel.grid.major/minor 还没画（scene.py 只装 panel.background/border），网格线整片缺失；缺口池 SIL-715 #1（theme 网格线）。参考图已生成，M2 接上网格线、翻 ci = true 前不得算 pass。"
+notes = "缺口池 SIL-715 #1（theme 网格线）已结：网格线已绘制（SIL-721），`panel.grid.major`/`.minor` 在面板 npc 里按断点画，z 序在 geom 之下、裁到面板。仍 ci=false：图级 5.92% 的残余不是网格，是**轴标签列宽**——参考图的 Arimo 量出 `\"1.5\"`=12.2646pt，产品缺省 Noto Sans CJK SC 是 11.1985pt，面板因此窄 0.97pt、纵向网格线整体偏 0–0.97px；把面板矩形强行对到 R 的实测值后同一份 SVG 是 1.88%。剩余缺口归 SIL-715 #6（缺省拉丁字面的度量对等），翻 ci 时以 1.88% 为基线复验。见 docs/notes/guide.md「文字宽度对像素对拍的影响」。"

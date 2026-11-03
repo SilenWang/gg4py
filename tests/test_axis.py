@@ -17,9 +17,12 @@ from ggcore.axis import (
     AxisTicks,
     axis_extent,
     axis_grobs,
+    axis_line_cm,
     axis_ticks,
     axis_title_extent,
     axis_title_grob,
+    break_positions,
+    minor_break_positions,
     text_line_cm,
     text_width_cm,
     tick_length_cm,
@@ -110,6 +113,65 @@ def test_discrete_ticks_are_centred_on_levels() -> None:
     assert ticks.positions[1] == pytest.approx(0.5)
 
 
+def test_break_positions_and_minor_breaks() -> None:
+    """主/次断点的面板位置：次断点照 `scales::regular_minor_breaks()`（中点）。"""
+    plot = (
+        ggplot(table(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 6), expand=(0, 0))
+    )
+    scale, params = _panel(plot)
+    majors = break_positions(scale, params, "bottom")
+    assert len(majors) == 7  # 0..6
+    assert majors[0] == pytest.approx(0.0)
+    assert majors[-1] == pytest.approx(1.0)
+    minors = minor_break_positions(scale, params, "bottom")
+    assert minors == pytest.approx([(2 * index + 1) / 12 for index in range(6)])
+
+
+def test_break_positions_ignore_labels_while_ticks_do_not() -> None:
+    """`labels` 只影响刻度文字：空标签的断点不画文字，但网格线照画（R 的 guide_grid 用
+    `mapped_breaks()`，不看 `labels`）。"""
+    labelled = (
+        ggplot(table(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 6), expand=(0, 0))
+    )
+    blank = (
+        ggplot(table(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(
+            limits=(0, 6), expand=(0, 0), labels=("", "1", "", "3", "", "5", "")
+        )
+    )
+    labelled_scale, labelled_params = _panel(labelled)
+    blank_scale, blank_params = _panel(blank)
+    assert len(axis_ticks(labelled_scale, labelled_params, "bottom").labels) == 7
+    ticks = axis_ticks(blank_scale, blank_params, "bottom")
+    assert ticks.labels == ("1", "3", "5")
+    assert len(ticks.positions) == 3
+    # 断点本身一个不少：网格线还是 7 条主线 + 6 条次线。
+    assert break_positions(blank_scale, blank_params, "bottom") == pytest.approx(
+        [index / 6 for index in range(7)]
+    )
+    assert len(minor_break_positions(blank_scale, blank_params, "bottom")) == 6
+
+
+def test_minor_breaks_are_empty_for_discrete_and_single_break() -> None:
+    discrete = ggplot(table(), aes(x="g", y="y")) + registry.geom_point()
+    scale, params = _panel(discrete)
+    assert minor_break_positions(scale, params, "bottom") == ()
+    # 只有一个断点 → 没有区间，也就没有次断点。
+    single = (
+        ggplot(table(), aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(2, 2.5), breaks=(2.2,))
+    )
+    scale, params = _panel(single)
+    assert len(break_positions(scale, params, "bottom")) == 1
+    assert minor_break_positions(scale, params, "bottom") == ()
+
+
 def test_log10_ticks_are_in_transformed_space() -> None:
     """断点已经是 log10 空间的值，位置按面板范围直接换算（不回头做 log）。"""
     plot = ggplot(table(), aes(x="x", y="y")) + registry.geom_point() + registry.scale_x_log10()
@@ -134,23 +196,43 @@ def test_axis_extent_reads_theme_units() -> None:
     tick = tick_length_cm(theme, "bottom")
     assert tick == pytest.approx(2.75 / 72.27 * 2.54)  # axis.ticks.length = 2.75pt
     extent = axis_extent(theme, ticks, metrics=METRICS)
-    # 刻度 + 行高（8.8pt × 0.955em）+ 上 margin（2.2pt；R 的 pt = 1/72.27in）。
-    expected = tick + text_line_cm(8.8) + 2.2 / 72.27 * 2.54
+    # 刻度 + 行高（8.8pt × lineheight 0.9 = 7.92pt）+ 上 margin（2.2pt）。
+    # R 的 `axis-b` 行高实测 12.8708pt（`ggplotGrob()`，见 docs/notes/guide.md）。
+    expected = tick + axis_line_cm(theme["axis.text.x.bottom"]) + 2.2 / 72.27 * 2.54
     assert extent == pytest.approx(expected)
     blank = resolve_theme(theme_void())
     assert axis_extent(blank, ticks, metrics=METRICS) == 0.0
 
 
+def test_axis_extent_reads_the_position_specific_element() -> None:
+    """`axis.text.y.left` 而不是 `axis.text.y`：`theme_minimal()` 只覆盖位置专属元素。
+
+    上游的 guide 用 `theme_suffix` 取 `axis.text.y.left`；`theme_minimal()`
+    把 y 轴标签的右 margin 从 2.2pt 换成 `0.45 × 11 = 4.95pt`，读父元素就丢了。
+    """
+    minimal = resolve_theme(registry.theme_minimal())
+    assert minimal["axis.text.y.left"].margin.r is not None
+    plot = ggplot(table(), aes(x="x", y="y")) + registry.geom_point()
+    scale, params = _panel(plot)
+    ticks = axis_ticks(scale, params, "left")
+    grey = axis_extent(resolve_theme(registry.theme_grey()), ticks, metrics=METRICS)
+    extent = axis_extent(minimal, ticks, metrics=METRICS)
+    # theme_minimal 把 y 标签的右 margin 从 2.2 换成 `0.45 × 11 = 4.95pt`，同时
+    # 抹掉 2.75pt 的刻度线——两项正好抵消，R 的参考图里面板位置与 theme_grey 相同。
+    # 读父元素 `axis.text.y`（仍是 2.2）就会少算 2.75pt。
+    assert extent == pytest.approx(grey)
+    assert amounts(minimal["axis.text.y"].margin.r) == pytest.approx([2.2])
+    assert amounts(minimal["axis.text.y.left"].margin.r) == pytest.approx([4.95])
+
+
 def test_axis_title_extent_and_rotation() -> None:
     theme = resolve_theme(registry.theme_grey())
     margin = 2.75 / 72.27 * 2.54
-    assert axis_title_extent(theme, "bottom", "X", metrics=METRICS) == pytest.approx(
-        text_line_cm(11.0) + margin
-    )
+    line = axis_line_cm(theme["axis.title.x.bottom"])
+    assert line == pytest.approx(11.0 * 0.9 / 72.0 * 2.54)
+    assert axis_title_extent(theme, "bottom", "X", metrics=METRICS) == pytest.approx(line + margin)
     # y 轴标题旋转 90°：外向尺寸是行高。
-    assert axis_title_extent(theme, "left", "Y", metrics=METRICS) == pytest.approx(
-        text_line_cm(11.0) + margin
-    )
+    assert axis_title_extent(theme, "left", "Y", metrics=METRICS) == pytest.approx(line + margin)
     assert axis_title_extent(theme, "left", None, metrics=METRICS) == 0.0
 
 

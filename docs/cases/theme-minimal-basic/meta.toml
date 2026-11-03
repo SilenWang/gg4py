@@ -4,4 +4,4 @@ ci = false
 title = "theme：theme_minimal 完整主题"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项同 theme-grey-basic：panel.grid.major/minor 缺失（minimal 的视觉主体就是网格线）；缺口池 SIL-715 #2（theme 网格线）。"
+notes = "缺口池 SIL-715 #2（theme 网格线）已结：网格线已绘制（SIL-721），同 theme-grey-basic。仍 ci=false：图级 6.38%，残余同样是轴标签列宽的字体度量差（Arimo 12.2646pt vs Noto Sans CJK SC 11.1985pt → 面板窄 0.97pt）。另修了 `axis.text.y.left` 位置专属元素的读取（theme_minimal 把 y 标签右 margin 换成 4.95pt 并抹掉刻度线，修前这条 16.03%）。剩余缺口归 SIL-715 #6（缺省拉丁字面的度量对等）。"

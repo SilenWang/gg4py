@@ -324,15 +324,18 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 
 ## 与后续任务的接口
 
-- **`panel.grid.*` 的绘制还没有接进 `ggcore.geom.scene`**：`_panel_children()` 只装
-  `panel.background` / `panel.border`，`panel.grid.major` / `.minor` 的解析值拿到了
-  但没画。后果是 `theme_grey()` / `theme_minimal()` 的网格线整片缺失（M1-15 的
-  `theme-grey-basic` / `theme-minimal-basic` 因此标 `ci = false`），参考图已入库，
-  接上网格线后把 `ci` 翻成 `true` 即可。次要难点在 minor breaks：`ggcore.scales` /
-  `ggcore.axis` 目前没有 `minor_breaks` 的实现。缺口能力与归口：**SIL-715（M2
-  缺口池）第 1 条（`theme_grey`）/ 第 2 条（`theme_minimal`）**——按 theme 解析值
-  绘制 `panel.grid.major` / `.minor`。
-
+- **`panel.grid.major` / `panel.grid.minor` 已接进 `ggcore.geom.scene`**（SIL-721）：
+  `_panel_grid_grobs()` 按 `panel.grid.{major,minor}.{x,y}` 的解析值（colour /
+  linewidth / linetype / lineend / linejoin）在面板 npc 里画线，整组包在面板矩形
+  裁剪里，z 序照 R 的 `Coord$draw_panel()`：`panel.background` → `y.minor` →
+  `x.minor` → `y.major` → `x.major` → 图层 → `panel.border`（前景）。主断点来自
+  `ggcore.axis.break_positions()`，次断点来自 `minor_break_positions()`
+  （`scales::regular_minor_breaks()`：主断点中点，离散标度没有次断点）。
+- `theme-grey-basic` / `theme-minimal-basic` 仍标 `ci = false`，但原因已经不是
+  网格线缺失：两条参考图的**轴标签列宽**来自 R 的 Arimo（`"1.5"` = 12.2646pt），
+  产品缺省 `sans` 是 Noto Sans CJK SC（11.1985pt），面板因此窄 0.97pt，13 条
+  纵向网格线整体偏 0–0.97px。把面板矩形强行对到 R 的实测值后图级差异从 5.92%
+  降到 **1.88%**，说明网格本身是对的。详见 `docs/notes/guide.md`「文字宽度」。
 - `resolve_theme()` 的结果是只读映射：`resolved["axis.text"]` 拿到具体元素，
   `resolved.size_pt("axis.text")` 直接拿字号（pt），`resolved.is_blank(name)`
   判断是否 blank。

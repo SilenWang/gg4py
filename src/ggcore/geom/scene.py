@@ -42,7 +42,9 @@ from ggcore.axis import (
     axis_ticks,
     axis_title_extent,
     axis_title_grob,
+    break_positions,
     margin_sides_cm,
+    minor_break_positions,
     paint,
     text_line_cm,
 )
@@ -68,6 +70,7 @@ from ggcore.guide import (
     legend_layout,
 )
 from ggcore.theme import (
+    ElementLine,
     ElementRect,
     ElementText,
     ResolvedTheme,
@@ -604,13 +607,19 @@ def _panel_children(
     theme: ResolvedTheme,
     metrics: Any,
 ) -> list[Any]:
+    """一个面板的 z 序，照 R `Coord$draw_panel()`：bg（含网格）→ 图层 → fg。
+
+    - `panel.background` / `panel.grid.*` 属于背景（`render_bg()`）；
+    - `panel.border` 是前景（`render_fg()`，`fill = NA`），压在图层**之上**；
+    - 网格线先次后主（`guide_grid()` 的 `y.minor, x.minor, y.major, x.major`）。
+    """
     children: list[Any] = []
-    for name, border_only in (("panel.background", False), ("panel.border", True)):
-        element = theme.get(name)
-        if isinstance(element, ElementRect):
-            grob = _rect_from_element(element, border_only=border_only, name=name)
-            if grob is not None:
-                children.append(grob)
+    background = theme.get("panel.background")
+    if isinstance(background, ElementRect):
+        grob = _rect_from_element(background, border_only=False, name="panel.background")
+        if grob is not None:
+            children.append(grob)
+    children.extend(_panel_grid_grobs(build, panel, params, theme))
 
     layer_grobs: list[Any] = []
     for layer in layers:
@@ -623,16 +632,104 @@ def _panel_children(
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)
-    if not layer_grobs:
-        return children
-    if _clip_state(params.clip) == "on":
-        # 面板范围内的矩形裁剪（IR 里是 clip 节点；与视口裁剪取交）。
-        children.append(
-            clip_path(*layer_grobs, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")
-        )
-    else:
-        children.extend(layer_grobs)
+    if layer_grobs:
+        if _clip_state(params.clip) == "on":
+            # 面板范围内的矩形裁剪（IR 里是 clip 节点；与视口裁剪取交）。
+            children.append(
+                clip_path(*layer_grobs, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")
+            )
+        else:
+            children.extend(layer_grobs)
+
+    border = theme.get("panel.border")
+    if isinstance(border, ElementRect):
+        grob = _rect_from_element(border, border_only=True, name="panel.border")
+        if grob is not None:
+            children.append(grob)
     return children
+
+
+#: 网格的绘制顺序：R `guide_grid()` 的 `y.minor, x.minor, y.major, x.major`。
+_GRID_SIDES: tuple[tuple[str, str], ...] = (("left", "y"), ("bottom", "x"))
+
+
+def _panel_grid_grobs(
+    build: PlotBuild, panel: int, params: PanelParams, theme: ResolvedTheme
+) -> list[Any]:
+    """`panel.grid.major` / `panel.grid.minor`：在面板 npc 里按断点画直线。
+
+    取值全部来自 `resolve_theme()` 的 `element_line`（colour / linewidth /
+    linetype / lineend / linejoin），断点来自该面板自己的标度：
+
+    - 主网格：`:func:`ggcore.axis.break_positions``（所有主断点，不看标签）；
+    - 次网格：`:func:`ggcore.axis.minor_break_positions``（连续的次断点）；
+    - `element_blank()` / `NA` 颜色不画，`None` 已在解析时回落到父元素。
+
+    整组包在一个矩形裁剪节点里：R 的 `guide_grid()` 用 `±Inf` 端点、由面板
+    视口裁到面板矩形；这里直接用 0..1 端点并再裁一次，线宽的半边也不会溢到
+    面板外。
+    """
+    from ggcore.grobs import segments_grob
+
+    grobs: list[Any] = []
+    for grid, minor in (("panel.grid.minor", True), ("panel.grid.major", False)):
+        for side, suffix in _GRID_SIDES:
+            element = theme.get(f"{grid}.{suffix}")
+            if not isinstance(element, ElementLine):
+                continue
+            colour = paint(element.colour)
+            if colour is None:
+                continue
+            linetype = element.linetype if element.linetype is not None else 1
+            if linetype == 0 or str(linetype).strip().lower() == "blank":
+                continue
+            scale = _panel_scale(build, panel, "x" if side == "bottom" else "y")
+            if minor:
+                positions = minor_break_positions(scale, params, side)
+            else:
+                positions = tuple(
+                    position
+                    for position in break_positions(scale, params, side)
+                    if 0.0 <= position <= 1.0
+                )
+            if not positions:
+                continue
+            count = len(positions)
+            gp = gpar(
+                col=colour,
+                lwd=_mm_to_pt(element.linewidth),
+                lty=linetype,
+                lineend=element.lineend or "round",
+                linejoin=element.linejoin or "round",
+            )
+            name = f"{grid}.{suffix}"
+            if side == "bottom":
+                grobs.append(
+                    segments_grob(
+                        positions,
+                        [0.0] * count,
+                        positions,
+                        [1.0] * count,
+                        default_units="npc",
+                        gp=gp,
+                        name=name,
+                    )
+                )
+            else:
+                grobs.append(
+                    segments_grob(
+                        [0.0] * count,
+                        positions,
+                        [1.0] * count,
+                        positions,
+                        default_units="npc",
+                        gp=gp,
+                        name=name,
+                    )
+                )
+    if not grobs:
+        return []
+    return [clip_path(*grobs, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-grid-clip")]
 
 
 def _panel_rows(data: ColumnTable, panel: int) -> ColumnTable | None:

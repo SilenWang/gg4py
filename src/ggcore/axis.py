@@ -7,9 +7,13 @@
   离散标度的断点是水平名，位置按 1..n 换算——两条路径最后都落到面板 npc；
 - 尺寸（刻度长度、文字行高、文字与刻度的间距、轴标题间距）全部取
   `resolve_theme()` 的解析值，不硬编码 cm / pt；
-- 轴文字的行高用 R `stringHeight` + descent 的 0.955em 口径
-  （`TEXT_LINE_EM`，与 `ggcore.facet` 的 strip 同一常量），宽度走
-  `Metrics.strwidth()`；没有度量时按 0.6em/字符估（`FALLBACK_CHAR_EM`）；
+- 轴文字 / 轴标题的行高是 **字号 × `lineheight`**（缺省 0.9，`axis_line_cm()`），
+  与 `ggplotGrob()` 的 `axis-b` / `xlab-b` 行高一致；宽度走
+  `Metrics.strwidth()`，没有度量时按 0.6em/字符估（`FALLBACK_CHAR_EM`）；
+  位置专属元素（`axis.text.y.left` / `axis.ticks.x.bottom` …）按 R 的
+  `theme_suffix` 取，不读父元素；
+- 网格线（`panel.grid.*`）复用这里的 `break_positions()` /
+  `minor_break_positions()`，与刻度同一套断点、但**不看标签**；
 - 只做主轴：`sec_axis()` 明确报错（见 docs/notes/guide.md「未实现」）。
 
 坐标约定：面板矩形是 cm、**y 向上**（与 grid 的 `subRegion()` 一致），所有
@@ -18,7 +22,9 @@
 
 from __future__ import annotations
 
+import itertools
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,11 +49,14 @@ __all__ = [
     "AxisTicks",
     "axis_extent",
     "axis_grobs",
+    "axis_line_cm",
     "axis_ticks",
     "axis_title_extent",
     "axis_title_grob",
+    "break_positions",
     "font_int",
     "margin_sides_cm",
+    "minor_break_positions",
     "paint",
     "text_line_cm",
     "text_width_cm",
@@ -98,8 +107,26 @@ class AxisTicks:
 
 
 def text_line_cm(size_pt: float) -> float:
-    """一行文字的占高（cm）：`size * 0.955em`（R `stringHeight` 口径）。"""
+    """一行文字的占高（cm）：`size * 0.955em`（向导 / 标题的估算口径）。"""
     return float(size_pt) * TEXT_LINE_EM * _CM_PER_INCH / _POINTS_PER_INCH
+
+
+#: `element_text(lineheight = )` 的缺省值（R `theme-elements.R` 的 `text` 根元素）。
+TEXT_LINEHEIGHT = 0.9
+
+
+def axis_line_cm(element: ElementText) -> float:
+    """轴文字 / 轴标题的行高（cm）：`fontsize × lineheight`。
+
+    R 的轴 grob 是 `element_grob(element_text, ...)`：grob 高度 = 字号 ×
+    `lineheight`（缺省 0.9，`axis.text` / `axis.title` 继承 `text` 根元素），
+    不是 `stringHeight()` 的 cap height。实测 8.8pt → 7.92pt、11pt → 9.89pt
+    （`ggplotGrob()` 的 `axis-b` / `xlab-b` 行高，见
+    `tests/fixtures/` 与 `docs/notes/guide.md`）。
+    """
+    size = float(element.size or 0.0)
+    lineheight = TEXT_LINEHEIGHT if element.lineheight is None else float(element.lineheight)
+    return size * lineheight * _CM_PER_INCH / _POINTS_PER_INCH
 
 
 def _lines(text: str) -> tuple[str, ...]:
@@ -187,20 +214,110 @@ def _axis_range(params: Any, side: str) -> tuple[float, float]:
     return params.x_range if side == "bottom" else params.y_range
 
 
+def _panel_span(params: Any, side: str) -> tuple[float, float]:
+    low, high = _axis_range(params, side)
+    span = float(high) - float(low)
+    if span == 0:
+        raise AxisError(f"{side} 轴的面板范围跨度为 0（{low!r} == {high!r}）")
+    return float(low), span
+
+
+def _map_break(scale: Any, params: Any, side: str, value: Any) -> float | None:
+    """单个断点 → 面板 npc；`None`（越界）与映射不了的值给 None。"""
+    if side not in ("bottom", "left"):
+        raise AxisError(f"side 只能是 'bottom' / 'left'，收到 {side!r}")
+    if scale is None or value is None:
+        return None
+    low, span = _panel_span(params, side)
+    if bool(getattr(scale, "discrete", False)):
+        levels = tuple(scale.levels)
+        try:
+            code = levels.index(str(value)) + 1
+        except ValueError:
+            return None
+        position = (float(code) - low) / span
+    else:
+        number = float(value)
+        if not math.isfinite(number):
+            return None
+        position = (number - low) / span
+    return float(position) if math.isfinite(position) else None
+
+
+def _mapped_breaks(scale: Any, params: Any, side: str) -> list[tuple[float, Any]]:
+    """断点 → `(npc 位置, 断点值)`；`None`（越界）与映射不了的值直接丢掉。
+
+    与 R 的 `ViewScale$mapped_breaks()` 同一口径：连续标度的断点已经在变换后的
+    空间里，离散标度按水平序号 1..n 换成面板 npc。
+    """
+    if scale is None:
+        return []
+    out: list[tuple[float, Any]] = []
+    for value in tuple(scale.breaks()):
+        position = _map_break(scale, params, side, value)
+        if position is not None:
+            out.append((position, value))
+    return out
+
+
+def break_positions(scale: Any, params: Any, side: str) -> tuple[float, ...]:
+    """主断点在面板里的位置（npc 0..1），**不看标签**——`panel.grid.major` 用。"""
+    return tuple(position for position, _value in _mapped_breaks(scale, params, side))
+
+
+def minor_break_positions(scale: Any, params: Any, side: str, *, n: int = 2) -> tuple[float, ...]:
+    """次断点在面板里的位置（npc 0..1），口径照 `scales::regular_minor_breaks()`。
+
+    - 只在连续标度上有：上游离散标度的 `minor_breaks` 是 `NULL`，不画次网格；
+    - 主断点不足 2 个 → 没有次网格；
+    - 主断点没盖住面板两端时，先把序列向两端各延一个间距（`bd`），再取每个
+      区间的 `1/n` 分点（`n = 2` 即中点）；
+    - 最后丢掉越界的位置与和主断点重合的位置（`guide_grid()` 的 `setdiff()`）。
+
+    断点在变换后的空间里，面板映射是仿射的，所以在 npc 里算与在断点空间里算
+    等价（对数标度的「中点在 log 空间」也随之成立）。
+    """
+    if scale is None or bool(getattr(scale, "discrete", False)):
+        return ()
+    majors = sorted(break_positions(scale, params, side))
+    if len(majors) < 2:
+        return ()
+    step = majors[1] - majors[0]
+    if not math.isfinite(step) or step <= 0:
+        return ()
+    breaks = list(majors)
+    if 0.0 < breaks[0]:
+        breaks.insert(0, breaks[0] - step)
+    if 1.0 > breaks[-1]:
+        breaks.append(breaks[-1] + step)
+    positions: list[float] = []
+    for left, right in itertools.pairwise(breaks):
+        positions.extend(left + index * (right - left) / n for index in range(n))
+    positions.append(breaks[-1])
+    out: list[float] = []
+    for position in positions:
+        if not 0.0 <= position <= 1.0:
+            continue
+        if any(abs(position - major) <= 1e-12 for major in majors):
+            continue
+        if any(abs(position - kept) <= 1e-12 for kept in out):
+            continue
+        out.append(float(position))
+    return tuple(out)
+
+
 def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     """一个面板的刻度位置（npc 0..1）+ 标签文本。
 
     `scale` 是该面板自己的标度（`PanelScaleSet.scale("x")`）；`params` 是
     :class:`ggcore.coord.PanelParams`。标度缺失 / 断点为空时返回空刻度。
+    空标签的断点不画刻度文字，也不在这里出现（网格线走 :func:`break_positions`，
+    不受标签影响）。
     """
     if side not in ("bottom", "left"):
         raise AxisError(f"side 只能是 'bottom' / 'left'，收到 {side!r}")
     if scale is None:
         return AxisTicks(side, (), ())
-    low, high = _axis_range(params, side)
-    span = float(high) - float(low)
-    if span == 0:
-        raise AxisError(f"{side} 轴的面板范围跨度为 0（{low!r} == {high!r}）")
     breaks = tuple(scale.breaks())
     labels = tuple(scale.labels())
     if len(breaks) != len(labels):
@@ -210,26 +327,14 @@ def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
         )
     positions: list[float] = []
     texts: list[str] = []
-    discrete = bool(getattr(scale, "discrete", False))
-    levels = tuple(scale.levels) if discrete else ()
     for value, label in zip(breaks, labels, strict=True):
-        if value is None or label is None:
+        if label is None:
             continue
         text = str(label)
         if not text:
             continue
-        if discrete:
-            try:
-                code = levels.index(str(value)) + 1
-            except ValueError:
-                continue
-            position = (float(code) - float(low)) / span
-        else:
-            number = float(value)
-            if not math.isfinite(number):
-                continue
-            position = (number - float(low)) / span
-        if not math.isfinite(position):
+        position = _map_break(scale, params, side, value)
+        if position is None:
             continue
         positions.append(position)
         texts.append(text)
@@ -241,16 +346,23 @@ def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
 # ---------------------------------------------------------------------------
 
 
+#: 主轴所在的位置 → 主题元素名里的后缀（R 的 `theme_suffix`）。
+#: 我们只画左下两条轴，所以固定是 `x.bottom` / `y.left`；R 的 guide 同样读
+#: 位置专属元素（`axis.text.y.left` 而不是 `axis.text.y`），两者的区别在
+#: `theme_minimal()` 这类只覆盖 `.left` / `.bottom` 的主题上会直接体现出来。
+_AXIS_SUFFIX: Mapping[str, str] = {"bottom": "x.bottom", "left": "y.left"}
+
+
 def _tick_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.ticks.x" if side == "bottom" else "axis.ticks.y")
+    return theme.get(f"axis.ticks.{_AXIS_SUFFIX[side]}")
 
 
 def _text_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.text.x" if side == "bottom" else "axis.text.y")
+    return theme.get(f"axis.text.{_AXIS_SUFFIX[side]}")
 
 
 def _title_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.title.x" if side == "bottom" else "axis.title.y")
+    return theme.get(f"axis.title.{_AXIS_SUFFIX[side]}")
 
 
 def tick_paint(theme: ResolvedTheme, side: str) -> tuple[str, float, int] | None:
@@ -268,7 +380,7 @@ def tick_length_cm(theme: ResolvedTheme, side: str) -> float:
     """`axis.ticks.length` → cm（无刻度元素时为 0）。"""
     if tick_paint(theme, side) is None:
         return 0.0
-    value = theme.get("axis.ticks.length.x" if side == "bottom" else "axis.ticks.length.y")
+    value = theme.get(f"axis.ticks.length.{_AXIS_SUFFIX[side]}")
     if value is None:
         return 0.0
     context = UnitContext()
@@ -286,7 +398,7 @@ def _text_extent_cm(
     family = element.family or ""
     mt, mr, mb, ml = margin_sides_cm(element.margin)
     if side == "bottom":
-        return text_line_cm(size) + mt + mb
+        return axis_line_cm(element) + mt + mb
     if not labels:
         return 0.0
     widest = max(text_width_cm(label, size, metrics, family) for label in labels)
@@ -327,12 +439,11 @@ def axis_title_extent(
         return 0.0
     if not isinstance(element, ElementText):
         return 0.0
-    size = float(element.size or 0.0)
     mt, mr, mb, ml = margin_sides_cm(element.margin)
     if side == "bottom":
-        return text_line_cm(size) + mt + mb
+        return axis_line_cm(element) + mt + mb
     # y 轴标题旋转 90°：外向尺寸是行高（不是文字宽度）。
-    return text_line_cm(size) + ml + mr
+    return axis_line_cm(element) + ml + mr
 
 
 # ---------------------------------------------------------------------------

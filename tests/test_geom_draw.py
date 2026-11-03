@@ -25,6 +25,7 @@ from ggcore.data import Column, ColumnTable
 from ggcore.geom import GeomError, registered_renderers, renderer_for
 from ggcore.geom.scene import scene_from_build, scene_from_plot
 from ggcore.plot import aes, ggplot
+from ggcore.theme import theme as make_theme
 
 SIZE = dict(width_in=4.0, height_in=3.0)
 
@@ -659,3 +660,133 @@ def test_scene_encoding_is_byte_stable(geom_name: str) -> None:
     one = hashlib.sha256(ir.encode(first)).hexdigest()
     two = hashlib.sha256(ir.encode(scene_from_plot(plot, **SIZE))).hexdigest()
     assert one == two
+
+
+# ---------------------------------------------------------------------------
+# panel.grid（SIL-721）：主/次网格 → 面板内的线条，z 序在 geom 之下
+# ---------------------------------------------------------------------------
+
+
+def _grid_plot(**kwargs) -> ggplot:
+    table = _table(x=[1.0, 2.0], y=[1.5, 2.5])
+    return (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 6), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(1.5, 5.5), expand=(0, 0))
+        + registry.theme_grey()
+        + make_theme(**kwargs)
+    )
+
+
+def _first_panel_children(ir_scene) -> list:
+    """第一个 `panel-*` 视口的直接子节点（背景 / 网格 / 图层 / 前景）。"""
+    for node in _nodes(ir_scene):
+        if node.kind.value == "viewport" and str(node.params.get("name", "")).startswith("panel-"):
+            return list(node.children)
+    raise AssertionError("场景里没有 panel 视口")
+
+
+def test_panel_grid_is_drawn_between_background_and_geoms() -> None:
+    children = _first_panel_children(scene_from_plot(_grid_plot(), metrics=METRICS, **SIZE))
+    kinds = [node.kind.value for node in children]
+    # panel.background → 四组网格（y.minor / x.minor / y.major / x.major）→ 图层
+    assert kinds == ["rect", "segments", "segments", "segments", "segments", "points"]
+    counts = [int(np.asarray(node.bufs["segments"]).shape[0]) for node in children[1:5]]
+    # x 轴 7 个主断点 0..6 → 7 条主线 / 6 条次线；y 轴 1.5..5.5 → 5 主 / 4 次
+    assert counts == [4, 6, 5, 7]
+
+    # 次网格比主网格细：theme_grey 的 1/4mm 与 1/2mm；IR 的 lwd 是 pt（R 的 lwd × 0.75）
+    def lwd(mm: float) -> float:
+        return mm * 72.0 / 25.4 * 0.75
+
+    minor, x_minor, major, x_major = children[1:5]
+    assert float(major.gpar.lwd) == pytest.approx(lwd(0.5))
+    assert float(minor.gpar.lwd) == pytest.approx(lwd(0.25))
+    assert float(x_major.gpar.lwd) == pytest.approx(lwd(0.5))
+    assert float(x_minor.gpar.lwd) == pytest.approx(lwd(0.25))
+    assert major.gpar.lineend.value == "butt"  # theme_grey: lineend = "butt"
+    # theme_grey 的网格是白色的；次网格落在主网格中间（npc 0..1）
+    assert major.gpar.col is not None and tuple(major.gpar.col[:3]) == (255, 255, 255)
+    # 横向网格线从面板左边界画到右边界（npc 0..1，IR 里已经折成面板内坐标）
+    horizontal = np.asarray(major.bufs["segments"])
+    panel_width = float(horizontal[0, 2])
+    assert horizontal[:, 0].tolist() == [0.0] * 5
+    assert horizontal[:, 2].tolist() == pytest.approx([panel_width] * 5)
+    # 纵向主线落在 0/6 .. 6/6
+    segments = np.asarray(x_major.bufs["segments"])
+    assert (segments[:, 0] / panel_width).tolist() == pytest.approx(
+        [index / 6 for index in range(7)]
+    )
+    # 纵向次线落在两个主线的中点（0.5/6, 1.5/6, ...）
+    x_minors = np.asarray(x_minor.bufs["segments"])
+    assert (x_minors[:, 0] / panel_width).tolist() == pytest.approx(
+        [(2 * index + 1) / 12 for index in range(6)]
+    )
+
+
+def test_panel_grid_follows_element_blank_and_void() -> None:
+    from ggcore.theme import element_blank as blank
+    from ggcore.theme import theme_void
+
+    # 次网格 element_blank()：只剩两组主线
+    no_minor = _first_panel_children(
+        scene_from_plot(_grid_plot(**{"panel.grid.minor": blank()}), metrics=METRICS, **SIZE)
+    )
+    assert [node.kind.value for node in no_minor] == ["rect", "segments", "segments", "points"]
+
+    # 主网格也 blank：面板里没有任何网格
+    both = _grid_plot(**{"panel.grid.major": blank(), "panel.grid.minor": blank()})
+    assert [
+        node.kind.value
+        for node in _first_panel_children(scene_from_plot(both, metrics=METRICS, **SIZE))
+    ] == ["rect", "points"]
+
+    # theme_void()：panel.background / panel.grid 都是 blank
+    void_plot = (
+        ggplot(_table(x=[1.0, 2.0], y=[1.5, 2.5]), aes(x="x", y="y"))
+        + registry.geom_point()
+        + theme_void()
+    )
+    assert [
+        node.kind.value
+        for node in _first_panel_children(scene_from_plot(void_plot, metrics=METRICS, **SIZE))
+    ] == ["points"]
+
+    # `None` 是「未设置、回落父元素」：局部 theme 里删掉次网格仍回到 theme_grey 的值
+    fallback = _first_panel_children(
+        scene_from_plot(_grid_plot(**{"panel.grid.minor": None}), metrics=METRICS, **SIZE)
+    )
+    assert [node.kind.value for node in fallback] == list(
+        ["rect", "segments", "segments", "segments", "segments", "points"]
+    )
+
+
+def test_panel_border_is_drawn_above_the_layers() -> None:
+    """`panel.border` 是 R 的 `render_fg()`：在图层之上（`Coord$draw_panel` 的 z 序）。"""
+    plot = _grid_plot() + registry.theme_bw()
+    children = _first_panel_children(scene_from_plot(plot, metrics=METRICS, **SIZE))
+    kinds = [node.kind.value for node in children]
+    assert kinds[0] == "rect"  # panel.background
+    assert kinds[-1] == "rect"  # panel.border（前景）
+    assert "points" in kinds[:-1]
+
+
+def test_panel_grid_stays_inside_the_panel_even_when_clip_is_off() -> None:
+    """网格线永远裁到面板矩形（R 的 `guide_grid()` 用 ±Inf 端点、由面板视口裁住）。
+
+    `coord_cartesian(clip = "off")` 放开的是**图层**的裁剪，不是网格。
+    """
+    on = scene_from_plot(_grid_plot(), metrics=METRICS, **SIZE)
+    points_clips = _clips_for(on, "points")
+    assert points_clips
+    # clip = "on" 时图层的裁剪矩形就是面板矩形。
+    panel_rect = points_clips[0]
+
+    off = scene_from_plot(
+        _grid_plot() + registry.coord_cartesian(clip="off"), metrics=METRICS, **SIZE
+    )
+    # 网格（segments 叶子）的实现裁剪仍然是面板矩形……
+    assert panel_rect in _clips_for(off, "segments")
+    # ……而图层的裁剪放开了（设备外包框，比页面宽）。
+    assert all(rect[2] - rect[0] > 288.0 for rect in _clips_for(off, "points"))
