@@ -360,18 +360,20 @@ def _dotplot_specs() -> list[dict[str, Any]]:
         mapping: str,
         layers: list[str],
         features: list[str],
+        notes: str | None = None,
     ) -> None:
-        specs.append(
-            {
-                "slug": slug,
-                "snapshot": f"geom-dotplot/{snapshot}.svg",
-                "title": title,
-                "data": data[table],
-                "body": _dotplot_body(mapping, layers, title),
-                "family": "geom-dotplot",
-                "features": features,
-            }
-        )
+        spec: dict[str, Any] = {
+            "slug": slug,
+            "snapshot": f"geom-dotplot/{snapshot}.svg",
+            "title": title,
+            "data": data[table],
+            "body": _dotplot_body(mapping, layers, title),
+            "family": "geom-dotplot",
+            "features": features,
+        }
+        if notes is not None:
+            spec["notes"] = notes
+        specs.append(spec)
 
     add(
         "upstream-geom-dotplot-basic-dotdensity",
@@ -587,6 +589,14 @@ def _dotplot_specs() -> list[dict[str, Any]]:
             "        )",
         ],
         ["aes-mapping", "stat-bindot", "linetype-aes", "stroke-aes"],
+        notes=(
+            "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 "
+            "theme_test()。残余偏差（SIL-715 #28）：linetype=b（lty 2）那 10 个点在 "
+            "skia SVG 设备上丢了描边——actual 只有 fill 的 ellipse，expected 是 "
+            "stroke-width 4.50 + stroke-dasharray 12,12 的蓝圈；图例侧 expected 7 key / "
+            "actual 2。IR 的 dash pattern 是对的（gpar.lty=(9,9)），卡在 SVGCanvas 不序列化 "
+            "PathEffect。实测 1.76% / 0.53%，仍在档内。"
+        ),
     )
     add(
         "upstream-geom-dotplot-3-stackgroups-dotdensity-aligned",
@@ -3851,7 +3861,9 @@ def _plot_source(spec: dict[str, Any]) -> str:
 
 
 def _meta_source(spec: dict[str, Any]) -> str:
-    if "features" in spec:
+    # G1a（SIL-788）的条目直接给 `source`（完整 plot.py 正文）；dotplot 族也带
+    # `features`，所以判别键必须是 `source`，不能用 `features`。
+    if "source" in spec:
         return (
             'family = "guide"\n'
             f"features = {json.dumps(spec['features'])}\n"
@@ -3865,6 +3877,10 @@ def _meta_source(spec: dict[str, Any]) -> str:
     family = spec.get("family", family)
     if family == "geom-dotplot":
         features = spec.get("features", ["aes-mapping", "stat-bindot"])
+        notes = spec.get(
+            "notes",
+            "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。",
+        )
         return (
             f'family = "{family}"\n'
             f"features = {json.dumps(features)}\n"
@@ -3872,8 +3888,7 @@ def _meta_source(spec: dict[str, Any]) -> str:
             f'title = "上游快照：{spec["title"]}"\n'
             f'source = "upstream:tests/testthat/_snaps/{spec["snapshot"]}"\n'
             "tolerance = { png = 0.02 }\n"
-            'notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，'
-            '主题是 vdiffr 的 theme_test()。"\n'
+            f'notes = "{notes}"\n'
         )
     family = "guides" if family == "guides" else "theme"
     if family == "guides":
