@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "coord-sec-axis"]
+ci = true
+title = "上游快照：secondary axis ticks and labels"
+source = "upstream:tests/testthat/_snaps/coord-polar/secondary-axis-ticks-and-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；极坐标下 r 轴的次轴画在右侧，`axis.text.x = element_blank()` 只去掉 theta 标签。"

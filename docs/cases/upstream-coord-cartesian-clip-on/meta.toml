@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-cartesian", "annotation-text"]
+ci = true
+title = "上游快照：clip on by default, only 'inside' visible"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/clip-on-by-default-only-inside-visible.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；两层 `geom_text` 各自带 data，只有面板内的不挨裁。"

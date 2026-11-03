@@ -2434,6 +2434,2362 @@ def build():
 ]
 
 
+#: G5（SIL-793）：`coord-cartesian` 5 + `coord-flip` 1 + `coord-transform` 3 +
+#: `sec-axis` 7 + `coord-polar` 7 的复刻表。
+#:
+#: 与 G1a / G6 同一套写法：每条给**完整的 plot.py 正文**与 meta 正文。两张夹具
+#: （`mtcars` 32×11、`mpg` 234 行）按 R 4.5.3 逐值内联在各自的 `plot.py` 里；
+#: `coord-polar` 余下 4 条（轴体系）留在 `snapshots.toml` 里逐条写清卡点。
+#: 标题由 plot.py 的 `labs(title=)` 自己给出（vdiffr 的 doppelganger 名）。
+_G5_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-coord-cartesian-expand-range",
+        "snapshot": "coord-cartesian/expand-range.svg",
+        "source": r'''"""上游快照复刻：expand range。
+
+源：coord-cartesian/expand-range.svg（vdiffr 名 "expand range"）。
+
+R：
+
+    ggplot(mtcars, aes(wt, mpg)) + geom_point() +
+      coord_cartesian(xlim = c(0, 10), ylim = c(0, 50))
+
+`mtcars` 夹具按 R 4.5.3 的 `datasets::mtcars` 逐值导出（32 行），不是仿制集。
+"""
+
+from ggcore.plot import aes, coord_cartesian, geom_point, ggplot, labs
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "wt": [
+        2.62,
+        2.875,
+        2.32,
+        3.215,
+        3.44,
+        3.46,
+        3.57,
+        3.19,
+        3.15,
+        3.44,
+        3.44,
+        4.07,
+        3.73,
+        3.78,
+        5.25,
+        5.424,
+        5.345,
+        2.2,
+        1.615,
+        1.835,
+        2.465,
+        3.52,
+        3.435,
+        3.84,
+        3.845,
+        1.935,
+        2.14,
+        1.513,
+        3.17,
+        2.77,
+        3.57,
+        2.78,
+    ],
+    "mpg": [
+        21.0,
+        21.0,
+        22.8,
+        21.4,
+        18.7,
+        18.1,
+        14.3,
+        24.4,
+        22.8,
+        19.2,
+        17.8,
+        16.4,
+        17.3,
+        15.2,
+        10.4,
+        10.4,
+        14.7,
+        32.4,
+        30.4,
+        33.9,
+        21.5,
+        15.5,
+        15.2,
+        13.3,
+        19.2,
+        27.3,
+        26.0,
+        30.4,
+        15.8,
+        19.7,
+        15.0,
+        21.4,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="wt", y="mpg"))
+        + geom_point()
+        + coord_cartesian(xlim=(0.0, 10.0), ylim=(0.0, 50.0))
+        + theme_test()
+        + labs(title="expand range")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-cartesian", "scale-limits"]
+ci = true
+title = "上游快照：expand range"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/expand-range.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`coord_cartesian(xlim, ylim)` 覆盖面板范围；`mtcars` 全量内联。"
+""",
+    },
+    {
+        "slug": "upstream-coord-cartesian-contract-range",
+        "snapshot": "coord-cartesian/contract-range.svg",
+        "source": r'''"""上游快照复刻：contract range。
+
+源：coord-cartesian/contract-range.svg（vdiffr 名 "contract range"）。
+
+R：
+
+    p <- ggplot(mtcars, aes(wt, mpg)) + geom_point()
+    p + coord_cartesian(xlim = c(2, 4), ylim = c(20, 40))
+
+面板范围比数据范围窄：`coord_cartesian()` 保留越界点（画在面板外，按 clip 处理），
+与 `scale_*_continuous(limits=)` 的删除口径不同。
+"""
+
+from ggcore.plot import aes, coord_cartesian, geom_point, ggplot, labs
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "wt": [
+        2.62,
+        2.875,
+        2.32,
+        3.215,
+        3.44,
+        3.46,
+        3.57,
+        3.19,
+        3.15,
+        3.44,
+        3.44,
+        4.07,
+        3.73,
+        3.78,
+        5.25,
+        5.424,
+        5.345,
+        2.2,
+        1.615,
+        1.835,
+        2.465,
+        3.52,
+        3.435,
+        3.84,
+        3.845,
+        1.935,
+        2.14,
+        1.513,
+        3.17,
+        2.77,
+        3.57,
+        2.78,
+    ],
+    "mpg": [
+        21.0,
+        21.0,
+        22.8,
+        21.4,
+        18.7,
+        18.1,
+        14.3,
+        24.4,
+        22.8,
+        19.2,
+        17.8,
+        16.4,
+        17.3,
+        15.2,
+        10.4,
+        10.4,
+        14.7,
+        32.4,
+        30.4,
+        33.9,
+        21.5,
+        15.5,
+        15.2,
+        13.3,
+        19.2,
+        27.3,
+        26.0,
+        30.4,
+        15.8,
+        19.7,
+        15.0,
+        21.4,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="wt", y="mpg"))
+        + geom_point()
+        + coord_cartesian(xlim=(2.0, 4.0), ylim=(20.0, 40.0))
+        + theme_test()
+        + labs(title="contract range")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-cartesian", "scale-limits"]
+ci = true
+title = "上游快照：contract range"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/contract-range.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：面板收窄到 xlim / ylim，越界点按 clip 处理。"
+""",
+    },
+    {
+        "slug": "upstream-coord-cartesian-reversed",
+        "snapshot": "coord-cartesian/reversed-cartesian-coords.svg",
+        "source": r'''"""上游快照复刻：reversed cartesian coords。
+
+源：coord-cartesian/reversed-cartesian-coords.svg（vdiffr 名 "reversed cartesian coords"）。
+
+R：
+
+    p <- ggplot(data_frame0(x = c(0, 2), y = c(0, 2))) +
+      aes(x = x, y = y) + geom_point() +
+      coord_cartesian(xlim = c(-1, 3), ylim = c(-1, 3), expand = FALSE, reverse = "xy") +
+      theme_test() + theme(axis.line = element_line())
+"""
+
+from ggcore.plot import aes, coord_cartesian, geom_point, ggplot, labs
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 2.0], "y": [0.0, 2.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + coord_cartesian(xlim=(-1.0, 3.0), ylim=(-1.0, 3.0), expand=False, reverse="xy")
+        + theme_test()
+        + theme(**{"axis.line": element_line()})
+        + labs(title="reversed cartesian coords")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-cartesian", "scale-limits"]
+ci = true
+title = "上游快照：reversed cartesian coords"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/reversed-cartesian-coords.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_cartesian(reverse=\"xy\", expand=FALSE)` 把两根轴都反过来。"
+""",
+    },
+    {
+        "slug": "upstream-coord-cartesian-clip-on",
+        "snapshot": "coord-cartesian/clip-on-by-default-only-inside-visible.svg",
+        "source": r'''"""上游快照复刻：clip on by default, only 'inside' visible。
+
+源：coord-cartesian/clip-on-by-default-only-inside-visible.svg
+（vdiffr 名 "clip on by default, only 'inside' visible"）。
+
+R：
+
+    p <- ggplot(mapping = aes(x, y, label = label, angle = angle, hjust = hjust, vjust = vjust)) +
+      geom_text(data = df.in) + geom_text(data = df.out) +
+      scale_x_continuous(breaks = NULL, name = NULL) +
+      scale_y_continuous(breaks = NULL, name = NULL) +
+      theme(plot.margin = margin(20, 20, 20, 20), panel.spacing = unit(10, "pt"))
+    p + coord_cartesian(xlim = c(0, 1), ylim = c(0, 1), expand = FALSE)
+
+`df.in` 的 vjust 把文字压在面板内侧，`df.out` 的 vjust 把它推出去：clip 开着时只
+看得见 inside 那一组。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_cartesian,
+    geom_text,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import margin, theme
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+INSIDE = {
+    "label": ["inside", "inside", "inside", "inside"],
+    "x": [0.0, 1.0, 0.5, 0.5],
+    "y": [0.5, 0.5, 0.0, 1.0],
+    "angle": [90.0, 270.0, 0.0, 0.0],
+    "hjust": [0.5, 0.5, 0.5, 0.5],
+    "vjust": [1.1, 1.1, -0.1, 1.1],
+}
+
+OUTSIDE = {
+    "label": ["outside", "outside", "outside", "outside"],
+    "x": [0.0, 1.0, 0.5, 0.5],
+    "y": [0.5, 0.5, 0.0, 1.0],
+    "angle": [90.0, 270.0, 0.0, 0.0],
+    "hjust": [0.5, 0.5, 0.5, 0.5],
+    "vjust": [-0.1, -0.1, 1.1, -0.1],
+}
+
+
+def build():
+    p = (
+        ggplot(
+            mapping=aes(
+                x="x",
+                y="y",
+                label="label",
+                angle="angle",
+                hjust="hjust",
+                vjust="vjust",
+            )
+        )
+        + geom_text(data=to_column_table(INSIDE))
+        + geom_text(data=to_column_table(OUTSIDE))
+        + scale_x_continuous(breaks=None, name=None)
+        + scale_y_continuous(breaks=None, name=None)
+        + theme(
+            **{
+                "plot.margin": margin(20, 20, 20, 20),
+                "panel.spacing": unit(10, "pt"),
+            }
+        )
+        + labs(title="clip on by default, only 'inside' visible")
+        + coord_cartesian(xlim=(0.0, 1.0), ylim=(0.0, 1.0), expand=False)
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-cartesian", "annotation-text"]
+ci = true
+title = "上游快照：clip on by default, only 'inside' visible"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/clip-on-by-default-only-inside-visible.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；两层 `geom_text` 各自带 data，只有面板内的不挨裁。"
+""",
+    },
+    {
+        "slug": "upstream-coord-cartesian-clip-off",
+        "snapshot": "coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg",
+        "source": r'''"""上游快照复刻：clip turned off, both 'inside' and 'outside' visible。
+
+源：coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg
+（vdiffr 名 "clip turned off, both 'inside' and 'outside' visible"）。
+
+与 `clip-on` 同一个场景，`coord_cartesian(clip = "off")` 后两组文字都画得出来
+（outside 那一组落在面板外）。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_cartesian,
+    geom_text,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import margin, theme
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+INSIDE = {
+    "label": ["inside", "inside", "inside", "inside"],
+    "x": [0.0, 1.0, 0.5, 0.5],
+    "y": [0.5, 0.5, 0.0, 1.0],
+    "angle": [90.0, 270.0, 0.0, 0.0],
+    "hjust": [0.5, 0.5, 0.5, 0.5],
+    "vjust": [1.1, 1.1, -0.1, 1.1],
+}
+
+OUTSIDE = {
+    "label": ["outside", "outside", "outside", "outside"],
+    "x": [0.0, 1.0, 0.5, 0.5],
+    "y": [0.5, 0.5, 0.0, 1.0],
+    "angle": [90.0, 270.0, 0.0, 0.0],
+    "hjust": [0.5, 0.5, 0.5, 0.5],
+    "vjust": [-0.1, -0.1, 1.1, -0.1],
+}
+
+
+def build():
+    p = (
+        ggplot(
+            mapping=aes(
+                x="x",
+                y="y",
+                label="label",
+                angle="angle",
+                hjust="hjust",
+                vjust="vjust",
+            )
+        )
+        + geom_text(data=to_column_table(INSIDE))
+        + geom_text(data=to_column_table(OUTSIDE))
+        + scale_x_continuous(breaks=None, name=None)
+        + scale_y_continuous(breaks=None, name=None)
+        + theme(
+            **{
+                "plot.margin": margin(20, 20, 20, 20),
+                "panel.spacing": unit(10, "pt"),
+            }
+        )
+        + labs(title="clip turned off, both 'inside' and 'outside' visible")
+        + coord_cartesian(xlim=(0.0, 1.0), ylim=(0.0, 1.0), expand=False, clip="off")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-cartesian", "annotation-text"]
+ci = true
+title = "上游快照：clip turned off, both 'inside' and 'outside' visible"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`clip = "off"` 后，面板外的文字也要画出来。'
+""",
+    },
+    {
+        "slug": "upstream-coord-flip-sec-title",
+        "snapshot": "coord-flip/turning-off-secondary-title-with-coord-flip.svg",
+        "source": r'''"""上游快照复刻：turning off secondary title with coord_flip。
+
+源：coord-flip/turning-off-secondary-title-with-coord-flip.svg
+（vdiffr 名 "turning off secondary title with coord_flip"）。
+
+R：
+
+    ggplot(mtcars, aes(x = mpg, y = cyl)) +
+      geom_point() +
+      scale_x_continuous(sec.axis = dup_axis(guide = guide_axis(title = NULL))) +
+      coord_flip() +
+      theme_test() +
+      theme(panel.grid.major.y = element_line(colour = "grey80"),
+            panel.grid.major.x = element_line(colour = "grey90"))
+
+`cylin` 是连续量（4/6/8），翻转后 x 标度竖起来，`dup_axis()` 的次轴落到右侧；
+`guide_axis(title = NULL)` 只去标题，刻度与标签照画。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_flip,
+    dup_axis,
+    geom_point,
+    ggplot,
+    guide_axis,
+    labs,
+    scale_x_continuous,
+)
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "mpg": [
+        21.0,
+        21.0,
+        22.8,
+        21.4,
+        18.7,
+        18.1,
+        14.3,
+        24.4,
+        22.8,
+        19.2,
+        17.8,
+        16.4,
+        17.3,
+        15.2,
+        10.4,
+        10.4,
+        14.7,
+        32.4,
+        30.4,
+        33.9,
+        21.5,
+        15.5,
+        15.2,
+        13.3,
+        19.2,
+        27.3,
+        26.0,
+        30.4,
+        15.8,
+        19.7,
+        15.0,
+        21.4,
+    ],
+    "cyl": [
+        6.0,
+        6.0,
+        4.0,
+        6.0,
+        8.0,
+        6.0,
+        8.0,
+        4.0,
+        4.0,
+        6.0,
+        6.0,
+        8.0,
+        8.0,
+        8.0,
+        8.0,
+        8.0,
+        8.0,
+        4.0,
+        4.0,
+        4.0,
+        4.0,
+        8.0,
+        8.0,
+        8.0,
+        8.0,
+        4.0,
+        4.0,
+        4.0,
+        8.0,
+        6.0,
+        8.0,
+        4.0,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="mpg", y="cyl"))
+        + geom_point()
+        + scale_x_continuous(**{"sec.axis": dup_axis(guide=guide_axis(title=None))})
+        + coord_flip()
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major.y": element_line(colour="grey80"),
+                "panel.grid.major.x": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="turning off secondary title with coord_flip")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-flip", "coord-sec-axis", "guide-axis"]
+ci = true
+title = "上游快照：turning off secondary title with coord_flip"
+source = "upstream:tests/testthat/_snaps/coord-flip/turning-off-secondary-title-with-coord-flip.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`coord_flip()` 后次轴在右侧，`guide_axis(title = NULL)` 去标题。"
+""",
+    },
+    {
+        "slug": "upstream-coord-transform-basic",
+        "snapshot": "coord-transform/basic-coord-transform-plot.svg",
+        "source": r'''"""上游快照复刻：basic coord_transform() plot。
+
+源：coord-transform/basic-coord-transform-plot.svg
+（vdiffr 名 "basic coord_transform() plot"）。
+
+R：
+
+    ggplot(mpg, aes(class, hwy)) + geom_point() + coord_transform(y = "log10")
+
+离散 x（7 个水平）× 连续 y 走 log10 变换：面板里的 y 位置是 log10 后的 npc，
+轴断点 / 标签仍是数据空间的原值。
+"""
+
+from ggcore.plot import aes, coord_trans, geom_point, ggplot, labs
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+#: `ggplot2::mpg` 的 class / cty / hwy / displ 四列，按 R 4.5.3 逐行导出
+#: （234 行；`class` 在 4.0.3 里是 character，所以离散水平是字母序）。
+RAW = """\
+compact 18 29 1.8
+compact 21 29 1.8
+compact 20 31 2
+compact 21 30 2
+compact 16 26 2.8
+compact 18 26 2.8
+compact 18 27 3.1
+compact 18 26 1.8
+compact 16 25 1.8
+compact 20 28 2
+compact 19 27 2
+compact 15 25 2.8
+compact 17 25 2.8
+compact 17 25 3.1
+compact 15 25 3.1
+midsize 15 24 2.8
+midsize 17 25 3.1
+midsize 16 23 4.2
+suv 14 20 5.3
+suv 11 15 5.3
+suv 14 20 5.3
+suv 13 17 5.7
+suv 12 17 6
+2seater 16 26 5.7
+2seater 15 23 5.7
+2seater 16 26 6.2
+2seater 15 25 6.2
+2seater 15 24 7
+suv 14 19 5.3
+suv 11 14 5.3
+suv 11 15 5.7
+suv 14 17 6.5
+midsize 19 27 2.4
+midsize 22 30 2.4
+midsize 18 26 3.1
+midsize 18 29 3.5
+midsize 17 26 3.6
+minivan 18 24 2.4
+minivan 17 24 3
+minivan 16 22 3.3
+minivan 16 22 3.3
+minivan 17 24 3.3
+minivan 17 24 3.3
+minivan 11 17 3.3
+minivan 15 22 3.8
+minivan 15 21 3.8
+minivan 16 23 3.8
+minivan 16 23 4
+pickup 15 19 3.7
+pickup 14 18 3.7
+pickup 13 17 3.9
+pickup 14 17 3.9
+pickup 14 19 4.7
+pickup 14 19 4.7
+pickup 9 12 4.7
+pickup 11 17 5.2
+pickup 11 15 5.2
+suv 13 17 3.9
+suv 13 17 4.7
+suv 9 12 4.7
+suv 13 17 4.7
+suv 11 16 5.2
+suv 13 18 5.7
+suv 11 15 5.9
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 13 17 4.7
+pickup 13 17 4.7
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 11 15 5.2
+pickup 11 16 5.2
+pickup 13 17 5.7
+pickup 11 15 5.9
+suv 11 17 4.6
+suv 11 17 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 15 19 4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+pickup 14 17 4.2
+pickup 14 17 4.2
+pickup 13 16 4.6
+pickup 13 16 4.6
+pickup 13 17 4.6
+pickup 11 15 5.4
+pickup 13 17 5.4
+subcompact 18 26 3.8
+subcompact 18 25 3.8
+subcompact 17 26 4
+subcompact 16 24 4
+subcompact 15 21 4.6
+subcompact 15 22 4.6
+subcompact 15 23 4.6
+subcompact 15 22 4.6
+subcompact 14 20 5.4
+subcompact 28 33 1.6
+subcompact 24 32 1.6
+subcompact 25 32 1.6
+subcompact 23 29 1.6
+subcompact 24 32 1.6
+subcompact 26 34 1.8
+subcompact 25 36 1.8
+subcompact 24 36 1.8
+subcompact 21 29 2
+midsize 18 26 2.4
+midsize 18 27 2.4
+midsize 21 30 2.4
+midsize 21 31 2.4
+midsize 18 26 2.5
+midsize 18 26 2.5
+midsize 19 28 3.3
+subcompact 19 26 2
+subcompact 19 29 2
+subcompact 20 28 2
+subcompact 20 27 2
+subcompact 17 24 2.7
+subcompact 16 24 2.7
+subcompact 17 24 2.7
+suv 17 22 3
+suv 15 19 3.7
+suv 15 20 4
+suv 14 17 4.7
+suv 9 12 4.7
+suv 14 19 4.7
+suv 13 18 5.7
+suv 11 14 6.1
+suv 11 15 4
+suv 12 18 4.2
+suv 12 18 4.4
+suv 11 15 4.6
+suv 11 17 5.4
+suv 11 16 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+compact 21 29 2.4
+compact 19 27 2.4
+midsize 23 31 2.5
+midsize 23 32 2.5
+midsize 19 27 3.5
+midsize 19 26 3.5
+midsize 18 26 3
+midsize 19 25 3
+midsize 19 25 3.5
+suv 14 17 3.3
+suv 15 17 3.3
+suv 14 20 4
+suv 12 18 5.6
+midsize 18 26 3.1
+midsize 16 26 3.8
+midsize 17 27 3.8
+midsize 18 28 3.8
+midsize 16 25 5.3
+suv 18 25 2.5
+suv 18 24 2.5
+suv 20 27 2.5
+suv 19 25 2.5
+suv 20 26 2.5
+suv 18 23 2.5
+subcompact 21 26 2.2
+subcompact 19 26 2.2
+subcompact 19 26 2.5
+subcompact 19 26 2.5
+compact 20 25 2.5
+compact 20 27 2.5
+compact 19 25 2.5
+compact 20 27 2.5
+suv 15 20 2.7
+suv 16 20 2.7
+suv 15 19 3.4
+suv 15 17 3.4
+suv 16 20 4
+suv 14 17 4.7
+midsize 21 29 2.2
+midsize 21 27 2.2
+midsize 21 31 2.4
+midsize 21 31 2.4
+midsize 18 26 3
+midsize 18 26 3
+midsize 19 28 3.5
+compact 21 27 2.2
+compact 21 29 2.2
+compact 21 31 2.4
+compact 22 31 2.4
+compact 18 26 3
+compact 18 26 3
+compact 18 27 3.3
+compact 24 30 1.8
+compact 24 33 1.8
+compact 26 35 1.8
+compact 28 37 1.8
+compact 26 35 1.8
+suv 11 15 4.7
+suv 13 18 5.7
+pickup 15 20 2.7
+pickup 16 20 2.7
+pickup 17 22 2.7
+pickup 15 17 3.4
+pickup 15 19 3.4
+pickup 15 18 4
+pickup 16 20 4
+compact 21 29 2
+compact 19 26 2
+compact 21 29 2
+compact 22 29 2
+compact 17 24 2.8
+compact 33 44 1.9
+compact 21 29 2
+compact 19 26 2
+compact 22 29 2
+compact 21 29 2
+compact 21 29 2.5
+compact 21 29 2.5
+compact 16 23 2.8
+compact 17 24 2.8
+subcompact 35 44 1.9
+subcompact 29 41 1.9
+subcompact 21 29 2
+subcompact 19 26 2
+subcompact 20 28 2.5
+subcompact 20 29 2.5
+midsize 21 29 1.8
+midsize 18 29 1.8
+midsize 19 28 2
+midsize 21 29 2
+midsize 16 26 2.8
+midsize 18 26 2.8
+midsize 17 26 3.6
+"""
+
+_ROWS = [line.split() for line in RAW.splitlines()]
+
+DATA = {
+    "cls": [row[0] for row in _ROWS],
+    "cty": [float(row[1]) for row in _ROWS],
+    "hwy": [float(row[2]) for row in _ROWS],
+    "displ": [float(row[3]) for row in _ROWS],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="hwy"))
+        + geom_point()
+        + coord_trans(y="log10")
+        + theme_test()
+        + labs(title="basic coord_transform() plot")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-trans", "scale-discrete"]
+ci = true
+title = "上游快照：basic coord_transform() plot"
+source = "upstream:tests/testthat/_snaps/coord-transform/basic-coord-transform-plot.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_transform(y=\"log10\")` 只改面板位置，轴断点仍是数据空间。"
+""",
+    },
+    {
+        "slug": "upstream-coord-transform-reversed",
+        "snapshot": "coord-transform/reversed-transformed-coords.svg",
+        "source": r'''"""上游快照复刻：reversed transformed coords。
+
+源：coord-transform/reversed-transformed-coords.svg
+（vdiffr 名 "reversed transformed coords"）。
+
+R：
+
+    p <- ggplot(data_frame0(x = c(1, 100), y = c(1, 100))) +
+      aes(x = x, y = y) + geom_point() +
+      coord_transform(
+        x = "log10", y = "log10",
+        xlim = c(0.1, 1000), ylim = c(0.1, 1000), expand = FALSE,
+        reverse = "xy"
+      ) +
+      theme_test() + theme(axis.line = element_line())
+"""
+
+from ggcore.plot import aes, coord_trans, geom_point, ggplot, labs
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1.0, 100.0], "y": [1.0, 100.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + coord_trans(
+            x="log10",
+            y="log10",
+            xlim=(0.1, 1000.0),
+            ylim=(0.1, 1000.0),
+            expand=False,
+            reverse="xy",
+        )
+        + theme_test()
+        + theme(**{"axis.line": element_line()})
+        + labs(title="reversed transformed coords")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-trans", "scale-log10"]
+ci = true
+title = "上游快照：reversed transformed coords"
+source = "upstream:tests/testthat/_snaps/coord-transform/reversed-transformed-coords.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`coord_transform(x, y, xlim, ylim, expand = FALSE, reverse = "xy")`。'
+""",
+    },
+    {
+        "slug": "upstream-coord-transform-sec-axis",
+        "snapshot": "coord-transform/sec-axis-with-coord-transform.svg",
+        "source": r'''"""上游快照复刻：sec_axis with coord_transform()。
+
+源：coord-transform/sec-axis-with-coord-transform.svg
+（vdiffr 名 "sec_axis with coord_transform()"）。
+
+R：
+
+    ggplot(mpg, aes(cty, hwy)) +
+      geom_point() +
+      scale_y_continuous(
+        sec.axis = sec_axis(~ log2(.), breaks = c(3.5, 4, 4.5, 5, 5.5), name = "log2(hwy)"),
+        breaks = 2^c(3.5, 4, 4.5, 5, 5.5)
+      ) +
+      scale_x_continuous(sec.axis = dup_axis()) +
+      coord_transform(y = "log2")
+
+左右两侧都是次轴：x 的 `dup_axis()` 落到顶部，y 的 `sec_axis(~ log2(.))` 落到右侧；
+主轴的断点写在**数据空间**（`2^c(...)`），次轴断点写在变换后的空间。
+"""
+
+import numpy as np
+
+from ggcore.plot import (
+    aes,
+    coord_trans,
+    dup_axis,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+    sec_axis,
+)
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+#: `ggplot2::mpg` 的 class / cty / hwy / displ 四列，按 R 4.5.3 逐行导出（234 行）。
+RAW = """\
+compact 18 29 1.8
+compact 21 29 1.8
+compact 20 31 2
+compact 21 30 2
+compact 16 26 2.8
+compact 18 26 2.8
+compact 18 27 3.1
+compact 18 26 1.8
+compact 16 25 1.8
+compact 20 28 2
+compact 19 27 2
+compact 15 25 2.8
+compact 17 25 2.8
+compact 17 25 3.1
+compact 15 25 3.1
+midsize 15 24 2.8
+midsize 17 25 3.1
+midsize 16 23 4.2
+suv 14 20 5.3
+suv 11 15 5.3
+suv 14 20 5.3
+suv 13 17 5.7
+suv 12 17 6
+2seater 16 26 5.7
+2seater 15 23 5.7
+2seater 16 26 6.2
+2seater 15 25 6.2
+2seater 15 24 7
+suv 14 19 5.3
+suv 11 14 5.3
+suv 11 15 5.7
+suv 14 17 6.5
+midsize 19 27 2.4
+midsize 22 30 2.4
+midsize 18 26 3.1
+midsize 18 29 3.5
+midsize 17 26 3.6
+minivan 18 24 2.4
+minivan 17 24 3
+minivan 16 22 3.3
+minivan 16 22 3.3
+minivan 17 24 3.3
+minivan 17 24 3.3
+minivan 11 17 3.3
+minivan 15 22 3.8
+minivan 15 21 3.8
+minivan 16 23 3.8
+minivan 16 23 4
+pickup 15 19 3.7
+pickup 14 18 3.7
+pickup 13 17 3.9
+pickup 14 17 3.9
+pickup 14 19 4.7
+pickup 14 19 4.7
+pickup 9 12 4.7
+pickup 11 17 5.2
+pickup 11 15 5.2
+suv 13 17 3.9
+suv 13 17 4.7
+suv 9 12 4.7
+suv 13 17 4.7
+suv 11 16 5.2
+suv 13 18 5.7
+suv 11 15 5.9
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 13 17 4.7
+pickup 13 17 4.7
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 11 15 5.2
+pickup 11 16 5.2
+pickup 13 17 5.7
+pickup 11 15 5.9
+suv 11 17 4.6
+suv 11 17 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 15 19 4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+pickup 14 17 4.2
+pickup 14 17 4.2
+pickup 13 16 4.6
+pickup 13 16 4.6
+pickup 13 17 4.6
+pickup 11 15 5.4
+pickup 13 17 5.4
+subcompact 18 26 3.8
+subcompact 18 25 3.8
+subcompact 17 26 4
+subcompact 16 24 4
+subcompact 15 21 4.6
+subcompact 15 22 4.6
+subcompact 15 23 4.6
+subcompact 15 22 4.6
+subcompact 14 20 5.4
+subcompact 28 33 1.6
+subcompact 24 32 1.6
+subcompact 25 32 1.6
+subcompact 23 29 1.6
+subcompact 24 32 1.6
+subcompact 26 34 1.8
+subcompact 25 36 1.8
+subcompact 24 36 1.8
+subcompact 21 29 2
+midsize 18 26 2.4
+midsize 18 27 2.4
+midsize 21 30 2.4
+midsize 21 31 2.4
+midsize 18 26 2.5
+midsize 18 26 2.5
+midsize 19 28 3.3
+subcompact 19 26 2
+subcompact 19 29 2
+subcompact 20 28 2
+subcompact 20 27 2
+subcompact 17 24 2.7
+subcompact 16 24 2.7
+subcompact 17 24 2.7
+suv 17 22 3
+suv 15 19 3.7
+suv 15 20 4
+suv 14 17 4.7
+suv 9 12 4.7
+suv 14 19 4.7
+suv 13 18 5.7
+suv 11 14 6.1
+suv 11 15 4
+suv 12 18 4.2
+suv 12 18 4.4
+suv 11 15 4.6
+suv 11 17 5.4
+suv 11 16 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+compact 21 29 2.4
+compact 19 27 2.4
+midsize 23 31 2.5
+midsize 23 32 2.5
+midsize 19 27 3.5
+midsize 19 26 3.5
+midsize 18 26 3
+midsize 19 25 3
+midsize 19 25 3.5
+suv 14 17 3.3
+suv 15 17 3.3
+suv 14 20 4
+suv 12 18 5.6
+midsize 18 26 3.1
+midsize 16 26 3.8
+midsize 17 27 3.8
+midsize 18 28 3.8
+midsize 16 25 5.3
+suv 18 25 2.5
+suv 18 24 2.5
+suv 20 27 2.5
+suv 19 25 2.5
+suv 20 26 2.5
+suv 18 23 2.5
+subcompact 21 26 2.2
+subcompact 19 26 2.2
+subcompact 19 26 2.5
+subcompact 19 26 2.5
+compact 20 25 2.5
+compact 20 27 2.5
+compact 19 25 2.5
+compact 20 27 2.5
+suv 15 20 2.7
+suv 16 20 2.7
+suv 15 19 3.4
+suv 15 17 3.4
+suv 16 20 4
+suv 14 17 4.7
+midsize 21 29 2.2
+midsize 21 27 2.2
+midsize 21 31 2.4
+midsize 21 31 2.4
+midsize 18 26 3
+midsize 18 26 3
+midsize 19 28 3.5
+compact 21 27 2.2
+compact 21 29 2.2
+compact 21 31 2.4
+compact 22 31 2.4
+compact 18 26 3
+compact 18 26 3
+compact 18 27 3.3
+compact 24 30 1.8
+compact 24 33 1.8
+compact 26 35 1.8
+compact 28 37 1.8
+compact 26 35 1.8
+suv 11 15 4.7
+suv 13 18 5.7
+pickup 15 20 2.7
+pickup 16 20 2.7
+pickup 17 22 2.7
+pickup 15 17 3.4
+pickup 15 19 3.4
+pickup 15 18 4
+pickup 16 20 4
+compact 21 29 2
+compact 19 26 2
+compact 21 29 2
+compact 22 29 2
+compact 17 24 2.8
+compact 33 44 1.9
+compact 21 29 2
+compact 19 26 2
+compact 22 29 2
+compact 21 29 2
+compact 21 29 2.5
+compact 21 29 2.5
+compact 16 23 2.8
+compact 17 24 2.8
+subcompact 35 44 1.9
+subcompact 29 41 1.9
+subcompact 21 29 2
+subcompact 19 26 2
+subcompact 20 28 2.5
+subcompact 20 29 2.5
+midsize 21 29 1.8
+midsize 18 29 1.8
+midsize 19 28 2
+midsize 21 29 2
+midsize 16 26 2.8
+midsize 18 26 2.8
+midsize 17 26 3.6
+"""
+
+_ROWS = [line.split() for line in RAW.splitlines()]
+
+DATA = {
+    "cls": [row[0] for row in _ROWS],
+    "cty": [float(row[1]) for row in _ROWS],
+    "hwy": [float(row[2]) for row in _ROWS],
+    "displ": [float(row[3]) for row in _ROWS],
+}
+
+#: `2^c(3.5, 4, 4.5, 5, 5.5)`：主轴断点在数据空间。
+BREAKS = (2.0**3.5, 2.0**4.0, 2.0**4.5, 2.0**5.0, 2.0**5.5)
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cty", y="hwy"))
+        + geom_point()
+        + scale_y_continuous(
+            breaks=BREAKS,
+            **{
+                "sec.axis": sec_axis(
+                    lambda v: np.log2(v),
+                    breaks=(3.5, 4.0, 4.5, 5.0, 5.5),
+                    name="log2(hwy)",
+                )
+            },
+        )
+        + scale_x_continuous(**{"sec.axis": dup_axis()})
+        + coord_trans(y="log2")
+        + theme_test()
+        + labs(title="sec_axis with coord_transform()")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-trans", "coord-sec-axis", "scale-log10"]
+ci = true
+title = "上游快照：sec_axis with coord_transform()"
+source = "upstream:tests/testthat/_snaps/coord-transform/sec-axis-with-coord-transform.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`coord_transform(y = "log2")` 下两侧次轴，主轴断点在数据空间。'
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-with-division",
+        "snapshot": "sec-axis/sec-axis-with-division.svg",
+        "source": r'''"""上游快照复刻：sec_axis, with division。
+
+源：sec-axis/sec-axis-with-division.svg（vdiffr 名 "sec_axis, with division"）。
+
+R：
+
+    ggplot(mpg, aes(displ, hwy)) +
+      geom_point() +
+      scale_y_continuous(sec.axis = sec_axis(~ 235 / ., name = "100km / L")) +
+      theme_linedraw()
+
+次轴的变换是 `235 / y`：右侧轴的断点是主轴断点经该变换后的值。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_y_continuous, sec_axis
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+#: `ggplot2::mpg` 的 class / cty / hwy / displ 四列，按 R 4.5.3 逐行导出（234 行）。
+RAW = """\
+compact 18 29 1.8
+compact 21 29 1.8
+compact 20 31 2
+compact 21 30 2
+compact 16 26 2.8
+compact 18 26 2.8
+compact 18 27 3.1
+compact 18 26 1.8
+compact 16 25 1.8
+compact 20 28 2
+compact 19 27 2
+compact 15 25 2.8
+compact 17 25 2.8
+compact 17 25 3.1
+compact 15 25 3.1
+midsize 15 24 2.8
+midsize 17 25 3.1
+midsize 16 23 4.2
+suv 14 20 5.3
+suv 11 15 5.3
+suv 14 20 5.3
+suv 13 17 5.7
+suv 12 17 6
+2seater 16 26 5.7
+2seater 15 23 5.7
+2seater 16 26 6.2
+2seater 15 25 6.2
+2seater 15 24 7
+suv 14 19 5.3
+suv 11 14 5.3
+suv 11 15 5.7
+suv 14 17 6.5
+midsize 19 27 2.4
+midsize 22 30 2.4
+midsize 18 26 3.1
+midsize 18 29 3.5
+midsize 17 26 3.6
+minivan 18 24 2.4
+minivan 17 24 3
+minivan 16 22 3.3
+minivan 16 22 3.3
+minivan 17 24 3.3
+minivan 17 24 3.3
+minivan 11 17 3.3
+minivan 15 22 3.8
+minivan 15 21 3.8
+minivan 16 23 3.8
+minivan 16 23 4
+pickup 15 19 3.7
+pickup 14 18 3.7
+pickup 13 17 3.9
+pickup 14 17 3.9
+pickup 14 19 4.7
+pickup 14 19 4.7
+pickup 9 12 4.7
+pickup 11 17 5.2
+pickup 11 15 5.2
+suv 13 17 3.9
+suv 13 17 4.7
+suv 9 12 4.7
+suv 13 17 4.7
+suv 11 16 5.2
+suv 13 18 5.7
+suv 11 15 5.9
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 13 17 4.7
+pickup 13 17 4.7
+pickup 12 16 4.7
+pickup 9 12 4.7
+pickup 11 15 5.2
+pickup 11 16 5.2
+pickup 13 17 5.7
+pickup 11 15 5.9
+suv 11 17 4.6
+suv 11 17 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 15 19 4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+pickup 14 17 4.2
+pickup 14 17 4.2
+pickup 13 16 4.6
+pickup 13 16 4.6
+pickup 13 17 4.6
+pickup 11 15 5.4
+pickup 13 17 5.4
+subcompact 18 26 3.8
+subcompact 18 25 3.8
+subcompact 17 26 4
+subcompact 16 24 4
+subcompact 15 21 4.6
+subcompact 15 22 4.6
+subcompact 15 23 4.6
+subcompact 15 22 4.6
+subcompact 14 20 5.4
+subcompact 28 33 1.6
+subcompact 24 32 1.6
+subcompact 25 32 1.6
+subcompact 23 29 1.6
+subcompact 24 32 1.6
+subcompact 26 34 1.8
+subcompact 25 36 1.8
+subcompact 24 36 1.8
+subcompact 21 29 2
+midsize 18 26 2.4
+midsize 18 27 2.4
+midsize 21 30 2.4
+midsize 21 31 2.4
+midsize 18 26 2.5
+midsize 18 26 2.5
+midsize 19 28 3.3
+subcompact 19 26 2
+subcompact 19 29 2
+subcompact 20 28 2
+subcompact 20 27 2
+subcompact 17 24 2.7
+subcompact 16 24 2.7
+subcompact 17 24 2.7
+suv 17 22 3
+suv 15 19 3.7
+suv 15 20 4
+suv 14 17 4.7
+suv 9 12 4.7
+suv 14 19 4.7
+suv 13 18 5.7
+suv 11 14 6.1
+suv 11 15 4
+suv 12 18 4.2
+suv 12 18 4.4
+suv 11 15 4.6
+suv 11 17 5.4
+suv 11 16 5.4
+suv 12 18 5.4
+suv 14 17 4
+suv 13 19 4
+suv 13 19 4.6
+suv 13 17 5
+compact 21 29 2.4
+compact 19 27 2.4
+midsize 23 31 2.5
+midsize 23 32 2.5
+midsize 19 27 3.5
+midsize 19 26 3.5
+midsize 18 26 3
+midsize 19 25 3
+midsize 19 25 3.5
+suv 14 17 3.3
+suv 15 17 3.3
+suv 14 20 4
+suv 12 18 5.6
+midsize 18 26 3.1
+midsize 16 26 3.8
+midsize 17 27 3.8
+midsize 18 28 3.8
+midsize 16 25 5.3
+suv 18 25 2.5
+suv 18 24 2.5
+suv 20 27 2.5
+suv 19 25 2.5
+suv 20 26 2.5
+suv 18 23 2.5
+subcompact 21 26 2.2
+subcompact 19 26 2.2
+subcompact 19 26 2.5
+subcompact 19 26 2.5
+compact 20 25 2.5
+compact 20 27 2.5
+compact 19 25 2.5
+compact 20 27 2.5
+suv 15 20 2.7
+suv 16 20 2.7
+suv 15 19 3.4
+suv 15 17 3.4
+suv 16 20 4
+suv 14 17 4.7
+midsize 21 29 2.2
+midsize 21 27 2.2
+midsize 21 31 2.4
+midsize 21 31 2.4
+midsize 18 26 3
+midsize 18 26 3
+midsize 19 28 3.5
+compact 21 27 2.2
+compact 21 29 2.2
+compact 21 31 2.4
+compact 22 31 2.4
+compact 18 26 3
+compact 18 26 3
+compact 18 27 3.3
+compact 24 30 1.8
+compact 24 33 1.8
+compact 26 35 1.8
+compact 28 37 1.8
+compact 26 35 1.8
+suv 11 15 4.7
+suv 13 18 5.7
+pickup 15 20 2.7
+pickup 16 20 2.7
+pickup 17 22 2.7
+pickup 15 17 3.4
+pickup 15 19 3.4
+pickup 15 18 4
+pickup 16 20 4
+compact 21 29 2
+compact 19 26 2
+compact 21 29 2
+compact 22 29 2
+compact 17 24 2.8
+compact 33 44 1.9
+compact 21 29 2
+compact 19 26 2
+compact 22 29 2
+compact 21 29 2
+compact 21 29 2.5
+compact 21 29 2.5
+compact 16 23 2.8
+compact 17 24 2.8
+subcompact 35 44 1.9
+subcompact 29 41 1.9
+subcompact 21 29 2
+subcompact 19 26 2
+subcompact 20 28 2.5
+subcompact 20 29 2.5
+midsize 21 29 1.8
+midsize 18 29 1.8
+midsize 19 28 2
+midsize 21 29 2
+midsize 16 26 2.8
+midsize 18 26 2.8
+midsize 17 26 3.6
+"""
+
+_ROWS = [line.split() for line in RAW.splitlines()]
+
+DATA = {
+    "cls": [row[0] for row in _ROWS],
+    "cty": [float(row[1]) for row in _ROWS],
+    "hwy": [float(row[2]) for row in _ROWS],
+    "displ": [float(row[3]) for row in _ROWS],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="displ", y="hwy"))
+        + geom_point()
+        + scale_y_continuous(**{"sec.axis": sec_axis(lambda v: 235.0 / v, name="100km / L")})
+        + theme_linedraw()
+        + labs(title="sec_axis, with division")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec_axis, with division"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-with-division.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`sec_axis(~ 235 / ., name = \"100km / L\")` 的右轴断点由主轴断点经非线性变换推得。"
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-power",
+        "snapshot": "sec-axis/sec-axis-sec-power-transform.svg",
+        "source": r'''"""上游快照复刻：sec_axis, sec power transform。
+
+源：sec-axis/sec-axis-sec-power-transform.svg
+（vdiffr 名 "sec_axis, sec power transform"）。
+
+R：
+
+    ggplot() +
+      geom_point(aes(x = 1:10, y = rep(5, 10))) +
+      scale_x_continuous(sec.axis = sec_axis(~ log10(.))) +
+      theme_linedraw()
+
+x 主轴是 1..10，次轴是 log10：右轴断点 = 主轴断点取对数后的值。次轴没给
+`breaks`，所以按变换后的范围用默认断点推。
+"""
+
+import numpy as np
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_x_continuous, sec_axis
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+DATA = {"x": [float(value) for value in range(1, 11)], "y": [5.0] * 10}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_x_continuous(**{"sec.axis": sec_axis(np.log10)})
+        + theme_linedraw()
+        + labs(title="sec_axis, sec power transform")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-log10"]
+ci = true
+title = "上游快照：sec_axis, sec power transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-sec-power-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`sec_axis(~ log10(.))` 的次轴断点由变换后范围推得（没给 breaks）。"
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-monotonicity",
+        "snapshot": "sec-axis/sec-axis-monotonicity-test.svg",
+        "source": r'''"""上游快照复刻：sec axis monotonicity test。
+
+源：sec-axis/sec-axis-monotonicity-test.svg（vdiffr 名 "sec axis monotonicity test"）。
+
+R：
+
+    data <- data_frame(x = seq(0, 1, length.out = 100), y = seq(0, 4, length.out = 100))
+    ggplot(data, aes(x, y)) +
+      geom_line() +
+      scale_y_continuous(transform = "sqrt", sec.axis = dup_axis()) +
+      theme_linedraw()
+
+主轴是 sqrt 变换、次轴 `dup_axis()`：两条轴的断点位置相同，标签都是数据空间的值
+（`dup_axis()` 的恒等变换直接沿用主轴断点）。
+"""
+
+from ggcore.plot import aes, dup_axis, geom_line, ggplot, labs, scale_y_continuous
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [index / 99.0 for index in range(100)],
+    "y": [4.0 * index / 99.0 for index in range(100)],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_line()
+        + scale_y_continuous(transform="sqrt", **{"sec.axis": dup_axis()})
+        + theme_linedraw()
+        + labs(title="sec axis monotonicity test")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec axis monotonicity test"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-monotonicity-test.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`transform = \"sqrt\"` + `dup_axis()` 的单调性检查不误报，次轴断点沿用主轴。"
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-skewed",
+        "snapshot": "sec-axis/sec-axis-skewed-transform.svg",
+        "source": r'''"""上游快照复刻：sec_axis, skewed transform。
+
+源：sec-axis/sec-axis-skewed-transform.svg（vdiffr 名 "sec_axis, skewed transform"）。
+
+R：
+
+    x <- exp(seq(log(0.001), log(1000), length.out = 100))
+    foo <- data_frame(x = x, y = x / (1 + x))
+
+    ggplot(foo, aes(x, y)) +
+      geom_point() +
+      scale_x_continuous(
+        name = "Unit A", transform = "log",
+        breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+        sec.axis = sec_axis(~ . * 100, name = "Unit B", labels = derive(), breaks = derive())
+      ) +
+      theme_linedraw()
+
+主轴是自然对数。`breaks = derive()` / `labels = derive()` 让次轴沿用主轴那套断点
+**规格**（在次轴空间里重新求值），所以右轴的断点是主轴断点乘 100。
+"""
+
+import numpy as np
+
+from ggcore.axis import DERIVE
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_x_continuous, sec_axis
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+_X = np.exp(np.linspace(np.log(0.001), np.log(1000.0), 100))
+
+DATA = {
+    "x": [float(value) for value in _X],
+    "y": [float(value / (1.0 + value)) for value in _X],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_x_continuous(
+            name="Unit A",
+            transform="log",
+            breaks=(0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0),
+            **{
+                "sec.axis": sec_axis(
+                    lambda v: v * 100.0,
+                    name="Unit B",
+                    labels=DERIVE,
+                    breaks=DERIVE,
+                )
+            },
+        )
+        + theme_linedraw()
+        + labs(title="sec_axis, skewed transform")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-log10", "scale-breaks"]
+ci = true
+title = "上游快照：sec_axis, skewed transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-skewed-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`breaks = derive()` 让次轴沿用主轴的断点规格。"
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-datetime",
+        "snapshot": "sec-axis/sec-axis-datetime-scale.svg",
+        "source": r'''"""上游快照复刻：sec_axis, datetime scale。
+
+源：sec-axis/sec-axis-datetime-scale.svg（vdiffr 名 "sec_axis, datetime scale"）。
+
+R：
+
+    df <- data_frame(
+      x = as.POSIXct(c("2016-11-30 00:00:00", "2016-11-30 06:00:00",
+                       "2016-11-30 12:00:00", "2016-11-30 18:00:00",
+                       "2016-12-01 00:00:00"), tz = "UTC"),
+      y = c(0, -1, 0, 1, 0)
+    )
+    ggplot(df, aes(x = x, y = y)) +
+      geom_line() +
+      scale_x_datetime("UTC", date_breaks = "2 hours", date_labels = "%I%p",
+                       sec.axis = dup_axis(~ . - 8 * 60 * 60, name = "PST")) +
+      theme_linedraw()
+
+时间是 POSIXct（自 epoch 起的秒）。主轴是 UTC、每 2 小时一个断点；次轴把时间
+平移 -8 小时（PST），标签用同一套日期格式。
+"""
+
+import datetime
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_line,
+    ggplot,
+    labs,
+    scale_x_datetime,
+)
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [
+        datetime.datetime(2016, 11, 30, 0, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2016, 11, 30, 6, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2016, 11, 30, 12, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2016, 11, 30, 18, 0, tzinfo=datetime.UTC),
+        datetime.datetime(2016, 12, 1, 0, 0, tzinfo=datetime.UTC),
+    ],
+    "y": [0.0, -1.0, 0.0, 1.0, 0.0],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_line()
+        + scale_x_datetime(
+            name="UTC",
+            date_breaks="2 hours",
+            date_labels="%I%p",
+            **{"sec.axis": dup_axis(lambda seconds: seconds - 8.0 * 60.0 * 60.0, name="PST")},
+        )
+        + theme_linedraw()
+        + labs(title="sec_axis, datetime scale")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-date"]
+ci = true
+title = "上游快照：sec_axis, datetime scale"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-datetime-scale.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`date_breaks = "2 hours"` + `dup_axis(~ . - 8 * 60 * 60)`。'
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-independent",
+        "snapshot": "sec-axis/sec-axis-independent-transformations.svg",
+        "source": r'''"""上游快照复刻：sec_axis, independent transformations。
+
+源：sec-axis/sec-axis-independent-transformations.svg
+（vdiffr 名 "sec_axis, independent transformations"）。
+
+R：
+
+    data <- data_frame(
+      Value = c(0.18, 0.29, 0.35, 0.46, 0.50, 0.50, 0.51),
+      Probability = c(0.045, 0.090, 0.136, 0.181, 0.227, 0.272, 0.318)
+    )
+    ggplot(data, aes(Probability, Value)) +
+      geom_point() +
+      scale_x_continuous(
+        transform = scales::transform_probability(distribution = "norm", lower.tail = FALSE),
+        sec.axis = sec_axis(transform = ~ 1 / ., name = "Return Period")
+      ) +
+      theme_linedraw()
+
+主轴是「正态上尾概率」的 probit 变换（`lower.tail = FALSE` 即 `-qnorm(p)`），次轴是
+它的倒数（重现期）。两条轴各自独立变换。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_x_continuous, sec_axis
+from ggcore.scales import transform_probability
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+DATA = {
+    "Value": [0.18, 0.29, 0.35, 0.46, 0.50, 0.50, 0.51],
+    "Probability": [0.045, 0.090, 0.136, 0.181, 0.227, 0.272, 0.318],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="Probability", y="Value"))
+        + geom_point()
+        + scale_x_continuous(
+            transform=transform_probability("norm", lower_tail=False),
+            **{"sec.axis": sec_axis(lambda v: 1.0 / v, name="Return Period")},
+        )
+        + theme_linedraw()
+        + labs(title="sec_axis, independent transformations")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec_axis, independent transformations"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-independent-transformations.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：主轴 `transform_probability("norm", lower.tail = FALSE)`。'
+""",
+    },
+    {
+        "slug": "upstream-sec-axis-custom",
+        "snapshot": "sec-axis/sec-axis-custom-transform.svg",
+        "source": r'''"""上游快照复刻：sec_axis, custom transform。
+
+源：sec-axis/sec-axis-custom-transform.svg（vdiffr 名 "sec_axis, custom transform"）。
+
+R（DInfanger 的 #2798 复现）：
+
+    magnify_trans_log <- function(interval_low = 0.05, interval_high = 1,
+                                  reducer = 0.05, reducer2 = 8) {
+      trans <- Vectorize(function(x, i_low, i_high, r, r2) {
+        if (is.na(x) || (x >= i_low & x <= i_high)) x
+        else if (x < i_low) log10(x / r) / r2 + i_low
+        else log10((x - i_high) / r + i_high) / r2
+      })
+      inv <- Vectorize(function(x, i_low, i_high, r, r2) {
+        if (is.na(x) || (x >= i_low & x <= i_high)) x
+        else if (x < i_low) 10^(-(i_low - x) * r2) * r
+        else i_high + 10^(x * r2) * r - i_high * r
+      })
+      new_transform(name = "customlog", transform = trans, inverse = inv, domain = c(1e-16, Inf))
+    }
+
+    x <- seq(-1, 1, length.out = 1000)
+    y <- c(x[x < 0] + 1, -x[x > 0] + 1) + 1e-6
+    dat <- data_frame(x = c(NA, x), y = c(1, y))
+
+    ggplot(dat, aes(x, y)) + geom_line(linewidth = 1, na.rm = TRUE) +
+      scale_y_continuous(
+        transform = magnify_trans_log(interval_low = 0.5, interval_high = 1,
+                                      reducer = 0.5, reducer2 = 8),
+        breaks = c(0.001, 0.01, 0.1, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+        limits = c(0.001, 1),
+        sec.axis = sec_axis(transform = ~ . * (1 / 2),
+                            breaks = c(0.001, 0.01, 0.1, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5))
+      ) +
+      theme_linedraw()
+"""
+
+import numpy as np
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_y_continuous, sec_axis
+from ggcore.scales import new_transform
+from ggcore.theme import theme_linedraw
+from ggio.frame import to_column_table
+
+
+def _magnify(
+    interval_low: float = 0.05,
+    interval_high: float = 1.0,
+    reducer: float = 0.05,
+    reducer2: float = 8.0,
+):
+    """`magnify_trans_log()`：把 (0, interval_low) 拉长、区间内保恒等。"""
+
+    def transform(values):
+        values = np.asarray(values, dtype=np.float64)
+        out = np.array(values, dtype=np.float64, copy=True)
+        low = np.isfinite(values) & (values < interval_low)
+        high = np.isfinite(values) & (values > interval_high)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            out[low] = np.log10(values[low] / reducer) / reducer2 + interval_low
+            out[high] = (
+                np.log10((values[high] - interval_high) / reducer + interval_high) / reducer2
+            )
+        return out
+
+    def inverse(values):
+        values = np.asarray(values, dtype=np.float64)
+        out = np.array(values, dtype=np.float64, copy=True)
+        low = np.isfinite(values) & (values < interval_low)
+        high = np.isfinite(values) & (values > interval_high)
+        with np.errstate(over="ignore", invalid="ignore"):
+            out[low] = 10.0 ** (-(interval_low - values[low]) * reducer2) * reducer
+            out[high] = (
+                interval_high
+                + 10.0 ** (values[high] * reducer2) * reducer
+                - interval_high * reducer
+            )
+        return out
+
+    return new_transform("customlog", transform, inverse, domain=(1e-16, np.inf))
+
+
+_X = np.linspace(-1.0, 1.0, 1000)
+_Y = np.concatenate([_X[_X < 0] + 1.0, -_X[_X > 0] + 1.0]) + 1e-6
+
+DATA = {
+    "x": [float("nan"), *[float(value) for value in _X]],
+    "y": [1.0, *[float(value) for value in _Y]],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_line(linewidth=1, na_rm=True)
+        + scale_y_continuous(
+            transform=_magnify(interval_low=0.5, interval_high=1.0, reducer=0.5, reducer2=8.0),
+            breaks=(0.001, 0.01, 0.1, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+            limits=(0.001, 1.0),
+            **{
+                "sec.axis": sec_axis(
+                    lambda v: v * 0.5,
+                    breaks=(0.001, 0.01, 0.1, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5),
+                )
+            },
+        )
+        + theme_linedraw()
+        + labs(title="sec_axis, custom transform")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["coord-sec-axis", "scale-limits", "scale-breaks"]
+ci = true
+title = "上游快照：sec_axis, custom transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-custom-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`new_transform()` 自定义变换 + 显式 breaks / limits。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-three-circles",
+        "snapshot": "coord-polar/three-concentric-circles.svg",
+        "source": r'''"""上游快照复刻：three-concentric-circles。
+
+源：coord-polar/three-concentric-circles.svg（vdiffr 名 "three-concentric-circles"）。
+
+R：
+
+    theme <- theme_test() +
+      theme(
+        axis.text.y = element_blank(),
+        axis.title = element_blank(),
+        panel.grid.major = element_line(colour = "grey90")
+      )
+    dat <- data_frame(x = rep(0:1, 4), y = rep(c(1, 10, 40, 80), each = 2))
+
+    ggplot(dat, aes(x, y, group = factor(y))) +
+      geom_path() +
+      coord_polar() +
+      theme
+
+x（0..1）是 theta、y 是半径：三个同心圆由 y 的三个水平各画一条 path 得到，
+`panel.grid.major` 的 r 圆与 theta 辐条用 grey90。
+"""
+
+from ggcore.plot import aes, coord_polar, geom_path, ggplot, labs
+from ggcore.theme import element_blank, element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    "y": [1.0, 1.0, 10.0, 10.0, 40.0, 40.0, 80.0, 80.0],
+    "g": ["1", "1", "10", "10", "40", "40", "80", "80"],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", group="g"))
+        + geom_path()
+        + coord_polar()
+        + theme_test()
+        + theme(
+            **{
+                "axis.text.y": element_blank(),
+                "axis.title": element_blank(),
+                "panel.grid.major": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="three-concentric-circles")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "aes-grouping"]
+ci = true
+title = "上游快照：three-concentric-circles"
+source = "upstream:tests/testthat/_snaps/coord-polar/three-concentric-circles.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar()` 的 r 网格圆按主断点画，theta 辐条由 `panel.grid.major` 控制。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-rays",
+        "snapshot": "coord-polar/rays-circular-arcs-and-spiral-arcs.svg",
+        "source": r'''"""上游快照复刻：Rays, circular arcs, and spiral arcs。
+
+源：coord-polar/rays-circular-arcs-and-spiral-arcs.svg
+（vdiffr 名 "Rays, circular arcs, and spiral arcs"）。
+
+R：
+
+    theme <- theme_test() +
+      theme(axis.text.y = element_blank(), axis.title = element_blank(),
+            panel.grid.major = element_line(colour = "grey90"))
+    dat <- data_frame(
+      theta = c(0, 2*pi,   2,   6, 6, 1,    1,  0),
+      r     = c(0,    0, 0.5, 0.5, 1, 1, 0.75, 0.5),
+      g     = 1:8
+    )
+    ggplot(dat, aes(theta, r, colour = g)) +
+      geom_path(show.legend = FALSE) +
+      geom_point(colour = "black") +
+      coord_polar() +
+      theme
+
+一条 path 里同时有半径不变（圆弧）与半径变化（螺旋）的段；`colour = g` 是连续色，
+`show.legend = FALSE` 去掉图例。
+"""
+
+from ggcore.plot import aes, coord_polar, geom_path, geom_point, ggplot, labs
+from ggcore.theme import element_blank, element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "theta": [0.0, 2.0 * 3.141592653589793, 2.0, 6.0, 6.0, 1.0, 1.0, 0.0],
+    "r": [0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 0.75, 0.5],
+    "g": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="theta", y="r", colour="g"))
+        + geom_path(show_legend=False)
+        + geom_point(colour="black")
+        + coord_polar()
+        + theme_test()
+        + theme(
+            **{
+                "axis.text.y": element_blank(),
+                "axis.title": element_blank(),
+                "panel.grid.major": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="Rays, circular arcs, and spiral arcs")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "aes-grouping"]
+ci = true
+title = "上游快照：Rays, circular arcs, and spiral arcs"
+source = "upstream:tests/testthat/_snaps/coord-polar/rays-circular-arcs-and-spiral-arcs.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；一条 path 混合圆弧与螺旋段，`show.legend = FALSE`。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-rose",
+        "snapshot": "coord-polar/rose-plot-with-has-equal-spacing.svg",
+        "source": r'''"""上游快照复刻：rose plot with has equal spacing。
+
+源：coord-polar/rose-plot-with-has-equal-spacing.svg
+（vdiffr 名 "rose plot with has equal spacing"）。
+
+R：
+
+    theme <- theme_test() +
+      theme(axis.text.y = element_blank(), axis.title = element_blank(),
+            panel.grid.major = element_line(colour = "grey90"))
+    dat <- data_frame(x = LETTERS[1:3], y = 1:3)
+    ggplot(dat, aes(x, y)) + geom_bar(stat = "identity") + coord_polar() + theme
+
+离散 theta（3 个水平）等分整圆；柱子的外缘是圆弧（`coord_munch()`）。
+"""
+
+from ggcore.plot import aes, coord_polar, geom_bar, ggplot, labs
+from ggcore.theme import element_blank, element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": ["A", "B", "C"], "y": [1.0, 2.0, 3.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_bar(stat="identity")
+        + coord_polar()
+        + theme_test()
+        + theme(
+            **{
+                "axis.text.y": element_blank(),
+                "axis.title": element_blank(),
+                "panel.grid.major": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="rose plot with has equal spacing")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "scale-discrete"]
+ci = true
+title = "上游快照：rose plot with has equal spacing"
+source = "upstream:tests/testthat/_snaps/coord-polar/rose-plot-with-has-equal-spacing.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar()` 下离散 theta 等分整圆，柱外缘走 `coord_munch()` 的弧。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-racetrack-no-hole",
+        "snapshot": "coord-polar/racetrack-plot-closed-and-no-center-hole.svg",
+        "source": r'''"""上游快照复刻：racetrack plot: closed and no center hole。
+
+源：coord-polar/racetrack-plot-closed-and-no-center-hole.svg
+（vdiffr 名 "racetrack plot: closed and no center hole"）。
+
+R：
+
+    dat <- data_frame(x = LETTERS[1:3], y = 1:3)
+    ggplot(dat, aes(x, y)) +
+      geom_bar(stat = "identity") +
+      coord_polar(theta = "y") +
+      theme
+
+`theta = "y"`：半径是离散的 x、角度是 y，柱子沿径向堆成环带，圆心不留洞。
+"""
+
+from ggcore.plot import aes, coord_polar, geom_bar, ggplot, labs
+from ggcore.theme import element_blank, element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": ["A", "B", "C"], "y": [1.0, 2.0, 3.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_bar(stat="identity")
+        + coord_polar(theta="y")
+        + theme_test()
+        + theme(
+            **{
+                "axis.text.y": element_blank(),
+                "axis.title": element_blank(),
+                "panel.grid.major": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="racetrack plot: closed and no center hole")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "scale-discrete"]
+ci = true
+title = "上游快照：racetrack plot: closed and no center hole"
+source = "upstream:tests/testthat/_snaps/coord-polar/racetrack-plot-closed-and-no-center-hole.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar(theta = \"y\")` 把角度换到 y，离散柱沿半径堆成环带。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-racetrack-hole",
+        "snapshot": "coord-polar/racetrack-plot-closed-and-has-center-hole.svg",
+        "source": r'''"""上游快照复刻：racetrack plot: closed and has center hole。
+
+源：coord-polar/racetrack-plot-closed-and-has-center-hole.svg
+（vdiffr 名 "racetrack plot: closed and has center hole"）。
+
+R：
+
+    dat <- data_frame(x = LETTERS[1:3], y = 1:3)
+    ggplot(dat, aes(x, y)) +
+      geom_bar(stat = "identity") +
+      coord_polar(theta = "y") +
+      scale_x_discrete(expand = c(0, 0.6)) +
+      theme
+
+`scale_x_discrete(expand = c(0, 0.6))` 把离散 r 轴的两端各留 0.6 格，圆心因此
+留出一个洞；其余与 `racetrack plot: closed and no center hole` 相同。
+"""
+
+from ggcore.plot import aes, coord_polar, geom_bar, ggplot, labs, scale_x_discrete
+from ggcore.theme import element_blank, element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": ["A", "B", "C"], "y": [1.0, 2.0, 3.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_bar(stat="identity")
+        + coord_polar(theta="y")
+        + scale_x_discrete(expand=(0.0, 0.6))
+        + theme_test()
+        + theme(
+            **{
+                "axis.text.y": element_blank(),
+                "axis.title": element_blank(),
+                "panel.grid.major": element_line(colour="grey90"),
+            }
+        )
+        + labs(title="racetrack plot: closed and has center hole")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "scale-discrete", "scale-limits"]
+ci = true
+title = "上游快照：racetrack plot: closed and has center hole"
+source = "upstream:tests/testthat/_snaps/coord-polar/racetrack-plot-closed-and-has-center-hole.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`scale_x_discrete(expand = c(0, 0.6))` 在离散 r 轴两端留白，圆心因此有洞。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-sec-axis",
+        "snapshot": "coord-polar/secondary-axis-ticks-and-labels.svg",
+        "source": r'''"""上游快照复刻：secondary axis ticks and labels。
+
+源：coord-polar/secondary-axis-ticks-and-labels.svg
+（vdiffr 名 "secondary axis ticks and labels"）。
+
+R：
+
+    dat <- data_frame(x = LETTERS[1:3], y = 1:3)
+    ggplot(dat, aes(x, y, group = factor(y))) +
+      geom_blank() +
+      scale_y_continuous(sec.axis = sec_axis(~ . * 0.1, name = "sec y")) +
+      coord_polar() +
+      theme_test() +
+      theme(axis.text.x = element_blank())
+
+极坐标下 r 轴的次轴画在右侧（上游 `CoordPolar$render_axis_v()` 的
+`r_rescale(r.sec.major, r.sec.range) + 0.5`）；theta 标签被 `axis.text.x` 去掉。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_polar,
+    geom_blank,
+    ggplot,
+    labs,
+    scale_y_continuous,
+    sec_axis,
+)
+from ggcore.theme import element_blank, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": ["A", "B", "C"],
+    "y": [1.0, 2.0, 3.0],
+    "g": ["1", "2", "3"],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", group="g"))
+        + geom_blank()
+        + scale_y_continuous(**{"sec.axis": sec_axis(lambda v: v * 0.1, name="sec y")})
+        + coord_polar()
+        + theme_test()
+        + theme(**{"axis.text.x": element_blank()})
+        + labs(title="secondary axis ticks and labels")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-polar", "coord-sec-axis"]
+ci = true
+title = "上游快照：secondary axis ticks and labels"
+source = "upstream:tests/testthat/_snaps/coord-polar/secondary-axis-ticks-and-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；极坐标下 r 轴的次轴画在右侧，`axis.text.x = element_blank()` 只去掉 theta 标签。"
+""",
+    },
+    {
+        "slug": "upstream-coord-polar-reversed",
+        "snapshot": "coord-polar/reversed-polar-coords.svg",
+        "source": r'''"""上游快照复刻：reversed polar coords。
+
+源：coord-polar/reversed-polar-coords.svg（vdiffr 名 "reversed polar coords"）。
+
+R：
+
+    p <- ggplot(data_frame0(x = c(0, 2), y = c(0, 2))) +
+      aes(x = x, y = y) + geom_point() +
+      scale_x_continuous(limits = c(-1, 3), expand = c(0, 0)) +
+      scale_y_continuous(limits = c(-1, 3), expand = c(0, 0)) +
+      theme_test() + theme(axis.line = element_line())
+
+    rev <- coord_radial(start = 0.5 * pi, end = 1.5 * pi, reverse = "thetar")
+    p + rev
+
+`reverse = "thetar"` 同时反转 theta 与 r：半圆的开口方向与半径刻度都反过来。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_radial,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 2.0], "y": [0.0, 2.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_x_continuous(limits=(-1.0, 3.0), expand=(0.0, 0.0))
+        + scale_y_continuous(limits=(-1.0, 3.0), expand=(0.0, 0.0))
+        + coord_radial(start=0.5 * 3.141592653589793, end=1.5 * 3.141592653589793, reverse="thetar")
+        + theme_test()
+        + theme(**{"axis.line": element_line()})
+        + labs(title="reversed polar coords")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "coord"
+features = ["coord-radial", "scale-limits"]
+ci = true
+title = "上游快照：reversed polar coords"
+source = "upstream:tests/testthat/_snaps/coord-polar/reversed-polar-coords.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_radial(reverse = \"thetar\")` 同时反转 theta 与 r。"
+""",
+    },
+]
+
+
 def specs() -> list[dict[str, Any]]:
     # `upstream-theme-bw` 是先手写验证过的原型，保留它的 plot.py 不动。
     # 三个 `base_size = 33` 变体实测超阈（geom 缺省尺寸没跟 `theme$pointsize` 走，
@@ -2451,6 +4807,7 @@ def specs() -> list[dict[str, Any]]:
     return (
         base
         + _G1A_SPECS
+        + _G5_SPECS
         + _G6_SPECS
         + _THEME_MISC_SPECS
         + _G1B_SPECS

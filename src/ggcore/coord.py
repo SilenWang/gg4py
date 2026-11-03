@@ -932,6 +932,23 @@ class CoordBase:
             )
             return _AxisPanel(limits=base, range=mapped, continuous=continuous, discrete=discrete)
         low, high = expand_range(base[0], base[1], expansion.mult, expansion.add)
+        if discrete and scale is not None:
+            # 上游 `expand_limits_discrete_trans()` 的混合分支：离散水平的展开范围
+            # 与 `range_c`（`geom_bar()` 的 xmin/xmax 这类连续列）取并集，但连续
+            # 那段先 squish 到 coord limits（`expand_limits_continuous_trans(range_c,
+            # expansion(0, 0), coord_limits)`）——`coord_cartesian(xlim = c("a","b"))`
+            # 的面板因此仍是 `0.4..2.6`，不会把第三根柱子拉回来。
+            observer = getattr(scales, "continuous_range", None)
+            continuous = observer(axis) if observer is not None else None
+            if continuous is not None:
+                c_low = float(continuous[0])
+                c_high = float(continuous[1])
+                if coord_limit is not None:
+                    c_low = max(c_low, base[0])
+                    c_high = min(c_high, base[1])
+                if c_high >= c_low:
+                    low = min(low, c_low)
+                    high = max(high, c_high)
         return _AxisPanel(limits=base, range=(low, high), continuous=(low, high), discrete=discrete)
 
     def _default_expansion(self, scale: ScaleBase | None, axis: str) -> Expansion:

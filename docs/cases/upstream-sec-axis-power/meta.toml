@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-log10"]
+ci = true
+title = "上游快照：sec_axis, sec power transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-sec-power-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`sec_axis(~ log10(.))` 的次轴断点由变换后范围推得（没给 breaks）。"

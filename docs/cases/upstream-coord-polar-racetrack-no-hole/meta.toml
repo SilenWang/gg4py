@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "scale-discrete"]
+ci = true
+title = "上游快照：racetrack plot: closed and no center hole"
+source = "upstream:tests/testthat/_snaps/coord-polar/racetrack-plot-closed-and-no-center-hole.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_polar(theta = \"y\")` 把角度换到 y，离散柱沿半径堆成环带。"

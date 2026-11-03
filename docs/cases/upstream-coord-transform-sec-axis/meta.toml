@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-trans", "coord-sec-axis", "scale-log10"]
+ci = true
+title = "上游快照：sec_axis with coord_transform()"
+source = "upstream:tests/testthat/_snaps/coord-transform/sec-axis-with-coord-transform.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`coord_transform(y = "log2")` 下两侧次轴，主轴断点在数据空间。'

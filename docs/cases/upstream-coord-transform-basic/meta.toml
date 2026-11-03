@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-trans", "scale-discrete"]
+ci = true
+title = "上游快照：basic coord_transform() plot"
+source = "upstream:tests/testthat/_snaps/coord-transform/basic-coord-transform-plot.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_transform(y=\"log10\")` 只改面板位置，轴断点仍是数据空间。"

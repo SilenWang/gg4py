@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec axis monotonicity test"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-monotonicity-test.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`transform = \"sqrt\"` + `dup_axis()` 的单调性检查不误报，次轴断点沿用主轴。"

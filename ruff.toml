@@ -20,6 +20,9 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # 色板取值表是 tools/refs/palettes_ref.R 生成的：一行一个 palette 的 3..max 全量，
 # 换行只会让「重生成零 diff」难比对。
 "src/ggcore/palette_data.py" = ["E501"]
+# 快照复刻表把每个 case 的 `plot.py` / `meta.toml` **原文**嵌进 triple-quoted 字符串：
+# 这些行是磁盘上的字节，截断或重排都会让 `snapshots:import` 不再幂等。
+"tools/upstream/import_snapshot_cases.py" = ["E501"]
 
 [format]
 # 生成物：`tools/refs/palettes_ref.R` 输出的表要能「重生成零 diff」，格式化器会把

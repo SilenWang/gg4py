@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-limits"]
+ci = true
+title = "上游快照：sec_axis, with division"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-with-division.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`sec_axis(~ 235 / ., name = \"100km / L\")` 的右轴断点由主轴断点经非线性变换推得。"
