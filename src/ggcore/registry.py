@@ -1169,7 +1169,19 @@ COORD_POSITIONAL: Mapping[str, tuple[str, ...]] = MappingProxyType(
 )
 
 FACET_NAMES: tuple[str, ...] = ("null", "wrap", "grid")
-GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
+GUIDE_NAMES: tuple[str, ...] = (
+    "legend",
+    "colourbar",
+    "bins",
+    "coloursteps",
+    "colorsteps",
+    "none",
+    # 轴 guide（M2-S2）：`guides(x = guide_axis(angle = 45))` 的注册名。
+    "axis",
+    "axis_logticks",
+    "axis_stack",
+    "axis_theta",
+)
 
 
 def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:

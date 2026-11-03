@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-bins", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "guide：guide_bins"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "分箱图例：5 个箱、边界标签、show.limits 打开两端。"
