@@ -59,6 +59,25 @@ _TWO_D_STATS: tuple[str, ...] = (
     "density_2d_filled",
 )
 
+#: M2-6 的 14 个长尾 stat 在 :mod:`ggcore.stat_longtail` 里实现，名字合在这里。
+_LONGTAIL: tuple[str, ...] = (
+    "qq",
+    "qq_line",
+    "ecdf",
+    "ellipse",
+    "quantile",
+    "summary",
+    "summary_bin",
+    "sum",
+    "unique",
+    "density",
+    "function",
+    "connect",
+    "manual",
+    "spoke",
+    "ydensity",
+)
+
 IMPLEMENTED_STATS: tuple[str, ...] = (
     "identity",
     "bin",
@@ -67,6 +86,7 @@ IMPLEMENTED_STATS: tuple[str, ...] = (
     "smooth",
     "align",
     *_TWO_D_STATS,
+    *_LONGTAIL,
 )
 
 _EMPTY = ColumnTable()
@@ -200,6 +220,27 @@ def compute_stat(
     if table.nrows == 0:
         return _EMPTY
     params = _stat_params(layer)
+    if name in _LONGTAIL:
+        from ggcore.stat_longtail import NON_MISSING as _LONGTAIL_NON_MISSING
+        from ggcore.stat_longtail import REQUIRED as _LONGTAIL_REQUIRED
+        from ggcore.stat_longtail import compute_longtail
+
+        required = tuple(key for key in _LONGTAIL_REQUIRED[name] if key in table)
+        if not required and _LONGTAIL_REQUIRED[name]:
+            raise BuildError(
+                f"stat_{name} 需要 {' 或 '.join(_LONGTAIL_REQUIRED[name])} 美学"
+                "（数据阶段没有映射它）"
+            )
+        table = _remove_missing(
+            table,
+            params,
+            required + _LONGTAIL_NON_MISSING.get(name, ()),
+            stat=name,
+        )
+        if table.nrows == 0:
+            return _EMPTY
+        return compute_longtail(name, table, params, scales=scales, raw=raw)
+
     flipped = _flipped_for(name, table, params, raw)
 
     required = tuple(name_ for name_ in _REQUIRED[name] if name_ in table)
@@ -464,7 +505,14 @@ def _compute_panel(
         frames.append(new)
 
     dropped_names = tuple(dict.fromkeys(dropped))
-    silent = _DROPPED_AES.get(stat, frozenset()) if dropped is None else frozenset(dropped)
+    if dropped is not None:
+        silent = frozenset(dropped)
+    elif stat in _LONGTAIL:
+        from ggcore.stat_longtail import DROPPED_AES as _LONGTAIL_DROPPED
+
+        silent = _LONGTAIL_DROPPED.get(stat, frozenset())
+    else:
+        silent = _DROPPED_AES.get(stat, frozenset())
     noisy = [name for name in dropped_names if name not in silent]
     if noisy:
         _warnings.warn(

@@ -27,6 +27,7 @@ from ggcore.geom.base import (
     flip_data,
     npc_values,
     row_slice,
+    table_column,
     table_numeric,
 )
 from ggcore.grobs import g_tree, null_grob, polyline_grob
@@ -164,13 +165,30 @@ class LineRenderer(PathRenderer):
             if "PANEL" in frame:
                 keys.append(_numeric_panel(frame))
             if "group" in frame:
-                keys.append(table_numeric(frame, "group", default=0.0))
+                keys.append(_order_key(frame, "group"))
             if "x" in frame:
                 keys.append(table_numeric(frame, "x", default=0.0))
             if keys:
                 order = np.lexsort(tuple(reversed(keys)))
                 frame = row_slice(frame, order)
         return flip_data(frame, flipped)
+
+
+def _order_key(frame: Any, name: str) -> np.ndarray:
+    """排序键：数值列原样；字符串 / categorical 列按升序查表成整数。
+
+    `stat_quantile()` 的输出里 `group` 是字符（`paste(group, quantile, sep = "-")`，
+    上游同样如此），`order(PANEL, group, x)` 在 R 里按字符排序；这里按
+    「升序去重的下标」复现同一顺序，避免把字符列硬转 float。
+    """
+    column = table_column(frame, name)
+    if column is None:
+        return np.zeros(frame.nrows, dtype=np.float64)
+    if column.kind in ("str", "categorical"):
+        values = frame.column(name).values.tolist()
+        ranks = {value: index for index, value in enumerate(sorted(set(values)))}
+        return np.array([float(ranks[value]) for value in values], dtype=np.float64)
+    return table_numeric(frame, name, default=0.0)
 
 
 def _numeric_panel(frame: Any) -> np.ndarray:
@@ -199,11 +217,21 @@ def _break_at_na(x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray, 
 
 
 def _group_key(data: Any) -> np.ndarray:
-    """分组键：`group` 列（0 起比较），没有就整表一组。"""
+    """分组键：`group` 列（0 起比较），没有就整表一组。
+
+    `stat_quantile()` 的输出里 `group` 是字符（上游 `paste(group, quantile, sep =
+    "-")`），这里按升序查表成整数，与 `_order_key()` 同一个口径。
+    """
     if "group" in data:
-        values = np.asarray(data.column("group").values, dtype=np.float64)
+        values = np.asarray(data.column("group").values)
+        if values.dtype.kind in ("U", "S", "O"):
+            ranks = {value: index for index, value in enumerate(sorted(set(values.tolist())))}
+            coded = np.array([float(ranks[value]) for value in values.tolist()], dtype=np.float64)
+            mask = np.asarray(data.column("group").na_mask, dtype=bool)
+            return np.where(mask, -1.0, coded)
+        numeric = values.astype(np.float64)
         mask = np.asarray(data.column("group").na_mask, dtype=bool)
-        return np.where(mask, -1.0, values)
+        return np.where(mask, -1.0, numeric)
     return np.zeros(data.nrows, dtype=np.float64)
 
 
