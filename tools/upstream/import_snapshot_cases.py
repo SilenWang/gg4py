@@ -1260,6 +1260,1180 @@ def build():
 ]
 
 
+#: G1b（SIL-791）：`guide-axis` 簇里已经复刻成三文件 case 的 10 条。
+#:
+#: 与 `_G1A_SPECS` 同一套写法：整份 `plot.py` 正文 + 特性标签。剩下的 13 条留在
+#: `tools/upstream/snapshots.toml` 的同名快照条目里（卡点写在 `reason` 上）。
+_G1B_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-guide-axis-axis-guides-basic",
+        "snapshot": "guide-axis/axis-guides-basic.svg",
+        "title": "axis guides basic",
+        "features": ["guide-axis"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides basic`。
+源：`guide-axis/axis-guides-basic.svg`
+（vdiffr 名 `axis guides basic`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.25,
+    0.5,
+    0.75,
+)
+LABELS = (
+    "1",
+    "2",
+    "3",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(21.476, 31.654, 21.476, 31.654)
+
+
+def build():
+    axis = dict()
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-negative-rotation",
+        "snapshot": "guide-axis/axis-guides-negative-rotation.svg",
+        "title": "axis guides, negative rotation",
+        "features": ["guide-axis", "rotation"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, negative rotation`。
+源：`guide-axis/axis-guides-negative-rotation.svg`
+（vdiffr 名 `axis guides, negative rotation`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.0909090909,
+    0.1818181818,
+    0.2727272727,
+    0.3636363636,
+    0.4545454545,
+    0.5454545455,
+    0.6363636364,
+    0.7272727273,
+    0.8181818182,
+    0.9090909091,
+)
+LABELS = (
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "6,000",
+    "7,000",
+    "8,000",
+    "9,000",
+    "10,000",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(4.75, 11.95, 4.75, 11.95)
+
+
+def build():
+    axis = dict(angle=-45)
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-positive-rotation",
+        "snapshot": "guide-axis/axis-guides-positive-rotation.svg",
+        "title": "axis guides, positive rotation",
+        "features": ["guide-axis", "rotation"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, positive rotation`。
+源：`guide-axis/axis-guides-positive-rotation.svg`
+（vdiffr 名 `axis guides, positive rotation`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.0909090909,
+    0.1818181818,
+    0.2727272727,
+    0.3636363636,
+    0.4545454545,
+    0.5454545455,
+    0.6363636364,
+    0.7272727273,
+    0.8181818182,
+    0.9090909091,
+)
+LABELS = (
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "6,000",
+    "7,000",
+    "8,000",
+    "9,000",
+    "10,000",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(4.75, 11.95, 4.75, 11.95)
+
+
+def build():
+    axis = dict(angle=45)
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-vertical-negative-rotation",
+        "snapshot": "guide-axis/axis-guides-vertical-negative-rotation.svg",
+        "title": "axis guides, vertical negative rotation",
+        "features": ["guide-axis", "rotation"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, vertical negative rotation`。
+源：`guide-axis/axis-guides-vertical-negative-rotation.svg`
+（vdiffr 名 `axis guides, vertical negative rotation`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.0909090909,
+    0.1818181818,
+    0.2727272727,
+    0.3636363636,
+    0.4545454545,
+    0.5454545455,
+    0.6363636364,
+    0.7272727273,
+    0.8181818182,
+    0.9090909091,
+)
+LABELS = (
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "6,000",
+    "7,000",
+    "8,000",
+    "9,000",
+    "10,000",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(2.432, 28.676, 2.432, 28.676)
+
+
+def build():
+    axis = dict(angle=-90)
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-vertical-rotation",
+        "snapshot": "guide-axis/axis-guides-vertical-rotation.svg",
+        "title": "axis guides, vertical rotation",
+        "features": ["guide-axis", "rotation"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, vertical rotation`。
+源：`guide-axis/axis-guides-vertical-rotation.svg`
+（vdiffr 名 `axis guides, vertical rotation`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.0909090909,
+    0.1818181818,
+    0.2727272727,
+    0.3636363636,
+    0.4545454545,
+    0.5454545455,
+    0.6363636364,
+    0.7272727273,
+    0.8181818182,
+    0.9090909091,
+)
+LABELS = (
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "6,000",
+    "7,000",
+    "8,000",
+    "9,000",
+    "10,000",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(2.432, 28.676, 2.432, 28.676)
+
+
+def build():
+    axis = dict(angle=90)
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-zero-breaks",
+        "snapshot": "guide-axis/axis-guides-zero-breaks.svg",
+        "title": "axis guides, zero breaks",
+        "features": ["guide-axis"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, zero breaks`。
+源：`guide-axis/axis-guides-zero-breaks.svg`
+（vdiffr 名 `axis guides, zero breaks`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = ()
+LABELS = ()
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(28.8, 36.0, 28.8, 36.0)
+
+
+def build():
+    axis = dict()
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-axis-guides-zero-rotation",
+        "snapshot": "guide-axis/axis-guides-zero-rotation.svg",
+        "title": "axis guides, zero rotation",
+        "features": ["guide-axis"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：grid 直画的一条轴。
+
+vdiffr 名：`axis guides, zero rotation`。
+源：`guide-axis/axis-guides-zero-rotation.svg`
+（vdiffr 名 `axis guides, zero rotation`）。
+
+上游 `test_draw_axis()` 不是 ggplot：它用 `draw_axis()` 在 0.05 / 0.9 / 0.05 npc
+的三格 gtable 里直画四条轴。这里用一张空面板 + 四条轴（主轴 + `dup_axis()`）复现
+同一版式：面板落在页面的 5%..95%，刻度与标签都画在面板内侧
+（`axis.ticks.length` 取负值，R 的 guide 就是这么把轴线、刻度、文字排进同一个
+单元格的）。
+"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_blank,
+    ggplot,
+    guide_axis,
+    guides,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, margin, theme, theme_test
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [0.0, 1.0], "y": [0.0, 1.0]}
+BREAKS = (
+    0.0909090909,
+    0.1818181818,
+    0.2727272727,
+    0.3636363636,
+    0.4545454545,
+    0.5454545455,
+    0.6363636364,
+    0.7272727273,
+    0.8181818182,
+    0.9090909091,
+)
+LABELS = (
+    "1,000",
+    "2,000",
+    "3,000",
+    "4,000",
+    "5,000",
+    "6,000",
+    "7,000",
+    "8,000",
+    "9,000",
+    "10,000",
+)
+
+#: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
+#: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
+MARGIN = margin(21.476, 9.632, 21.476, 9.632)
+
+
+def build():
+    axis = dict(angle=0)
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + scale_x_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + scale_y_continuous(
+            limits=(0.0, 1.0),
+            expand=(0.0, 0.0),
+            breaks=BREAKS,
+            labels=LABELS,
+            **{"sec.axis": dup_axis()},
+        )
+        + labs(x=None, y=None)
+        + guides(
+            x=guide_axis(**axis),
+            y=guide_axis(**axis),
+            **{"x.sec": guide_axis(**axis), "y.sec": guide_axis(**axis)},
+        )
+        + theme_test()
+        + theme(
+            **{
+                "axis.line": element_line(linewidth=0.5),
+                "axis.ticks.length": unit(-2.75, "pt"),
+                "plot.margin": MARGIN,
+            }
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-guide-titles-with-coord-transform",
+        "snapshot": "guide-axis/guide-titles-with-coord-transform.svg",
+        "title": "guide titles with coord_transform()",
+        "features": ["guide-axis", "coord-trans", "lab-axis-title"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：轴标题不被 `coord_transform()` 冲掉。
+
+源：guide-axis/guide-titles-with-coord-transform.svg（vdiffr 名
+'guide titles with coord_transform()'）。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_transform,
+    geom_point,
+    ggplot,
+    guide_axis,
+    guides,
+)
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1.0], "y": [1.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + guides(
+            x=guide_axis(title="x (primary)"),
+            y=guide_axis(title="y (primary)"),
+            **{
+                "x.sec": guide_axis(title="x (secondary)"),
+                "y.sec": guide_axis(title="y (secondary)"),
+            },
+        )
+        + coord_transform()
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-position-guide-titles",
+        "snapshot": "guide-axis/position-guide-titles.svg",
+        "title": "position guide titles",
+        "features": ["guide-axis", "guide-none", "lab-axis-title"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：`guide_none(title = )` 只留轴标题，不画刻度。
+
+源：guide-axis/position-guide-titles.svg（vdiffr 名 'position guide titles'）。
+"""
+
+from ggcore.plot import (
+    aes,
+    geom_point,
+    ggplot,
+    guide_none,
+    guides,
+)
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1.0], "y": [1.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + guides(
+            x=guide_none(title="x (primary)"),
+            y=guide_none(title="y (primary)"),
+            **{
+                "x.sec": guide_none(title="x (secondary)"),
+                "y.sec": guide_none(title="y (secondary)"),
+            },
+        )
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-guide-axis-thick-axis-lines",
+        "snapshot": "guide-axis/thick-axis-lines.svg",
+        "title": "thick axis lines",
+        "features": ["guide-axis", "theme-complete"],
+        "notes": "SIL-791：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        "source": r'''"""上游快照复刻：`theme_test()` + 粗轴线（linewidth 5、square 端点）。
+
+源：guide-axis/thick-axis-lines.svg（vdiffr 名 'thick axis lines'）。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "mpg": [
+        21,
+        21,
+        22.8,
+        21.4,
+        18.7,
+        18.1,
+        14.3,
+        24.4,
+        22.8,
+        19.2,
+        17.8,
+        16.4,
+        17.3,
+        15.2,
+        10.4,
+        10.4,
+        14.7,
+        32.4,
+        30.4,
+        33.9,
+        21.5,
+        15.5,
+        15.2,
+        13.3,
+        19.2,
+        27.3,
+        26,
+        30.4,
+        15.8,
+        19.7,
+        15,
+        21.4,
+    ],
+    "cyl": [
+        6,
+        6,
+        4,
+        6,
+        8,
+        6,
+        8,
+        4,
+        4,
+        6,
+        6,
+        8,
+        8,
+        8,
+        8,
+        8,
+        8,
+        4,
+        4,
+        4,
+        4,
+        8,
+        8,
+        8,
+        8,
+        4,
+        4,
+        4,
+        8,
+        6,
+        8,
+        4,
+    ],
+    "disp": [
+        160,
+        160,
+        108,
+        258,
+        360,
+        225,
+        360,
+        146.7,
+        140.8,
+        167.6,
+        167.6,
+        275.8,
+        275.8,
+        275.8,
+        472,
+        460,
+        440,
+        78.7,
+        75.7,
+        71.1,
+        120.1,
+        318,
+        304,
+        350,
+        400,
+        79,
+        120.3,
+        95.1,
+        351,
+        145,
+        301,
+        121,
+    ],
+    "hp": [
+        110,
+        110,
+        93,
+        110,
+        175,
+        105,
+        245,
+        62,
+        95,
+        123,
+        123,
+        180,
+        180,
+        180,
+        205,
+        215,
+        230,
+        66,
+        52,
+        65,
+        97,
+        150,
+        150,
+        245,
+        175,
+        66,
+        91,
+        113,
+        264,
+        175,
+        335,
+        109,
+    ],
+    "drat": [
+        3.9,
+        3.9,
+        3.85,
+        3.08,
+        3.15,
+        2.76,
+        3.21,
+        3.69,
+        3.92,
+        3.92,
+        3.92,
+        3.07,
+        3.07,
+        3.07,
+        2.93,
+        3,
+        3.23,
+        4.08,
+        4.93,
+        4.22,
+        3.7,
+        2.76,
+        3.15,
+        3.73,
+        3.08,
+        4.08,
+        4.43,
+        3.77,
+        4.22,
+        3.62,
+        3.54,
+        4.11,
+    ],
+    "wt": [
+        2.62,
+        2.875,
+        2.32,
+        3.215,
+        3.44,
+        3.46,
+        3.57,
+        3.19,
+        3.15,
+        3.44,
+        3.44,
+        4.07,
+        3.73,
+        3.78,
+        5.25,
+        5.424,
+        5.345,
+        2.2,
+        1.615,
+        1.835,
+        2.465,
+        3.52,
+        3.435,
+        3.84,
+        3.845,
+        1.935,
+        2.14,
+        1.513,
+        3.17,
+        2.77,
+        3.57,
+        2.78,
+    ],
+    "qsec": [
+        16.46,
+        17.02,
+        18.61,
+        19.44,
+        17.02,
+        20.22,
+        15.84,
+        20,
+        22.9,
+        18.3,
+        18.9,
+        17.4,
+        17.6,
+        18,
+        17.98,
+        17.82,
+        17.42,
+        19.47,
+        18.52,
+        19.9,
+        20.01,
+        16.87,
+        17.3,
+        15.41,
+        17.05,
+        18.9,
+        16.7,
+        16.9,
+        14.5,
+        15.5,
+        14.6,
+        18.6,
+    ],
+    "vs": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+    ],
+    "am": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+    ],
+    "gear": [
+        4,
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        3,
+        3,
+        3,
+        3,
+        3,
+        4,
+        5,
+        5,
+        5,
+        5,
+        5,
+        4,
+    ],
+    "carb": [
+        4,
+        4,
+        1,
+        1,
+        2,
+        1,
+        4,
+        2,
+        2,
+        4,
+        4,
+        3,
+        3,
+        3,
+        4,
+        4,
+        4,
+        1,
+        2,
+        1,
+        1,
+        2,
+        2,
+        4,
+        2,
+        1,
+        2,
+        2,
+        4,
+        6,
+        8,
+        2,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="wt", y="mpg"))
+        + geom_point()
+        + theme_test()
+        + theme(**{"axis.line": element_line(linewidth=5, lineend="square")})
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+]
+
+
 def specs() -> list[dict[str, Any]]:
     # `upstream-theme-bw` 是先手写验证过的原型，保留它的 plot.py 不动。
     # 三个 `base_size = 33` 变体实测超阈（geom 缺省尺寸没跟 `theme$pointsize` 走，
@@ -1274,7 +2448,7 @@ def specs() -> list[dict[str, Any]]:
         for spec in _theme_specs() + _guide_specs() + _dotplot_specs()
         if spec["slug"] not in skip
     ]
-    return base + _G1A_SPECS + _G6_SPECS + _THEME_MISC_SPECS
+    return base + _G1A_SPECS + _G6_SPECS + _THEME_MISC_SPECS + _G1B_SPECS
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。
@@ -6234,7 +7408,7 @@ _ELEMENT_NAMES = ("element_rect", "element_text", "theme")
 
 def _plot_source(spec: dict[str, Any]) -> str:
     if "source" in spec:
-        return spec["source"]
+        return _ruff_format(spec["source"])
     body = spec["body"]
     plot_imports = [name for name in _PLOT_NAMES if f"{name}(" in body or f'"{name}"' in body]
     theme_imports = [f"theme_{name}" for name in _THEME_NAMES if f"theme_{name}(" in body]

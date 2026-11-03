@@ -66,7 +66,7 @@ __all__ = [
 #: `title=waiver()` 的对等物（轴 guide 的标题不参与绘制，保留以便转写）。
 AUTO: Any = object()
 
-_AXIS_NAMES = ("axis", "axis_logticks", "axis_stack", "stacked_axis", "axis_theta")
+_AXIS_NAMES = ("axis", "axis_logticks", "axis_stack", "stacked_axis", "axis_theta", "none")
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,8 +190,20 @@ def guide_axis_stack(
     for item in items:
         if isinstance(item, AxisGuide):
             parsed.append(item)
-        elif isinstance(item, str) and item == "axis":
-            parsed.append(guide_axis())
+        elif isinstance(item, str):
+            # R 的 `guide_axis_stack("axis_theta", ...)`：字符串是 sub-guide 的
+            # 注册名（`"axis"` / `"axis_theta"` / `"axis_logticks"`）。
+            if item == "axis":
+                parsed.append(guide_axis())
+            elif item == "axis_theta":
+                parsed.append(guide_axis_theta())
+            elif item == "axis_logticks":
+                parsed.append(guide_axis_logticks())
+            else:
+                raise ValueError(
+                    "guide_axis_stack() 的子 guide 必须是 AxisGuide 或 "
+                    f"'axis' / 'axis_theta' / 'axis_logticks'，收到 {item!r}"
+                )
         else:
             raise ValueError(
                 "guide_axis_stack() 的子 guide 必须是 AxisGuide（guide_axis() / "
@@ -237,10 +249,28 @@ def guide_axis_theta(
 
 
 def axis_guide_from_component(component: Any) -> AxisGuide | None:
-    """`components.Guide`（注册名 + 参数）→ :class:`AxisGuide`；`none` 返回 None。"""
+    """`components.Guide`（注册名 + 参数）→ :class:`AxisGuide`；`none` 返回 None。
+
+    `guide_none(title=...)` 例外：它在 R 里仍保留**轴标题**（`guides(x =
+    guide_none(title = "x (primary)"))` 只去掉刻度与标签），所以带标题时返回
+    `AxisGuide(name="none", title=...)`，让 scene 的标题阶段照常落字。
+
+    字符串也认（`guides(x = "axis_theta")`）：按注册名构造成组件再走同一条路。
+    """
+    if isinstance(component, str):
+        from ggcore import registry as _registry
+
+        if component not in _registry.registered("guide"):
+            return None
+        component = _registry.construct("guide", component)
     name = getattr(component, "name", None)
     params = dict(getattr(component, "params", {}) or {})
-    if name in (None, "none"):
+    if name == "none":
+        title = params.get("title", AUTO)
+        if title is AUTO or title is None:
+            return AxisGuide(name="none", title=None)
+        return AxisGuide(name="none", title=title)
+    if name is None:
         return None
     if name in ("axis", "axis_theta"):
         factory = guide_axis if name == "axis" else guide_axis_theta
@@ -521,6 +551,9 @@ def axis_guide_ticks(
 ) -> AxisGuideTicks:
     """一条轴的 guide 刻度：主断点标签 + 刻度线（含次刻度 / 对数三档）。"""
     guide = guide or AxisGuide()
+    if guide.name == "none":
+        # `guide_none()`：刻度与标签全去掉（标题由 scene 的标题阶段单独处理）。
+        return AxisGuideTicks(side, (), ())
     if guide.is_stack and guide.guides:
         children = tuple(
             axis_guide_ticks(
@@ -675,6 +708,10 @@ def _horizontal(side: str) -> bool:
     return side in ("bottom", "top")
 
 
+#: 负刻度时锚点要换到对面那一侧（标签压进面板内侧）。
+_OPPOSITE_SIDE = {"bottom": "top", "top": "bottom", "left": "right", "right": "left"}
+
+
 def _label_box(
     labels: Sequence[AxisLabel],
     element: Any,
@@ -801,34 +838,47 @@ def _label_stats(
     cross = width * sin + line * cos
     if _horizontal(side):
         return along + ml + mr, cross + mt + mb
-    return along + mt + mb, cross + ml + mr
+    # 竖轴的「沿轴长」是旋转后包围盒的**高度**：angle=0 时是行高，不是文字宽。
+    return cross + mt + mb, along + ml + mr
 
 
 def _overlap_order(n: int) -> list[int]:
-    """R 的 `axis_label_priority()`：1, n, 中点递归 —— 保留首尾附近的标签。"""
+    """R 的 `axis_label_priority()`：1, n, 中点递归 —— 保留首尾附近的标签。
+
+    照 `axis_label_priority_between(x, y)` 的闭区间口径：`n = y - x + 1`，
+    `mid = x - 1 + (n + 1) // 2`（1-based），换成 0-based 是
+    `left + (right - left + 2) // 2`... 两端都算进跨度，`n <= 2` 时停。
+    早先的迭代版在 `right - left` 为奇数时会把 `middle` 算成 `right`，
+    `(5, 10)` 这种区间会自我入栈（`check_overlap` + 20 个断点直接挂死）。
+    """
     if n <= 0:
         return []
-    order = [0, n - 1]
-    pending = [(0, n - 1)]
-    while pending:
-        left, right = pending.pop(0)
-        if right - left <= 1:
-            continue
-        middle = left + (right + 1) // 2
+
+    order: list[int] = [0, n - 1] if n > 1 else [0]
+
+    def between(left: int, right: int) -> None:
+        span = right - left + 1
+        if span <= 2:
+            return
+        middle = left + (span + 1) // 2 - 1
         order.append(middle)
-        pending.append((left, middle))
-        pending.append((middle, right))
-    seen: list[int] = []
-    for index in order:
-        if index not in seen:
-            seen.append(index)
-    return seen
+        between(left, middle)
+        between(middle, right)
+
+    between(0, n - 1)
+    return order
 
 
 def _visible_labels(
-    ticks: AxisGuideTicks, element: Any, metrics: Any
+    ticks: AxisGuideTicks, element: Any, metrics: Any, *, axis_length_cm: float
 ) -> list[tuple[AxisLabel, int]]:
-    """按 `check.overlap` 过滤标签；返回 `(label, dodge 行号)`。"""
+    """按 `check.overlap` 过滤标签；返回 `(label, dodge 行号)`。
+
+    `label.position` 是 npc（0..1），`_label_stats()` 给的是 cm，所以比较前先把
+    标签长度折回 npc —— 少了这一步，20 个断点的
+    `guide_axis(check_overlap=True)` 会把除第一个之外的全部丢掉（早先
+    `axis-guides-check-overlap` 快照就是这么红的）。
+    """
     labels = list(ticks.labels)
     if not labels:
         return []
@@ -838,10 +888,12 @@ def _visible_labels(
     if ticks.check_overlap:
         kept: list[tuple[float, float]] = []
         keep: set[int] = set()
+        length = axis_length_cm if axis_length_cm > 1e-12 else 1.0
         for index in _overlap_order(len(span)):
             _label, (along, _cross) = span[index]
-            low = _label.position - along / 2.0
-            high = _label.position + along / 2.0
+            half = (along / length) / 2.0
+            low = _label.position - half
+            high = _label.position + half
             if any(not (high <= a or low >= b) for a, b in kept):
                 continue
             keep.add(index)
@@ -913,13 +965,23 @@ def axis_guide_grobs(
     else:
         layers = [(ticks, 0.0)]
     for layer_index, (layer, layer_offset) in enumerate(layers):
-        visible = _visible_labels(layer, element, metrics)
+        visible = _visible_labels(
+            layer,
+            element,
+            metrics,
+            axis_length_cm=box.width_cm if horizontal else box.height_cm,
+        )
         max_tick = _max_tick_length(theme, layer)
         width, height, _margin_main, margin_cross = _label_box(
             layer.labels, element, side, layer.angle, metrics
         )
         row_size = (height if horizontal else width) + margin_cross
         hjust, vjust = _anchor(layer.angle, side)
+        if max_tick < 0:
+            # 负的 `axis.ticks.length` 把刻度画进面板内侧，标签也随之压在内侧：
+            # 锚点换成对面那一侧的口径（R 的 `measure_grobs()` 用 spacer 吸收
+            # 负刻度，轴线 / 刻度 / 文字保持在面板边界内的同一侧）。
+            hjust, vjust = _anchor(layer.angle, _OPPOSITE_SIDE[side])
         # 刻度线：同一档（major / minor / long / mid / short）合成一个 segments
         # grob（R 的 `grobTree(major, minor)` 同构；逐个 mark 画会把面板内的
         # 线段拆成多个 grob，`tests/test_panel_grid.py` 的计数口径也会跟着变）。
@@ -972,21 +1034,23 @@ def axis_guide_grobs(
                     name=f"{name}.ticks-{layer_index}-{group_index}",
                 )
             )
-        # 标签：n.dodge 分行；第一行贴刻度，其余向外推一行。
+        # 标签：n.dodge 分行；第一行贴刻度，其余向外推一行（负刻度时向面板内侧推）。
+        inside = max_tick < 0
+        sign = 1.0 if inside else -1.0
         for label, dodge in visible:
             offset_out = max_tick + layer_offset
             if horizontal:
                 x = box.x_cm + label.position * box.width_cm
                 if side == "top":
-                    y = box.y_cm + box.height_cm + offset_out + mb + dodge * row_size
+                    y = box.y_cm + box.height_cm + offset_out - sign * mb - sign * dodge * row_size
                 else:
-                    y = box.y_cm - offset_out - mt - dodge * row_size
+                    y = box.y_cm - offset_out + sign * mt + sign * dodge * row_size
             else:
                 y = box.y_cm + label.position * box.height_cm
                 if side == "right":
-                    x = box.right + offset_out + ml + dodge * row_size
+                    x = box.right + offset_out - sign * ml - sign * dodge * row_size
                 else:
-                    x = box.x_cm - offset_out - mr - dodge * row_size
+                    x = box.x_cm - offset_out + sign * mr + sign * dodge * row_size
             grobs.append(
                 text_grob(
                     label.text,

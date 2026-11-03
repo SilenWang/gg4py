@@ -1590,6 +1590,12 @@ def _guide_factory(name: str) -> Callable[..., Guide]:
     """
 
     def factory(*args: Any, aesthetic: str | None = None, **params: Any) -> Guide:
+        if name == "axis_stack" and len(args) > 1:
+            # `guide_axis_stack(guide_axis(), guide_axis_logticks(), ...)`：R 的
+            # `first` + `...` 都是位置参数（SIL-791 的 stacked-axes 快照）。
+            params.setdefault("first", args[0])
+            params.setdefault("guides", list(args[1:]))
+            return Guide(name=name, aesthetic=aesthetic, params=params)
         if len(args) > 1:
             raise TypeError(f"guide_{name}() 最多接受一个位置参数，收到 {len(args)} 个")
         if args:

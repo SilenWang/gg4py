@@ -146,7 +146,7 @@ reason = "`geom_violin()` 的 dodge / quantile / scale=area（14 条）未逐条
 [groups."guide-axis"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "轴 guide 的角度 / 叠放 / 稀疏 / 次刻度 / logtick 定制（23 条）未逐条复刻。"
+reason = "轴 guide 的「叠放 / 次刻度 / logtick / 极坐标 theta」长尾未逐条复刻；10 条已纳管成 case（见下面的 `[snapshots]`），逐条卡点写在各自的 reason 上。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -699,3 +699,77 @@ case = "upstream-geom-dotplot-2-na-bin-along-y"
 
 [snapshots."geom-dotplot/stackratio-1-5.svg"]
 case = "upstream-geom-dotplot-stackratio-1-5"
+
+# ---------------------------------------------------------------------------
+# SIL-791（G1b guide-axis）：10 条纳管成 case，其余 13 条保留 gap。
+# case 正文在 tools/upstream/import_snapshot_cases.py 的 `_G1B_SPECS`。
+# ---------------------------------------------------------------------------
+
+[snapshots."guide-axis/axis-guides-basic.svg"]
+case = "upstream-guide-axis-axis-guides-basic"
+
+[snapshots."guide-axis/axis-guides-zero-breaks.svg"]
+case = "upstream-guide-axis-axis-guides-zero-breaks"
+
+[snapshots."guide-axis/axis-guides-zero-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-zero-rotation"
+
+[snapshots."guide-axis/axis-guides-positive-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-positive-rotation"
+
+[snapshots."guide-axis/axis-guides-negative-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-negative-rotation"
+
+[snapshots."guide-axis/axis-guides-vertical-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-vertical-rotation"
+
+[snapshots."guide-axis/axis-guides-vertical-negative-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-vertical-negative-rotation"
+
+[snapshots."guide-axis/thick-axis-lines.svg"]
+case = "upstream-guide-axis-thick-axis-lines"
+
+[snapshots."guide-axis/position-guide-titles.svg"]
+case = "upstream-guide-axis-position-guide-titles"
+
+[snapshots."guide-axis/guide-titles-with-coord-transform.svg"]
+case = "upstream-guide-axis-guide-titles-with-coord-transform"
+
+[snapshots."guide-axis/axis-guides-check-overlap.svg"]
+reason = "G1b 实测 3.49%：`check_overlap` 的**标签保留集合**已和上游一致（1/3/5/7/10/12/15/17/20），剩下的是 R 把整组轴当 grid 单元画时的字形/轴线半像素差；再调就到阈值内但会改 `guide_axis` 的公共排版。"
+
+[snapshots."guide-axis/axis-guides-text-dodged-into-rows-cols.svg"]
+reason = "G1b 实测 3.58%：`n.dodge = 2` 的分行位置对，差在长标签（10 位数字）在面板边缘的半像素落点。"
+
+[snapshots."guide-axis/axis-guides-with-capped-ends.svg"]
+reason = "G1b 实测 7.65%：`cap=` 的轴线端点已对，但 R 在次轴（top/right）上方额外留了一行空轴标题（17.3pt，`xlab-t` 空行），本仓的版式不占这一行，面板顶边因此高 17.3pt。"
+
+[snapshots."guide-axis/guide-axis-customization.svg"]
+reason = "G1b 实测 3.05%：`n.dodge = 2` 的竖轴标签在 R 里占两列（26.7pt），本仓的 `plot_layout` 仍按一列（14.7pt）留位，面板左边界差 12pt。"
+
+[snapshots."guide-axis/guides-specified-in-guides.svg"]
+reason = "G1b 实测 2.22%（阈值 2%）：同上——次轴的 `n.dodge` 两条标签行 + R 的空标题行未进版式，面板顶边差 17.3pt；差 0.22 个百分点，不是阈值问题。"
+
+[snapshots."guide-axis/guides-with-minor-ticks.svg"]
+reason = "G1b 未纳管：`label_math()` 的 plotmath 标签 + 负长度的 `axis.ticks.length.x.top` 已能画，但 `axis.minor.ticks.length.y.right = 5cm` 会把次轴带撑到 5cm，R 的 gtable 与我们的轴带宽度分配不一致（实测 >10%）。"
+
+[snapshots."guide-axis/stacked-axes.svg"]
+reason = "G1b 实测 15%：`guide_axis_stack()` 的两层轴能画（间距 = 主轴刻度长），但叠放后的**轴带宽度**仍按单层算，R 按 `guide_axis_stack` 的 measured gtable 累加。"
+
+[snapshots."guide-axis/stacked-radial-axes.svg"]
+reason = "G1b 未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「报 ValueError / 未做」，两层 theta 轴要在半径上推第二圈（`stack_offset`）。"
+
+[snapshots."guide-axis/logtick-axes-with-customisation.svg"]
+reason = "G1b 未纳管：`transform_compose(transform_log10(), transform_reverse())` 与`coord_transform(x = transform_pseudo_log())` 两个变换都还没有（`scales.py` / `coord.py`把 pseudo_log 记在 M3-2），logticks 本身已能画。"
+
+[snapshots."guide-axis/guide-axis-theta-in-cartesian-coordinates.svg"]
+reason = "G1b 实测 8.71%：直角坐标下的 `axis_theta` 四条轴能画（颜色分开），但 R 的 theta 轴在笛卡尔坐标里退化成带角度的普通轴，标签锚点不同于 `axis_theta` 的极坐标口径。"
+
+[snapshots."guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"]
+reason = "G1b 实测 54.9%：`coord_radial()` 下的 `guide_axis_theta(angle=)` 标签锚点（R 的`flip_text_angle()` + 半径 0.45）与我们的极坐标轴差异仍大，见 `docs/notes/coord.md` §12。"
+
+[snapshots."guide-axis/align-facet-labels-facets-horizontal.svg"]
+reason = "G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reorder(model, hwy)` 的38 个离散水平（均值序已按 R 的 `levels(reorder())` 写死）在逐面板 y 轴带里错位，属 G7 的`facet-` 簇口径，不在轴 guide 这一簇。"
+
+[snapshots."guide-axis/align-facet-labels-facets-vertical.svg"]
+reason = "G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇。"

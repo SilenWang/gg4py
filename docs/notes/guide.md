@@ -425,3 +425,60 @@ pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
 尚未对等（8 条，见 `snapshots.toml` 的单条 `reason`）：`key_glyph` 覆盖点
 （timeseries / polygon / rect / dotplot / 自定义 key 函数、grob 的 `width` /
 `height` 撑开 key 格）、无图层空图的版面、逐美学 `show.legend = c(...)`。
+
+## 12. G1b（SIL-791）：轴 guide 侧的边界情形
+
+`guide-axis` 簇 23 条上游快照里，10 条在本轮复刻成三文件 case（`_G1B_SPECS`，
+`pixi run snapshots:import` 可重生成）；剩下 13 条的单条卡点写进
+`tools/upstream/snapshots.toml` 的 `reason`，不放宽阈值。
+
+### 12.1 负 `axis.ticks.length`：刻度与标签一起压进面板内侧
+
+上游 `test_draw_axis()` 不是 ggplot：它把 `draw_axis()` 的 grob 直接放进
+0.05 / 0.9 / 0.05 npc 的三格 gtable，轴线、刻度、文字全画在**同一个单元格里**。
+用一张空面板 + 主轴 / `dup_axis()` 复现同一版式时，对应的是负的
+`axis.ticks.length`（刻度朝面板内）。这一轮把 `guide_axis` 的标签排版补齐：
+
+| 口径 | 修正 |
+| --- | --- |
+| 内压标签的锚点 | 刻度长为负时，锚点换到**对面**那一侧（bottom 取 top 的 `hjust/vjust`，其余同理） |
+| 内压标签的边距 | margin 跟着翻到内侧：bottom `+mt`、top `-mb`、left `+mr`、right `-ml`；`n.dodge` 的第二行也朝内侧推 |
+| `check_overlap` 的单位 | 标签长度用 cm、位置是 npc，比较前要先除以轴长——以前 20 个断点会把除第一个之外的全丢掉 |
+| 竖轴的「沿轴长」 | 是旋转包围盒的**高度**（`angle = 0` 时是行高，不是文字宽），所以竖排 20 个标签一个都不丢 |
+| `axis_label_priority()` | 递归中点改成 R 的闭区间口径（`n = y - x + 1`、`mid = x - 1 + (n + 1) // 2`）；旧迭代版在 `right - left` 为奇数时自我入栈，`check_overlap` + 20 断点直接挂死 |
+
+9 条 grid 直画快照（basic / zero breaks / 4 个旋转 / 竖向负旋转）与
+`thick axis lines` 现在都在图级 2% 内。
+
+### 12.2 次轴：`guides(x.sec=)` 不必有 `sec_axis()`
+
+R 4.0.3 里 `guides(x.sec = guide_axis(...))` 会画一条**恒等**的次轴（没有标题），
+即使标度上没有 `sec_axis()` / `dup_axis()`。以前只有 `scale$secondary_axis` 存在
+时才画，`capped ends` / `stacked axes` / `minor ticks` / `axis_theta` 这几条都卡在
+这里。现在 `has_secondary_axis()` 两路都认，次轴走与主轴同一条
+`axis_guide_ticks()` + `axis_guide_grobs()`，并且补上 top / right 的轴线
+（`axis.line.x.top` / `axis.line.y.right`）。guide 优先级：
+`guides(<aes>.sec = ...)` → `dup_axis(guide = ...)` → 缺省。
+
+### 12.3 其余小口径
+
+- `guide_none(title = "...")`：只去掉刻度与标签，**保留轴标题**（以前整条 guide
+  都被当成「没有」，标题一起消失）。
+- `guides(x = "axis_theta")`：字符串写法对轴 guide 也认（图例侧返回「无图例」）。
+- `guide_axis_stack(first, ...)`：注册表工厂接受多个位置参数（R 的 `first` +
+  `...`），子 guide 可以是 `"axis"` / `"axis_theta"` / `"axis_logticks"`。
+- `secondary_ticks()` 的恒等分支：`breaks` 里带 `None` 时先 zip 再过滤，否则
+  `labels` 比 `positions` 长（离散次轴 `zip(strict=True)` 直接抛异常）。
+
+### 12.4 尚未对等（13 条）
+
+| 卡点 | 影响 |
+| --- | --- |
+| 次轴带的**空标题行**：R 给 top / right 的 `axis-t` 留 17.3pt（`xlab-t` 的空 grob 也占位），ggcore 的 `plot_layout()` 只在真有标题时留 | `capped ends` / `stacked axes` / `minor ticks` / `axis_theta in cartesian` / `guides specified in guides` 的面板顶边都高 17.3pt |
+| `n.dodge` 只进了绘制、没进版式：竖轴两条标签列时 R 的轴带宽 26.7pt、我们仍按一列 14.7pt | `guide_axis() customization`（差 12pt） |
+| `guide_axis_stack` 的叠放轴带宽度仍按单层算 | `stacked axes` |
+| `label_math()` 的 plotmath 标签 + 5cm 的次轴刻度长 | `guides with minor ticks` |
+| 极坐标 / 径向下的 `axis_theta` 锚点（`flip_text_angle()`、半径 0.45）与 `r.sec` / `theta.sec` 叠放 | `axis_theta` 两条、`stacked radial axes` |
+| `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation` |
+| `check_overlap` + 长标签的亚像素落点（保留集合已与 R 一致） | `check overlap`（3.49%）、`text dodged`（3.58%） |
+| 分面 + `reorder()` 的 38 个离散水平的逐面板 y 轴带 | 两条 `align facet labels`，属 G7 的 `facet-` 簇 |

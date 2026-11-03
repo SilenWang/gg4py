@@ -913,6 +913,10 @@ def _guide_from_value(value: Any) -> Guide | None:
             return guide_bins()
         if value in ("coloursteps", "colorsteps", "steps"):
             return guide_coloursteps()
+        if value in ("axis", "axis_logticks", "axis_stack", "axis_theta"):
+            # 轴 guide 不是图例：`guides(x = "axis_theta")` 由
+            # `ggcore.axis_guide` 消费，图例侧没有对应物（不画图例）。
+            return None
         from ggcore import registry as _registry
 
         if value in _registry.registered("guide"):

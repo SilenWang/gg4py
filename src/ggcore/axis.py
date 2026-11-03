@@ -430,17 +430,12 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
         labels = tuple(scale.labels())
         # `breaks()` 里的越界项是 `None`（R 的 `NA`），标签与它逐位对齐；
         # 先配对再丢 None，不能先滤断点再 zip（长度会错位）。
-        values = [
-            (float(value), label)
-            for value, label in zip(breaks, labels, strict=False)
-            if value is not None
-        ]
-        positions = [params.position_of(axis, value) for value, _ in values]
         pairs = [
-            (position, str(label))
-            for position, (_, label) in zip(positions, values, strict=True)
-            if label is not None and str(label) and -1e-9 <= position <= 1.0 + 1e-9
+            (params.position_of(axis, float(value)), str(label))
+            for value, label in zip(breaks, labels, strict=False)
+            if value is not None and label is not None and str(label)
         ]
+        pairs = [(position, label) for position, label in pairs if -1e-9 <= position <= 1.0 + 1e-9]
         return AxisTicks(
             side,
             tuple(min(max(position, 0.0), 1.0) for position, _ in pairs),
