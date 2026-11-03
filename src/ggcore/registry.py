@@ -395,11 +395,118 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "identity",
             optional_aes=("ymin", "ymax"),
         ),
+        # --- M2-6：2D 族 ------------------------------------------------------
+        # 这 6 个 geom 目前只有 **build 级** 实现（`setup_data()` 与默认美学
+        # 照上游），`draw()` 归 SIL-735（M2-7 2D 族）；见 docs/notes/geom.md。
+        "tile": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey92",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "hex": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "grey50",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "identity",
+            "identity",
+        ),
+        "contour": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour",
+            "identity",
+        ),
+        "contour_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey60",
+                "colour": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour_filled",
+            "identity",
+        ),
+        "density_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            "identity",
+        ),
+        "density_2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey60",
+                "colour": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+            "identity",
+        ),
     }
 )
 
-#: 6 个 stat（M1-1 只登记名字；`align` 是 4.0.3 里 area 的默认 stat）。
-STAT_NAMES: tuple[str, ...] = ("identity", "bin", "count", "boxplot", "smooth", "align")
+#: `stat_*()` 的名字（M1-1 的 6 个 + M2-6 的 2D 族）。别名与正名是同一份实现，
+#: 只多一个入口：`stat_bin2d` / `stat_binhex` / `stat_summary2d` / `stat_density2d`
+#: 构造出来的图层里 `stat.name` 仍是正名（与 ggplot2 的 `stat_bin2d <- stat_bin_2d`
+#: 一致）。
+STAT_NAMES: tuple[str, ...] = (
+    "identity",
+    "bin",
+    "count",
+    "boxplot",
+    "smooth",
+    "align",
+    "bin_2d",
+    "bin_hex",
+    "summary_2d",
+    "summary_hex",
+    "contour",
+    "contour_filled",
+    "density_2d",
+    "density_2d_filled",
+    "bin2d",
+    "binhex",
+    "summary2d",
+    "density2d",
+)
+
+#: 2D 族的旧别名 → 正名。
+STAT_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "bin2d": "bin_2d",
+        "binhex": "bin_hex",
+        "summary2d": "summary_2d",
+        "density2d": "density_2d",
+    }
+)
 
 #: `stat_*()` 的默认 geom（照 ggplot2：identity→point、count/bin→bar、align→area …）。
 STAT_GEOMS: Mapping[str, str] = MappingProxyType(
@@ -410,6 +517,14 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
         "boxplot": "boxplot",
         "smooth": "smooth",
         "align": "area",
+        "bin_2d": "tile",
+        "bin_hex": "hex",
+        "summary_2d": "tile",
+        "summary_hex": "hex",
+        "contour": "contour",
+        "contour_filled": "contour_filled",
+        "density_2d": "density_2d",
+        "density_2d_filled": "density_2d_filled",
     }
 )
 
@@ -527,9 +642,11 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
 
     参数路由（M1-3 的约定）：`**params` 只进 `Stat.params`；geom 需要的参数
     （例如 `width`）不在这里，走 geom 的缺省值或 `geom=` 显式传入。
+    别名（`stat_bin2d` 等）在图层里落成正名，默认 geom 与正名一致。
     """
 
-    geom_name = STAT_GEOMS[name]
+    stat_name = STAT_ALIASES.get(name, name)
+    geom_name = STAT_GEOMS[stat_name]
     spec = GEOM_SPECS[geom_name]
 
     def factory(
@@ -551,7 +668,7 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
                 spec.non_missing_aes,
                 spec.optional_aes,
             ),
-            stat=Stat(name, params),
+            stat=Stat(stat_name, params),
             position=as_position(position, spec.position),
             mapping=as_aes(mapping),
             data=data,

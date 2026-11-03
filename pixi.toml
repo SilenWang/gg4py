@@ -58,6 +58,7 @@ skia-python = ">=144.1, <145"
 cbor2 = ">=6.1.5, <7"
 # `pixi run diff` 的位图读写（PNG 解码 / 差异热图编码），不依赖绘图库。
 pillow = ">=11, <14"
+contourpy = ">=1.4.0, <2"
 
 # `src/` layout without a build backend: the package is imported through
 # PYTHONPATH (pytest.ini carries the same path for the test runner).
@@ -137,6 +138,10 @@ r-gtable = "0.3.*"
 r-ggplot2 = "==4.0.3"
 r-svglite = ">=2.2,<3"
 r-hms = ">=1.1,<2"
+# M2-6 的 2D stat 夹具：`stat_density_2d` 走 MASS::kde2d / bandwidth.nrd，
+# `stat_bin_hex` / `stat_summary_hex` 走 hexbin::hexbin（hbin.f）。
+r-hexbin = ">=1.28.6,<2"
+r-mass = ">=7.3_66,<8"
 
 [feature.refs.tasks]
 "refs:units" = "Rscript tools/refs/units_ref.R"

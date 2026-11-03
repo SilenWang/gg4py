@@ -30,11 +30,35 @@ X5 指的就是上表第 4 行（`gate:metrics`）：HarfBuzz 与 CanvasKit 对�
 - 标准库（`sys.stdlib_module_names`，外加 `__future__`）
 - `numpy`（计算内核）
 - `cbor2`（IR 的二进制编码；目前未引入，先放行）
+- `contourpy`（等值线 / 等值带的 marching-squares 内核，M2-6 起；见下节）
 - `ggcore` 自身
 
 其余一律失败，包括 pandas / pyarrow / polars / skia / matplotlib。理由：ggcore 是
 Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转成 IR，渲染后端在
 包外。门禁只做 AST 扫描，不执行被检查的代码。
+
+### 为什么放行 contourpy（M2-6）
+
+`stat_contour` / `stat_contour_filled` / `stat_density_2d` 的等值线要在
+`ggcore` 里算（它属于 stat，不是设备）。上游用 `isoband`，M2 排期已定用
+`contourpy`：纯 C++ 扩展 + numpy，无绘图库依赖，能在 Pyodide 里装。
+
+- **依赖声明**：`pixi.toml` 的 `[pypi-dependencies]` 加 `contourpy >=1.4,<2`
+  （`pixi add --pypi contourpy`），`pixi.lock` 一并提交。
+- **Pyodide 可用性**：Pyodide 0.28.x 的 `pyodide-lock.json` 里有 `contourpy`
+  包（`cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide-lock.json`），所以浏览器端
+  走 `micropip` / `loadPackage` 能装，不需要退回自实现 marching squares。
+  复核命令：
+
+  ```bash
+  curl -sS https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide-lock.json \
+    | grep -c '"contourpy"'
+  ```
+
+- **口径边界**：contourpy 与 isoband 在鞍点单元 / 闭合环拆分上不同，所以
+  `contour` 族的 R 对拍只钉「层级边界」（level / level_low / level_high /
+  level_mid），几何用自洽断言（顶点落在同一层级的线性插值上），不逐行比顶点。
+  详见 `docs/notes/stat.md` §9。
 
 包外后端的两个例证：`ggshape`（HarfBuzz 形状后端，M0-7）与 `ggskia`
 （PNG / SVG / PDF 设备，M0-8）。它们依赖 `uharfbuzz` / `skia-python`，协议留在

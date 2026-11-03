@@ -47,7 +47,27 @@ __all__ = [
 ]
 
 #: 本模块实现的 stat（`identity` 在 build 里原样通过，也列在这里便于报错文案）。
-IMPLEMENTED_STATS: tuple[str, ...] = ("identity", "bin", "count", "boxplot", "smooth", "align")
+#: 2D 族（M2-6）的实现在 :mod:`ggcore.stat2d`，这里只登记名字与公共口径。
+_TWO_D_STATS: tuple[str, ...] = (
+    "bin_2d",
+    "bin_hex",
+    "summary_2d",
+    "summary_hex",
+    "contour",
+    "contour_filled",
+    "density_2d",
+    "density_2d_filled",
+)
+
+IMPLEMENTED_STATS: tuple[str, ...] = (
+    "identity",
+    "bin",
+    "count",
+    "boxplot",
+    "smooth",
+    "align",
+    *_TWO_D_STATS,
+)
 
 _EMPTY = ColumnTable()
 
@@ -58,6 +78,14 @@ _REQUIRED: Mapping[str, tuple[str, ...]] = {
     "boxplot": ("x", "y"),
     "smooth": ("x", "y"),
     "align": ("x", "y"),
+    "bin_2d": ("x", "y"),
+    "bin_hex": ("x", "y"),
+    "summary_2d": ("x", "y", "z"),
+    "summary_hex": ("x", "y", "z"),
+    "contour": ("x", "y", "z"),
+    "contour_filled": ("x", "y", "z"),
+    "density_2d": ("x", "y"),
+    "density_2d_filled": ("x", "y"),
 }
 #: `Stat*$non_missing_aes`（`remove_missing()` 也看这些列）。
 _NON_MISSING: Mapping[str, tuple[str, ...]] = {
@@ -66,6 +94,14 @@ _NON_MISSING: Mapping[str, tuple[str, ...]] = {
     "boxplot": ("weight",),
     "smooth": (),
     "align": (),
+    "bin_2d": (),
+    "bin_hex": (),
+    "summary_2d": (),
+    "summary_hex": (),
+    "contour": (),
+    "contour_filled": (),
+    "density_2d": (),
+    "density_2d_filled": (),
 }
 #: `Stat*$dropped_aes`：组内变化时丢弃但不告警的列。
 _DROPPED_AES: Mapping[str, frozenset[str]] = {
@@ -74,6 +110,16 @@ _DROPPED_AES: Mapping[str, frozenset[str]] = {
     "boxplot": frozenset({"x", "y", "weight"}),
     "smooth": frozenset({"weight"}),
     "align": frozenset(),
+    "bin_2d": frozenset({"weight"}),
+    "bin_hex": frozenset({"weight"}),
+    "summary_2d": frozenset({"z"}),
+    "summary_hex": frozenset({"z"}),
+    "contour": frozenset({"z", "weight"}),
+    "contour_filled": frozenset({"z", "weight"}),
+    # `stat_density_2d` 把整张密度网格再送进 contour：原始网格列在链式第二步
+    # 被丢弃是预期行为（上游在 compute_layer 里追加到 `dropped_aes`）。
+    "density_2d": frozenset({"density", "ndensity", "count"}),
+    "density_2d_filled": frozenset({"density", "ndensity", "count"}),
 }
 
 #: 上游 `switch_orientation()` 的 x↔y 对照（`ggplot_global$x_aes` / `y_aes`）。
@@ -162,6 +208,10 @@ def compute_stat(
         return _stat_smooth(table, params, scales=scales, flipped=flipped)
     if name == "align":
         return _stat_align(table, params, flipped=flipped)
+    if name in _TWO_D_STATS:
+        from ggcore.stat2d import compute_2d
+
+        return compute_2d(name, table, params, scales=scales)
     raise AssertionError(name)  # pragma: no cover - IMPLEMENTED_STATS 已经拦住了
 
 
@@ -352,6 +402,9 @@ def _flipped_for(
     name: str, table: ColumnTable, params: Mapping[str, Any], raw: ColumnTable | None
 ) -> bool:
     """各 stat 调用 `setup_params()` 时传给 `has_flipped_aes()` 的那组开关。"""
+    if name in _TWO_D_STATS:
+        # 2D 族没有横向概念（上游也不调 has_flipped_aes()）。
+        return False
     if name in ("bin", "count"):
         return _has_flipped_aes(table, params, raw, main_is_orthogonal=False)
     if name == "boxplot":
@@ -371,6 +424,7 @@ def _compute_panel(
     group_fn: Callable[[ColumnTable, np.ndarray], Sequence[tuple[str, Column]] | None],
     *,
     stat: str,
+    dropped: frozenset[str] | None = None,
 ) -> ColumnTable:
     """上游 `Stat$compute_panel()`：逐组跑 `group_fn`，拼回一张表。
 
@@ -397,7 +451,7 @@ def _compute_panel(
         frames.append(new)
 
     dropped_names = tuple(dict.fromkeys(dropped))
-    silent = _DROPPED_AES.get(stat, frozenset())
+    silent = _DROPPED_AES.get(stat, frozenset()) if dropped is None else frozenset(dropped)
     noisy = [name for name in dropped_names if name not in silent]
     if noisy:
         _warnings.warn(
