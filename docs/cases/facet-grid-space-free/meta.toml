@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-grid", "facet-space-free", "facet-free"]
+ci = true
+title = "facet：grid space = free"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "列 l 的水平数 2、列 r 的水平数 3 → 面板宽度按 2:3 分配（null 权重 2.2 / 3.2）；行与标度同为 free。"

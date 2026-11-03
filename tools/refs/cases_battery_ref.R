@@ -523,6 +523,70 @@ save_case("facet-wrap-free-x", local({
     fy(0, 1) + theme_case()
 }))
 
+# M2-3：space = "free" 的面板宽高按该列 / 行的水平数（离散）或范围差分配。
+save_case("facet-grid-space-free", local({
+  df <- data.frame(
+    x = c("a", "b", "a", "b", "c", "a", "b", "c",
+          "a", "b", "a", "b", "c", "a", "b", "c"),
+    y = c(0.2, 0.5, 0.35, 0.7, 0.45, 0.3, 0.6, 0.25,
+          0.65, 0.4, 0.55, 0.2, 0.75, 0.5, 0.3, 0.8),
+    r = rep(c("t", "u"), each = 8),
+    c = c("l", "l", "l", "l", "l", "r", "r", "r",
+          "l", "r", "l", "r", "l", "r", "l", "r")
+  )
+  ggplot(df, aes(x, y)) +
+    geom_point(shape = 19, size = 2.8, colour = "#54A24B") +
+    facet_grid(r ~ c, space = "free", scales = "free") +
+    theme_case()
+}))
+
+# M2-3：margins = TRUE 追加 (all) 行 / 列边际面板。
+save_case("facet-grid-margins", local({
+  df <- data.frame(
+    x = c(0.2, 0.6, 0.3, 0.7, 0.25, 0.65, 0.35, 0.75),
+    y = c(0.3, 0.5, 0.6, 0.4, 0.55, 0.25, 0.45, 0.8),
+    r = c("t", "t", "t", "t", "u", "u", "u", "u"),
+    c = c("l", "l", "r", "r", "l", "l", "r", "r")
+  )
+  ggplot(df, aes(x, y)) +
+    geom_point(shape = 19, size = 2.8, colour = "#F58518") +
+    facet_grid(r ~ c, margins = TRUE) +
+    fx(0, 1) + fy(0, 1) + theme_case()
+}))
+
+# SIL-759：space = "free" × coord_fixed(ratio)：ratio 折进行权重（R init_gtable()），
+# 面板高/宽 = ratio × yspan / xspan。
+save_case("facet-grid-free-fixed", local({
+  df <- data.frame(
+    x = c("a", "b", "a", "b", "c", "a", "b", "c",
+          "a", "b", "a", "b", "c", "a", "b", "c"),
+    y = c(0.2, 0.5, 0.35, 0.7, 0.45, 0.3, 0.6, 0.25,
+          0.65, 0.4, 0.55, 0.2, 0.75, 0.5, 0.3, 0.8),
+    r = rep(c("t", "u"), each = 8),
+    c = c("l", "l", "l", "l", "l", "r", "r", "r",
+          "l", "r", "l", "r", "l", "r", "l", "r")
+  )
+  ggplot(df, aes(x, y)) +
+    geom_point(shape = 19, size = 2.8, colour = "#4C78A8") +
+    facet_grid(r ~ c, space = "free") +
+    coord_fixed(2) +
+    theme_case()
+}))
+
+# SIL-759：多行变量的右侧 strip —— 最后一个变量最靠近面板（R 先 rev() 再 weave）。
+save_case("facet-grid-rows-label-both", local({
+  df <- data.frame(
+    x = c(0.2, 0.6, 0.3, 0.7, 0.25, 0.65, 0.35, 0.75, 0.15, 0.55, 0.4, 0.8),
+    y = c(0.3, 0.5, 0.6, 0.4, 0.55, 0.25, 0.45, 0.8, 0.35, 0.65, 0.2, 0.7),
+    r1 = rep(c("t", "u"), each = 6),
+    r2 = rep(c("a", "b"), 6)
+  )
+  ggplot(df, aes(x, y)) +
+    geom_point(shape = 19, size = 2.8, colour = "#F58518") +
+    facet_grid(r1 + r2 ~ ., labeller = "label_both") +
+    theme_case()
+}))
+
 # --- theme -----------------------------------------------------------------
 
 .x_theme <- c(1.0, 2.0, 3.0, 4.0, 5.0, 1.5, 2.5, 3.5, 4.5, 5.5)
