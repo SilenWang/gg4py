@@ -19,6 +19,12 @@
   必须与上游快照**逐字节相同**（`snapshots:check` 直接比 sha256）。
 - 否则落到 `[groups."<第一段目录名>"]`：`issue` + `reason`。缺一即判红——这就是
   「314 份快照全绿或缺口有明确归口」的机器实现。
+- 每个 group 还要写 `owner = "m2-closeout" | "m3"`（SIL-786）：`m2-closeout` 是
+  「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前归零；`m3` 是真 M3 新能力
+  （空间 / 版面组合 / annotate），移交 M3 但不许无主留在台账里。缺 owner 判红。
+
+`--report` 写出的清单里带一张按簇的 burndown 表（上游 / 已纳管 / 缺口）；
+`--check-report` 只校验 `docs/notes/snapshot-inventory.md` 与处置清单同源（CI 守新鲜度）。
 
 ## 为什么清单入库、SVG 不入库
 
@@ -48,6 +54,8 @@ INVENTORY = ROOT / "docs" / "notes" / "snapshot-inventory.md"
 CASES = ROOT / "docs" / "cases"
 #: 按需拉取的上游源码（不入库）。
 CACHE = ROOT / ".upstream-gg"
+#: 缺口归属：M2 收口（SIL-786）或移交 M3。
+OWNERS = ("m2-closeout", "m3")
 
 
 def _pin() -> dict[str, str]:
@@ -118,25 +126,37 @@ def load_dispositions() -> dict[str, Any]:
 
 
 def resolve(manifest: dict[str, Any], dispositions: dict[str, Any]) -> list[dict[str, Any]]:
-    """每条快照 → {path, category, case|None, issue, reason}。"""
+    """每条快照 → {path, cluster, case|None, issue, reason, owner}。"""
     groups = dispositions.get("groups", {})
     overrides = dispositions.get("snapshots", {})
     rows: list[dict[str, Any]] = []
     for entry in manifest["snapshots"]:
         path = entry["path"]
         override = overrides.get(path, {})
+        group = groups.get(entry["category"], {})
+        owner = override.get("owner") or group.get("owner", "")
         case = override.get("case")
         if case:
-            rows.append({**entry, "case": case, "issue": "", "reason": ""})
-            continue
-        group = groups.get(entry["category"])
-        if group is None:
             rows.append(
                 {
                     **entry,
+                    "cluster": entry["category"],
+                    "case": case,
+                    "issue": "",
+                    "reason": "",
+                    "owner": owner,
+                }
+            )
+            continue
+        if entry["category"] not in groups:
+            rows.append(
+                {
+                    **entry,
+                    "cluster": entry["category"],
                     "case": None,
                     "issue": "",
                     "reason": "",
+                    "owner": "",
                     "error": f"分类 {entry['category']!r} 既没有 case，也没有 group 归口",
                 }
             )
@@ -144,9 +164,11 @@ def resolve(manifest: dict[str, Any], dispositions: dict[str, Any]) -> list[dict
         rows.append(
             {
                 **entry,
+                "cluster": entry["category"],
                 "case": None,
                 "issue": group.get("issue", ""),
                 "reason": override.get("reason", group.get("reason", "")),
+                "owner": owner,
             }
         )
     return rows
@@ -181,6 +203,10 @@ def check() -> tuple[list[str], dict[str, Any]]:
             problems.append(f"{row['path']}: 缺口没有 issue 归口")
         if not row["reason"].strip():
             problems.append(f"{row['path']}: 缺口没有原因")
+        if row["owner"] not in OWNERS:
+            problems.append(
+                f"{row['path']}: 缺口 owner 必须是 {' / '.join(OWNERS)}，收到 {row['owner']!r}"
+            )
     summary = {
         "total": len(rows),
         "imported": sum(1 for row in rows if row["case"]),
@@ -191,6 +217,18 @@ def check() -> tuple[list[str], dict[str, Any]]:
 
 def render_inventory(rows: list[dict[str, Any]], pin: dict[str, str]) -> str:
     imported = [row for row in rows if row["case"]]
+    gaps = [row for row in rows if not row["case"]]
+    by_owner = Counter(row["owner"] for row in gaps)
+    clusters: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        item = clusters.setdefault(
+            row["cluster"], {"owner": row["owner"], "total": 0, "imported": 0, "gaps": 0}
+        )
+        item["total"] += 1
+        if row["case"]:
+            item["imported"] += 1
+        else:
+            item["gaps"] += 1
     lines = [
         "# 上游 SVG 快照清单（v4.0.3）",
         "",
@@ -199,27 +237,55 @@ def render_inventory(rows: list[dict[str, Any]], pin: dict[str, str]) -> str:
         f"- 参考实现：`{pin['repo']}` `{pin['tag']}` @ `{pin['commit']}`",
         f"- 快照总数：**{len(rows)}**（上游 `tests/testthat/_snaps/**/*.svg`）",
         f"- 已纳管：**{len(imported)}**（`expected.svg` 与上游快照逐字节相同）",
-        f"- 已知缺口：**{len(rows) - len(imported)}**（全部按分类归口，见下表）",
+        f"- 已知缺口：**{len(gaps)}**（全部按分类归口，见下表）",
+        f"- 缺口归属：`m2-closeout` **{by_owner.get('m2-closeout', 0)}** 条（M3 开工前归零）"
+        f" / `m3` **{by_owner.get('m3', 0)}** 条（移交 M3）",
         "",
-        "## 已纳管（能自动跑）",
+        "## 按簇 burndown",
         "",
+        "| 簇 | owner | 上游 | 已纳管 | 缺口 |",
+        "| --- | --- | ---: | ---: | ---: |",
     ]
+    for name, item in sorted(clusters.items(), key=lambda kv: (-kv[1]["gaps"], kv[0])):
+        lines.append(
+            f"| `{name}` | {item['owner'] or '—'} | {item['total']} | "
+            f"{item['imported']} | {item['gaps']} |"
+        )
+    lines.extend(
+        [
+            f"| **合计** | — | {len(rows)} | {len(imported)} | {len(gaps)} |",
+            "",
+            "口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零"
+            "（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / "
+            "`annotate()`，不在本台账里重复计。",
+        ]
+    )
+    lines.extend(
+        [
+            "",
+            "## 已纳管（能自动跑）",
+            "",
+        ]
+    )
     if imported:
         lines.extend(["| 快照 | case |", "| --- | --- |"])
         lines.extend(f"| `{row['path']}` | `{row['case']}` |" for row in imported)
     else:
         lines.append("无。")
     lines.extend(["", "## 已知缺口", ""])
-    groups: dict[tuple[str, str], list[str]] = {}
-    for row in rows:
-        if row["case"]:
-            continue
-        key = (row["issue"] or "（未归口）", row["reason"] or "（未写原因）")
+    groups: dict[tuple[str, str, str, str], list[str]] = {}
+    for row in gaps:
+        key = (
+            row["cluster"],
+            row["owner"],
+            row["issue"] or "（未归口）",
+            row["reason"] or "（未写原因）",
+        )
         groups.setdefault(key, []).append(row["path"])
-    for (issue, reason), paths in sorted(groups.items()):
+    for (cluster, owner, issue, reason), paths in sorted(groups.items()):
         lines.extend(
             [
-                f"### {issue} — {len(paths)} 条",
+                f"### `{cluster}` — {len(paths)} 条 · {issue} · {owner}",
                 "",
                 reason,
                 "",
@@ -232,6 +298,19 @@ def render_inventory(rows: list[dict[str, Any]], pin: dict[str, str]) -> str:
             ]
         )
     return "\n".join(lines)
+
+
+def check_report() -> list[str]:
+    """`docs/notes/snapshot-inventory.md` 是否与处置清单同源（CI 守新鲜度）。"""
+    if not INVENTORY.is_file():
+        return [f"{INVENTORY.relative_to(ROOT)} 不存在"]
+    expected = render_inventory(resolve(load_manifest(), load_dispositions()), _pin())
+    if INVENTORY.read_text(encoding="utf-8") != expected:
+        return [
+            f"{INVENTORY.relative_to(ROOT)} 与 snapshots.toml 不同源"
+            "（跑 `pixi run snapshots:report` 重新生成）"
+        ]
+    return []
 
 
 def status() -> dict[str, Any]:
@@ -272,9 +351,19 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument(
         "--report", action="store_true", help="重写 docs/notes/snapshot-inventory.md"
     )
+    group.add_argument(
+        "--check-report",
+        action="store_true",
+        help="只校验 docs/notes/snapshot-inventory.md 是否最新（CI 用）",
+    )
     group.add_argument("--json", action="store_true", help="打印 status() 的 JSON")
     args = parser.parse_args(argv)
 
+    if args.check_report:
+        problems = check_report()
+        for problem in problems:
+            print(f"FAIL {problem}", file=sys.stderr)
+        return 1 if problems else 0
     if args.refresh:
         return refresh()
     if args.fetch:
