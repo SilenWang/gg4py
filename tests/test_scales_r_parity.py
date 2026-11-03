@@ -36,22 +36,37 @@ TOLERANCE = 1e-12
 EXPECTED_CASES = {
     "alpha_binned",
     "alpha_continuous",
+    "alpha_identity",
+    "alpha_manual",
+    "alpha_ordinal",
     "colour_binned",
+    "colour_brewer_direction",
+    "colour_brewer_qual_dark2",
+    "colour_brewer_set1",
     "colour_date",
     "colour_distiller",
+    "colour_distiller_default",
     "colour_fermenter",
     "colour_gradient",
     "colour_gradient2",
     "colour_gradient_limits",
     "colour_gradientn",
+    "colour_grey",
+    "colour_grey_custom",
     "colour_hue",
     "colour_hue_limits",
     "colour_hue_na_value",
+    "colour_identity",
     "colour_manual",
+    "colour_ordinal",
     "colour_steps",
     "colour_steps2",
     "colour_steps_oob",
     "colour_stepsn",
+    "colour_viridis_b",
+    "colour_viridis_c",
+    "colour_viridis_d",
+    "colour_viridis_d_begin_end",
     "continuous_default_expand",
     "continuous_expand_zero",
     "continuous_limits_censor",
@@ -62,17 +77,33 @@ EXPECTED_CASES = {
     "discrete_limits",
     "discrete_na_level",
     "discrete_reverse_limits",
+    "fill_brewer_set2",
     "fill_hue",
+    "linetype_binned",
+    "linetype_discrete",
+    "linetype_identity",
+    "linetype_manual",
     "linewidth_binned",
+    "linewidth_binned_fraction",
     "linewidth_continuous",
     "linewidth_date",
+    "linewidth_default",
+    "linewidth_identity",
+    "linewidth_manual",
+    "linewidth_ordinal",
     "radius",
+    "radius_fraction",
+    "shape_binned",
     "shape_discrete",
+    "shape_manual",
     "size_area",
+    "size_area_default",
     "size_binned",
     "size_binned_area",
+    "size_binned_area_fraction",
     "size_continuous",
     "size_date",
+    "size_ordinal",
     "x_binned",
     "x_binned_breaks",
     "x_date_breaks",
@@ -224,15 +255,18 @@ def test_scale_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """规模钉死：53 个 case、218 个断点 / 标签、199 个映射值、24 个 expand 向量。
+    """规模钉死：84 个 case、314 个断点 / 标签、294 个映射值、24 个 expand 向量。
 
-    M2-4 A 段把连续 / 分箱 / 渐变 / 日期时间四类补进来；规模断言防止悄悄少比。
+    M2-4 A 段把连续 / 分箱 / 渐变 / 日期时间四类补进来，B 段再补离散 /
+    brewer / viridis / grey / manual / identity / 线型 / 线宽 / 面积 / 分箱；
+    合并后两边的 case 全部保留（6 个与 A 同名但口径不同的 case 加后缀区分），
+    规模断言防止悄悄少比。
     """
-    assert len(reference["cases"]) == 53
-    assert sum(len(case["breaks"]) for case in reference["cases"]) == 218
-    assert sum(len(case["labels"]) for case in reference["cases"]) == 218
-    assert sum(len(case["mapped"]) for case in reference["cases"]) == 199
-    assert sum(len(case["limits"]) for case in reference["cases"]) == 114
+    assert len(reference["cases"]) == 84
+    assert sum(len(case["breaks"] or []) for case in reference["cases"]) == 314
+    assert sum(len(case["labels"] or []) for case in reference["cases"]) == 314
+    assert sum(len(case["mapped"] or []) for case in reference["cases"]) == 294
+    assert sum(len(case["limits"] or []) for case in reference["cases"]) == 199
     assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 24
 
 

@@ -166,6 +166,9 @@ scale_constructor <- function(name, params) {
 # （缺省回退到 fallback_palette）注入，`scale_*()` 本身没有。为了拿到「真实图上
 # 用的那一份」，这里建一张最小的图，从 build 结果里的标度对象上取。
 palette_from_build <- function(aesthetic, discrete) {
+  # linetype 没有连续标度（`scale_linetype_continuous()` 直接 abort），分箱的
+  # linetype 也得用离散数据去取 fallback palette。
+  discrete <- discrete || identical(aesthetic, "linetype")
   data <- if (discrete) {
     data.frame(x = 1:4, y = 1:4, v = factor(c("a", "b", "c", "d")))
   } else {
@@ -178,17 +181,47 @@ palette_from_build <- function(aesthetic, discrete) {
     size = aes(size = v),
     alpha = aes(alpha = v),
     shape = aes(shape = v),
+    linetype = aes(linetype = v),
+
     linewidth = aes(linewidth = v),
     stop("no palette mapping for aesthetic: ", aesthetic)
   )
-  plot <- ggplot(data, aes(x = x, y = y)) + geom_point(mapping)
+  # linetype / linewidth 只有线状 geom 会消费，用 geom_line；其余用 geom_point。
+  geom <- if (aesthetic %in% c("linetype", "linewidth")) geom_line else geom_point
+  plot <- ggplot(data, aes(x = x, y = y)) + geom(mapping)
+  built <- suppressWarnings(ggplot_build(plot))
+  built$plot$scales$get_scales(aesthetic)$palette
+}
+
+# 分箱标度的 fallback palette（`pal_binned(pal_linetype())`）只在 build 时注入；
+# 拿它要建一张带**同一个**分箱标度的图——`pal_linetype()` 直接喂向量会 abort
+# （`manual_pal` 只收标量 n），所以不能走 `palette_from_build()`。
+palette_from_binned_build <- function(scale, aesthetic) {
+  data <- data.frame(x = 1:4, y = 1:4, v = c(0, 0.3, 0.7, 1))
+  mapping <- switch(
+    aesthetic,
+    colour = aes(colour = v),
+    fill = aes(fill = v),
+    size = aes(size = v),
+    alpha = aes(alpha = v),
+    shape = aes(shape = v),
+    linetype = aes(linetype = v),
+    linewidth = aes(linewidth = v),
+    stop("no palette mapping for aesthetic: ", aesthetic)
+  )
+  geom <- if (aesthetic %in% c("linetype", "linewidth")) geom_line else geom_point
+  plot <- ggplot(data, aes(x = x, y = y)) + geom(mapping) + scale$clone()
   built <- suppressWarnings(ggplot_build(plot))
   built$plot$scales$get_scales(aesthetic)$palette
 }
 
 ensure_palette <- function(scale, aesthetic) {
   if (is.null(scale$palette)) {
-    scale$palette <- palette_from_build(aesthetic, scale$is_discrete())
+    if (inherits(scale, "ScaleBinned")) {
+      scale$palette <- palette_from_binned_build(scale, aesthetic)
+    } else {
+      scale$palette <- palette_from_build(aesthetic, scale$is_discrete())
+    }
   }
   scale
 }
@@ -254,6 +287,14 @@ record <- function(id, title, scale, params = list(), train, map, json_params = 
       breaks <- as.character(breaks)
     }
     labels <- view$get_labels()
+  } else {
+    # 分箱标度不走 view_scale_primary（它的断点就是箱边界）；直接取标度自己的
+    # get_breaks() / get_labels()，与 guide 看到的是同一份。
+    breaks <- tryCatch(sc$get_breaks(), error = function(e) NULL)
+    if (is.factor(breaks)) {
+      breaks <- as.character(breaks)
+    }
+    labels <- tryCatch(sc$get_labels(), error = function(e) NULL)
   }
 
   mapped <- sc$map(map_values)
@@ -281,7 +322,6 @@ record <- function(id, title, scale, params = list(), train, map, json_params = 
 # ---------------------------------------------------------------------------
 
 cases <- list(
-  # --- 连续位置 ----------------------------------------------------------
   record(
     "continuous_default_expand",
     "连续 x：默认 expansion(mult = 0.05)",
@@ -289,6 +329,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "continuous_expand_zero",
     "连续 x：expand = c(0, 0) 不扩边",
@@ -297,6 +338,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "continuous_limits_censor",
     "连续 x：显式 limits，越界 → NA（oob = censor）",
@@ -305,6 +347,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "continuous_manual_breaks_labels",
     "连续 x：手动 breaks + labels",
@@ -313,6 +356,7 @@ cases <- list(
     train = 1:7,
     map = c(2, 4, 6)
   ),
+
   record(
     "continuous_nbreaks",
     "连续 x：n.breaks = 3（breaks 函数拿 n）",
@@ -321,6 +365,7 @@ cases <- list(
     train = c(0, 100),
     map = c(0, 50, 100)
   ),
+
   record(
     "x_log10",
     "log10 x：0 / 负值 → NA；映射后是 log10 空间的值",
@@ -328,6 +373,7 @@ cases <- list(
     train = c(1, 10, 100),
     map = c(1, 10, 100, 0, -1)
   ),
+
   record(
     "y_log10",
     "log10 y（同一套口径，覆盖 y 通道）",
@@ -335,6 +381,7 @@ cases <- list(
     train = c(0.1, 1, 10),
     map = c(0.1, 1, 10)
   ),
+
   record(
     "x_log10_limits",
     "log10 x：显式 limits 先过变换（limits 1..100 → 0..2，越界 → NA）",
@@ -344,7 +391,6 @@ cases <- list(
     map = c(0.5, 1, 10, 100, 200)
   ),
 
-  # --- 离散位置 ----------------------------------------------------------
   record(
     "discrete_levels",
     "离散 x：水平升序，未在 limits 里的值 → NA",
@@ -352,6 +398,7 @@ cases <- list(
     train = c("b", "a", "c", "a"),
     map = c("a", "b", "c", "z")
   ),
+
   record(
     "discrete_limits",
     "离散 x：显式 limits（含未出现的水平 z）",
@@ -360,6 +407,7 @@ cases <- list(
     train = c("a", "b", "c"),
     map = c("a", "b", "c")
   ),
+
   record(
     "discrete_drop_false",
     "离散 x：drop = FALSE 保留未出现的 factor 水平",
@@ -368,6 +416,7 @@ cases <- list(
     train = factor("a", levels = c("b", "a", "c")),
     map = c("a", "b", "c")
   ),
+
   record(
     "discrete_na_level",
     "离散 x：NA 也是一个水平（排在最后）",
@@ -375,6 +424,7 @@ cases <- list(
     train = c("a", NA, "b"),
     map = c("a", NA, "b")
   ),
+
   record(
     "discrete_reverse_limits",
     "离散 x：limits 反序，编码按 limits 顺序",
@@ -384,7 +434,6 @@ cases <- list(
     map = c("a", "b", "c")
   ),
 
-  # --- colour / fill ----------------------------------------------------
   record(
     "colour_hue",
     "离散 colour：hue_pal 色板（3 个水平），NA → na.value",
@@ -392,6 +441,7 @@ cases <- list(
     train = c("a", "b", "c", "a"),
     map = c("a", "b", "c", NA)
   ),
+
   record(
     "colour_hue_na_value",
     "离散 colour：自定义 na.value",
@@ -400,6 +450,7 @@ cases <- list(
     train = c("a", "b"),
     map = c("a", NA)
   ),
+
   record(
     "colour_hue_limits",
     "离散 colour：显式 limits 之外的取值 → na.value",
@@ -408,6 +459,7 @@ cases <- list(
     train = c("a", "b", "c"),
     map = c("a", "b", "c")
   ),
+
   record(
     "colour_manual",
     "离散 colour：values = 手动色板（按水平顺序，长度必须够）",
@@ -416,6 +468,7 @@ cases <- list(
     train = c("a", "b", "c"),
     map = c("a", "b", "c")
   ),
+
   record(
     "fill_hue",
     "离散 fill：与 colour 同一套 hue 口径",
@@ -423,6 +476,7 @@ cases <- list(
     train = c("p", "q"),
     map = c("p", "q")
   ),
+
   record(
     "colour_gradient",
     "连续 colour：gradient 默认 low/high，Lab 插值",
@@ -430,6 +484,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.5, 1, NA)
   ),
+
   record(
     "colour_gradient_limits",
     "连续 colour：显式 limits，越界 → na.value",
@@ -438,6 +493,7 @@ cases <- list(
     train = c(0, 0.5, 1),
     map = c(0, 0.5, 1)
   ),
+
   record(
     "size_continuous",
     "连续 size：area 标度（sqrt 后线性映射到 1..6）",
@@ -445,6 +501,7 @@ cases <- list(
     train = c(1, 2, 3, 4),
     map = c(1, 2, 2, 4)
   ),
+
   record(
     "alpha_continuous",
     "连续 alpha：0..1 映射到 0.1..1",
@@ -452,6 +509,7 @@ cases <- list(
     train = c(1, 2, 3),
     map = c(1, 2, 3)
   ),
+
   record(
     "shape_discrete",
     "离散 shape：默认实心形状 16/17/15/3/7/8",
@@ -460,7 +518,6 @@ cases <- list(
     map = c("a", "b", "c")
   ),
 
-  # --- M2-4 A：sqrt / reverse / 分箱 / 日期时间 --------------------------
   record(
     "x_sqrt",
     "sqrt x：负值 → NA，断点在数据空间",
@@ -468,6 +525,7 @@ cases <- list(
     train = c(0, 1, 4, 9, 16),
     map = c(0, 1, 4, 9, 16, -1)
   ),
+
   record(
     "x_reverse",
     "reverse x：x → -x，断点在变换后空间倒序",
@@ -475,6 +533,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "x_binned",
     "分箱 x：默认 10 个箱，OOB → 箱号",
@@ -482,6 +541,7 @@ cases <- list(
     train = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
     map = c(1, 3.4, 7, 10, 12, -1)
   ),
+
   record(
     "x_binned_breaks",
     "分箱 x：显式 breaks（箱边界就是断点）",
@@ -490,6 +550,7 @@ cases <- list(
     train = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
     map = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
   ),
+
   record(
     "x_date_default",
     "date x：默认 pretty 断点 + ISO 标签",
@@ -497,6 +558,7 @@ cases <- list(
     train = as.Date(c("2020-01-05", "2021-06-20")),
     map = as.Date(c("2020-01-05", "2020-06-01", "2021-06-20"))
   ),
+
   record(
     "x_date_breaks",
     "date x：date_breaks = 2 months + date_labels",
@@ -505,6 +567,7 @@ cases <- list(
     train = as.Date(c("2020-01-15", "2020-12-03")),
     map = as.Date(c("2020-01-15", "2020-07-01", "2020-12-03"))
   ),
+
   record(
     "x_datetime_breaks",
     "datetime x：date_breaks = 2 hours",
@@ -513,6 +576,7 @@ cases <- list(
     train = as.POSIXct(c("2020-01-01 00:13:00", "2020-01-01 07:47:00"), tz = "UTC"),
     map = as.POSIXct(c("2020-01-01 00:13:00", "2020-01-01 03:00:00"), tz = "UTC")
   ),
+
   record(
     "x_time_breaks",
     "time x（hms）：date_breaks = 15 min",
@@ -522,7 +586,6 @@ cases <- list(
     map = hms::as_hms(c(0, 1800, 3600))
   ),
 
-  # --- M2-4 A：颜色连续 / 分箱 / 渐变 ------------------------------------
   record(
     "colour_gradient2",
     "gradient2：midpoint = 0 落在 0.5，Lab 双向插值",
@@ -530,6 +593,7 @@ cases <- list(
     train = c(-1, 0, 1),
     map = c(-1, -0.5, 0, 0.5, 1)
   ),
+
   record(
     "colour_gradientn",
     "gradientn：三色 + values 停靠点",
@@ -538,6 +602,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.2, 0.5, 1)
   ),
+
   record(
     "colour_steps",
     "steps：分箱渐变（默认 oob = squish）",
@@ -545,6 +610,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.2, 0.5, 1)
   ),
+
   record(
     "colour_steps_oob",
     "steps：limits 之外 squish 到端点箱",
@@ -553,6 +619,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.5, 1)
   ),
+
   record(
     "colour_steps2",
     "steps2：分箱发散渐变",
@@ -560,6 +627,7 @@ cases <- list(
     train = c(-1, 1),
     map = c(-1, -0.5, 0, 0.5, 1)
   ),
+
   record(
     "colour_stepsn",
     "stepsn：分箱 n 色渐变",
@@ -568,6 +636,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.2, 0.5, 0.8, 1)
   ),
+
   record(
     "colour_binned",
     "colour_binned：默认调色板的分箱色",
@@ -575,6 +644,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.25, 0.5, 0.75, 1)
   ),
+
   record(
     "colour_distiller",
     "distiller：Brewer Spectral（7 色）→ 连续渐变",
@@ -583,6 +653,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.25, 0.5, 0.75, 1)
   ),
+
   record(
     "colour_fermenter",
     "fermenter：Brewer 分箱（按箱数取色）",
@@ -591,6 +662,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.2, 0.5, 0.8, 1)
   ),
+
   record(
     "colour_date",
     "colour_date：日期渐变 + date_breaks",
@@ -600,7 +672,6 @@ cases <- list(
     map = as.Date(c("2020-01-01", "2020-02-15", "2020-04-01"))
   ),
 
-  # --- M2-4 A：alpha / size / linewidth 连续侧 --------------------------
   record(
     "alpha_binned",
     "alpha_binned：分箱 alpha 0.1..1",
@@ -608,6 +679,7 @@ cases <- list(
     train = c(0, 1),
     map = c(0, 0.25, 0.5, 0.75, 1)
   ),
+
   record(
     "size_area",
     "size_area：rescale_max + abs_area(max_size = 8)",
@@ -616,6 +688,7 @@ cases <- list(
     train = c(1, 2, 3, 4),
     map = c(1, 2, 3, 4)
   ),
+
   record(
     "size_binned",
     "size_binned：分箱面积标度",
@@ -623,6 +696,7 @@ cases <- list(
     train = c(0, 4),
     map = c(0, 1, 2, 3, 4)
   ),
+
   record(
     "size_binned_area",
     "size_binned_area：分箱 + rescale_max",
@@ -630,6 +704,7 @@ cases <- list(
     train = c(0, 4),
     map = c(0, 1, 2, 3, 4)
   ),
+
   record(
     "radius",
     "radius：线性 size 1..6",
@@ -637,6 +712,7 @@ cases <- list(
     train = c(1, 4),
     map = c(1, 2, 4)
   ),
+
   record(
     "size_date",
     "size_date：日期输入的连续 area 标度",
@@ -645,6 +721,7 @@ cases <- list(
     train = as.Date(c("2019-01-01", "2021-01-01")),
     map = as.Date(c("2019-01-01", "2020-01-01", "2021-01-01"))
   ),
+
   record(
     "linewidth_continuous",
     "linewidth：线性 1..6",
@@ -652,6 +729,7 @@ cases <- list(
     train = c(1, 4),
     map = c(1, 2, 4)
   ),
+
   record(
     "linewidth_binned",
     "linewidth_binned：分箱线性",
@@ -659,6 +737,7 @@ cases <- list(
     train = c(1, 4),
     map = c(1, 2, 3, 4)
   ),
+
   record(
     "linewidth_date",
     "linewidth_date：日期输入的线性标度",
@@ -668,7 +747,6 @@ cases <- list(
     map = as.Date(c("2019-01-01", "2020-01-01", "2021-01-01"))
   ),
 
-  # --- M2-4 A：oob 三态 --------------------------------------------------
   record(
     "x_oob_squish",
     "oob = squish：越界值钳到 limits",
@@ -678,6 +756,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "x_oob_keep",
     "oob = keep：越界值原样保留",
@@ -687,6 +766,7 @@ cases <- list(
     train = 1:7,
     map = c(1, 3, 7)
   ),
+
   record(
     "x_oob_squish_infinite",
     "oob = squish_infinite：只钳 ±Inf，有限越界保留",
@@ -695,6 +775,268 @@ cases <- list(
     json_params = list(limits = c(2, 6), oob = "squish_infinite"),
     train = 1:7,
     map = c(1, 3, 7)
+  ),
+
+  # --- M2-4 B：#53 带来的离散 / 色板 case（与 A 段按 id 取并集） ----------
+  record(
+    "colour_brewer_set1",
+    "离散 colour：brewer Set1（5 个水平，逐 n 表）",
+    "colour_brewer",
+    params = list(palette = "Set1"),
+    train = c("a", "b", "c", "d", "e"),
+    map = c("a", "c", "e")
+  ),
+
+  record(
+    "colour_brewer_qual_dark2",
+    "离散 colour：brewer type = qual, palette = 2（Dark2）",
+    "colour_brewer",
+    params = list(type = "qual", palette = 2),
+    train = LETTERS[1:6],
+    map = c("A", "C", "F")
+  ),
+
+  record(
+    "colour_brewer_direction",
+    "离散 colour：brewer direction = -1（Blues 反序）",
+    "colour_brewer",
+    params = list(palette = "Blues", direction = -1),
+    train = c("a", "b", "c", "d"),
+    map = c("a", "d")
+  ),
+
+  record(
+    "fill_brewer_set2",
+    "离散 fill：brewer Set2（3 个水平）",
+    "fill_brewer",
+    params = list(palette = "Set2"),
+    train = c("p", "q", "r"),
+    map = c("p", "r", NA)
+  ),
+
+  record(
+    "colour_viridis_d",
+    "离散 colour：viridis option C",
+    "colour_viridis_d",
+    params = list(option = "C"),
+    train = c("a", "b", "c", "d"),
+    map = c("a", "b", "c", "d", NA)
+  ),
+
+  record(
+    "colour_viridis_d_begin_end",
+    "离散 colour：viridis begin / end / direction",
+    "colour_viridis_d",
+    params = list(option = "E", begin = 0.2, end = 0.8, direction = -1),
+    train = c("a", "b", "c"),
+    map = c("a", "b", "c")
+  ),
+
+  record(
+    "colour_grey",
+    "离散 colour：grey 色板（start / end）",
+    "colour_grey",
+    train = c("a", "b", "c", "d"),
+    map = c("a", "d", NA)
+  ),
+
+  record(
+    "colour_grey_custom",
+    "离散 colour：grey start = 0.1, end = 0.9",
+    "colour_grey",
+    params = list(start = 0.1, end = 0.9),
+    train = c("a", "b", "c"),
+    map = c("a", "b", "c")
+  ),
+
+  record(
+    "colour_ordinal",
+    "离散 colour：ordinal（4.0.3 缺省走 viridis_d）",
+    "colour_ordinal",
+    train = c("a", "b", "c"),
+    map = c("a", "c")
+  ),
+
+  record(
+    "colour_identity",
+    "colour identity：值原样通过（数据里已经是颜色）",
+    "colour_identity",
+    train = c("#FF0000", "#00FF00"),
+    map = c("#FF0000", "#00FF00", NA)
+  ),
+
+  record(
+    "colour_viridis_c",
+    "连续 colour：viridis option A（6 色 + Lab 插值）",
+    "colour_viridis_c",
+    params = list(option = "A"),
+    train = c(0, 1),
+    map = c(0, 0.5, 1)
+  ),
+
+  record(
+    "colour_viridis_b",
+    "分箱 colour：viridis_b（每箱一个色）",
+    "colour_viridis_b",
+    train = c(0, 1),
+    map = c(0, 0.3, 0.8, 1)
+  ),
+
+  record(
+    "shape_manual",
+    "shape manual：values 按水平顺序",
+    "shape_manual",
+    params = list(values = c(19, 15, 17)),
+    train = c("a", "b", "c"),
+    map = c("a", "b", "c", NA)
+  ),
+
+  record(
+    "shape_binned",
+    "分箱 shape：数值 → 箱 → 形状码",
+    "shape_binned",
+    train = c(0, 1),
+    map = c(0, 0.3, 0.8, 1)
+  ),
+
+  record(
+    "linetype_discrete",
+    "离散 linetype：pal_linetype 的 13 种线型",
+    "linetype_discrete",
+    train = c("a", "b", "c"),
+    map = c("a", "b", "c", NA)
+  ),
+
+  record(
+    "linetype_manual",
+    "linetype manual：values 按水平顺序",
+    "linetype_manual",
+    params = list(values = c("solid", "dashed")),
+    train = c("a", "b"),
+    map = c("a", "b")
+  ),
+
+  record(
+    "linetype_identity",
+    "linetype identity：值原样通过",
+    "linetype_identity",
+    train = c("solid", "22"),
+    map = c("solid", "22")
+  ),
+
+  record(
+    "linetype_binned",
+    "分箱 linetype",
+    "linetype_binned",
+    train = c(0, 1),
+    map = c(0, 0.3, 0.8, 1)
+  ),
+
+  record(
+    "linewidth_ordinal",
+    "离散 linewidth：seq(2, 6, length.out = n)",
+    "linewidth_ordinal",
+    train = c("a", "b", "c"),
+    map = c("a", "c", NA)
+  ),
+
+  record(
+    "linewidth_manual",
+    "linewidth manual：values 按水平顺序",
+    "linewidth_manual",
+    params = list(values = c(0.5, 1.5)),
+    train = c("a", "b"),
+    map = c("a", "b")
+  ),
+
+  record(
+    "linewidth_identity",
+    "linewidth identity：值原样通过",
+    "linewidth_identity",
+    train = c(0.5, 2),
+    map = c(0.5, 2)
+  ),
+
+  record(
+    "size_ordinal",
+    "离散 size：sqrt(seq(4, 36))",
+    "size_ordinal",
+    train = c("a", "b", "c", "d"),
+    map = c("a", "d", NA)
+  ),
+
+  record(
+    "alpha_ordinal",
+    "离散 alpha：seq(0.1, 1)",
+    "alpha_ordinal",
+    train = c("a", "b", "c"),
+    map = c("a", "c", NA)
+  ),
+
+  record(
+    "alpha_manual",
+    "alpha manual：values 按水平顺序",
+    "alpha_manual",
+    params = list(values = c(0.2, 0.8)),
+    train = c("a", "b"),
+    map = c("a", "b")
+  ),
+
+  record(
+    "alpha_identity",
+    "alpha identity：值原样通过",
+    "alpha_identity",
+    train = c(0.2, 0.8),
+    map = c(0.2, 0.8)
+  ),
+
+  # colour_distiller -> colour_distiller_default
+  record(
+    "colour_distiller_default",
+    "连续 colour：distiller（brewer 7 色 + Lab 插值）",
+    "colour_distiller",
+    train = c(0, 1),
+    map = c(0, 0.25, 0.5, 1, NA)
+  ),
+
+  record(
+    "linewidth_default",
+    "连续 linewidth：range 1..6",
+    "linewidth",
+    train = c(1, 4),
+    map = c(1, 2.5, 4)
+  ),
+
+  record(
+    "linewidth_binned_fraction",
+    "分箱 linewidth",
+    "linewidth_binned",
+    train = c(0, 1),
+    map = c(0, 0.3, 0.8, 1)
+  ),
+
+  record(
+    "size_area_default",
+    "连续 size：area（面积正比于值）",
+    "size_area",
+    train = c(0, 4),
+    map = c(0, 1, 4)
+  ),
+
+  record(
+    "size_binned_area_fraction",
+    "分箱 size：binned + area",
+    "size_binned_area",
+    train = c(0, 1),
+    map = c(0, 0.5, 1)
+  ),
+
+  record(
+    "radius_fraction",
+    "连续 size：radius（规模线性到 1..6）",
+    "radius",
+    train = c(0, 1),
+    map = c(0, 0.5, 1)
   )
 )
 

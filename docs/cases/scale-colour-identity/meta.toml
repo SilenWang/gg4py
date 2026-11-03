@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "colour-aes", "scale-identity"]
+ci = true
+title = "scale：colour identity（颜色值原样通过）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "identity 标度的 guide 缺省是 none（R 同样不出图例）；数据列本身就是 #RRGGBB。"

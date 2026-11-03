@@ -562,15 +562,37 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
     return factory
 
 
+#: `scale_discrete_manual()` / `scale_discrete_identity()` / `scale_continuous_identity()`
+#: 是**跨美学**的通用标度：美学由调用方的 `aesthetics =` 给（上游也没有缺省）。
+_GENERIC_SCALE_NAMES = frozenset({"discrete_manual", "discrete_identity", "continuous_identity"})
+
+
 def _scale_factory(name: str, aesthetic: str, defaults: Mapping[str, Any]) -> Callable[..., Scale]:
     def factory(**params: Any) -> Scale:
-        # 未实现的标度参数在**构造时**就点名报错：`p + scale_x_continuous(sec.axis=…)`
-        # 与 `p.scale_x_continuous(sec.axis=…)` 走的是同一个工厂，两条路径一致。
-        from ggcore.scales import reject_unimplemented_scale_params
+        # 未实现的标度参数 / R 里直接 abort 的名字在**构造时**就点名报错：
+        # `p + scale_x_continuous(sec.axis=…)` 与 `p.scale_x_continuous(sec.axis=…)`
+        # 走的是同一个工厂，两条路径一致。
+        from ggcore.scales import (
+            reject_unimplemented_scale_params,
+            reject_unsupported_scale,
+        )
 
         merged = {**defaults, **params}
         reject_unimplemented_scale_params(name, merged)
-        return Scale(name=name, aesthetic=aesthetic, params=merged)
+        reject_unsupported_scale(name)
+        chosen: Any = aesthetic
+        if name in _GENERIC_SCALE_NAMES:
+            if "aesthetics" not in merged:
+                raise ValueError(f"scale_{name}() 必须给 aesthetics = ...（上游同样没有缺省）")
+            chosen = merged["aesthetics"]
+        if isinstance(chosen, (list, tuple, set, frozenset)):
+            items = list(chosen)
+            if len(items) != 1:
+                raise ValueError(
+                    f"scale_{name}(aesthetics = ...) 一次只支持一个美学，收到 {chosen!r}"
+                )
+            chosen = items[0]
+        return Scale(name=name, aesthetic=str(chosen), params=merged)
 
     return factory
 

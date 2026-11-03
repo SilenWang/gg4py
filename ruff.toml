@@ -17,3 +17,11 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 "src/ggcore/gtable.py" = ["E741"]
 # theme 的 margin() 参数同样是 R 的 t/r/b/l。
 "src/ggcore/theme.py" = ["E741"]
+# 色板取值表是 tools/refs/palettes_ref.R 生成的：一行一个 palette 的 3..max 全量，
+# 换行只会让「重生成零 diff」难比对。
+"src/ggcore/palette_data.py" = ["E501"]
+
+[format]
+# 生成物：`tools/refs/palettes_ref.R` 输出的表要能「重生成零 diff」，格式化器会把
+# MappingProxyType 的花括号重排，破坏这条约定。
+exclude = ["src/ggcore/palette_data.py"]
