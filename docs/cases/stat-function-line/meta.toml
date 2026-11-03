@@ -1,0 +1,7 @@
+family = "geom-line"
+features = ["scale-limits", "stat-function"]
+ci = true
+title = "function：函数曲线（sin + 1）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_function 的端到端：空数据 + xlim + n = 25 的网格；args 与 log10 的 y 变换在 refs:stat-longtail 的 function_* 里。"

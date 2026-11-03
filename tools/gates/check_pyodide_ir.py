@@ -98,7 +98,12 @@ def run_pyodide(out_dir: Path, inject_offset: int | None) -> tuple[bytes, bytes,
 
 
 def require_assets() -> None:
-    if not (ASSETS / "pyodide.mjs").is_file() or not any(ASSETS.glob("numpy-*.whl")):
+    if (
+        not (ASSETS / "pyodide.mjs").is_file()
+        or not any(ASSETS.glob("numpy-*.whl"))
+        # M2-6 / SIL-758：等值线冒烟要 contourpy 的 wasm 轮子，缺了就别假装跑过。
+        or not any(ASSETS.glob("contourpy-*.whl"))
+    ):
         raise SystemExit(
             "gate:pyodide: Pyodide 资产不完整 —— 先跑 `pixi run spike:e1:assets`"
             "（`pixi run gate:pyodide` 已把它列为 depends-on）"
@@ -112,6 +117,8 @@ def describe(meta: dict) -> str:
         f"numpy {meta['numpy']}",
         f"cbor {meta['cbor_backend']}",
     ]
+    if meta.get("contourpy"):
+        parts.append(f"contourpy {meta['contourpy']}")
     if meta.get("pyodide"):
         parts.append(f"pyodide {meta['pyodide']}")
     if meta.get("total_ms") is not None:
@@ -191,9 +198,19 @@ def main(argv: list[str] | None = None) -> int:
 
     sizes = sorted({meta["ir_bytes"] for meta in runs})
     edge_sizes = sorted({meta["edge_bytes"] for meta in runs})
+    # M2-6 / SIL-758：等值线（contourpy）的产物也要比——IR 字节一致只证明了编码器，
+    # 证明不了「浏览器里画出来的等值线和桌面端是同一份几何」。版本同样要一致：
+    # 两边跑不同 contourpy 的「一致」没有意义（pixi.toml 的 <1.4 就是为此）。
+    contour_versions = sorted({meta["contourpy"] for meta in runs})
+    contour_same = contour_versions == [cpython_meta["contourpy"]] and all(
+        meta["contour"] == cpython_meta["contour"]
+        and meta["contour_filled"] == cpython_meta["contour_filled"]
+        for meta in runs
+    )
     identical = (
         bad_run is None
         and bad_edge_run is None
+        and contour_same
         and sizes == [len(cpython_bytes)]
         and edge_sizes == [len(cpython_edge)]
     )
@@ -206,6 +223,22 @@ def main(argv: list[str] | None = None) -> int:
         f"sha256 {hashlib.sha256(cpython_edge).hexdigest()[:16]}… "
         f"(NaN / ±Inf / -0.0 缓冲 + int {2**64 - 1} 参数)"
     )
+    print(
+        f"  contour : stat_contour {cpython_meta['contour']['rows']} rows sha256 "
+        f"{cpython_meta['contour']['sha256'][:16]}…, stat_contour_filled "
+        f"{cpython_meta['contour_filled']['rows']} rows sha256 "
+        f"{cpython_meta['contour_filled']['sha256'][:16]}…"
+        f" (contourpy {cpython_meta['contourpy']})"
+    )
+    if not contour_same:
+        print(
+            "  contour diff: "
+            f"contourpy {cpython_meta['contourpy']} (cpython) / "
+            f"{', '.join(contour_versions)} (pyodide)；"
+            f"contour {sorted({meta['contour']['sha256'][:16] for meta in runs})}，"
+            f"filled {sorted({meta['contour_filled']['sha256'][:16] for meta in runs})}",
+            file=sys.stderr,
+        )
     if identical:
         print("  diff    : none")
 
@@ -233,6 +266,13 @@ def main(argv: list[str] | None = None) -> int:
     if identical:
         print("gate:pyodide: ok — CPython 与 Pyodide 的 IR 字节完全一致")
         return 0
+
+    if bad_run is None and bad_edge_run is None and not contour_same:
+        print(
+            "gate:pyodide: FAIL — 等值线（contourpy）产物在两端不一致，见上面的 contour diff",
+            file=sys.stderr,
+        )
+        return 1
 
     print(
         "gate:pyodide: FAIL — CPython 与 Pyodide 的 IR 字节不一致"

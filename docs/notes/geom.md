@@ -190,7 +190,8 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 | 直线坐标以外的 coord | 未注册（M1-5 的范围） | 后续 coord 任务 |
 | 轴标签的 `check.overlap`（重叠时删标签） | 不删 | 后续（`axis.text` 的 `check.overlap`） |
 | boxplot 的 `outliers` 列表列 | `ColumnTable` 没有 list kind；`stat_boxplot` 产 `str` 文本（`c(20)` / `c()`），绘制层解析它 | 加 list kind 时再改（见 `stat.md` §4） |
-| 2D / 分布族的 stat | `stat_density` / `stat_ydensity` / `stat_bindot` / `stat_bin_2d` / `stat_bin_hex` / `stat_contour(_filled)` / `stat_density_2d(_filled)` / `stat_qq(_line)` / `stat_quantile` / `stat_function` / `stat_sum` 归 M2-6；geom 的默认 stat 名已按上游登记，stat 未实现时 `compute_stat()` 点名报错 | M2-6 |
+| 2D / 分布族的 stat | `stat_bin_2d` / `stat_bin_hex` / `stat_summary_2d` / `stat_summary_hex` / `stat_contour(_filled)` / `stat_density_2d(_filled)` 由 M2-6（SIL-732 / SIL-736）落地，见 `stat.md`；geom 的默认 stat 名照上游登记 | 已实现 |
+| 2D 族的 6 个 geom | 绘制已落地：`tile` 在 M2-S2 长尾 A（SIL-737），`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled` 在长尾 B（SIL-735）；`BUILD_ONLY_RENDERERS` 只留给仍未实现绘制的名字 | — |
 
 主题色（`fill = "grey35"` 等语义名）在 `build.data` 里仍是语义名，绘制期的
 `fill_alpha()` 会按 `col2rgb()` 折算 RGB；与 R 的 `#595959FF` 在像素上一致。

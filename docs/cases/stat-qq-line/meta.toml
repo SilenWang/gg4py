@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "scale-limits", "stat-qq", "stat-qq-line"]
+ci = true
+title = "qq + qq_line：点与 line.p 直线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_qq / stat_qq_line 的两层组合；qq_line 走 `line.p = c(0.25, 0.75)` 的默认口径。"

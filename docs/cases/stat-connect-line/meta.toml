@@ -1,0 +1,7 @@
+family = "geom-line"
+features = ["aes-mapping", "scale-limits", "stat-connect"]
+ci = true
+title = "connect：hv 连接的两段折线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_connect 的端到端：connection = 'hv' 的插值拐点；mid / linear / 自定义矩阵在 refs:stat-longtail 的 connect_* 里。"

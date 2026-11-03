@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-grid"]
+ci = true
+title = "facet：多行变量的右侧 strip（label_both）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "r1 + r2 ~ . 的右侧 strip 每个变量一格，最后一个变量（r2）最靠近面板：从左到右 r2 | r1（R build_strip(horizontal = FALSE) 先 rev()，SIL-759）。"

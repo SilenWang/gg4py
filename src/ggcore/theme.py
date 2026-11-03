@@ -1364,7 +1364,12 @@ def theme_void(
         "legend.frame": element_blank(),
         "legend.box.background": element_blank(),
         "strip.clip": "on",
-        "strip.text": element_text(size=rel(0.8)),
+        # R 4.0.3 的 theme_void()：strip 文字 margin = 0、angle = 0（不是 theme_grey
+        # 的 -90°）。facet-grid-ab 的右 strip 列宽因此是 stringWidth("u")≈4.89pt，
+        # 而不是行高——SIL-715 #8 的对拍口径。
+        "strip.text": element_text(size=rel(0.8), margin=margin_auto(0), angle=0),
+        "strip.text.x": element_text(angle=0),
+        "strip.text.y": element_text(angle=0),
         "strip.switch.pad.grid": rel(0.5),
         "strip.switch.pad.wrap": rel(0.5),
         "strip.background": element_blank(),
