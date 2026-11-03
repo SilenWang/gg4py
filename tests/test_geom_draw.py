@@ -22,7 +22,7 @@ import pytest
 from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.geom import GeomError, registered_renderers, renderer_for
+from ggcore.geom import GeomError, build_only_renderers, registered_renderers, renderer_for
 from ggcore.geom.scene import scene_from_build, scene_from_plot
 from ggcore.plot import aes, ggplot
 
@@ -99,18 +99,40 @@ def _clips(ir_scene) -> list[tuple[float, float, float, float]]:
     return rects
 
 
-def test_renderer_registry_covers_the_nine_geoms() -> None:
-    assert registered_renderers() == (
-        "point",
-        "line",
-        "path",
-        "bar",
-        "col",
-        "area",
-        "histogram",
-        "boxplot",
-        "smooth",
-    )
+#: 注册表里有、但**绘制**仍归后续任务的 geom：`{geom 名: 归属任务}`。
+#:
+#: `registered_renderers()` 的含义是「已实现绘制」（`test_digest_plots_cover_every_geom`
+#: 真要逐张画出来），所以不能把 build-only 的桩塞进去。覆盖用「可绘制 ∪ 本表」
+#: 表达：注册表集合 == 渲染器集合 ∪ allowlist。**只减不增**——SIL-735 落地时从
+#: 这里删条目（同时渲染器会从 `BUILD_ONLY_RENDERERS` 移到 `GEOM_RENDERERS`，
+#: 测试要求两边逐项相等）。
+BUILD_ONLY_ALLOWLIST: dict[str, str] = {
+    "hex": "SIL-735",
+    "contour": "SIL-735",
+    "contour_filled": "SIL-735",
+    "density_2d": "SIL-735",
+    "density_2d_filled": "SIL-735",
+}
+
+
+def test_renderer_registry_covers_every_registered_geom() -> None:
+    # M2-S2：注册表里每一个 geom 都必须有绘制实现，或者进显式 allowlist（build
+    # 级实现 + 归属任务）。集合**相等**而不是子集：注册表多出一个既不可绘制、
+    # 也没登记的 geom 就红（#61 建立的回归保护）。
+    rendered = set(registered_renderers())
+    allowlisted = set(BUILD_ONLY_ALLOWLIST)
+    assert rendered | allowlisted == set(registry.registered("geom"))
+    # 两边不重叠：能画的 geom 不该挂在 allowlist 上。
+    assert not rendered & allowlisted
+    # allowlist 与 build-only 渲染器逐项相等：条目搬进 `GEOM_RENDERERS` 时必须
+    # 同步删掉，否则这里红。
+    assert set(build_only_renderers()) == allowlisted
+    # 只减不增：5 是 SIL-735 收口前的条目数，新增一条要改这里（评审可见）。
+    assert len(allowlisted) <= 5
+    # 每个 allowlist 条目的 `draw()` 必须点名自己的归属任务。
+    for name, followup in BUILD_ONLY_ALLOWLIST.items():
+        with pytest.raises(GeomError, match=followup):
+            renderer_for(name).draw(None, None, None, None, None, None)
     assert renderer_for("col").name == "col"
     with pytest.raises(GeomError, match="没有绘制实现"):
         renderer_for("violin")
@@ -597,6 +619,14 @@ def test_empty_layer_does_not_emit_grobs() -> None:
 
 
 #: 9 个 geom 各一张图（都走 theme_void，避免文字度量引入外部依赖）。
+#: `geom_map` 的 `map` 参数：两份 4 顶点的小方块（x / y / id）。
+MAP_TABLE = {
+    "x": [0.0, 0.4, 0.4, 0.0, 0.5, 0.9, 0.9, 0.5],
+    "y": [0.0, 0.0, 0.4, 0.4, 0.5, 0.5, 0.9, 0.9],
+    "id": ["a", "a", "a", "a", "b", "b", "b", "b"],
+}
+
+
 def _digest_plots() -> dict[str, object]:
     point = _table(x=[0.2, 0.6], y=[0.3, 0.7], g=["a", "b"])
     line = _table(
@@ -627,6 +657,25 @@ def _digest_plots() -> dict[str, object]:
             ("ymax", Column("float", np.array([1.4, 2.0, 2.5, 3.1]))),
         ]
     )
+    segment = _table(x=[0.1, 0.5], y=[0.2, 0.6], xend=[0.8, 0.9], yend=[0.7, 0.3])
+    spoke = _table(x=[0.3, 0.6], y=[0.3, 0.6], angle=[0.0, 1.0], radius=[0.2, 0.25])
+    rect = _table(xmin=[0.1, 0.5], xmax=[0.4, 0.8], ymin=[0.1, 0.2], ymax=[0.5, 0.6])
+    tile = _table(x=[0.25, 0.75, 0.25, 0.75], y=[0.25, 0.25, 0.75, 0.75])
+    polygon = _table(x=[0.1, 0.4, 0.3, 0.7, 0.8, 0.5], y=[0.1, 0.15, 0.5, 0.55, 0.9, 0.6])
+    ribbon = _table(
+        x=[0.1, 0.3, 0.5, 0.7, 0.9],
+        ymin=[0.1, 0.2, 0.15, 0.3, 0.25],
+        ymax=[0.4, 0.5, 0.45, 0.6, 0.55],
+    )
+    step = _table(x=[0.1, 0.3, 0.5, 0.7, 0.9], y=[0.2, 0.5, 0.35, 0.7, 0.6])
+    interval = _table(
+        x=[0.3, 0.7],
+        y=[0.5, 0.5],
+        xmin=[0.2, 0.3],
+        xmax=[0.8, 0.7],
+        ymin=[0.2, 0.3],
+        ymax=[0.8, 0.7],
+    )
     return {
         "point": ggplot(point, aes(x="x", y="y", colour="g")) + registry.geom_point(),
         "line": ggplot(line, aes(x="x", y="y", colour="g")) + registry.geom_line(),
@@ -643,10 +692,41 @@ def _digest_plots() -> dict[str, object]:
         + registry.geom_boxplot(stat="identity"),
         "smooth": ggplot(smooth, aes(x="x", y="y", ymin="ymin", ymax="ymax"))
         + registry.geom_smooth(stat="identity"),
+        # --- M2-S2 长尾 A ---------------------------------------------------
+        "abline": ggplot(point, aes(x="x", y="y")) + registry.geom_abline(slope=1, intercept=0),
+        "hline": ggplot(point, aes(x="x", y="y")) + registry.geom_hline(yintercept=0.5),
+        "vline": ggplot(point, aes(x="x", y="y")) + registry.geom_vline(xintercept=0.5),
+        "segment": ggplot(segment, aes(x="x", y="y", xend="xend", yend="yend"))
+        + registry.geom_segment(),
+        "curve": ggplot(segment, aes(x="x", y="y", xend="xend", yend="yend"))
+        + registry.geom_curve(),
+        "spoke": ggplot(spoke, aes(x="x", y="y", angle="angle", radius="radius"))
+        + registry.geom_spoke(),
+        "rect": ggplot(rect, aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"))
+        + registry.geom_rect(),
+        "tile": ggplot(tile, aes(x="x", y="y")) + registry.geom_tile(),
+        "raster": ggplot(tile, aes(x="x", y="y")) + registry.geom_raster(),
+        "polygon": ggplot(polygon, aes(x="x", y="y")) + registry.geom_polygon(),
+        "ribbon": ggplot(ribbon, aes(x="x", ymin="ymin", ymax="ymax")) + registry.geom_ribbon(),
+        "step": ggplot(step, aes(x="x", y="y")) + registry.geom_step(),
+        "errorbar": ggplot(interval, aes(x="x", y="y", ymin="ymin", ymax="ymax"))
+        + registry.geom_errorbar(),
+        "errorbarh": ggplot(interval, aes(y="y", x="x", xmin="xmin", xmax="xmax"))
+        + registry.geom_errorbarh(),
+        "linerange": ggplot(interval, aes(x="x", ymin="ymin", ymax="ymax"))
+        + registry.geom_linerange(),
+        "pointrange": ggplot(interval, aes(x="x", y="y", ymin="ymin", ymax="ymax"))
+        + registry.geom_pointrange(),
+        "crossbar": ggplot(interval, aes(x="x", y="y", ymin="ymin", ymax="ymax"))
+        + registry.geom_crossbar(),
+        "blank": ggplot(point, aes(x="x", y="y")) + registry.geom_blank(),
+        "rug": ggplot(point, aes(x="x", y="y")) + registry.geom_rug(),
+        "map": ggplot(_table(map_id=["a", "b"]), aes(map_id="map_id"))
+        + registry.geom_map(map=MAP_TABLE),
     }
 
 
-def test_digest_plots_cover_the_nine_geoms() -> None:
+def test_digest_plots_cover_every_geom() -> None:
     assert set(_digest_plots()) == set(registered_renderers())
 
 
@@ -655,7 +735,9 @@ def test_scene_encoding_is_byte_stable(geom_name: str) -> None:
     plot = _digest_plots()[geom_name] + registry.theme_void()
     first = scene_from_plot(plot, **SIZE)
     # 图不是空的：除了 viewport 还有实际的几何叶子节点。
-    assert [node for node in _nodes(first) if node.kind.value != "viewport"]
+    # `geom_blank` 是唯一例外——它只参与标度 / 布局，`nullGrob()` 不产出叶子。
+    if geom_name != "blank":
+        assert [node for node in _nodes(first) if node.kind.value != "viewport"]
     one = hashlib.sha256(ir.encode(first)).hexdigest()
     two = hashlib.sha256(ir.encode(scene_from_plot(plot, **SIZE))).hexdigest()
     assert one == two

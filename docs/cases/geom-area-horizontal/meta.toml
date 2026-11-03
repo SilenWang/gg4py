@@ -1,0 +1,7 @@
+family = "geom-area"
+features = ["aes-mapping", "orientation-horizontal"]
+ci = true
+title = "geom_area：横向（orientation = \"y\"，SIL-715 #4）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "上游 `GeomArea` / `StatAlign` 都传 `ambiguous = TRUE`，横向必须写 `orientation = \"y\"`（或 coord_flip）；这条 case 锁住「两侧同值」的数据与画面。"

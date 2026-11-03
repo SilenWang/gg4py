@@ -657,6 +657,36 @@ class Renderer {
     this.track(bbox);
   }
 
+  /**
+   * 箭头标记（IR 0.3）：箭翼是**同一个节点的附加图元**，不是新的 IR 叶子——
+   * 它在 DOM 里单独一个 `<path class="ir-arrow">`，**不带 `data-row`**，所以不参与
+   * 「IR 叶子数 == DOM 元素数」的计数与 hover 命中；图例 key 的隐藏走视口组的
+   * `data-hidden`，箭翼随组一起变暗（`web/viewer/src/styles.css`）。
+   */
+  private drawArrows(
+    node: IrNode,
+    parent: SVGElement,
+    gpar: Gpar,
+    scale: number,
+    groups: Point[][],
+    viewport: string,
+  ): void {
+    const spec = arrowSpec(node);
+    if (spec === null) return;
+    const d = arrowPath(groups, spec);
+    if (d === "") return;
+    const attrs = styleAttributes(gpar, scale, { fill: spec.closed });
+    if (spec.closed && attrs["fill"] === "none") {
+      const col = colourValue(gpar.col);
+      attrs["fill"] = col ?? "none";
+      if (col !== null) attrs["fill-opacity"] = num(colourOpacity(gpar.col, gpar.alpha));
+    }
+    const element = el("path", { d, class: "ir-arrow", ...attrs });
+    element.setAttribute("data-kind", "arrow");
+    element.setAttribute("data-vp", viewport);
+    parent.append(element);
+  }
+
   private drawLeaf(
     node: IrNode,
     id: string,
@@ -752,11 +782,13 @@ class Renderer {
       }
       case "segments": {
         const subpaths: SubPath[] = [];
+        const pairs: Point[][] = [];
         for (let row = 0; row < rows; row++) {
           const a = mapPoint(matrix, bufValue(node, "segments", row, 0), bufValue(node, "segments", row, 1));
           const b = mapPoint(matrix, bufValue(node, "segments", row, 2), bufValue(node, "segments", row, 3));
           const sub = pushSubPath(subpaths, a);
           sub.segments.push(["L", [b[0], b[1]]]);
+          pairs.push([a, b]);
         }
         const d = pathData(subpaths, false);
         const box = boxOfPathData(d);
@@ -770,6 +802,7 @@ class Renderer {
           rows,
           box,
         );
+        this.drawArrows(node, parent, gpar, scale, pairs, viewport);
         return;
       }
       case "lines":
@@ -781,6 +814,7 @@ class Renderer {
         const attrs = styleAttributes(gpar, scale, { fill: closed });
         if (kind === "path") attrs["fill-rule"] = fillRule(node);
         if (kind === "lines") attrs["fill"] = "none";
+        const box = boxOfPathData(d);
         this.emit(
           node,
           id,
@@ -789,8 +823,11 @@ class Renderer {
           el("path", { d, ...attrs }),
           0,
           rows,
-          boxOfPathData(d),
+          box,
         );
+        if (!closed) {
+          this.drawArrows(node, parent, gpar, scale, pointGroups(node, matrix), viewport);
+        }
         return;
       }
       case "xspline": {
@@ -838,8 +875,14 @@ class Renderer {
         return;
       }
       case "curve": {
-        const subpaths = curveSubPaths(node, matrix, this.scene.size);
+        const groups = curvePointGroups(node, matrix, this.scene.size);
+        const subpaths: SubPath[] = [];
+        for (const group of groups) {
+          const sub = sampledPath(group);
+          if (sub !== null) subpaths.push(sub);
+        }
         const d = pathData(subpaths, false);
+        const box = boxOfPathData(d);
         this.emit(
           node,
           id,
@@ -848,8 +891,9 @@ class Renderer {
           el("path", { d, ...styleAttributes(gpar, scale, { fill: node.params["open"] !== true }) }),
           0,
           rows,
-          boxOfPathData(d),
+          box,
         );
+        this.drawArrows(node, parent, gpar, scale, groups, viewport);
         return;
       }
       case "points": {
@@ -1063,6 +1107,67 @@ function boxOfPathData(d: string): Box {
 
 /** xspline：shape=0 等价于 Catmull-Rom（转成三次贝塞尔）；|shape|>0 向直线收拢。 */
 /** 按 `id` 把 points 缓冲切成若干组，组内保留原始点序（IR 的 bulk 口径）。 */
+/** 箭头标记（IR 0.3）：`ggcore.arrow` 的同一套几何，切向由端点相邻点给出。 */
+interface ArrowSpec {
+  ends: "first" | "last" | "both";
+  length: number;
+  angle: number;
+  closed: boolean;
+}
+
+function arrowSpec(node: IrNode): ArrowSpec | null {
+  const ends = node.params["arrow"];
+  if (ends === undefined || ends === null || ends === "none") return null;
+  const length = node.params["arrow_length"] as number;
+  if (!Number.isFinite(length) || length <= 0) return null;
+  const angle = node.params["arrow_angle"] as number;
+  return {
+    ends: ends as ArrowSpec["ends"],
+    length,
+    angle: Number.isFinite(angle) ? angle : 30,
+    closed: node.params["arrow_type"] === "closed",
+  };
+}
+
+function arrowHead(tip: Point, back: Point, spec: ArrowSpec): string {
+  const dx = tip[0] - back[0];
+  const dy = tip[1] - back[1];
+  const norm = Math.hypot(dx, dy);
+  if (!Number.isFinite(norm) || norm === 0) return "";
+  const ux = dx / norm;
+  const uy = dy / norm;
+  const radians = (spec.angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const b1: Point = [
+    tip[0] - spec.length * (ux * cos - uy * sin),
+    tip[1] - spec.length * (ux * sin + uy * cos),
+  ];
+  const b2: Point = [
+    tip[0] - spec.length * (ux * cos + uy * sin),
+    tip[1] - spec.length * (-ux * sin + uy * cos),
+  ];
+  if (spec.closed) {
+    return `M${num(tip[0])} ${num(tip[1])}L${num(b1[0])} ${num(b1[1])}L${num(b2[0])} ${num(b2[1])}Z`;
+  }
+  return `M${num(b1[0])} ${num(b1[1])}L${num(tip[0])} ${num(tip[1])}L${num(b2[0])} ${num(b2[1])}`;
+}
+
+function arrowPath(groups: Point[][], spec: ArrowSpec): string {
+  const parts: string[] = [];
+  for (const group of groups) {
+    const points = group.filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+    if (points.length < 2) continue;
+    if (spec.ends === "first" || spec.ends === "both") {
+      parts.push(arrowHead(points[0], points[1], spec));
+    }
+    if (spec.ends === "last" || spec.ends === "both") {
+      parts.push(arrowHead(points[points.length - 1], points[points.length - 2], spec));
+    }
+  }
+  return parts.join("");
+}
+
 function pointGroups(node: IrNode, matrix: Matrix): Point[][] {
   const points = node.bufs["points"];
   const ids = node.bufs["id"] ?? null;
@@ -1108,11 +1213,11 @@ function xsplinePath(node: IrNode, matrix: Matrix, page: [number, number]): stri
 }
 
 /** grid.curve：先翻到 R 坐标求控制点/采样，再翻回页面坐标（SIL-636）。 */
-function curveSubPaths(node: IrNode, matrix: Matrix, page: [number, number]): SubPath[] {
+function curvePointGroups(node: IrNode, matrix: Matrix, page: [number, number]): Point[][] {
   const ends = node.bufs["ends"];
   const open = node.params["open"] !== false;
   const height = page[1];
-  const subpaths: SubPath[] = [];
+  const groups: Point[][] = [];
   for (let row = 0; row < ends.rows; row++) {
     const x1 = ends.data[row * 4] as number;
     const y1 = ends.data[row * 4 + 1] as number;
@@ -1138,10 +1243,9 @@ function curveSubPaths(node: IrNode, matrix: Matrix, page: [number, number]): Su
       ];
     }
     const mapped = sampled.map(([x, y]) => mapPoint(matrix, x, height - y));
-    const sub = sampledPath(mapped);
-    if (sub !== null) subpaths.push(sub);
+    if (mapped.length >= 2) groups.push(mapped);
   }
-  return subpaths;
+  return groups;
 }
 
 function baselineAttribute(baseline: string): string {

@@ -1,0 +1,7 @@
+family = "geom-ribbon"
+features = ["aes-mapping", "alpha-aes", "line-type"]
+ci = true
+title = "geom_ribbon：outline.type = \"upper\""
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "只画上沿轮廓；`both` / `lower` / `full` 走同一个 `outline.type` 分支。"

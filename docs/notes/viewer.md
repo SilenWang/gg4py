@@ -185,6 +185,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
 | 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1） | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
+| `arrow`（v0.3 标记属性） | 设备按端点切向画箭翼 | `render.ts` 的 `arrowPath()`（与 `ggcore.arrow.head_geometry()` 同一公式） | 箭翼是节点的附加 `<path class="ir-arrow">`，不带 `data-row`（不参与叶子计数 / hover） |
 | 结构 | 每个 IR 节点一段 `<g>`，几何在局部坐标 | 几何烘焙到页面坐标，容器不带 transform | 像素等价，DOM 结构不同（IR 不承诺对齐 svglite，`ir.md` §12） |
 | 交互 | 无 | hover / 图例开关 | 只存在于浏览器 |
 

@@ -1,0 +1,7 @@
+family = "geom-curve"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_curve：curvature = -0.4 + 单端开口箭头"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "曲线的箭头切向由设备按采样后的端点求（曲线公式只在设备侧）。"

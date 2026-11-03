@@ -140,6 +140,22 @@ class FillRule(StrEnum):
     EVENODD = "evenodd"
 
 
+class ArrowEnds(StrEnum):
+    """箭头画在哪个端点（`grid::arrow(ends =)`）；`none` = 不画。"""
+
+    NONE = "none"
+    FIRST = "first"
+    LAST = "last"
+    BOTH = "both"
+
+
+class ArrowType(StrEnum):
+    """箭头形状：`open` 是两条边，`closed` 是填色三角（`grid::arrow(type =)`）。"""
+
+    OPEN = "open"
+    CLOSED = "closed"
+
+
 class LineEnd(StrEnum):
     BUTT = "butt"
     ROUND = "round"
@@ -324,6 +340,18 @@ _ID_POINTS = BufferSpec("id", "i4", None, required=False, note="每个顶点的�
 _POINTS = BufferSpec("points", "f4", 2, note="(n, 2) 顶点：x, y")
 _TRANSFORM = ParamSpec("transform", "transform", IDENTITY, note="子坐标 → 父坐标的 2×3 仿射")
 
+#: 箭头标记（M2-S2）：`grid::arrow()` 的四个字段落在**节点参数**上，几何（箭翼往
+#: 哪边张开）由设备按端点切向求值——曲线节点的切向只有设备能算（它按 `curvature`
+#: / `ncp` 采样），把切向写进 IR 就得让 ggcore 也实现一遍曲线公式。
+#: `arrow_length` 是解析后的 pt；`arrow = "none"` 时其余三个字段无意义，编码时按
+#: 缺省值省略，所以不带箭头的 scene 字节不变（IR 0.2 → 0.3 只加了字段）。
+_ARROW_PARAMS = (
+    ParamSpec("arrow", "arrow_ends", ArrowEnds.NONE, note="箭头端点：none/first/last/both"),
+    ParamSpec("arrow_length", "float", 0.0, minimum=0.0, note="箭翼长度，pt"),
+    ParamSpec("arrow_angle", "float", 30.0, minimum=0.0, maximum=90.0, note="箭翼与轴线夹角，度"),
+    ParamSpec("arrow_type", "arrow_type", ArrowType.OPEN, note="open / closed"),
+)
+
 NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
     {
         NodeKind.VIEWPORT: NodeSpec(
@@ -386,12 +414,20 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
         NodeKind.SEGMENTS: NodeSpec(
             NodeKind.SEGMENTS,
             buffers=(BufferSpec("segments", "f4", 4, note="(x0, y0, x1, y1) 每行一条线段"),),
-            doc="线段：每行 (x0, y0, x1, y1)，互不相连。",
+            params=_ARROW_PARAMS,
+            doc=(
+                "线段：每行 (x0, y0, x1, y1)，互不相连；"
+                "`arrow*` 是 grid::arrow() 的标记属性（M2-S2）。"
+            ),
         ),
         NodeKind.POLYLINE: NodeSpec(
             NodeKind.POLYLINE,
             buffers=(_POINTS, _ID_POINTS),
-            doc="折线（grid.polyline 对等物）：单条或多条，id 分组规则同 lines。",
+            params=_ARROW_PARAMS,
+            doc=(
+                "折线（grid.polyline 对等物）：单条或多条，id 分组规则同 lines；"
+                "`arrow*` 按每条子路径的首/末顶点画箭头。"
+            ),
         ),
         NodeKind.POLYGON: NodeSpec(
             NodeKind.POLYGON,
@@ -482,8 +518,12 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
                 ParamSpec("square", "bool", True),
                 ParamSpec("inflect", "bool", False),
                 ParamSpec("open", "bool", True),
+                *_ARROW_PARAMS,
             ),
-            doc="curve：两端点 + 弯曲参数（grid.curve 语义），曲线形状由设备复现。",
+            doc=(
+                "curve：两端点 + 弯曲参数（grid.curve 语义），曲线形状由设备复现；"
+                "`arrow*` 的切向由设备按采样后的曲线端点求。"
+            ),
         ),
         NodeKind.NULL: NodeSpec(
             NodeKind.NULL,
@@ -506,6 +546,8 @@ _ENUM_TAGS: Mapping[ParamTag, type[StrEnum]] = {
     "anchor": Anchor,
     "baseline": Baseline,
     "fill_rule": FillRule,
+    "arrow_ends": ArrowEnds,
+    "arrow_type": ArrowType,
 }
 
 

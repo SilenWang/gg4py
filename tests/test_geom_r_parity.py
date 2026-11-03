@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -25,7 +26,7 @@ from ggcore.coord import PanelParams
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import renderer_for
 from ggcore.grobs import ViewportTree, scene, viewport
-from ggcore.plot import aes, ggplot
+from ggcore.plot import aes, arrow, ggplot
 from ggcore.theme import Theme, resolve_theme
 from ggcore.viewport import Device
 
@@ -37,6 +38,9 @@ TOLERANCE = 1e-6
 #: 主题色列：`Geom.default_aes` 里存的是语义名（`grey35`），解析后的主题色是
 #: M1-10 的事（与 tests/test_build_r_parity.py 的 SKIP_VALUES 同一口径）。
 SKIP_VALUES: dict[str, frozenset[str]] = {
+    # `ColumnTable` 没有 list kind：`outliers` 在两边是各自的文本表示
+    # （R 的 `c(5)` vs 我们的 `5.0`），绘制层两种都能解析（docs/notes/stat.md §4）。
+    "boxplot_horizontal_auto": frozenset({"outliers"}),
     "col_horizontal": frozenset({"fill"}),
     "col_default_width": frozenset({"fill"}),
     "boxplot_identity": frozenset({"colour"}),
@@ -46,6 +50,7 @@ SKIP_VALUES: dict[str, frozenset[str]] = {
 #: 我们的列序 = R 列序去掉这几列的投影。
 R_ONLY_COLUMNS: dict[str, tuple[str, ...]] = {
     "boxplot_identity": ("xid", "newx", "new_width"),
+    "boxplot_horizontal_auto": ("xid", "newx", "new_width"),
 }
 
 
@@ -335,6 +340,302 @@ BUILDERS = {
 }
 
 
+# --- M2-S2：长尾 A（线段 / 矩形 / 区间 / 标注族）的整条流水线对拍 -----------
+
+_PT = 2.845276  # `.pt`：mm → pt 的换算（R 的 72.27/25.4）
+
+
+def _simple(**columns: list) -> ColumnTable:
+    return _float(**columns)
+
+
+NEW_BUILDERS = {
+    "segment_arrow": lambda: (
+        ggplot(
+            _simple(
+                x=[0.1, 0.5],
+                y=[0.2, 0.55],
+                xend=[0.8, 0.9],
+                yend=[0.7, 0.25],
+                g=["a", "b"],
+            ),
+            aes(x="x", y="y", xend="xend", yend="yend", colour="g"),
+        )
+        + registry.geom_segment(
+            linewidth=1.1 / _PT,
+            arrow=arrow(length=0.15 * 72.0, ends="both", type="closed"),
+        )
+        + registry.scale_colour_discrete(values={"a": "#4C78A8", "b": "#E45756"})
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "curve_arrow": lambda: (
+        ggplot(
+            _simple(x=[0.1, 0.5], y=[0.2, 0.55], xend=[0.8, 0.9], yend=[0.7, 0.25]),
+            aes(x="x", y="y", xend="xend", yend="yend"),
+        )
+        + registry.geom_curve(
+            curvature=-0.4,
+            angle=90,
+            ncp=5,
+            linewidth=1.1 / _PT,
+            colour="#4C78A8",
+            arrow=arrow(length=0.12 * 72.0, ends="last", type="open"),
+        )
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "spoke_basic": lambda: (
+        ggplot(
+            _simple(x=[0.3, 0.6], y=[0.3, 0.6], ang=[0.0, math.pi / 4], rad=[0.2, 0.25]),
+            aes(x="x", y="y", angle="ang", radius="rad"),
+        )
+        + registry.geom_spoke(linewidth=1.2 / _PT, colour="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "rect_basic": lambda: (
+        ggplot(
+            _simple(
+                xmin=[0.1, 0.5],
+                xmax=[0.4, 0.8],
+                ymin=[0.1, 0.2],
+                ymax=[0.5, 0.6],
+            ),
+            aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"),
+        )
+        + registry.geom_rect(fill="#4C78A8", colour="#333333", linewidth=0.8 / _PT, alpha=0.6)
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "abline_basic": lambda: (
+        ggplot(
+            _simple(
+                xmin=[0.1, 0.5],
+                xmax=[0.4, 0.8],
+                ymin=[0.1, 0.2],
+                ymax=[0.5, 0.6],
+            )
+        )
+        + registry.geom_abline(slope=1, intercept=0.1, linewidth=1.0 / _PT, colour="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "hline_basic": lambda: (
+        ggplot(
+            _simple(
+                xmin=[0.1, 0.5],
+                xmax=[0.4, 0.8],
+                ymin=[0.1, 0.2],
+                ymax=[0.5, 0.6],
+            )
+        )
+        + registry.geom_hline(
+            yintercept=0.75, linetype="dashed", linewidth=0.9 / _PT, colour="#E45756"
+        )
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "vline_basic": lambda: (
+        ggplot(
+            _simple(
+                xmin=[0.1, 0.5],
+                xmax=[0.4, 0.8],
+                ymin=[0.1, 0.2],
+                ymax=[0.5, 0.6],
+            )
+        )
+        + registry.geom_vline(xintercept=0.6, linewidth=0.9 / _PT, colour="#54A24B")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "tile_basic": lambda: (
+        ggplot(
+            _simple(
+                x=[0.25, 0.75, 0.25, 0.75],
+                y=[0.25, 0.25, 0.75, 0.75],
+                f=["p", "q", "q", "p"],
+            ),
+            aes(x="x", y="y", fill="f"),
+        )
+        + registry.geom_tile()
+        + registry.scale_fill_discrete(values={"p": "#4C78A8", "q": "#F58518"})
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "raster_basic": lambda: (
+        ggplot(
+            _simple(
+                x=[0.25, 0.75, 0.25, 0.75],
+                y=[0.25, 0.25, 0.75, 0.75],
+                f=["p", "q", "q", "p"],
+            ),
+            aes(x="x", y="y", fill="f"),
+        )
+        + registry.geom_raster(interpolate=False)
+        + registry.scale_fill_discrete(values={"p": "#4C78A8", "q": "#F58518"})
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "polygon_basic": lambda: (
+        ggplot(
+            _simple(
+                x=[0.1, 0.4, 0.35, 0.7, 0.85, 0.5],
+                y=[0.1, 0.15, 0.5, 0.55, 0.9, 0.6],
+                g=["a", "a", "a", "b", "b", "b"],
+            ),
+            aes(x="x", y="y", group="g", fill="g"),
+        )
+        + registry.geom_polygon(colour="#333333", linewidth=0.8 / _PT, alpha=0.8)
+        + registry.scale_fill_discrete(values={"a": "#4C78A8", "b": "#F58518"})
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "ribbon_upper": lambda: (
+        ggplot(
+            _simple(
+                x=[0.1, 0.3, 0.5, 0.7, 0.9],
+                lo=[0.1, 0.2, 0.15, 0.3, 0.25],
+                hi=[0.4, 0.5, 0.45, 0.6, 0.55],
+            ),
+            aes(x="x", ymin="lo", ymax="hi"),
+        )
+        + registry.geom_ribbon(
+            fill="#4C78A8",
+            colour="#333333",
+            alpha=0.5,
+            linewidth=0.9 / _PT,
+            **{"outline.type": "upper"},
+        )
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "step_basic": lambda: (
+        ggplot(
+            _simple(
+                x=[0.1, 0.3, 0.5, 0.7, 0.9],
+                y=[0.2, 0.5, 0.35, 0.7, 0.6],
+            ),
+            aes(x="x", y="y"),
+        )
+        + registry.geom_step(direction="hv", linewidth=1.2 / _PT, colour="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "errorbar_basic": lambda: (
+        ggplot(
+            _simple(x=[0.3, 0.7], y=[0.5, 0.45], lo=[0.2, 0.3], hi=[0.8, 0.7]),
+            aes(x="x", y="y", ymin="lo", ymax="hi"),
+        )
+        + registry.geom_errorbar(width=0.2, linewidth=0.9 / _PT, colour="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "errorbarh_basic": lambda: (
+        ggplot(
+            _simple(x=[0.5, 0.45], y=[0.3, 0.7], lo=[0.2, 0.3], hi=[0.8, 0.7]),
+            aes(y="y", x="x", xmin="lo", xmax="hi"),
+        )
+        + registry.geom_errorbarh(height=0.2, linewidth=0.9 / _PT, colour="#E45756")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "linerange_basic": lambda: (
+        ggplot(
+            _simple(x=[0.3, 0.7], y=[0.5, 0.45], lo=[0.2, 0.3], hi=[0.8, 0.7]),
+            aes(x="x", y="y", ymin="lo", ymax="hi"),
+        )
+        + registry.geom_linerange(linewidth=1.5 / _PT, colour="#54A24B")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "pointrange_basic": lambda: (
+        ggplot(
+            _simple(x=[0.3, 0.7], y=[0.5, 0.45], lo=[0.2, 0.3], hi=[0.8, 0.7]),
+            aes(x="x", y="y", ymin="lo", ymax="hi"),
+        )
+        + registry.geom_pointrange(size=1.4, linewidth=0.9 / _PT, colour="#333333")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "crossbar_basic": lambda: (
+        ggplot(
+            _simple(x=[0.3, 0.7], y=[0.5, 0.45], lo=[0.2, 0.3], hi=[0.8, 0.7]),
+            aes(x="x", y="y", ymin="lo", ymax="hi"),
+        )
+        + registry.geom_crossbar(width=0.3, fill="#F58518", colour="#333333", linewidth=0.8 / _PT)
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "rug_basic": lambda: (
+        ggplot(_simple(x=[0.2, 0.5, 0.8], y=[0.3, 0.6, 0.9]), aes(x="x", y="y"))
+        + registry.geom_rug(sides="bl", length=0.04, linewidth=0.8 / _PT, colour="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "map_basic": lambda: (
+        ggplot(_simple(map_id=["a", "b"]), aes(map_id="map_id"))
+        + registry.geom_map(
+            map={
+                "x": [0.0, 0.4, 0.4, 0.0, 0.5, 0.9, 0.9, 0.5],
+                "y": [0.0, 0.0, 0.4, 0.4, 0.5, 0.5, 0.9, 0.9],
+                "id": ["a", "a", "a", "a", "b", "b", "b", "b"],
+            },
+            fill="#4C78A8",
+            colour="#333333",
+            linewidth=0.8 / _PT,
+        )
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "boxplot_horizontal_auto": lambda: (
+        ggplot(
+            _simple(
+                cls=["a"] * 6 + ["b"] * 6,
+                v=[1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 0.5, 1.0, 1.5, 2.0, 2.5, 5.0],
+            ),
+            aes(y="cls", x="v"),
+        )
+        + registry.geom_boxplot(fill="#F58518", colour="#333333", width=0.6)
+        + registry.scale_x_continuous(limits=(0, 6), expand=(0, 0))
+        + registry.theme_void()
+    ),
+    "area_horizontal": lambda: (
+        ggplot(
+            _simple(
+                cls=["a", "b", "c", "d", "e"],
+                v=[1.0, 2.5, 1.8, 3.2, 2.2],
+            ),
+            aes(y="cls", x="v"),
+        )
+        + registry.geom_area(stat="identity", orientation="y", fill="#4C78A8")
+        + registry.scale_x_continuous(limits=(0, 4), expand=(0, 0))
+        + registry.theme_void()
+    ),
+}
+
+BUILDERS.update(NEW_BUILDERS)
+
+
 def _assert_column_equal(name: str, ours: Column, expected: Column) -> None:
     assert ours.kind == expected.kind, f"{name}: kind {ours.kind} != {expected.kind}"
     ours_values = np.asarray(ours.values)
@@ -362,6 +663,28 @@ def _assert_column_equal(name: str, ours: Column, expected: Column) -> None:
         "histogram_identity",
         "boxplot_identity",
         "smooth_identity",
+        # M2-S2：长尾 A + 两条横向 case
+        "segment_arrow",
+        "curve_arrow",
+        "spoke_basic",
+        "rect_basic",
+        "abline_basic",
+        "hline_basic",
+        "vline_basic",
+        "tile_basic",
+        "raster_basic",
+        "polygon_basic",
+        "ribbon_upper",
+        "step_basic",
+        "errorbar_basic",
+        "errorbarh_basic",
+        "linerange_basic",
+        "pointrange_basic",
+        "crossbar_basic",
+        "rug_basic",
+        "map_basic",
+        "boxplot_horizontal_auto",
+        "area_horizontal",
     ],
 )
 def test_build_matches_r_column_by_column(reference: dict, case_name: str) -> None:

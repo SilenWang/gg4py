@@ -83,7 +83,7 @@ def build():
 `scale_*()`）；不合规时该 case 以 `render 退出 2` 判红，消息里带具体原因。
 
 **适配层形态**当前支持的 `geom`（与 `tools/refs/cases_ref.R` 一一对应；语法层形态
-支持注册表里的全部 9 个 geom）：
+支持注册表里的全部 29 个 geom）：
 
 | geom | 参数 | R 侧等价物 |
 | --- | --- | --- |
@@ -263,12 +263,18 @@ SIL-715（M2 缺口池）：
 - **横向 `geom_area`**：ggplot2 4.0.3 的 `stat_align` 在 y 离散时输出 0 行，
   R 侧只能用 `coord_flip()` 表达同一张图。`coord_flip` 在 M2-1 已落地
   （`docs/notes/coord.md` §7，`coord-flip-*` 三条 case），但 R 侧的数据仍是
-  「y 离散、stat_align 输出 0 行」，所以这条覆盖点要等的是「无 explicit
-  `orientation` 时按列类型推断方向」，对应 **SIL-715 #4**。见
-  `tools/refs/cases_battery_ref.R` 的注释。
-- `geom_boxplot()` 的横向**自动探测**在 gg4py 侧还没接上（stat_boxplot 产出的
-  `flipped_aes` 恒为 False）；`geom-boxplot-horizontal` 显式写了
-  `orientation = "y"`，两边同值。对应 **SIL-715 #5**。
+  「y 离散、stat_align 输出 0 行」。**M2-S2 结案口径**：上游
+  `GeomArea$setup_params()` 与 `StatAlign$setup_params()` 都传
+  `ambiguous = TRUE`，所以「没有 explicit `orientation` 时按列类型推断」对
+  `area` **不成立**——横向面积在 R 里只能写 `orientation = "y"`（或
+  `coord_flip()`）。补的 case 是 `geom-area-horizontal`（两侧同值，显式
+  `orientation = "y"`、`stat = "identity"`），`tests/test_geom_r_parity.py` 的
+  `area_horizontal` 逐列对拍；`tests/test_geom_longtail.py` 另钉了「不写
+  orientation 时保持竖向」这一条上游规则。对应 **SIL-715 #4**。
+- `geom_boxplot()` 的横向**自动探测**已接上：`stat_boxplot` 在
+  `setup_params()` 里按列类型判 `flipped_aes`（y 离散、x 连续 → 横向），geom
+  侧读同一列。新增 `geom-boxplot-horizontal-auto`（**两侧都不写**
+  `orientation`），`boxplot_horizontal_auto` 逐列对拍。对应 **SIL-715 #5**。
 
 ### M2-1：coord 族（11 条）
 
@@ -282,6 +288,22 @@ SIL-715（M2 缺口池）：
 | `coord`（极坐标） | `polar-bar`（玫瑰图、munch 弧边）/ `polar-facet`（两块正圆面板）/ `polar-theta-y` |
 | `coord`（径向） | `radial-partial`（半圆）/ `radial-inner`（内半径 0.3） |
 | `coord`（次轴 / 近似投影） | `sec-axis`（右侧 `sec_axis(~ . * 2)`）/ `quickmap`（经纬度等距圆柱） |
+
+### M2-S2：geom 长尾 A（18 条）
+
+参考图由 `pixi run -e refs refs:geom` 生成（与 fixture 同一个脚本，`tools/refs/geom_ref.R`
+的 M2-S2 段），全部 `ci = true`。逐列对拍在 `tests/test_geom_r_parity.py`（22 个新
+case），定向断言在 `tests/test_geom_longtail.py`。
+
+| 族 | case |
+| --- | --- |
+| 线段 | `segment-arrow`（两端闭合箭头）/ `curve-arrow`（弯曲 + 开口箭头）/ `spoke` |
+| 参考线 | `abline-hline-vline`（一张图三条参考线 + 矩形底） |
+| 矩形 / 位图 | `rect` / `tile`（默认 width/height = 1）/ `raster`（像素矩阵，`interpolate = FALSE`） |
+| 多边形 | `polygon`（两个分组三角）/ `ribbon-outline`（`outline.type = "upper"`）/ `step` |
+| 区间 | `errorbar` / `errorbarh`（横向）/ `linerange-pointrange` / `crossbar` |
+| 标注 | `blank-rug`（`geom_blank` + `geom_rug(sides = "bl")`）/ `map`（最小可用） |
+| 方向探测 | `boxplot-horizontal-auto`（不写 orientation，SIL-715 #5）/ `area-horizontal`（SIL-715 #4） |
 
 历史快照（不计入 geom 矩阵）：
 

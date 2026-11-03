@@ -26,6 +26,7 @@ from ggcore import registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import GeomError, build_only_renderers, renderer_for
+from ggcore.geom.scene import scene_from_plot
 from ggcore.plot import aes, ggplot
 
 REPO = Path(__file__).resolve().parents[1]
@@ -483,22 +484,45 @@ def test_contour_deduplicates_duplicate_grid_points() -> None:
 
 
 def test_2d_geoms_are_build_only_and_name_the_followup() -> None:
+    # `geom_tile` 已由 SIL-737 实现绘制，从 build-only 列表移出；剩下的 5 个
+    # 仍然只有 build 级实现，`draw()` 点名 SIL-735。
     assert build_only_renderers() == (
-        "tile",
         "hex",
         "contour",
         "contour_filled",
         "density_2d",
         "density_2d_filled",
     )
-    # 绘制归属要准确：`geom_tile` 已在 SIL-737 落地，其余 5 个归 SIL-735
-    # （SIL-758 第 4 条；之前 6 个一律点名 SIL-735）。
-    with pytest.raises(GeomError, match="SIL-737"):
-        renderer_for("tile").draw(None, None, None, None, None, None)
-    for name in ("hex", "contour", "contour_filled", "density_2d", "density_2d_filled"):
+    assert "tile" not in build_only_renderers()
+    for name in build_only_renderers():
         with pytest.raises(GeomError, match="SIL-735") as raised:
             renderer_for(name).draw(None, None, None, None, None, None)
         assert "SIL-737" not in str(raised.value)
+
+
+def _walk(scene) -> list:
+    """场景树的所有节点（前序）。"""
+    out: list = []
+
+    def visit(node) -> None:
+        out.append(node)
+        for child in node.children:
+            visit(child)
+
+    visit(scene.root)
+    return out
+
+
+def test_geom_tile_is_drawable() -> None:
+    # 反向事实：`geom_tile` 能真的画出来（1×1 的方块 → 一个 `rect` 叶子），
+    # 不再抛「绘制实现尚未落地」。
+    plot = (
+        ggplot(_table({"x": [0.5], "y": [0.5]}), aes(x="x", y="y"))
+        + registry.geom_tile()
+        + registry.theme_void()
+    )
+    kinds = [node.kind.value for node in _walk(scene_from_plot(plot, width_in=4.0, height_in=3.0))]
+    assert "rect" in kinds
 
 
 def test_density2d_contour_false_returns_the_grid() -> None:
@@ -528,9 +552,9 @@ def test_bin_2d_counts_follow_the_weight_aesthetic() -> None:
 
 #: 8 个 2D stat → 代表 case + 该族必须出现的统计列。
 #:
-#: M2-6 的 2D geom 只有 build 级实现（绘制归 SIL-737 的 `tile` 与 SIL-735 的其余
-#: 5 个），所以端到端 case 的判据是「`ggplot() + stat_*()` 能走完整条
-#: ggplot_build 流水线，且 `$data` 的统计列完整」；SVG 快照 case 等 geom 绘制
+#: M2-6 的 2D geom 里 `tile` 已由 SIL-737 实现绘制，其余 5 个仍是 build 级
+#: （绘制归 SIL-735）；端到端 case 的判据因此是「`ggplot() + stat_*()` 能走完整
+#: 条 ggplot_build 流水线，且 `$data` 的统计列完整」；SVG 快照 case 等 geom 绘制
 #: 落地后补（见 docs/notes/stat.md §10）。
 END_TO_END: dict[str, tuple[str, frozenset[str]]] = {
     "bin_2d": ("bin2d_binwidth", frozenset({"count", "ncount", "density", "ndensity"})),

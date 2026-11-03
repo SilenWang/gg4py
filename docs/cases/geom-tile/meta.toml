@@ -1,0 +1,7 @@
+family = "geom-tile"
+features = ["aes-mapping", "colour-aes", "scale-discrete"]
+ci = true
+title = "geom_tile：2×2 小方块（默认 width / height = 1）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "缺省 width / height 是 `compute_data_size(..., discrete = TRUE)` 的结果（离散位置恒为 1）。"

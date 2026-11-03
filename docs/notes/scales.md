@@ -453,15 +453,28 @@ size_area / size_binned_area / radius / size_ordinal / alpha_ordinal / alpha_man
   `ggcore` 同样报错（不做 ggplot2 2.x 的循环）。
 - 不动 IR 版本；`map_scales` 的结果仍只在数据层，进 IR 是 M1-7。
 - **`lty` 串的段长折算**（与标度无关，登记在这里因为 M2-4 B 的 linetype case 踩到）：
-  R 的 `gpar$lwd` 是 1/96 inch，`ggcore` 写 IR 时乘 `72/96 = 0.75` 折成 pt，
-  `lty` 的段长（`lwd` 的倍数）**跟着一起折**（`docs/notes/grobs.md`、SIL-636）。
-  svglite 的 `stroke-dasharray` 只折算线宽、不折算段长，所以参考图里 `"22"` 的
-  段长是 6.26pt，而按物理口径应是 4 × 3.13 × 0.75 = 9.4pt 量级的比例关系；
-  实测把段长改成 ×4/3 后 `geom-line-width` 的图级差异从 1.31% 降到 0.13%。
-  这条属于 **SVG 渲染器的 dash 口径（M2-12，已实现）**：`web/viewer/src/render.ts`
-  与 `src/ggskia/skia.py` 都乘 `DASH_UNIT = 4/3`，`lwd = 0` 两边都不描边；
-  `scale-linetype-discrete` 随之从 1.25% 降到 0.06%，`viewer-linetype-all` 从
-  3.70% 降到 0.43%（口径见 `docs/notes/viewer.md` §10.1）。
+  两段折算缺一不可，公式是
+
+  ```
+  IR lty (pt) = pattern × max(gpar$lwd, 1) × 72/96
+  SVG dasharray (1/96 in) = IR lty × DASH_UNIT(4/3) = pattern × max(lwd, 1)
+  ```
+
+  - `max(lwd, 1)`：段长是 `lwd` 的倍数，`lwd < 1` 时按 1 算（参考产线 svglite 的
+    口径：`lwd = 0.5` / `0.9` / `1.0` 的 `lty = "dashed"` 都是 `4,4` 段长，只有
+    线的粗细跟着 `lwd` 变）。用 `lwd` 本身会在细线上把虚线画密（SIL-737 的
+    abline 用例）；专项 case 见 `docs/cases/grob-dash-lwd` 与
+    `tests/test_grobs.py::test_dash_length_follows_max_lwd_one`。
+  - `72/96 = 0.75`：IR 的 `lty` 是 pt，而 `pattern × max(lwd, 1)` 是 lwd 单位
+    （1/96 inch）。漏了这一步，渲染器再乘 `DASH_UNIT` 就让**所有虚线长 4/3 倍**
+    （SIL-737 只做了第一段折算，SIL-763 补上这一段；6 张 `grob-*` 基线正是按
+    漏乘的代码录的，补上后逐字节复现）。
+  - 参考产线把 `pattern × max(lwd, 1)` 的数值直接写进 SVG 的 `stroke-dasharray`
+    （只折线宽、不折段长），所以 `"22"`、`lwd = 1` 的参考图里段长就是 `2,2`；
+    `web/viewer/src/render.ts` 与 `src/ggskia/skia.py` 都乘 `DASH_UNIT = 4/3`
+    回到这个口径，`lwd = 0` 两边都不描边。实测 `geom-line-width` 1.31% → 0.13%，
+    `scale-linetype-discrete` 1.25% → 0.06%，`viewer-linetype-all` 3.70% → 0.43%
+    （口径见 `docs/notes/viewer.md` §10.1）。
 - **`scale_*_viridis_d` 的十六进制是 8 位**（`#440154FF`）：R 的 `pal_viridis()`
   把 alpha 一起编码，`$data$colour` 里就是 8 位；`gpar` 的 `col2rgb` 认 8 位，
   渲染结果与 6 位相同。viridis_c 走 `colour_ramp()`，输出是 6 位。

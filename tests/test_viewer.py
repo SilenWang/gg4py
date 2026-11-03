@@ -252,6 +252,47 @@ def ten_thousand_point_scene() -> ir.Scene:
     return ir.Scene(root=root, size=(320.0, 240.0))
 
 
+def arrow_scene() -> ir.Scene:
+    """一条带箭头的线段（IR 0.3 的 `arrow*` 标记属性）。"""
+    node = ir.Node(
+        ir.NodeKind.SEGMENTS,
+        ir.Gpar(col=(76, 120, 168, 255), fill=(228, 87, 86, 255), lwd=2.0),
+        params={
+            "arrow": "both",
+            "arrow_length": 18.0,
+            "arrow_angle": 30.0,
+            "arrow_type": "closed",
+        },
+        bufs={"segments": ir.f32([[40.0, 160.0, 240.0, 60.0]])},
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT, params={"name": "panel-1", "clip": False}, children=(node,)
+    )
+    return ir.Scene(root=root, size=(320.0, 240.0))
+
+
+def test_arrow_marker_is_drawn_as_a_separate_head_path(session, tmp_path: Path) -> None:
+    """`arrow` 标记 → 追加一个 `<path class="ir-arrow">`，两条边 / 三角都在里面。
+
+    箭翼不是新的 IR 叶子：它不参与 `data-row` 计数（`svg_tags()` 只看带 `data-row`
+    的元素），所以「元素数 == IR 节点数」的口径不变。
+    """
+    page, _ = session
+    path = tmp_path / "arrow.ggir.cbor"
+    path.write_bytes(ir.encode(arrow_scene()))
+    load_scene(page, path)
+
+    heads = page.locator("svg.gg-svg path.ir-arrow")
+    assert heads.count() == 1
+    assert heads.first.get_attribute("data-kind") == "arrow"
+    d = heads.first.get_attribute("d")
+    # 两端各一个三角形（`closed`）：两条 `M…L…L…Z` 子路径。
+    assert d.count("M") == 2
+    assert d.count("Z") == 2
+    # 主线段仍然是一个 `[data-row]` 元素，箭头不额外占计数。
+    assert page.locator("svg.gg-svg [data-row][data-kind='segments']").count() == 1
+
+
 def test_10k_points_render_as_one_path(session, tmp_path: Path) -> None:
     """10k 行 points → 1 个 `<path>`（不是 10000 个），DOM 总数保持两位数。"""
     page, _ = session
