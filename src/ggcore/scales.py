@@ -691,8 +691,17 @@ class _DateTransform(_Transform):
         return out
 
 
-class _Log10(_Transform):
-    name = "log10"
+class _Log(_Transform):
+    """`scales::transform_log(base)`：对数变换 + `breaks_log(base)`。
+
+    `log10` 是它的一个特例（:class:`_Log10` 只钉名字与实现细节不变）。幂的底数
+    影响断点栅格：`transform_log2()` 的断点按 2 的幂取，与 `transform_log10()`
+    的整十次幂不是同一张表。
+    """
+
+    def __init__(self, base: float = 10.0, name: str | None = None) -> None:
+        self.base = float(base)
+        self.name = name or f"log{_format_base(self.base)}"
 
     def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """0 与负值 → NA（并计数）。
@@ -703,40 +712,93 @@ class _Log10(_Transform):
         invalid = ~(values > 0) | ~np.isfinite(values)
         out = np.full(values.shape, np.nan)
         valid = ~invalid
-        out[valid] = np.log10(values[valid])
+        out[valid] = np.log(values[valid]) / math.log(self.base)
         return out, invalid
 
     def inverse(self, values: np.ndarray) -> np.ndarray:
-        return np.power(10.0, values)
+        return np.power(self.base, values)
 
     @property
     def domain(self) -> tuple[float, float]:
         return (1e-100, math.inf)
 
     def breaks(self, low: float, high: float, n: int = 5) -> tuple[float, ...]:
-        """上游 `breaks_log()`：整十次幂，必要时用 `log_sub_breaks` 补细分。"""
+        """上游 `breaks_log(n, base)`：整次幂，必要时用 `log_sub_breaks` 补细分。"""
         if not (high > 0):
             return ()
-        span_low = math.log10(max(low, 1e-300))
-        span_high = math.log10(high)
+        base = self.base
+        low_value = max(low, 1e-300)
+        span_low = math.log(low_value) / math.log(base)
+        span_high = math.log(high) / math.log(base)
         minimum = math.floor(span_low)
         maximum = math.ceil(span_high)
         if maximum == minimum:
-            return (10.0**minimum,)
+            return (base**minimum,)
         step = math.floor((maximum - minimum) / n) + 1
         while step >= 1:
-            breaks = [10.0**exponent for exponent in range(minimum, maximum + 1, step)]
+            breaks = [base**exponent for exponent in range(minimum, maximum + 1, step)]
             relevant = [value for value in breaks if low <= value <= high]
             if len(relevant) >= n - 2:
                 return tuple(breaks)
             step -= 1
-        return _log_sub_breaks(low, high, n)
+        return _log_sub_breaks(low, high, n, base=base)
 
 
-def _log_sub_breaks(low: float, high: float, n: int = 5, base: int = 10) -> tuple[float, ...]:
-    """上游 `scales:::log_sub_breaks()`（整十次幂给不出足够断点时）。"""
-    minimum = math.floor(math.log10(low))
-    maximum = math.ceil(math.log10(high))
+class _Log10(_Log):
+    """`scales::transform_log10()`（= `transform_log(10)`）。"""
+
+    name = "log10"
+
+    def __init__(self) -> None:
+        super().__init__(10.0)
+        self.name = "log10"
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        invalid = ~(values > 0) | ~np.isfinite(values)
+        out = np.full(values.shape, np.nan)
+        valid = ~invalid
+        out[valid] = np.log10(values[valid])
+        return out, invalid
+
+
+class _Exp(_Transform):
+    """`scales::transform_exp(base)`：`x → base**x`，断点仍按数据空间取默认值。
+
+    上游 `transform_exp()` 不传 `breaks` / `domain`，所以断点是
+    `extended_breaks()` 作用在**未变换**的 limits 上（`numeric-exp` 快照里 x / y
+    的标签都是 1.0…3.0 就是这个原因）。
+    """
+
+    def __init__(self, base: float = math.e, name: str | None = None) -> None:
+        self.base = float(base)
+        self.name = name or ("exp" if self.base == math.e else f"exp{_format_base(self.base)}")
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        with np.errstate(over="ignore", invalid="ignore"):
+            out = np.power(self.base, values)
+        invalid = ~np.isfinite(out)
+        out = np.where(invalid, np.nan, out)
+        return np.asarray(out, dtype=np.float64), invalid
+
+    def inverse(self, values: np.ndarray) -> np.ndarray:
+        out = np.array(values, dtype=np.float64, copy=True)
+        out[out <= 0] = np.nan
+        return np.log(out) / math.log(self.base)
+
+
+def _format_base(base: float) -> str:
+    """底数写进名字时不带 `.0`（`log2` / `exp2`，不是 `log2.0`）。"""
+    return str(int(base)) if float(base).is_integer() else repr(float(base))
+
+
+def _log_sub_breaks(low: float, high: float, n: int = 5, base: float = 10.0) -> tuple[float, ...]:
+    """上游 `scales:::log_sub_breaks()`（整次幂给不出足够断点时）。"""
+    if base == 10:
+        minimum = math.floor(math.log10(low))
+        maximum = math.ceil(math.log10(high))
+    else:
+        minimum = math.floor(math.log(low, base))
+        maximum = math.ceil(math.log(high, base))
     if base <= 2:
         return tuple(base**exponent for exponent in range(minimum, maximum + 1))
 
@@ -745,7 +807,7 @@ def _log_sub_breaks(low: float, high: float, n: int = 5, base: int = 10) -> tupl
         return min(math.log(b / a, base) for a, b in itertools.pairwise(values))
 
     steps = [1]
-    candidates = [value for value in range(1, base) if 1 < value < base]
+    candidates = [value for value in range(1, int(base)) if 1 < value < base]
     breaks: list[float] = []
     while candidates:
         best = max(candidates, key=lambda value: delta(value, steps))
@@ -767,6 +829,9 @@ _TRANSFORMS: Mapping[str, Callable[[], _Transform]] = MappingProxyType(
     {
         "identity": _Identity,
         "log10": _Log10,
+        "log": lambda: _Log(math.e, "log"),
+        "log2": lambda: _Log(2.0),
+        "exp": _Exp,
         "sqrt": _Sqrt,
         "reverse": _Reverse,
         "date": lambda: _DateTransform("date"),
@@ -778,10 +843,7 @@ _TRANSFORMS: Mapping[str, Callable[[], _Transform]] = MappingProxyType(
 #: 尚未实现的变换：报错时点名后续任务，不静默当 identity。
 _UNSUPPORTED_TRANSFORMS: Mapping[str, str] = MappingProxyType(
     {
-        "log": "后续标度任务（M2-4 B 之后的 transform 扩展）",
-        "log2": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "log1p": "后续标度任务（M2-4 B 之后的 transform 扩展）",
-        "exp": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "pseudo_log": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "reciprocal": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "asn": "后续标度任务（M2-4 B 之后的 transform 扩展）",
@@ -791,17 +853,34 @@ _UNSUPPORTED_TRANSFORMS: Mapping[str, str] = MappingProxyType(
     }
 )
 
+#: 带参数的变换：`trans=("log", 2)` / `trans=("exp", 2)`（上游的同名构造函数
+#: `scales::transform_log(2)` / `transform_exp(2)`）。字符串形式只覆盖常用底数
+#: （`"log2"` / `"log10"` / `"exp"` = 自然底）。
+_PARAMETRIC_TRANSFORMS: Mapping[str, Callable[[float], _Transform]] = MappingProxyType(
+    {
+        "log": _Log,
+        "exp": _Exp,
+    }
+)
+
 
 def _trans_for(name: Any) -> _Transform:
     if isinstance(name, _Transform):
         return name
+    if isinstance(name, (tuple, list)):
+        if len(name) != 2 or str(name[0]) not in _PARAMETRIC_TRANSFORMS:
+            raise ScaleError(
+                f"未知的 trans：{name!r}（带参数的形式是 ('log', base) / ('exp', base)）"
+            )
+        return _PARAMETRIC_TRANSFORMS[str(name[0])](float(name[1]))
     key = "identity" if name is None else str(name)
     if key in _TRANSFORMS:
         return _TRANSFORMS[key]()
     if key in _UNSUPPORTED_TRANSFORMS:
         raise ScaleError(f"trans = {key!r} 尚未实现（留给 {_UNSUPPORTED_TRANSFORMS[key]}）")
     raise ScaleError(
-        f"未知的 trans：{key!r}（已实现 identity / log10 / sqrt / reverse / date / time / hms）"
+        f"未知的 trans：{key!r}（已实现 identity / log / log2 / log10 / exp / sqrt / reverse / "
+        "date / time / hms，以及 ('log', base) / ('exp', base)）"
     )
 
 
@@ -1016,6 +1095,15 @@ class ContinuousScale(ScaleBase):
 
     def limits(self) -> tuple[float, float]:
         explicit = self._limits_param()
+        if callable(explicit):
+            # 上游 `ScaleContinuous$get_limits()`：函数形态的 limits 收**变换后**的
+            # 训练范围（`self$range$range`），返回值也按变换后空间消费。
+            # 无数据时与上游一致，给 `c(0, 1)`。
+            base = self._range if self._range is not None else (0.0, 1.0)
+            computed = tuple(float(value) for value in explicit(base))
+            if len(computed) != 2:
+                raise ScaleError(f"函数 limits 必须返回 2 个值，收到 {computed!r}")
+            return (computed[0], computed[1])
         if explicit is not None:
             pairs = list(explicit)
             if len(pairs) != 2:
@@ -1088,7 +1176,7 @@ class ContinuousScale(ScaleBase):
         date_breaks = self._param("date_breaks")
         if date_breaks is not None and self.transform_.date_kind is not None:
             width = scales_date.calendar_breaks(self.transform_.date_kind, str(date_breaks))
-            values = width(data_low, data_high)
+            values = width((data_low, data_high))
         else:
             requested = self._breaks_param()
             if requested is None:
@@ -1105,6 +1193,11 @@ class ContinuousScale(ScaleBase):
                     values = tuple(requested(data_limits))
             elif isinstance(requested, Mapping):
                 values = tuple(requested.keys())
+            elif isinstance(requested, str) and self.transform_.date_kind is not None:
+                # 上游 `datetime_scale()`：字符形态的 `breaks` / `minor_breaks` 是
+                # `breaks_width(<spec>)` 的简写（`scale_x_date(breaks = "week")`）。
+                width = scales_date.calendar_breaks(self.transform_.date_kind, requested)
+                values = width((data_low, data_high))
             else:
                 values = tuple(float(value) for value in requested)
         transformed, _ = self.transform_.transform(np.asarray(values, dtype=np.float64))
@@ -1184,7 +1277,7 @@ class ContinuousScale(ScaleBase):
             data_low, data_high = (
                 float(value) for value in self.transform_.inverse(np.array([low, high])).tolist()
             )
-            transformed, _ = self.transform_.transform(np.asarray(width(data_low, data_high)))
+            transformed, _ = self.transform_.transform(np.asarray(width((data_low, data_high))))
             return tuple(value for value in transformed if low <= value <= high)
         if requested_minor is not None:
             if callable(requested_minor):
@@ -2300,6 +2393,18 @@ def _apply_labels(
             None if value is None else float(inverse(np.array([value]))[0]) for value in breaks
         ]
 
+    if callable(requested):
+        # 上游 `Scale$get_labels()`：回调只收**未 censor** 的断点，NA 位置留空。
+        present = [value for value in data_values if value is not None]
+        labels = list(requested(present)) if present else []
+        if len(labels) != len(present):
+            raise ScaleError(
+                f"labels 回调返回 {len(labels)} 项，断点有 {len(present)} 项（上游要求等长）"
+            )
+        out: list[str | None] = []
+        for value in data_values:
+            out.append(None if value is None else str(labels.pop(0)))
+        return tuple(out)
     if isinstance(requested, Mapping):
         out: list[str | None] = []
         for value in data_values:

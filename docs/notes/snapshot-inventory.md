@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**102**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**209**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **186** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**123**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**188**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **165** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -15,12 +15,10 @@
 | `theme` | m2-closeout | 39 | 13 | 26 |
 | `guide-axis` | m2-closeout | 23 | 0 | 23 |
 | `geom-violin` | m2-closeout | 14 | 0 | 14 |
-| `scales-breaks-labels` | m2-closeout | 13 | 0 | 13 |
 | `geom-raster` | m2-closeout | 12 | 0 | 12 |
 | `coord-polar` | m2-closeout | 11 | 0 | 11 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
-| `scale_date` | m2-closeout | 8 | 0 | 8 |
 | `sec-axis` | m2-closeout | 7 | 0 | 7 |
 | `aes` | m2-closeout | 6 | 0 | 6 |
 | `labels` | m2-closeout | 6 | 0 | 6 |
@@ -52,7 +50,9 @@
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 102 | 209 |
+| `scale_date` | m2-closeout | 8 | 8 | 0 |
+| `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
+| **合计** | — | 311 | 123 | 188 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -149,6 +149,27 @@
 | `guides/reversed-guide-bins.svg` | `upstream-guides-reversed-guide-bins` |
 | `guides/rotated-guide-titles-and-labels.svg` | `upstream-guides-rotated-guide-titles-labels` |
 | `guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg` | `upstream-guides-vertical-gap-1cm-title-guide` |
+| `scale_date/dates-along-x-default-breaks.svg` | `upstream-scale-date-dates-along-x-default-breaks` |
+| `scale_date/dates-along-y-default-breaks.svg` | `upstream-scale-date-dates-along-y-default-breaks` |
+| `scale_date/scale-x-date-breaks-3-weeks.svg` | `upstream-scale-date-scale-x-date-breaks-3-weeks` |
+| `scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg` | `upstream-scale-date-scale-x-date-breaks-breaks-width-2-weeks` |
+| `scale_date/scale-x-date-labels-label-date-m-d.svg` | `upstream-scale-date-scale-x-date-labels-label-date-m-d` |
+| `scale_date/scale-x-date-labels-label-date-w-week.svg` | `upstream-scale-date-scale-x-date-labels-label-date-w-week` |
+| `scale_date/scale-y-date-breaks-3-weeks.svg` | `upstream-scale-date-scale-y-date-breaks-3-weeks` |
+| `scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg` | `upstream-scale-date-scale-y-date-breaks-breaks-width-2-weeks` |
+| `scales-breaks-labels/character.svg` | `upstream-scales-character` |
+| `scales-breaks-labels/date.svg` | `upstream-scales-date` |
+| `scales-breaks-labels/functional-limits.svg` | `upstream-scales-functional-limits` |
+| `scales-breaks-labels/no-alpha-breaks-no-legend.svg` | `upstream-scales-no-alpha-breaks` |
+| `scales-breaks-labels/no-colour-breaks-no-legend.svg` | `upstream-scales-no-colour-breaks` |
+| `scales-breaks-labels/no-fill-breaks-no-legend.svg` | `upstream-scales-no-fill-breaks` |
+| `scales-breaks-labels/no-size-breaks-no-legend.svg` | `upstream-scales-no-size-breaks` |
+| `scales-breaks-labels/no-x-breaks.svg` | `upstream-scales-no-x-breaks` |
+| `scales-breaks-labels/no-y-breaks.svg` | `upstream-scales-no-y-breaks` |
+| `scales-breaks-labels/numeric-exp.svg` | `upstream-scales-numeric-exp` |
+| `scales-breaks-labels/numeric-log.svg` | `upstream-scales-numeric-log` |
+| `scales-breaks-labels/numeric-polar.svg` | `upstream-scales-numeric-polar` |
+| `scales-breaks-labels/numeric.svg` | `upstream-scales-numeric` |
 | `theme/theme-bw.svg` | `upstream-theme-bw` |
 | `theme/theme-classic.svg` | `upstream-theme-classic` |
 | `theme/theme-dark-large.svg` | `upstream-theme-dark-large` |
@@ -635,45 +656,6 @@ pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。
 <details><summary>快照</summary>
 
 - `position-stack/area-stacking.svg`
-
-</details>
-
-### `scale_date` — 8 条 · SIL-715 · m2-closeout
-
-日期断点 / 标签（8 条）未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `scale_date/dates-along-x-default-breaks.svg`
-- `scale_date/dates-along-y-default-breaks.svg`
-- `scale_date/scale-x-date-breaks-3-weeks.svg`
-- `scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg`
-- `scale_date/scale-x-date-labels-label-date-m-d.svg`
-- `scale_date/scale-x-date-labels-label-date-w-week.svg`
-- `scale_date/scale-y-date-breaks-3-weeks.svg`
-- `scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg`
-
-</details>
-
-### `scales-breaks-labels` — 13 条 · SIL-715 · m2-closeout
-
-断点 / 标签函数与空图例（13 条）未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `scales-breaks-labels/character.svg`
-- `scales-breaks-labels/date.svg`
-- `scales-breaks-labels/functional-limits.svg`
-- `scales-breaks-labels/no-alpha-breaks-no-legend.svg`
-- `scales-breaks-labels/no-colour-breaks-no-legend.svg`
-- `scales-breaks-labels/no-fill-breaks-no-legend.svg`
-- `scales-breaks-labels/no-size-breaks-no-legend.svg`
-- `scales-breaks-labels/no-x-breaks.svg`
-- `scales-breaks-labels/no-y-breaks.svg`
-- `scales-breaks-labels/numeric-exp.svg`
-- `scales-breaks-labels/numeric-log.svg`
-- `scales-breaks-labels/numeric-polar.svg`
-- `scales-breaks-labels/numeric.svg`
 
 </details>
 

@@ -383,7 +383,8 @@ def test_sqrt_and_reverse_transforms_are_implemented() -> None:
 
 
 def test_unsupported_transforms_still_raise() -> None:
-    for trans in ("log2", "exp", "pseudo_log", "logit"):
+    # log2 / exp 已在 SIL-790 实现（见下面两节），这里只剩真正没做的名字。
+    for trans in ("log1p", "pseudo_log", "logit"):
         with pytest.raises(ScaleError, match="尚未实现"):
             scale_from_component(Scale("x_continuous", "x", {"trans": trans}))
     with pytest.raises(ScaleError, match="未知的 trans"):
@@ -1088,3 +1089,90 @@ def test_linetype_and_linewidth_defaults_come_from_the_pipeline() -> None:
     assert sorted(data.column("linewidth").values.tolist()) == pytest.approx(
         [1.0, 2.6666666666666665, 4.333333333333333, 6.0]
     )
+
+
+# ---------------------------------------------------------------------------
+# log2 / exp（SIL-790）
+# ---------------------------------------------------------------------------
+
+
+def test_log2_transform_uses_base_two_break_grid() -> None:
+    """`transform_log2()` 的断点是 2 的幂，不是整十次幂。
+
+    `numeric-log` 快照：x = 1..1e4 上 expand 后的范围让 `breaks_log(base = 2)` 落到
+    `0.5, 8, 128, 2048`，面板里剩 `8 / 128 / 2048`（R 的标签也是这三个）。
+    """
+    scale = scale_from_component(Scale("x_continuous", "x", {"trans": "log2"}))
+    scale.train(scale.transform(column([1.0, 1e4])))
+    assert scale.transform_.name == "log2"
+    assert scale.limits() == pytest.approx((0.0, math.log2(1e4)), abs=1e-12)
+    # `breaks()` 是变换后的空间（log2 值），标签回到数据空间。
+    assert scale.breaks() == (None, 3.0, 7.0, 11.0)
+    assert scale.labels() == (None, "8", "128", "2048")
+
+
+def test_exp_transform_is_base_raised_and_keeps_default_breaks_in_data_space() -> None:
+    """`transform_exp(2)`：`x → 2**x`，断点仍是数据空间的默认值。
+
+    `numeric-exp` 快照的 x / y 标签都是 1.0…3.0——上游 `transform_exp()` 不传
+    `breaks`，所以 `extended_breaks()` 作用在**未变换**的范围上。
+    """
+    scale = scale_from_component(Scale("x_continuous", "x", {"trans": ("exp", 2)}))
+    transformed = scale.transform(column([1.0, 3.0]))
+    assert transformed.values.tolist() == [2.0, 8.0]
+    scale.train(transformed)
+    assert scale.limits() == pytest.approx((2.0, 8.0), abs=1e-12)
+    assert scale.labels() == ("1.0", "1.5", "2.0", "2.5", "3.0")
+
+
+def test_parametric_transforms_reject_unknown_kinds() -> None:
+    from ggcore.scales import ScaleError
+
+    with pytest.raises(ScaleError, match="带参数的形式"):
+        scale_from_component(Scale("x_continuous", "x", {"trans": ("log1p", 2)}))
+    with pytest.raises(ScaleError, match="尚未实现"):
+        scale_from_component(Scale("x_continuous", "x", {"trans": "log1p"}))
+
+
+# ---------------------------------------------------------------------------
+# 函数形态的 limits / labels（SIL-790）
+# ---------------------------------------------------------------------------
+
+
+def test_function_limits_are_applied_to_the_trained_range() -> None:
+    """`scale_y_continuous(limits = function(lims) ...)`（`functional-limits` 快照）。
+
+    上游 `ScaleContinuous$get_limits()` 把**变换后**的训练范围喂给函数；返回值
+    也按变换后空间消费。`limiter(50)` 作用在计数 0..62 上 → 0..100。
+    """
+
+    def limiter(by: float):
+        def limits(values):
+            low, high = values
+            return (math.floor(low / by) * by, math.ceil(high / by) * by)
+
+        return limits
+
+    scale = scale_from_component(Scale("y_continuous", "y", {"limits": limiter(50)}))
+    scale.train(column([0.0, 62.0]))
+    assert scale.limits() == (0.0, 100.0)
+    labels = scale.labels()
+    assert [label for label in labels if label is not None] == ["0", "25", "50", "75", "100"]
+
+
+def test_callable_labels_get_untransformed_breaks_and_keep_na_positions() -> None:
+    """`labels = function(breaks)`：回调只收未 censor 的断点，NA 位置留空。"""
+    seen: list[list[float]] = []
+
+    def labels(values):
+        seen.append(list(values))
+        return [f"<{value:g}>" for value in values]
+
+    scale = scale_from_component(
+        Scale("x_continuous", "x", {"breaks": [1.0, 3.0], "labels": labels})
+    )
+    scale.train(column([2.0, 3.0]))
+    # limits = 2..3 → 1 被 censor 成 None，回调只收到 3。
+    assert scale.breaks() == (None, 3.0)
+    assert scale.labels() == (None, "<3>")
+    assert seen == [[3.0]]

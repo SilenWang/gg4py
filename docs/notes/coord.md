@@ -243,7 +243,9 @@ M0 交接的遗留口径在本任务收口：
 渲染（`ggcore.geom.scene`）：
 
 - 背景网格换成「theta 辐条 + r 同心圆」：辐条 `0 → 0.45`（radial 从内半径
-  到 0.4），圆按 `r` 断点采样 100 点（polar 额外画 0.45 外圈）；
+  到 0.4），圆按 **`r` 的主断点**采样 100 点（polar 额外画 0.45 外圈）。
+  R 的 `CoordPolar$render_bg()` 只渲染 `panel.grid.major.<r>`：theta 有 minor
+  辐条，r **没有** minor 圆——`panel.grid.minor.<r>` 在 polar 下不消费（SIL-790）；
 - theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
   0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
 - r 轴在 `left` 槽，位置 `r_rescale(r) + 0.5`（`r.axis.inside` 时不上槽）；
@@ -251,10 +253,13 @@ M0 交接的遗留口径在本任务收口：
   panel 单元格**上：spacing / strip 不变，整块居中（R 的 `respect`）。
   `coord-polar-facet` 的 141.26pt 面板宽度与 R 逐像素一致。
 
-**已知差异（theme 带的轴）**：R 的 `CoordPolar$render_axis_h()` 返回
-`draw_axis(NA, "", "bottom")`，在 gtable 里给底部轴留了约 0.147cm（8.8pt
-主题）的空行；我们按 0 处理，所以带轴的 polar 图比 R 高约 7px。coord 案例
-统一用 `theme_void()`，几何逐像素对拍；轴本身的断点 / 标签由 R 夹具对拍。
+**`axis-b` 行（SIL-790 已对齐）**：R 的 `CoordPolar$render_axis_h()` 返回
+`draw_axis(NA, "", "bottom")`，`ggplotGrob()` 仍给底部轴留一行：刻度长度 +
+theta 标签行。标签行高来自 `titleGrob`（`grobheight + |cos θ|·descent`），对
+4–52 pt 的轴文字是一条直线 `0.22·size + 2.2` pt（8.8 pt → 4.19 pt，合计
+`axis-b = 6.94 pt`），见 `ggcore.axis.polar_axis_row_cm()`。修前按 0 处理，
+带轴的 polar 图面板比 R 大 6.8 pt，同心圆全部错位（`numeric-polar` 图级
+5.24% → 1.78%）。轴文字是 `element_blank()` 时只剩刻度长度。
 
 ## 10. `coord_munch()`
 

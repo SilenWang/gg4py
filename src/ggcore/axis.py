@@ -56,6 +56,7 @@ __all__ = [
     "font_int",
     "margin_sides_cm",
     "paint",
+    "polar_axis_row_cm",
     "sec_axis",
     "secondary_ticks",
     "text_line_cm",
@@ -630,6 +631,26 @@ def _text_extent_cm(
         return 0.0
     widest = max(text_width_cm(label, size, metrics, family) for label in labels)
     return widest + ml + mr
+
+
+def polar_axis_row_cm(theme: ResolvedTheme) -> float:
+    """极性坐标留在 `axis-b` 行的高度（cm）。
+
+    上游 `CoordPolar` 把 theta 标签画在面板**内部**（`render_fg()`），但
+    `ggplotGrob()` 仍然给它们留一行 `axis-b`：刻度长度 + 标签行高。标签行高来自
+    `titleGrob`（`grobheight + |cos θ|·descent`），**不是**整行文字高度，所以
+    跟 `axis_extent()` 的 cartesian 口径不一样。
+
+    对 4–52 pt 的轴文字，R 4.5.3 + ggplot2 4.0.3 + svglite 实测是一条直线
+    `0.22·size + 2.2` pt（误差 < 0.1 pt；缺省 `axis.text` 8.8 pt → 4.19 pt）。
+    轴文字是 `element_blank()` 时只剩刻度长度（实测 2.75 pt）。
+    """
+    tick = tick_length_cm(theme, "bottom")
+    text = theme.get("axis.text.x")
+    if isinstance(text, ElementBlank) or not isinstance(text, ElementText):
+        return tick
+    size = float(text.size or 0.0)
+    return tick + (0.22 * size + 2.2) * _CM_PER_INCH / _POINTS_PER_INCH
 
 
 def axis_extent(

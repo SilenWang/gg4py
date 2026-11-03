@@ -245,3 +245,20 @@ def test_secondary_axis_title_is_hidden_for_waiver_and_derived_for_dup_axis() ->
     build, layout = layout_and_scale(dup_axis(name=DERIVE))
     assert _secondary_title(build, "x", build.scales.scale("x")) == "primary"
     assert layout.x_title_top_cm > 0.0
+
+
+def test_polar_axis_row_reserves_the_theta_label_row() -> None:
+    """polar 的 `axis-b` 行：刻度 + theta 标签行（不是 cartesian 的整行高度）。
+
+    `numeric-polar` 快照：R 的 `axis-b` 是 6.94pt（刻度 2.75 + 标签行 4.19），
+    少了这一行面板会大 6.77pt，同心圆全部错位。轴文字 blank 时只剩刻度。
+    """
+    from ggcore.axis import polar_axis_row_cm
+
+    theme = resolve_theme(registry.theme_grey())
+    tick = tick_length_cm(theme, "bottom")
+    # 8.8pt 的轴文字：0.22 × 8.8 + 2.2 = 4.136pt（R 实测 4.19pt，差 0.05pt）。
+    expected = tick + (0.22 * 8.8 + 2.2) / 72 * 2.54
+    assert polar_axis_row_cm(theme) == pytest.approx(expected)
+    blank = resolve_theme(theme_void())
+    assert polar_axis_row_cm(blank) == pytest.approx(tick_length_cm(blank, "bottom"))
