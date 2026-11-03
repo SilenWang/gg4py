@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis-logticks", "scale-log10"]
+ci = true
+title = "guide：对数轴三档次刻度"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "long / mid / short 三档长度，位置来自 minor_breaks_log。"
