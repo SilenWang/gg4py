@@ -4,15 +4,14 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**67**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**244**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **221** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**102**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**209**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **186** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `geom-dotplot` | m2-closeout | 35 | 0 | 35 |
 | `theme` | m2-closeout | 39 | 13 | 26 |
 | `guide-axis` | m2-closeout | 23 | 0 | 23 |
 | `geom-violin` | m2-closeout | 14 | 0 | 14 |
@@ -51,8 +50,9 @@
 | `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
+| `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 67 | 244 |
+| **合计** | — | 311 | 102 | 209 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -62,6 +62,41 @@
 | --- | --- |
 | `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
 | `draw-key/horizontal-linerange-and-pointrange.svg` | `upstream-draw-key-horizontal-linerange-pointrange` |
+| `geom-dotplot/2-na-values-bin-along-y-stack-center.svg` | `upstream-geom-dotplot-2-na-bin-along-y` |
+| `geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg` | `upstream-geom-dotplot-2-na-dotdensity` |
+| `geom-dotplot/3-stackgroups-bin-y-histodot.svg` | `upstream-geom-dotplot-3-stackgroups-bin-y-histodot` |
+| `geom-dotplot/3-stackgroups-dot-density-with-aligned-bins.svg` | `upstream-geom-dotplot-3-stackgroups-dotdensity-aligned` |
+| `geom-dotplot/3-stackgroups-histodot.svg` | `upstream-geom-dotplot-3-stackgroups-histodot` |
+| `geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg` | `upstream-geom-dotplot-basic-dotdensity` |
+| `geom-dotplot/bin-along-y-stack-center.svg` | `upstream-geom-dotplot-bin-along-y-stack-center` |
+| `geom-dotplot/bin-along-y-stack-centerwhole-histodot.svg` | `upstream-geom-dotplot-bin-along-y-stack-centerwhole-histodot` |
+| `geom-dotplot/bin-along-y-stack-centerwhole.svg` | `upstream-geom-dotplot-bin-along-y-stack-centerwhole` |
+| `geom-dotplot/bin-x-three-y-groups-stack-centerwhole.svg` | `upstream-geom-dotplot-bin-x-three-y-groups-stack-centerwhole` |
+| `geom-dotplot/bin-y-continous-x-axis-grouping-by-x.svg` | `upstream-geom-dotplot-bin-y-continuous-x-grouping-by-x` |
+| `geom-dotplot/bin-y-continous-x-axis-single-x-group.svg` | `upstream-geom-dotplot-bin-y-continuous-x-single-group` |
+| `geom-dotplot/bin-y-dodged-coord-flip.svg` | `upstream-geom-dotplot-bin-y-dodged-coord-flip` |
+| `geom-dotplot/bin-y-dodged.svg` | `upstream-geom-dotplot-bin-y-dodged` |
+| `geom-dotplot/bin-y-dodging-3-stackgroups-histodot.svg` | `upstream-geom-dotplot-bin-y-dodging-3-stackgroups-histodot` |
+| `geom-dotplot/bin-y-three-x-groups-bins-aligned-across-groups.svg` | `upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-across-groups` |
+| `geom-dotplot/bin-y-three-x-groups-bins-aligned-coord-flip.svg` | `upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-coord-flip` |
+| `geom-dotplot/bin-y-three-x-groups-fill-and-dodge.svg` | `upstream-geom-dotplot-bin-y-three-x-groups-fill-and-dodge` |
+| `geom-dotplot/bin-y-three-x-groups-stack-centerwhole.svg` | `upstream-geom-dotplot-bin-y-three-x-groups-stack-centerwhole` |
+| `geom-dotplot/dots-stacked-closer-stackratio-5-fill-white.svg` | `upstream-geom-dotplot-stackratio-half` |
+| `geom-dotplot/facets-3-groups-histodot-stackgroups.svg` | `upstream-geom-dotplot-facets-3-groups-histodot-stackgroups` |
+| `geom-dotplot/histodot-binning-equal-bin-spacing.svg` | `upstream-geom-dotplot-histodot` |
+| `geom-dotplot/larger-dots-dotsize-1-5-fill-white.svg` | `upstream-geom-dotplot-dotsize-large` |
+| `geom-dotplot/multiple-groups-bins-aligned.svg` | `upstream-geom-dotplot-multiple-groups-bins-aligned` |
+| `geom-dotplot/multiple-groups-bins-not-aligned.svg` | `upstream-geom-dotplot-multiple-groups-bins-not-aligned` |
+| `geom-dotplot/stack-center-with-coord-flip.svg` | `upstream-geom-dotplot-stack-center-coord-flip` |
+| `geom-dotplot/stack-center.svg` | `upstream-geom-dotplot-stack-center` |
+| `geom-dotplot/stack-centerwhole-with-coord-flip.svg` | `upstream-geom-dotplot-stack-centerwhole-coord-flip` |
+| `geom-dotplot/stack-centerwhole.svg` | `upstream-geom-dotplot-stack-centerwhole` |
+| `geom-dotplot/stack-down-with-coord-flip.svg` | `upstream-geom-dotplot-stack-down-coord-flip` |
+| `geom-dotplot/stack-down.svg` | `upstream-geom-dotplot-stack-down` |
+| `geom-dotplot/stack-up-with-coord-flip.svg` | `upstream-geom-dotplot-stack-up-coord-flip` |
+| `geom-dotplot/stack-up.svg` | `upstream-geom-dotplot-stack-up` |
+| `geom-dotplot/stackratio-1-5.svg` | `upstream-geom-dotplot-stackratio-1-5` |
+| `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg` | `upstream-geom-dotplot-variable-linetype-size` |
 | `guide-colorbar/combined-colour-and-fill-aesthetics.svg` | `upstream-guide-colorbar-combined-aesthetics` |
 | `guide-colorbar/customized-colorbar.svg` | `upstream-guide-colorbar-customized` |
 | `guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg` | `upstream-guide-colorbar-white-to-red` |
@@ -345,50 +380,6 @@
 
 - `geom-curve/flipped-geom-curve.svg`
 - `geom-curve/standard-geom-curve.svg`
-
-</details>
-
-### `geom-dotplot` — 35 条 · SIL-715 · m2-closeout
-
-`geom_dotplot()` 的 bin 对齐 / stackgroups / histodot 语义（35 条）是 SIL-715 里单列的 dotplot 缺口。
-
-<details><summary>快照</summary>
-
-- `geom-dotplot/2-na-values-bin-along-y-stack-center.svg`
-- `geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg`
-- `geom-dotplot/3-stackgroups-bin-y-histodot.svg`
-- `geom-dotplot/3-stackgroups-dot-density-with-aligned-bins.svg`
-- `geom-dotplot/3-stackgroups-histodot.svg`
-- `geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg`
-- `geom-dotplot/bin-along-y-stack-center.svg`
-- `geom-dotplot/bin-along-y-stack-centerwhole-histodot.svg`
-- `geom-dotplot/bin-along-y-stack-centerwhole.svg`
-- `geom-dotplot/bin-x-three-y-groups-stack-centerwhole.svg`
-- `geom-dotplot/bin-y-continous-x-axis-grouping-by-x.svg`
-- `geom-dotplot/bin-y-continous-x-axis-single-x-group.svg`
-- `geom-dotplot/bin-y-dodged-coord-flip.svg`
-- `geom-dotplot/bin-y-dodged.svg`
-- `geom-dotplot/bin-y-dodging-3-stackgroups-histodot.svg`
-- `geom-dotplot/bin-y-three-x-groups-bins-aligned-across-groups.svg`
-- `geom-dotplot/bin-y-three-x-groups-bins-aligned-coord-flip.svg`
-- `geom-dotplot/bin-y-three-x-groups-fill-and-dodge.svg`
-- `geom-dotplot/bin-y-three-x-groups-stack-centerwhole.svg`
-- `geom-dotplot/dots-stacked-closer-stackratio-5-fill-white.svg`
-- `geom-dotplot/facets-3-groups-histodot-stackgroups.svg`
-- `geom-dotplot/histodot-binning-equal-bin-spacing.svg`
-- `geom-dotplot/larger-dots-dotsize-1-5-fill-white.svg`
-- `geom-dotplot/multiple-groups-bins-aligned.svg`
-- `geom-dotplot/multiple-groups-bins-not-aligned.svg`
-- `geom-dotplot/stack-center-with-coord-flip.svg`
-- `geom-dotplot/stack-center.svg`
-- `geom-dotplot/stack-centerwhole-with-coord-flip.svg`
-- `geom-dotplot/stack-centerwhole.svg`
-- `geom-dotplot/stack-down-with-coord-flip.svg`
-- `geom-dotplot/stack-down.svg`
-- `geom-dotplot/stack-up-with-coord-flip.svg`
-- `geom-dotplot/stack-up.svg`
-- `geom-dotplot/stackratio-1-5.svg`
-- `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg`
 
 </details>
 

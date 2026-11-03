@@ -44,6 +44,7 @@ from ggcore.geom.base import (
     POINT_PER_MM,
     GeomError,
     GeomRenderer,
+    _is_discrete,
     alpha_colour,
     default_size,
     flip_data,
@@ -350,6 +351,18 @@ class DotplotRenderer(GeomRenderer):
     name = "dotplot"
     detect_flipped = False
 
+    def setup_params(
+        self, data: ColumnTable, params: Any, *, raw: ColumnTable | None = None
+    ) -> dict[str, Any]:
+        resolved = super().setup_params(data, params, raw=raw)
+        source = raw if raw is not None else data
+        # R 的 `is_mapped_discrete()`：只有 binaxis = "x" 时的 `y` 用得上（离散
+        # y 的堆叠从该水平的位置起算）。映射前的列类型是唯一可靠来源。
+        for axis in ("x", "y"):
+            column = source.column(axis) if axis in source else None
+            resolved[f"_discrete_{axis}"] = _is_discrete(column)
+        return resolved
+
     def setup_data(self, data: ColumnTable, params: Any) -> ColumnTable:
         if data.nrows == 0:
             return data
@@ -358,6 +371,7 @@ class DotplotRenderer(GeomRenderer):
             raise GeomError(f"binaxis 只能是 'x' 或 'y'，收到 {binaxis!r}")
         stackdir = str(params.get("stackdir", "up") or "up")
         stackfn, stackmin, stackmax = _stack_functions(stackdir)
+        stackgroups = bool(params.get("stackgroups", False))
         width = _width_column(data, params, 0.9)
         columns = [(name, data.column(name)) for name in data.names]
         columns = _put(columns, "width", Column("float", width))
@@ -367,20 +381,28 @@ class DotplotRenderer(GeomRenderer):
         expanded = np.repeat(np.arange(table.nrows), count.astype(np.int64))
         table = row_slice(table, expanded)
         table = ColumnTable([(name, table.column(name)) for name in table.names], nrows=table.nrows)
-        groups = _group_keys(table)
-        bin_values = table_numeric(table, binaxis)
-        x_values = table_numeric(table, "x")
-        if binaxis == "x":
-            # R 的 `plyvars = c("x", "PANEL", "group")`：每个 bin 一摞。
-            ply_keys = [
-                (str(groups[index]), float(bin_values[index])) for index in range(table.nrows)
-            ]
-        else:
-            # `binaxis = "y"` 时 R 再按 x 拆（`stackaxis == "x"` 的补充项）。
-            ply_keys = [
-                (str(groups[index]), float(bin_values[index]), float(x_values[index]))
-                for index in range(table.nrows)
-            ]
+        # 行数变了：width 也要按展开后的行取（R 的 `data[rep(...), ]` 之后）。
+        width = table_numeric(table, "width", default=0.9)
+        # R 的 `plyvars = c(binaxis, "PANEL")`；`stackgroups = FALSE` 时再按 group
+        # 拆，`stackaxis == "x"`（binaxis = "y"）时再按 x 拆。
+        ply_names = [binaxis]
+        if "PANEL" in table:
+            ply_names.append("PANEL")
+        if not stackgroups:
+            ply_names.append("group")
+        if binaxis == "y":
+            ply_names.append("x")
+        ply_values: list[list[Any]] = []
+        for name in ply_names:
+            column = table.column(name)
+            mask = np.asarray(column.na_mask, dtype=bool).tolist()
+            ply_values.append(
+                [
+                    ("<na>",) if missing else value
+                    for value, missing in zip(column.values.tolist(), mask, strict=True)
+                ]
+            )
+        ply_keys = list(zip(*ply_values, strict=True))
         stackpos = np.zeros(table.nrows, dtype=np.float64)
         countidx = np.zeros(table.nrows, dtype=np.float64)
         buckets: dict[Any, list[int]] = {}
@@ -397,15 +419,32 @@ class DotplotRenderer(GeomRenderer):
         y = table_numeric(table, "y")
         binwidth = table_numeric(table, "binwidth", default=0.0)
         if binaxis == "x":
+            yoffset = y if bool(params.get("_discrete_y", False)) else np.zeros(table.nrows)
             columns = _put(columns, "xmin", Column("float", x - binwidth / 2.0))
             columns = _put(columns, "xmax", Column("float", x + binwidth / 2.0))
-            columns = _put(columns, "ymin", Column("float", np.full(table.nrows, stackmin)))
-            columns = _put(columns, "ymax", Column("float", np.full(table.nrows, stackmax)))
-            columns = _put(columns, "y", Column("float", np.zeros(table.nrows)))
+            columns = _put(columns, "ymin", Column("float", yoffset + stackmin))
+            columns = _put(columns, "ymax", Column("float", yoffset + stackmax))
+            columns = _put(columns, "y", Column("float", yoffset))
         else:
             low = np.full(table.nrows, math.nan)
             high = np.full(table.nrows, math.nan)
-            for _key, rows in _group_rows(table):
+            # R 的 `dapply(data, c("group", "PANEL"), …)`：每个面板的每组一条
+            # ymin / ymax（跨面板混在一起会把范围拉大）。
+            panel_values = (
+                np.asarray(table.column("PANEL").values).tolist()
+                if "PANEL" in table
+                else [0] * table.nrows
+            )
+            group_values = (
+                np.asarray(table.column("group").values).tolist()
+                if "group" in table
+                else [0] * table.nrows
+            )
+            buckets_panel: dict[Any, list[int]] = {}
+            for index, key in enumerate(zip(group_values, panel_values, strict=True)):
+                buckets_panel.setdefault(key, []).append(index)
+            for rows_list in buckets_panel.values():
+                rows = np.asarray(rows_list, dtype=np.int64)
                 values = y[rows]
                 low[rows] = np.nanmin(values) - binwidth[rows][0] / 2.0
                 high[rows] = np.nanmax(values) + binwidth[rows][0] / 2.0
@@ -438,45 +477,52 @@ class DotplotRenderer(GeomRenderer):
         alpha = table_numeric(data, "alpha", default=math.nan)
         stroke = table_numeric(data, "stroke", default=1.0)
         linetype = _values(data, "linetype", 1)
+        # R 的 `draw_group()` 先按 coord 翻转 binaxis：coord_flip 下 bin 轴与堆叠轴
+        # 都落在屏幕的对侧，直径取「非堆叠轴」（`dotdia` 的 npc 口径）。
+        flipped = bool(getattr(panel, "flipped", False))
+        if flipped:
+            binaxis = "y" if binaxis == "x" else "x"
         if binaxis == "x":
-            axis = np.asarray(panel.x_range, dtype=np.float64)
-            span = float(axis[1] - axis[0])
-            radius_npc = dotsize * float(binwidth[0]) / span / 2.0 if span else 0.0
-            # R 的 `dotstackGrob` 用**非堆叠轴**的 mm 直径（convertX），偏移落在
-            # 堆叠轴上是绝对长度；换到 y 的 npc 要乘面板宽高比。
+            span = float(np.asarray(panel.x_range, dtype=np.float64)[1] - panel.x_range[0])
+            # 偏移落在堆叠轴（屏幕 y）上是绝对长度；x 的 npc → y 的 npc 乘宽高比。
             ratio = _axis_ratio(panel)
-            dot_x = x
-            dot_y = y + radius_npc * 2.0 * (stackpos * stackratio) * ratio
             r_axis = "x"
         else:
-            axis = np.asarray(panel.y_range, dtype=np.float64)
-            span = float(axis[1] - axis[0])
-            radius_npc = dotsize * float(binwidth[0]) / span / 2.0 if span else 0.0
+            span = float(np.asarray(panel.y_range, dtype=np.float64)[1] - panel.y_range[0])
             ratio = 1.0 / _axis_ratio(panel)
-            dot_x = x + radius_npc * 2.0 * (stackpos * stackratio) * ratio
-            dot_y = y
             r_axis = "y"
         stackoffset = (1.0 - stackratio) / 2.0 if stackdir in ("up", "down") else 0.0
         if stackdir == "down":
             stackoffset = -stackoffset
-        if binaxis == "x":
-            dot_y = dot_y + stackoffset * radius_npc * 2.0 * ratio
-        else:
-            dot_x = dot_x + stackoffset * radius_npc * 2.0 * ratio
-        return circle_grob(
-            unit(dot_x.tolist(), "native"),
-            unit(dot_y.tolist(), "native"),
-            r=unit(float(radius_npc), "npc"),
-            r_axis=r_axis,
-            default_units="native",
-            name="geom_dotplot",
-            gp={
-                "col": [alpha_colour(colour, a) for colour, a in zip(colours, alpha, strict=True)],
-                "fill": [alpha_colour(fill, a) for fill, a in zip(fills, alpha, strict=True)],
-                "lwd": stroke.tolist(),
-                "lty": lty_value(linetype[0]) if linetype else 1,
-            },
-        )
+        # R 的 `draw_group()` 逐组画：一组的点直径相同（binwidth 组内恒定），
+        # `lty` / `lwd` 在组内也恒定，所以每组一个 circleGrob。
+        grobs: list[Any] = []
+        for _key, rows in _group_rows(data):
+            first = int(rows[0])
+            radius = dotsize * float(binwidth[first]) / span / 2.0 if span else 0.0
+            offset = radius * 2.0 * (stackpos[rows] * stackratio + stackoffset) * ratio
+            if binaxis == "x":
+                dot_x = x[rows]
+                dot_y = y[rows] + offset
+            else:
+                dot_x = x[rows] + offset
+                dot_y = y[rows]
+            grobs.append(
+                circle_grob(
+                    unit(dot_x.tolist(), "native"),
+                    unit(dot_y.tolist(), "native"),
+                    r=unit(radius, "npc"),
+                    r_axis=r_axis,
+                    default_units="native",
+                    gp={
+                        "col": alpha_colour(colours[first], alpha[first]),
+                        "fill": alpha_colour(fills[first], alpha[first]),
+                        "lwd": float(stroke[first]),
+                        "lty": lty_value(linetype[first]),
+                    },
+                )
+            )
+        return g_tree(*grobs, name="geom_dotplot")
 
 
 # ---------------------------------------------------------------------------

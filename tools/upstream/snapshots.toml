@@ -89,9 +89,9 @@ owner = "m2-closeout"
 reason = "`geom_curve()` 的翻转（`coord_flip`）未复刻。"
 
 [groups."geom-dotplot"]
-issue = "SIL-715"
+issue = "SIL-787"
 owner = "m2-closeout"
-reason = "`geom_dotplot()` 的 bin 对齐 / stackgroups / histodot 语义（35 条）是 SIL-715 里单列的 dotplot 缺口。"
+reason = "dotplot 的 35 条已全部纳管（SIL-787）；新增快照先落到本组再补 case。"
 
 [groups."geom-hex"]
 issue = "SIL-715"
@@ -456,3 +456,109 @@ reason = "依赖 `key_glyph = 'timeseries'` / 'polygon'`；同上。"
 
 [snapshots."legend-draw/all-legend-keys.svg"]
 reason = "这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。"
+# --- geom-dotplot（SIL-787）：35 条按 test-geom-dotplot.R 的 doppelganger 复刻 ---
+
+[snapshots."geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg"]
+case = "upstream-geom-dotplot-basic-dotdensity"
+
+[snapshots."geom-dotplot/histodot-binning-equal-bin-spacing.svg"]
+case = "upstream-geom-dotplot-histodot"
+
+[snapshots."geom-dotplot/dots-stacked-closer-stackratio-5-fill-white.svg"]
+case = "upstream-geom-dotplot-stackratio-half"
+
+[snapshots."geom-dotplot/larger-dots-dotsize-1-5-fill-white.svg"]
+case = "upstream-geom-dotplot-dotsize-large"
+
+[snapshots."geom-dotplot/stack-up.svg"]
+case = "upstream-geom-dotplot-stack-up"
+
+[snapshots."geom-dotplot/stack-up-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-up-coord-flip"
+
+[snapshots."geom-dotplot/stack-down.svg"]
+case = "upstream-geom-dotplot-stack-down"
+
+[snapshots."geom-dotplot/stack-down-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-down-coord-flip"
+
+[snapshots."geom-dotplot/stack-center.svg"]
+case = "upstream-geom-dotplot-stack-center"
+
+[snapshots."geom-dotplot/stack-center-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-center-coord-flip"
+
+[snapshots."geom-dotplot/stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-stack-centerwhole"
+
+[snapshots."geom-dotplot/stack-centerwhole-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-centerwhole-coord-flip"
+
+[snapshots."geom-dotplot/multiple-groups-bins-not-aligned.svg"]
+case = "upstream-geom-dotplot-multiple-groups-bins-not-aligned"
+
+[snapshots."geom-dotplot/multiple-groups-bins-aligned.svg"]
+case = "upstream-geom-dotplot-multiple-groups-bins-aligned"
+
+[snapshots."geom-dotplot/bin-along-y-stack-center.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-center"
+
+[snapshots."geom-dotplot/bin-along-y-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-along-y-stack-centerwhole-histodot.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-centerwhole-histodot"
+
+[snapshots."geom-dotplot/bin-x-three-y-groups-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-x-three-y-groups-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-bins-aligned-across-groups.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-across-groups"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-bins-aligned-coord-flip.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-coord-flip"
+
+[snapshots."geom-dotplot/bin-y-dodged.svg"]
+case = "upstream-geom-dotplot-bin-y-dodged"
+
+[snapshots."geom-dotplot/bin-y-dodged-coord-flip.svg"]
+case = "upstream-geom-dotplot-bin-y-dodged-coord-flip"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-fill-and-dodge.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-fill-and-dodge"
+
+[snapshots."geom-dotplot/bin-y-continous-x-axis-grouping-by-x.svg"]
+case = "upstream-geom-dotplot-bin-y-continuous-x-grouping-by-x"
+
+[snapshots."geom-dotplot/bin-y-continous-x-axis-single-x-group.svg"]
+case = "upstream-geom-dotplot-bin-y-continuous-x-single-group"
+
+[snapshots."geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg"]
+case = "upstream-geom-dotplot-variable-linetype-size"
+
+[snapshots."geom-dotplot/3-stackgroups-dot-density-with-aligned-bins.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-dotdensity-aligned"
+
+[snapshots."geom-dotplot/3-stackgroups-histodot.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-histodot"
+
+[snapshots."geom-dotplot/3-stackgroups-bin-y-histodot.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-bin-y-histodot"
+
+[snapshots."geom-dotplot/bin-y-dodging-3-stackgroups-histodot.svg"]
+case = "upstream-geom-dotplot-bin-y-dodging-3-stackgroups-histodot"
+
+[snapshots."geom-dotplot/facets-3-groups-histodot-stackgroups.svg"]
+case = "upstream-geom-dotplot-facets-3-groups-histodot-stackgroups"
+
+[snapshots."geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg"]
+case = "upstream-geom-dotplot-2-na-dotdensity"
+
+[snapshots."geom-dotplot/2-na-values-bin-along-y-stack-center.svg"]
+case = "upstream-geom-dotplot-2-na-bin-along-y"
+
+[snapshots."geom-dotplot/stackratio-1-5.svg"]
+case = "upstream-geom-dotplot-stackratio-1-5"

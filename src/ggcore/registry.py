@@ -998,6 +998,7 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
 STAT_NAMES: tuple[str, ...] = (
     "identity",
     "bin",
+    "bindot",
     "count",
     "boxplot",
     "smooth",
@@ -1051,6 +1052,7 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
     {
         "identity": "point",
         "bin": "bar",
+        "bindot": "dotplot",
         "count": "bar",
         "boxplot": "boxplot",
         "smooth": "smooth",
