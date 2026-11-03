@@ -56,7 +56,7 @@ reason = "空间坐标（`coord_sf`）的 graticule / crs 归 M3-2。"
 [groups."draw-key"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "图例 key 的专项形状（2cm key、boxplot/crossbar/linerange 的 key grob）未逐条复刻。"
+reason = "SIL-788 纳管 2 条（水平 boxplot/crossbar、水平 linerange/pointrange）；剩 4 条都要 `key_glyph` 覆盖点（timeseries / polygon / rect / dotplot / 自定义函数），本仓的图例 key 只走 `Geom.draw()`（单条 reason 见下）。"
 
 [groups."facet-"]
 issue = "SIL-715"
@@ -151,17 +151,17 @@ reason = "轴 guide 的角度 / 叠放 / 稀疏 / 次刻度 / logtick 定制（2
 [groups."guide-colorbar"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "colourbar 自定义与双美学合图未复刻。"
+reason = "SIL-788 已全部纳管（白→红 / 自定义刻度与框架 / colour+fill 合并）。"
 
 [groups."guide-legend"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "图例方向 / key 间距 / key 对齐（依赖 `mtcars`）未复刻。"
+reason = "SIL-788 纳管 5 条（方向 / 键间距 / byrow / 左对齐键）；剩 `enlarged-guides` 与 `legend-key-justification`，卡在 key 尺寸随 `size` / `linewidth` 标度撑开（单条 reason 见下）。"
 
 [groups.guides]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "本批次纳管了 8 条 facet × 图例位置；其余 guides 快照（bins/coloursteps 边界、inside 图例、旧 S3 guide）未复刻。"
+reason = "SIL-788 纳管 27 条（图例方位 / padding / inside / '标题与文字间距 / 分箱与分段色条边界 / 逐 guide 主题 / 旧 S3 guide）；剩下 `stylised-guide-custom` 一条，卡在无图层空图的版面口径（单条 reason 见下）。"
 
 [groups.labels]
 issue = "SIL-715"
@@ -171,7 +171,7 @@ reason = "`plot.tag.location`（margin / panel / plot）目前只在主题元素
 [groups."legend-draw"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`draw_key` 的全量 key 形状未逐条复刻。"
+reason = "这条快照是把 17 个 `draw_key_*` 拼成 gtable 后画的，不是 ggplot 对象；三文件 case 够不到，要先有 `key_glyph` 才能用图例复现。"
 
 [groups.patterns]
 issue = "SIL-715"
@@ -284,3 +284,175 @@ case = "upstream-guides-facet-wrap-legend-right"
 
 [snapshots."guides/facet-wrap-legend-on-top.svg"]
 case = "upstream-guides-facet-wrap-legend-top"
+
+# ---------------------------------------------------------------------------
+# SIL-788（G1a guides-legend）：图例侧 46 条已复刻成三文件 case。
+# 复刻表在 tools/upstream/import_snapshot_cases.py 的 `_G1A_SPECS`，
+# 目录与 expected.svg 由 `pixi run snapshots:import` 生成。
+# ---------------------------------------------------------------------------
+
+[snapshots."guides/legend-on-left.svg"]
+case = "upstream-guides-legend-on-left"
+
+[snapshots."guides/legend-on-right.svg"]
+case = "upstream-guides-legend-on-right"
+
+[snapshots."guides/legend-on-top.svg"]
+case = "upstream-guides-legend-on-top"
+
+[snapshots."guides/legend-on-bottom.svg"]
+case = "upstream-guides-legend-on-bottom"
+
+[snapshots."guides/padding-in-legend-box.svg"]
+case = "upstream-guides-padding-in-legend-box"
+
+[snapshots."guides/legend-inside-plot-centered.svg"]
+case = "upstream-guides-legend-inside-plot-centered"
+
+[snapshots."guides/legend-inside-plot-bottom-left.svg"]
+case = "upstream-guides-legend-inside-plot-bottom-left"
+
+[snapshots."guides/legend-inside-plot-top-right.svg"]
+case = "upstream-guides-legend-inside-plot-top-right"
+
+[snapshots."guides/legend-inside-plot-bottom-left-of-legend-at-center.svg"]
+case = "upstream-guides-legend-inside-plot-bottom-left-of-legend-at-center"
+
+[snapshots."guides/legend-inside-plot-multiple-positions.svg"]
+case = "upstream-guides-legend-inside-plot-multiple-positions"
+
+[snapshots."guides/multi-line-guide-title-works.svg"]
+case = "upstream-guides-multi-line-guide-title"
+
+[snapshots."guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg"]
+case = "upstream-guides-vertical-gap-1cm-title-guide"
+
+[snapshots."guides/horizontal-gap-of-1cm-between-guide-and-guide-text.svg"]
+case = "upstream-guides-horizontal-gap-1cm-guide-text"
+
+[snapshots."guides/guide-title-and-text-positioning-and-alignment-via-themes.svg"]
+case = "upstream-guides-title-text-positioning-alignment"
+
+[snapshots."guides/rotated-guide-titles-and-labels.svg"]
+case = "upstream-guides-rotated-guide-titles-labels"
+
+[snapshots."guides/legends-with-all-title-justifications.svg"]
+case = "upstream-guides-legends-all-title-justifications"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins.svg"]
+case = "upstream-guides-guide-bins-coinciding-1"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins-2.svg"]
+case = "upstream-guides-guide-bins-coinciding-2"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins-3.svg"]
+case = "upstream-guides-guide-bins-coinciding-3"
+
+[snapshots."guides/guide-bins-sets-labels-when-limits-is-in-breaks.svg"]
+case = "upstream-guides-guide-bins-labels-limits-in-breaks"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-1"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins-2.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-2"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins-3.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-3"
+
+[snapshots."guides/guide-colorsteps-sets-labels-when-limits-is-in-breaks.svg"]
+case = "upstream-guides-guide-colorsteps-labels-limits-in-breaks"
+
+[snapshots."guides/guide-bins-looks-as-it-should.svg"]
+case = "upstream-guides-guide-bins-looks-as-it-should"
+
+[snapshots."guides/guide-bins-can-show-limits.svg"]
+case = "upstream-guides-guide-bins-show-limits"
+
+[snapshots."guides/guide-bins-can-show-arrows.svg"]
+case = "upstream-guides-guide-bins-show-arrows"
+
+[snapshots."guides/guide-bins-can-remove-axis.svg"]
+case = "upstream-guides-guide-bins-remove-axis"
+
+[snapshots."guides/guide-bins-work-horizontally.svg"]
+case = "upstream-guides-guide-bins-work-horizontally"
+
+[snapshots."guides/guide-coloursteps-looks-as-it-should.svg"]
+case = "upstream-guides-guide-coloursteps-looks-as-it-should"
+
+[snapshots."guides/guide-coloursteps-can-show-limits.svg"]
+case = "upstream-guides-guide-coloursteps-show-limits"
+
+[snapshots."guides/guide-coloursteps-can-have-bins-relative-to-binsize.svg"]
+case = "upstream-guides-guide-coloursteps-binsize"
+
+[snapshots."guides/guide-bins-can-show-ticks-and-transparancy.svg"]
+case = "upstream-guides-guide-bins-ticks-transparency"
+
+[snapshots."guides/reversed-guide-bins.svg"]
+case = "upstream-guides-reversed-guide-bins"
+
+[snapshots."guides/guide-custom-with-void-theme.svg"]
+case = "upstream-guides-guide-custom-with-void-theme"
+
+[snapshots."guides/old-s3-guide-drawing-a-circle.svg"]
+case = "upstream-guides-old-s3-guide-circle"
+
+[snapshots."guide-legend/vertical-legend-direction.svg"]
+case = "upstream-guide-legend-vertical-direction"
+
+[snapshots."guide-legend/horizontal-legend-direction.svg"]
+case = "upstream-guide-legend-horizontal-direction"
+
+[snapshots."guide-legend/legend-with-widely-spaced-keys.svg"]
+case = "upstream-guide-legend-widely-spaced-keys"
+
+[snapshots."guide-legend/left-aligned-legend-key.svg"]
+case = "upstream-guide-legend-left-aligned-key"
+
+[snapshots."guide-legend/legend-byrow-true.svg"]
+case = "upstream-guide-legend-byrow-true"
+
+[snapshots."guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg"]
+case = "upstream-guide-colorbar-white-to-red"
+
+[snapshots."guide-colorbar/customized-colorbar.svg"]
+case = "upstream-guide-colorbar-customized"
+
+[snapshots."guide-colorbar/combined-colour-and-fill-aesthetics.svg"]
+case = "upstream-guide-colorbar-combined-aesthetics"
+
+[snapshots."draw-key/horizontal-boxplot-and-crossbar.svg"]
+case = "upstream-draw-key-horizontal-boxplot-crossbar"
+
+[snapshots."draw-key/horizontal-linerange-and-pointrange.svg"]
+case = "upstream-draw-key-horizontal-linerange-pointrange"
+
+# ---------------------------------------------------------------------------
+# SIL-788（G1a）剩下 8 条的单条归口：卡点写在这里，能力补齐后改这里。
+# ---------------------------------------------------------------------------
+
+[snapshots."guides/stylised-guide-custom.svg"]
+reason = "空图（没有图层）的版面口径未复刻：R 的 `ggplot()` 没有轴占位，面板直接铺满 plot.margin 内区；我们仍按轴 / 标题占位，面板左边界差 22pt（图级 10.4%）。要先改「无图层 → 无轴占位」这条版式规则。"
+
+[snapshots."guide-legend/enlarged-guides.svg"]
+reason = "key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key 的宽高报回 gtable（17.28pt → 34.02pt），我们固定用 `legend.key.size`（图级 8.1%）。卡在「复数 size 撑开 key 格」这条测量链。"
+
+[snapshots."guide-legend/legend-key-justification.svg"]
+reason = "同上（key 格要按 `size` 标度撑开）+ 多行标签下 `legend.key.justification` 的对齐（图级 10.5%）。"
+
+[snapshots."draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg"]
+reason = "依赖 `geom_point(show.legend = c(colour = NA, alpha = FALSE))` 这种逐美学 show.legend 写法，本仓的 `show_legend` 只有布尔。"
+
+[snapshots."draw-key/circle-glyphs-of-2cm-size.svg"]
+reason = "依赖 `key_glyph` 自定义函数 + grob 上的 `width` / `height` 属性（2cm key 撑开图例）；本仓还没有 `key_glyph` 覆盖点。"
+
+[snapshots."draw-key/rectangle-and-dotplot-key-glyphs.svg"]
+reason = "依赖 `key_glyph = draw_key_rect` / `draw_key_dotplot`；本仓的图例 key 只走 `Geom.draw()`，没有 `key_glyph`。"
+
+[snapshots."draw-key/time-series-and-polygon-key-glyphs.svg"]
+reason = "依赖 `key_glyph = 'timeseries'` / 'polygon'`；同上。"
+
+[snapshots."legend-draw/all-legend-keys.svg"]
+reason = "这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。"

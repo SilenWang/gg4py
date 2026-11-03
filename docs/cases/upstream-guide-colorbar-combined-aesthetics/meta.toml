@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-colourbar", "scale-viridis", "guide-merged"]
+ci = true
+title = "上游快照：combined colour and fill aesthetics"
+source = "upstream:tests/testthat/_snaps/guide-colorbar/combined-colour-and-fill-aesthetics.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

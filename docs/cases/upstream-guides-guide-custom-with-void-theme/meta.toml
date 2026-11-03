@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend", "theme-complete"]
+ci = true
+title = "上游快照：guide_custom with void theme"
+source = "upstream:tests/testthat/_snaps/guides/guide-custom-with-void-theme.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

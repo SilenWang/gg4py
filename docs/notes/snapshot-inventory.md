@@ -4,15 +4,14 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**21**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**290**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **267** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**67**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**244**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **221** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `guides` | m2-closeout | 45 | 8 | 37 |
 | `geom-dotplot` | m2-closeout | 35 | 0 | 35 |
 | `theme` | m2-closeout | 39 | 13 | 26 |
 | `guide-axis` | m2-closeout | 23 | 0 | 23 |
@@ -23,20 +22,18 @@
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `scale_date` | m2-closeout | 8 | 0 | 8 |
-| `guide-legend` | m2-closeout | 7 | 0 | 7 |
 | `sec-axis` | m2-closeout | 7 | 0 | 7 |
 | `aes` | m2-closeout | 6 | 0 | 6 |
-| `draw-key` | m2-closeout | 6 | 0 | 6 |
 | `labels` | m2-closeout | 6 | 0 | 6 |
 | `coord-cartesian` | m2-closeout | 5 | 0 | 5 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
 | `geom-path` | m2-closeout | 5 | 0 | 5 |
+| `draw-key` | m2-closeout | 6 | 2 | 4 |
 | `facet-` | m2-closeout | 4 | 0 | 4 |
 | `patterns` | m2-closeout | 4 | 0 | 4 |
 | `coord-transform` | m2-closeout | 3 | 0 | 3 |
 | `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
 | `geom-hex` | m2-closeout | 3 | 0 | 3 |
-| `guide-colorbar` | m2-closeout | 3 | 0 | 3 |
 | `stat-align` | m2-closeout | 3 | 0 | 3 |
 | `stat-sum` | m2-closeout | 3 | 0 | 3 |
 | `annotate` | m3 | 2 | 0 | 2 |
@@ -45,14 +42,17 @@
 | `geom-curve` | m2-closeout | 2 | 0 | 2 |
 | `geom-polygon` | m2-closeout | 2 | 0 | 2 |
 | `geom-smooth` | m2-closeout | 2 | 0 | 2 |
+| `guide-legend` | m2-closeout | 7 | 5 | 2 |
 | `coord-flip` | m2-closeout | 1 | 0 | 1 |
 | `facet-layout` | m2-closeout | 1 | 0 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-label` | m2-closeout | 1 | 0 | 1 |
 | `geom-text` | m2-closeout | 1 | 0 | 1 |
+| `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
-| **合计** | — | 311 | 21 | 290 |
+| `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
+| **合计** | — | 311 | 67 | 244 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -60,6 +60,16 @@
 
 | 快照 | case |
 | --- | --- |
+| `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
+| `draw-key/horizontal-linerange-and-pointrange.svg` | `upstream-draw-key-horizontal-linerange-pointrange` |
+| `guide-colorbar/combined-colour-and-fill-aesthetics.svg` | `upstream-guide-colorbar-combined-aesthetics` |
+| `guide-colorbar/customized-colorbar.svg` | `upstream-guide-colorbar-customized` |
+| `guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg` | `upstream-guide-colorbar-white-to-red` |
+| `guide-legend/horizontal-legend-direction.svg` | `upstream-guide-legend-horizontal-direction` |
+| `guide-legend/left-aligned-legend-key.svg` | `upstream-guide-legend-left-aligned-key` |
+| `guide-legend/legend-byrow-true.svg` | `upstream-guide-legend-byrow-true` |
+| `guide-legend/legend-with-widely-spaced-keys.svg` | `upstream-guide-legend-widely-spaced-keys` |
+| `guide-legend/vertical-legend-direction.svg` | `upstream-guide-legend-vertical-direction` |
 | `guides/facet-grid-legend-on-bottom.svg` | `upstream-guides-facet-grid-legend-bottom` |
 | `guides/facet-grid-legend-on-left.svg` | `upstream-guides-facet-grid-legend-left` |
 | `guides/facet-grid-legend-on-right.svg` | `upstream-guides-facet-grid-legend-right` |
@@ -68,6 +78,42 @@
 | `guides/facet-wrap-legend-on-left.svg` | `upstream-guides-facet-wrap-legend-left` |
 | `guides/facet-wrap-legend-on-right.svg` | `upstream-guides-facet-wrap-legend-right` |
 | `guides/facet-wrap-legend-on-top.svg` | `upstream-guides-facet-wrap-legend-top` |
+| `guides/guide-bins-can-remove-axis.svg` | `upstream-guides-guide-bins-remove-axis` |
+| `guides/guide-bins-can-show-arrows.svg` | `upstream-guides-guide-bins-show-arrows` |
+| `guides/guide-bins-can-show-limits.svg` | `upstream-guides-guide-bins-show-limits` |
+| `guides/guide-bins-can-show-ticks-and-transparancy.svg` | `upstream-guides-guide-bins-ticks-transparency` |
+| `guides/guide-bins-looks-as-it-should.svg` | `upstream-guides-guide-bins-looks-as-it-should` |
+| `guides/guide-bins-sets-labels-when-limits-is-in-breaks.svg` | `upstream-guides-guide-bins-labels-limits-in-breaks` |
+| `guides/guide-bins-understands-coinciding-limits-and-bins-2.svg` | `upstream-guides-guide-bins-coinciding-2` |
+| `guides/guide-bins-understands-coinciding-limits-and-bins-3.svg` | `upstream-guides-guide-bins-coinciding-3` |
+| `guides/guide-bins-understands-coinciding-limits-and-bins.svg` | `upstream-guides-guide-bins-coinciding-1` |
+| `guides/guide-bins-work-horizontally.svg` | `upstream-guides-guide-bins-work-horizontally` |
+| `guides/guide-colorsteps-sets-labels-when-limits-is-in-breaks.svg` | `upstream-guides-guide-colorsteps-labels-limits-in-breaks` |
+| `guides/guide-colorsteps-understands-coinciding-limits-and-bins-2.svg` | `upstream-guides-guide-colorsteps-coinciding-2` |
+| `guides/guide-colorsteps-understands-coinciding-limits-and-bins-3.svg` | `upstream-guides-guide-colorsteps-coinciding-3` |
+| `guides/guide-colorsteps-understands-coinciding-limits-and-bins.svg` | `upstream-guides-guide-colorsteps-coinciding-1` |
+| `guides/guide-coloursteps-can-have-bins-relative-to-binsize.svg` | `upstream-guides-guide-coloursteps-binsize` |
+| `guides/guide-coloursteps-can-show-limits.svg` | `upstream-guides-guide-coloursteps-show-limits` |
+| `guides/guide-coloursteps-looks-as-it-should.svg` | `upstream-guides-guide-coloursteps-looks-as-it-should` |
+| `guides/guide-custom-with-void-theme.svg` | `upstream-guides-guide-custom-with-void-theme` |
+| `guides/guide-title-and-text-positioning-and-alignment-via-themes.svg` | `upstream-guides-title-text-positioning-alignment` |
+| `guides/horizontal-gap-of-1cm-between-guide-and-guide-text.svg` | `upstream-guides-horizontal-gap-1cm-guide-text` |
+| `guides/legend-inside-plot-bottom-left-of-legend-at-center.svg` | `upstream-guides-legend-inside-plot-bottom-left-of-legend-at-center` |
+| `guides/legend-inside-plot-bottom-left.svg` | `upstream-guides-legend-inside-plot-bottom-left` |
+| `guides/legend-inside-plot-centered.svg` | `upstream-guides-legend-inside-plot-centered` |
+| `guides/legend-inside-plot-multiple-positions.svg` | `upstream-guides-legend-inside-plot-multiple-positions` |
+| `guides/legend-inside-plot-top-right.svg` | `upstream-guides-legend-inside-plot-top-right` |
+| `guides/legend-on-bottom.svg` | `upstream-guides-legend-on-bottom` |
+| `guides/legend-on-left.svg` | `upstream-guides-legend-on-left` |
+| `guides/legend-on-right.svg` | `upstream-guides-legend-on-right` |
+| `guides/legend-on-top.svg` | `upstream-guides-legend-on-top` |
+| `guides/legends-with-all-title-justifications.svg` | `upstream-guides-legends-all-title-justifications` |
+| `guides/multi-line-guide-title-works.svg` | `upstream-guides-multi-line-guide-title` |
+| `guides/old-s3-guide-drawing-a-circle.svg` | `upstream-guides-old-s3-guide-circle` |
+| `guides/padding-in-legend-box.svg` | `upstream-guides-padding-in-legend-box` |
+| `guides/reversed-guide-bins.svg` | `upstream-guides-reversed-guide-bins` |
+| `guides/rotated-guide-titles-and-labels.svg` | `upstream-guides-rotated-guide-titles-labels` |
+| `guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg` | `upstream-guides-vertical-gap-1cm-title-guide` |
 | `theme/theme-bw.svg` | `upstream-theme-bw` |
 | `theme/theme-classic.svg` | `upstream-theme-classic` |
 | `theme/theme-dark-large.svg` | `upstream-theme-dark-large` |
@@ -195,18 +241,43 @@
 
 </details>
 
-### `draw-key` — 6 条 · SIL-715 · m2-closeout
+### `draw-key` — 1 条 · SIL-715 · m2-closeout
 
-图例 key 的专项形状（2cm key、boxplot/crossbar/linerange 的 key grob）未逐条复刻。
+依赖 `geom_point(show.legend = c(colour = NA, alpha = FALSE))` 这种逐美学 show.legend 写法，本仓的 `show_legend` 只有布尔。
 
 <details><summary>快照</summary>
 
 - `draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg`
-- `draw-key/circle-glyphs-of-2cm-size.svg`
-- `draw-key/horizontal-boxplot-and-crossbar.svg`
-- `draw-key/horizontal-linerange-and-pointrange.svg`
-- `draw-key/rectangle-and-dotplot-key-glyphs.svg`
+
+</details>
+
+### `draw-key` — 1 条 · SIL-715 · m2-closeout
+
+依赖 `key_glyph = 'timeseries'` / 'polygon'`；同上。
+
+<details><summary>快照</summary>
+
 - `draw-key/time-series-and-polygon-key-glyphs.svg`
+
+</details>
+
+### `draw-key` — 1 条 · SIL-715 · m2-closeout
+
+依赖 `key_glyph = draw_key_rect` / `draw_key_dotplot`；本仓的图例 key 只走 `Geom.draw()`，没有 `key_glyph`。
+
+<details><summary>快照</summary>
+
+- `draw-key/rectangle-and-dotplot-key-glyphs.svg`
+
+</details>
+
+### `draw-key` — 1 条 · SIL-715 · m2-closeout
+
+依赖 `key_glyph` 自定义函数 + grob 上的 `width` / `height` 属性（2cm key 撑开图例）；本仓还没有 `key_glyph` 覆盖点。
+
+<details><summary>快照</summary>
+
+- `draw-key/circle-glyphs-of-2cm-size.svg`
 
 </details>
 
@@ -498,77 +569,33 @@ plotmath 表达式标签（`expression()`）未支持。
 
 </details>
 
-### `guide-colorbar` — 3 条 · SIL-715 · m2-closeout
+### `guide-legend` — 1 条 · SIL-715 · m2-closeout
 
-colourbar 自定义与双美学合图未复刻。
-
-<details><summary>快照</summary>
-
-- `guide-colorbar/combined-colour-and-fill-aesthetics.svg`
-- `guide-colorbar/customized-colorbar.svg`
-- `guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg`
-
-</details>
-
-### `guide-legend` — 7 条 · SIL-715 · m2-closeout
-
-图例方向 / key 间距 / key 对齐（依赖 `mtcars`）未复刻。
+key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key 的宽高报回 gtable（17.28pt → 34.02pt），我们固定用 `legend.key.size`（图级 8.1%）。卡在「复数 size 撑开 key 格」这条测量链。
 
 <details><summary>快照</summary>
 
 - `guide-legend/enlarged-guides.svg`
-- `guide-legend/horizontal-legend-direction.svg`
-- `guide-legend/left-aligned-legend-key.svg`
-- `guide-legend/legend-byrow-true.svg`
-- `guide-legend/legend-key-justification.svg`
-- `guide-legend/legend-with-widely-spaced-keys.svg`
-- `guide-legend/vertical-legend-direction.svg`
 
 </details>
 
-### `guides` — 37 条 · SIL-715 · m2-closeout
+### `guide-legend` — 1 条 · SIL-715 · m2-closeout
 
-本批次纳管了 8 条 facet × 图例位置；其余 guides 快照（bins/coloursteps 边界、inside 图例、旧 S3 guide）未复刻。
+同上（key 格要按 `size` 标度撑开）+ 多行标签下 `legend.key.justification` 的对齐（图级 10.5%）。
 
 <details><summary>快照</summary>
 
-- `guides/guide-bins-can-remove-axis.svg`
-- `guides/guide-bins-can-show-arrows.svg`
-- `guides/guide-bins-can-show-limits.svg`
-- `guides/guide-bins-can-show-ticks-and-transparancy.svg`
-- `guides/guide-bins-looks-as-it-should.svg`
-- `guides/guide-bins-sets-labels-when-limits-is-in-breaks.svg`
-- `guides/guide-bins-understands-coinciding-limits-and-bins-2.svg`
-- `guides/guide-bins-understands-coinciding-limits-and-bins-3.svg`
-- `guides/guide-bins-understands-coinciding-limits-and-bins.svg`
-- `guides/guide-bins-work-horizontally.svg`
-- `guides/guide-colorsteps-sets-labels-when-limits-is-in-breaks.svg`
-- `guides/guide-colorsteps-understands-coinciding-limits-and-bins-2.svg`
-- `guides/guide-colorsteps-understands-coinciding-limits-and-bins-3.svg`
-- `guides/guide-colorsteps-understands-coinciding-limits-and-bins.svg`
-- `guides/guide-coloursteps-can-have-bins-relative-to-binsize.svg`
-- `guides/guide-coloursteps-can-show-limits.svg`
-- `guides/guide-coloursteps-looks-as-it-should.svg`
-- `guides/guide-custom-with-void-theme.svg`
-- `guides/guide-title-and-text-positioning-and-alignment-via-themes.svg`
-- `guides/horizontal-gap-of-1cm-between-guide-and-guide-text.svg`
-- `guides/legend-inside-plot-bottom-left-of-legend-at-center.svg`
-- `guides/legend-inside-plot-bottom-left.svg`
-- `guides/legend-inside-plot-centered.svg`
-- `guides/legend-inside-plot-multiple-positions.svg`
-- `guides/legend-inside-plot-top-right.svg`
-- `guides/legend-on-bottom.svg`
-- `guides/legend-on-left.svg`
-- `guides/legend-on-right.svg`
-- `guides/legend-on-top.svg`
-- `guides/legends-with-all-title-justifications.svg`
-- `guides/multi-line-guide-title-works.svg`
-- `guides/old-s3-guide-drawing-a-circle.svg`
-- `guides/padding-in-legend-box.svg`
-- `guides/reversed-guide-bins.svg`
-- `guides/rotated-guide-titles-and-labels.svg`
+- `guide-legend/legend-key-justification.svg`
+
+</details>
+
+### `guides` — 1 条 · SIL-715 · m2-closeout
+
+空图（没有图层）的版面口径未复刻：R 的 `ggplot()` 没有轴占位，面板直接铺满 plot.margin 内区；我们仍按轴 / 标题占位，面板左边界差 22pt（图级 10.4%）。要先改「无图层 → 无轴占位」这条版式规则。
+
+<details><summary>快照</summary>
+
 - `guides/stylised-guide-custom.svg`
-- `guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg`
 
 </details>
 
@@ -589,7 +616,7 @@ colourbar 自定义与双美学合图未复刻。
 
 ### `legend-draw` — 1 条 · SIL-715 · m2-closeout
 
-`draw_key` 的全量 key 形状未逐条复刻。
+这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。
 
 <details><summary>快照</summary>
 

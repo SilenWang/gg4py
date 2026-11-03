@@ -402,3 +402,26 @@ pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
 `plot.py` 可导入，**不渲染也不比图**。所以本地 `check` 绿不代表案例回归绿——
 改 guide / geom / theme 之后必须单独跑一次 `cases:matrix`。SIL-705 的教训就是
 5 个 case 在 `check` 全绿的 PR 上仍然红（新增图例改变了像素）。
+
+## 11. G1a（SIL-788）：图例侧的边界情形
+
+`guides` / `guide-legend` / `guide-colorbar` / `legend-draw` / `draw-key` 五簇
+54 条上游快照里，46 条在本轮复刻成三文件 case（`_G1A_SPECS`）；剩下 8 条的单条
+卡点写进 `tools/upstream/snapshots.toml` 的 `reason`。这一轮补齐 / 修正的口径：
+
+| 能力 | R 4.0.3 的写法 | ggcore 现在的行为 |
+| --- | --- | --- |
+| 逐 guide 主题 | `guide_legend(theme = theme(...))` | `GuideLegend` / `GuideColourbar` / `GuideBins` / `GuideColoursteps` / `GuideCustom` 都有 `theme=` 字段；`guide_theme()` 用 `merge_theme()` 把 `plot_theme %+% guide$theme` 合到**这一张**图例上（布局与绘制都走合并后的主题） |
+| inside 图例各自定位 | 每个 `position = "inside"` 的 guide 是独立的 guide-box | `plot_layout()` 按 guide 分组（`inside:<index>`），每张图例用自己的 `legend.position.inside` / `justification.inside`（可来自 guide 的 `theme=`） |
+| `legend.direction` | `Guide$setup_params()` 的第二档 | `legend_direction(guide, position, theme)`：guide 显式 > 主题 > 方位默认 |
+| 旋转的标签 / 标题 | gtable 量的是旋转后的 grob | `_text_footprint()`：`angle = 90 / 270` 时宽高互换；`text_grob(rot=)` 按元素角度画 |
+| `legend.axis.line`（bins） | `GuideBins$draw()` 沿 key 区外边画轴线，箭头来自 `element_line(arrow = arrow(...))` | `_legend_axis_line_grob()`；`element_line(arrow=)` 现在收 `ggcore.arrow.Arrow`（以前只认布尔） |
+| 位置参数的含义 | `guide_legend(title = waiver(), ...)` 的第一个位置参数是标题 | 注册表工厂按「是不是美学名」分流：`guide_legend("colour title")` 当标题，`guide_axis("x", angle=45)` 当美学，`guide_custom(grob)` 当 grob |
+
+另外修掉一条与图例无关但挡路的 bug：`registry.construct()` 的 `kind` / `name`
+改成**位置专用参数**，否则 `scale_colour_discrete(name = "…")` 会撞上
+`construct(name=)`（`TypeError: got multiple values for argument 'name'`）。
+
+尚未对等（8 条，见 `snapshots.toml` 的单条 `reason`）：`key_glyph` 覆盖点
+（timeseries / polygon / rect / dotplot / 自定义 key 函数、grob 的 `width` /
+`height` 撑开 key 格）、无图层空图的版面、逐美学 `show.legend = c(...)`。

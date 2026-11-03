@@ -156,7 +156,9 @@ class ElementLine(Element):
     linetype: int | str | None = None
     lineend: str | None = None
     linejoin: str | None = None
-    arrow: bool | None = None
+    #: `grid::arrow()` 的对象（或 `True` / `False`）。4.0.3 的 `element_line()`
+    #: 就是收 arrow 规格的，`legend.axis.line` 的箭头靠它（SIL-788）。
+    arrow: Any = None
     arrow_fill: str | _NotAvailable | None = None
     inherit_blank: bool = False
 
@@ -259,6 +261,16 @@ def _check_size(name: str, value: Any) -> None:
     if value is None or isinstance(value, Rel):
         return
     _check_number(name, value)
+
+
+def _check_arrow(name: str, value: Any) -> None:
+    """`arrow` 收 `True` / `False` / `grid::arrow()` 的对等物（`ggcore.arrow.Arrow`）。"""
+    if value is None or isinstance(value, bool):
+        return
+    from ggcore.arrow import Arrow
+
+    if not isinstance(value, Arrow):
+        raise ThemeError(f"{name} 必须是 True/False 或 arrow()，得到 {type(value).__name__}")
 
 
 def _check_bool(name: str, value: Any) -> None:
@@ -390,7 +402,7 @@ def element_line(
     lineend: str | None = None,
     linejoin: str | None = None,
     *,
-    arrow: bool | None = None,
+    arrow: Any = None,
     arrow_fill: str | _NotAvailable | None = None,
     inherit_blank: bool = False,
     color: str | _NotAvailable | None = None,
@@ -406,7 +418,7 @@ def element_line(
     _check_colour("arrow_fill", arrow_fill)
     _check_size("linewidth", linewidth)
     _check_linetype("linetype", linetype)
-    _check_bool("arrow", arrow)
+    _check_arrow("arrow", arrow)
     if lineend is not None and lineend not in ("round", "butt", "square"):
         raise ThemeError(f"lineend 必须是 round/butt/square，得到 {lineend!r}")
     if linejoin is not None and linejoin not in ("round", "mitre", "bevel"):

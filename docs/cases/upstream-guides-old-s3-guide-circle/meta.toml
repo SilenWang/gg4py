@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend", "api-extension"]
+ci = true
+title = "上游快照：old S3 guide drawing a circle"
+source = "upstream:tests/testthat/_snaps/guides/old-s3-guide-drawing-a-circle.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

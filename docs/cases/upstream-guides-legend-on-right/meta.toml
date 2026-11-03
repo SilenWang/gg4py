@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend", "legend-pos-right"]
+ci = true
+title = "上游快照：legend on right"
+source = "upstream:tests/testthat/_snaps/guides/legend-on-right.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"
