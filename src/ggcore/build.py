@@ -549,7 +549,46 @@ def compute_position(
     nrows = int(columns[0][1].size) if columns else 0
     table = ColumnTable(columns, nrows=nrows)
     position = _resolve_position(layer.position)
+    table = _position_use_defaults(position, table, layer.params)
     return position.compute_layer(table)
+
+
+def _position_use_defaults(
+    position: Any, table: ColumnTable, params: Mapping[str, Any]
+) -> ColumnTable:
+    """上游 `Position$use_defaults(data, aes_params)`：补位置调整自己的美学列。
+
+    只有 `nudge` 用得上：`geom_text(nudge_x = 0.2)` 这类图层参数在
+    `position$aesthetics()` 里，上游把它落成 `nudge_x` 列再交给
+    `setup_params()`；`PositionNudge$default_aes` 的 `nudge_x = 0` /
+    `nudge_y = 0` 则保证这两列总在。列追加在末尾（与 R 的 `data[names(new)] <-`
+    一致）。
+    """
+    aesthetics = position.aesthetics()
+    if not aesthetics:
+        return table
+    given = {
+        name: value for name, value in params.items() if name in aesthetics and name not in table
+    }
+    defaults = {
+        name: value
+        for name, value in position.default_aes.items()
+        if name not in given and name not in table
+    }
+    if not given and not defaults:
+        return table
+    columns = list(zip(table.names, table.columns(), strict=True))
+    for name, value in {**defaults, **given}.items():
+        values = np.asarray(value, dtype=np.float64).reshape(-1)
+        if values.size == 1:
+            values = np.full(table.nrows, float(values[0]))
+        elif values.size != table.nrows:
+            raise BuildError(
+                f"position_{position.name} 的 {name} 长度必须是 1 或 {table.nrows}，"
+                f"得到 {values.size}"
+            )
+        columns.append((name, Column("float", values)))
+    return ColumnTable(columns, nrows=table.nrows)
 
 
 def _resolve_position(position: Position) -> Any:
@@ -1065,7 +1104,7 @@ def _compute_panel_stages(
     raw: ColumnTable | None = None,
     scales: Any = None,
 ) -> _Stages:
-    """阶段 2–4：identity stat / position 保持原行序，其余按 PANEL 分组。"""
+    """阶段 2–4：stat 按 PANEL 分组；position 整层调用一次（自己拆面板）。"""
     if aesthetics.empty:
         return _Stages(index, layer, aesthetics, _EMPTY, _EMPTY, _EMPTY)
     if layer.stat.name == "identity":
@@ -1083,16 +1122,13 @@ def _compute_panel_stages(
             ]
         )
     mapped = map_statistic(layer, statistic, aesthetics)
-    if layer.position.name == "identity":
-        positioned = compute_position(layer, mapped, index, raw)
-    else:
-        panel_ids = _panel_ids_of(mapped)
-        positioned = _concat_tables(
-            [
-                compute_position(layer, _slice_table(mapped, rows), index, raw)
-                for _, rows in _panel_slices(panel_ids)
-            ]
-        )
+    # 位置调整在**整层**上调用一次：上游 `Layer$compute_position()` 只调
+    # `position$compute_layer(data, params, layout)`，由 position 自己完成
+    # 「整层 `setup_params()` / `setup_data()` → 逐面板 `compute_panel()` →
+    # 按原行序拼回」。外面再按 PANEL 预切片会让 `setup_params()` 拿到的只有
+    # 单面板数据：`dodge*(preserve = "single")` 的 `n`、`jitterdodge` 的
+    # `ndodge`、`jitter(seed = NULL)` 抽的 seed 都会逐面板各算一次（SIL-764 / SIL-770）。
+    positioned = compute_position(layer, mapped, index, raw)
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
 
 
@@ -1158,7 +1194,11 @@ def build_plot(plot: ggplot) -> PlotBuild:
 
     `facet_null` 走与 M1-5 完全相同的单面板路径（输出逐字节不变）；wrap / grid
     先 `compute_layout()`，再按 PANEL 切数据跑同一套六阶段，位置标度按
-    `free_x` / `free_y` 分配给面板（wrap）或行/列（grid）。
+    `free_x` / `free_y` 分配给面板（wrap）或行/列（grid）。位置调整本身在
+    **整层**上只调一次 `compute_position()`：面板内外的区分由
+    `Position.compute_layer()` 负责（上游 `dapply(data, "PANEL", …)` 的口径），
+    否则 `setup_params()` 里的全层统计量（`dodge(preserve = "single")` 的
+    `n`、`jitterdodge` 的 `ndodge`、`jitter` 的随机 seed）会逐面板各算一次。
     """
     facet = facet_from_component(plot.facet)
     if not facet.is_null:

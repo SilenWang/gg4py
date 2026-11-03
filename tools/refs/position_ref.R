@@ -1,13 +1,14 @@
 #!/usr/bin/env Rscript
 #
-# 生成 tests/fixtures/position_r_reference.json —— M1-9 位置调整的 R 侧参考值。
+# 生成 tests/fixtures/position_r_reference.json —— M1-9 / M2-8 位置调整的 R 侧参考值。
 #
 #   pixi run -e refs refs:position
 #
 # 对每个 case：
 #   1. 用一个「探针」Position 包住真正的 position_*()，在 `setup_data()` 的
 #      入口把**位置调整之前**的图层数据（geom setup_data() 之后：x / y /
-#      xmin / xmax / ymin / ymax / PANEL / group / flipped_aes）录下来；
+#      xmin / xmax / ymin / ymax / PANEL / group / flipped_aes / nudge_x /
+#      nudge_y）录下来，并把 `setup_params()` 的解析结果也记下来；
 #   2. 正常 `ggplot_build(p)$data[[1]]`，把位置调整之后的同名列逐行录下来；
 #   3. 自检：探针包装不得改变输出（与直接 `position_*()` 的结果逐个 all.equal）。
 #
@@ -15,10 +16,11 @@
 # `ggcore.position` 的同一实现，与第 2 步逐行对拍 —— 不重放整条流水线，
 # 所以夹具只钉「位置调整」这一个阶段的语义（stat / geom / scale 各有自己的夹具）。
 #
-# 数值用 %.17g（double 可无损往返）；NA → null。jitter 的随机流在 R 与 Python
-# 之间不可能一致（R 是 Mersenne-Twister + runif，ggcore 用 np.random.default_rng
-# 的 PCG64），所以它的输出值只作为「R 的包络」记录，Python 侧比包络与可复现性；
-# 这一点写在 docs/notes/position.md 的「差异面」里。
+# 数值用 %.17g（double 可无损往返）；NA → null。jitter / jitterdodge 的随机流在
+# R 与 Python 之间不可能一致（R 是 Mersenne-Twister + runif，ggcore 用
+# np.random.default_rng 的 PCG64），所以它们的输出值只作为「R 的包络」记录，
+# Python 侧比包络与可复现性；这一点写在 docs/notes/position.md 的「差异面」里。
+# jitter.width = 0 的 jitterdodge 没有随机量，照常逐值对拍。
 
 suppressPackageStartupMessages(library(ggplot2))
 
@@ -126,9 +128,11 @@ column_json <- function(name, values) {
   list(name = name, kind = kind, values = vector_json(values))
 }
 
-# 位置相关的列（输入侧还要 PANEL / flipped_aes / group）。
+# 位置相关的列（输入侧还要 PANEL / flipped_aes / group；nudge 还会带
+# PositionNudge$default_aes 补出来的 nudge_x / nudge_y 两列）。
 POSITION_COLUMNS <- c(
-  "x", "y", "xmin", "xmax", "ymin", "ymax", "PANEL", "group", "flipped_aes", "order"
+  "x", "y", "xmin", "xmax", "ymin", "ymax", "PANEL", "group", "flipped_aes",
+  "order", "nudge_x", "nudge_y"
 )
 
 columns_json <- function(data, wanted = POSITION_COLUMNS) {
@@ -196,12 +200,21 @@ record <- function(id, name, title, code, plot_expr, position_expr, args = list(
   # jitter 的 width / height 缺省值是 40% resolution（在 compute_jitter() 里才
   # 解析），随机流又不可能跨语言一致，所以单独把「包络」记下来：Python 侧只要
   # 保证每个抖动值都落在这个半宽内，就说明缺省分辨率算对了。
+  # jitterdodge 的随机流同理；jitter.width = 0 时它退化成纯 dodge，输出可逐值对拍，
+  # 此时 envelope 记 NULL（测试按 RNG_CASES 分类）。
   envelope <- NULL
   if (name == "jitter") {
     envelope <- list(
       width = resolution(record_env$panel_input$x, zero = FALSE, discrete = TRUE) * 0.4,
       height = resolution(record_env$panel_input$y, zero = FALSE, discrete = TRUE) * 0.4
     )
+  } else if (name == "jitterdodge") {
+    jitter_width <- record_env$params$jitter.width
+    jitter_height <- record_env$params$jitter.height
+    if (is.null(jitter_height)) jitter_height <- 0
+    if (jitter_width > 0 || jitter_height > 0) {
+      envelope <- list(width = jitter_width, height = jitter_height)
+    }
   }
   list(
     id = id,
@@ -252,6 +265,32 @@ rects <- data.frame(
   ymax = c(1, 1, 1),
   g = c("p", "q", "p")
 )
+# 分面数据：行按 PANEL 连续。上游 `Position$compute_layer()` 是
+# `dapply(data, "PANEL", ...)`，输出按面板分组；输入已经按面板排好，夹具的
+# 逐行对拍才不用另外记行号。
+faceted <- data.frame(
+  x = c(1, 1, 2, 2, 1, 1, 2, 2),
+  y = c(1, 2, 3, 4, 5, 6, 7, 8),
+  g = c("p", "q", "p", "q", "p", "q", "p", "q"),
+  f = c("a", "a", "a", "a", "b", "b", "b", "b")
+)
+# 不均匀分面：A 面板 x=1 只有 1 个 group，B 面板 x=1 有 3 个 →
+# dodge2(preserve = "single") 的 n 是**全层**最大值 3。
+faceted_uneven <- data.frame(
+  x = c(1, 2, 2, 1, 1, 1, 2),
+  y = c(1, 2, 3, 4, 5, 6, 7),
+  g = c("p", "p", "q", "p", "q", "r", "p"),
+  f = c("a", "a", "a", "b", "b", "b", "b")
+)
+# boxplot：x=a 上 n = 3 / 2，x=b 上 n = 2 / 3 → varwidth 的箱宽按 sqrt(n) 变。
+box_data <- data.frame(
+  x = c("a", "a", "a", "a", "a", "b", "b", "b", "b", "b"),
+  y = c(1, 2, 3, 4, 5, 2, 3, 4, 5, 6),
+  g = c("p", "p", "p", "q", "q", "p", "p", "q", "q", "q")
+)
+# geom_text 的默认 position 是 `position_nudge()`；nudge_x / nudge_y 是图层参数，
+# 上游经 `Position$use_defaults()` 落成同名数据列。
+text_data <- data.frame(x = c(1, 2), y = c(1, 2), lab = c("a", "b"))
 
 cases <- list(
   record(
@@ -369,6 +408,211 @@ cases <- list(
     quote(ggplot(two_groups, aes(x, y, fill = g)) + geom_col(position = position)),
     quote(position_nudge(x = 0.2, y = 1)),
     args = list(x = 0.2, y = 1)
+  ),
+  # --- dodge2：preserve 两态（不均匀分组）+ 横向 + boxplot 组合 ---------------
+  record(
+    "dodge2_preserve_total_uneven", "dodge2",
+    "dodge2(preserve = 'total')：不均匀分组时 n 取每个重叠组的行数",
+    "ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2())",
+    quote(ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position)),
+    quote(position_dodge2())
+  ),
+  record(
+    "dodge2_preserve_single_uneven", "dodge2",
+    "dodge2(preserve = 'single', padding = 0.2)：n 取全层最大组数 3",
+    "ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2(preserve = 'single', padding = 0.2))",
+    quote(ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position)),
+    quote(position_dodge2(preserve = "single", padding = 0.2)),
+    args = list(preserve = "single", padding = 0.2)
+  ),
+  record(
+    "dodge2_boxplot", "dodge2",
+    "geom_boxplot 的默认 position_dodge2：箱宽 0.75，两组并排后叠 padding",
+    "ggplot(box_data, aes(factor(x), y, fill = g)) + geom_boxplot()",
+    quote(
+      ggplot(box_data, aes(factor(x), y, fill = g)) +
+        geom_boxplot(position = position)
+    ),
+    quote(position_dodge2())
+  ),
+  record(
+    "dodge2_boxplot_varwidth", "dodge2",
+    "geom_boxplot(varwidth = TRUE)：箱宽 ∝ sqrt(n)，position 自动换成 preserve = 'single'",
+    "ggplot(box_data, aes(factor(x), y, fill = g)) + geom_boxplot(varwidth = TRUE)",
+    quote(
+      ggplot(box_data, aes(factor(x), y, fill = g)) +
+        geom_boxplot(varwidth = TRUE, position = position)
+    ),
+    quote(position_dodge2(preserve = "single")),
+    args = list(preserve = "single")
+  ),
+  record(
+    "dodge2_horizontal", "dodge2",
+    "横向 dodge2（flipped_aes = TRUE）：并排作用在 y 族，长度轴 x 不动",
+    "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = position_dodge2())",
+    quote(
+      ggplot(horizontal, aes(x = val, y = cat, fill = g)) +
+        geom_col(orientation = "y", position = position)
+    ),
+    quote(position_dodge2())
+  ),
+  # --- jitterdodge：dodge.width / jitter.width / seed ------------------------
+  record(
+    "jitterdodge_zero_jitter", "jitterdodge",
+    "jitterdodge(jitter.width = 0)：零抖动退化成 dodge（dodge.width = 0.75）",
+    "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42))",
+    quote(
+      ggplot(two_groups, aes(x, y, group = g)) +
+        geom_point(position = position)
+    ),
+    quote(position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42)),
+    args = list(jitter_width = 0, jitter_height = 0, seed = 42)
+  ),
+  record(
+    "jitterdodge_dodge_width", "jitterdodge",
+    "jitterdodge(dodge.width = 0.4)：dodge 相位用 0.4，jitter.width = 0",
+    "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, dodge.width = 0.4, seed = 42))",
+    quote(
+      ggplot(two_groups, aes(x, y, group = g)) +
+        geom_point(position = position)
+    ),
+    quote(
+      position_jitterdodge(jitter.width = 0, jitter.height = 0, dodge.width = 0.4, seed = 42)
+    ),
+    args = list(jitter_width = 0, jitter_height = 0, dodge_width = 0.4, seed = 42)
+  ),
+  record(
+    "jitterdodge_zero_jitter_reverse", "jitterdodge",
+    "jitterdodge(reverse = TRUE)：pos_dodge() 不看 reverse，输出与正向逐值相等",
+    "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42, reverse = TRUE))",
+    quote(
+      ggplot(two_groups, aes(x, y, group = g)) +
+        geom_point(position = position)
+    ),
+    quote(
+      position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42, reverse = TRUE)
+    ),
+    args = list(jitter_width = 0, jitter_height = 0, seed = 42, reverse = TRUE)
+  ),
+  record(
+    "jitterdodge_defaults", "jitterdodge",
+    "jitterdodge()：jitter.width 缺省 = 40% resolution / (ndodge + 2) = 0.1，只抖 x",
+    "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(seed = 42))",
+    quote(
+      ggplot(two_groups, aes(x, y, group = g)) +
+        geom_point(position = position)
+    ),
+    quote(position_jitterdodge(seed = 42)),
+    args = list(seed = 42)
+  ),
+  record(
+    "jitterdodge_two_panels", "jitterdodge",
+    "jitterdodge 分面：每面板各自并排（jitter.width = 0，seed 无关）",
+    "ggplot(faceted, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0)) + facet_wrap(~f)",
+    quote(
+      ggplot(faceted, aes(x, y, group = g)) +
+        geom_point(position = position) +
+        facet_wrap(~f)
+    ),
+    quote(position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 7)),
+    args = list(jitter_width = 0, jitter_height = 0, seed = 7)
+  ),
+  # --- nudge：geom_text 的默认 position + 长度 1 / 逐行向量 -----------------
+  record(
+    "nudge_text_default", "nudge",
+    "geom_text 的默认 position 是 nudge；没有 nudge_x / nudge_y 时两列补 0",
+    "ggplot(text_data, aes(x, y, label = lab)) + geom_text()",
+    quote(
+      ggplot(text_data, aes(x, y, label = lab)) +
+        geom_text(position = position)
+    ),
+    quote(position_nudge())
+  ),
+  record(
+    "nudge_text_params", "nudge",
+    "geom_text(nudge_x = 0.2, nudge_y = -0.1)：图层参数经 use_defaults 落成 nudge 列",
+    "ggplot(text_data, aes(x, y, label = lab)) + geom_text(nudge_x = 0.2, nudge_y = -0.1)",
+    quote(
+      ggplot(text_data, aes(x, y, label = lab)) +
+        geom_text(nudge_x = 0.2, nudge_y = -0.1, position = position)
+    ),
+    quote(position_nudge())
+  ),
+  record(
+    "nudge_text_vector", "nudge",
+    "geom_text(aes(nudge_y = c(-0.1, 0.1)))：逐行的 nudge 列",
+    "ggplot(text_data, aes(x, y, label = lab)) + geom_text(aes(nudge_y = c(-0.1, 0.1)))",
+    quote(
+      ggplot(text_data, aes(x, y, label = lab)) +
+        geom_text(aes(nudge_y = c(-0.1, 0.1)), position = position)
+    ),
+    quote(position_nudge())
+  ),
+  record(
+    "nudge_vector_param", "nudge",
+    "position_nudge(x = c(0.1, 0.2))：逐行向量（长度 = 行数）",
+    "ggplot(text_data, aes(x, y, label = lab)) + geom_text(position = position_nudge(x = c(0.1, 0.2)))",
+    quote(
+      ggplot(text_data, aes(x, y, label = lab)) +
+        geom_text(position = position)
+    ),
+    quote(position_nudge(x = c(0.1, 0.2))),
+    args = list(x = c(0.1, 0.2))
+  ),
+  # --- 多面板：compute_layer 按 PANEL 拆，setup_params 仍是整层 ------------
+  record(
+    "stack_two_panels", "stack",
+    "stack × facet_wrap：每个面板各自从 0 累加（不跨面板叠）",
+    "ggplot(faceted, aes(x, y, fill = g)) + geom_col() + facet_wrap(~f)",
+    quote(
+      ggplot(faceted, aes(x, y, fill = g)) +
+        geom_col(position = position) +
+        facet_wrap(~f)
+    ),
+    quote(position_stack())
+  ),
+  record(
+    "dodge_two_panels", "dodge",
+    "dodge × facet_wrap：每面板各自并排，order 仍按 (x, PANEL) 取名次",
+    "ggplot(faceted, aes(x, y, fill = g)) + geom_col(position = 'dodge') + facet_wrap(~f)",
+    quote(
+      ggplot(faceted, aes(x, y, fill = g)) +
+        geom_col(position = position) +
+        facet_wrap(~f)
+    ),
+    quote(position_dodge())
+  ),
+  record(
+    "dodge2_preserve_single_two_panels", "dodge2",
+    "dodge2(preserve = 'single') × facet_wrap：n = 全层最大值 3（不是逐面板 2）",
+    "ggplot(faceted_uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2(preserve = 'single')) + facet_wrap(~f)",
+    quote(
+      ggplot(faceted_uneven, aes(x, y, fill = g)) +
+        geom_col(position = position) +
+        facet_wrap(~f)
+    ),
+    quote(position_dodge2(preserve = "single")),
+    args = list(preserve = "single")
+  ),
+  record(
+    "jitter_seed_two_panels", "jitter",
+    "jitter × facet_wrap：seed 每面板重置，两个面板的偏移相同（值依赖 R 的 RNG）",
+    "ggplot(faceted, aes(x, y)) + geom_point(position = position_jitter(seed = 42)) + facet_wrap(~f)",
+    quote(
+      ggplot(faceted, aes(x, y)) +
+        geom_point(position = position) +
+        facet_wrap(~f)
+    ),
+    quote(position_jitter(seed = 42)),
+    args = list(seed = 42)
+  ),
+  # --- identity：原表返回（每个 position 至少 1 条 case）----------------------
+  record(
+    "identity_noop", "identity",
+    "identity：位置列原样返回（geom_col 的 position 不改任何列）",
+    "ggplot(two_groups, aes(x, y, fill = g)) + geom_col(position = 'identity')",
+    quote(ggplot(two_groups, aes(x, y, fill = g)) + geom_col(position = position)),
+    quote(position_identity())
   )
 )
 

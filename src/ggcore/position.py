@@ -1,10 +1,17 @@
 """位置调整（position adjustments）：把「同 x 的多行」摆到互不重叠的位置。
 
 对标 ggplot2 4.0.3 的 `R/position-*.R`（`PositionStack` / `PositionFill` /
-`PositionDodge` / `PositionDodge2` / `PositionJitter` / `PositionNudge` /
-`PositionIdentity`），执行侧统一成一条接口：
+`PositionDodge` / `PositionDodge2` / `PositionJitter` / `PositionJitterdodge` /
+`PositionNudge` / `PositionIdentity`），执行侧统一成一条接口：
 
     position.compute_layer(data, params=None) -> ColumnTable
+
+四段调用照上游 `Layer$compute_position()`：`setup_params(data)` →
+`setup_data(data, params)` → 按 PANEL 拆 → 每块 `compute_panel(data, params)`。
+:class:`PanelPosition` 是这条骨架的基类：`setup_params()` / `setup_data()`
+在**整层**上跑一次（`n`、`order` 这类跨面板的量因此与 R 同源），`compute_panel()`
+只拿一个面板。`identity` / `nudge` 在 R 里是图层级实现（没有 `compute_panel`），
+所以它们仍然直接覆写 `compute_layer()`。
 
 `data` 是流水线第 4 阶段（`compute_position`）的表：`x / y / xmin / xmax /
 ymin / ymax / PANEL / group`（另有 geom `setup_data()` 派生的 `flipped_aes`）。
@@ -21,10 +28,10 @@ ymin / ymax / PANEL / group`（另有 geom `setup_data()` 派生的 `flipped_aes
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 
@@ -34,11 +41,13 @@ from ggcore.layer import Position
 __all__ = [
     "POSITION_FACTORIES",
     "POSITION_NAMES",
+    "PanelPosition",
     "PositionDodge",
     "PositionDodge2",
     "PositionFill",
     "PositionIdentity",
     "PositionJitter",
+    "PositionJitterdodge",
     "PositionNudge",
     "PositionStack",
     "flipped_aes",
@@ -191,6 +200,113 @@ def flipped_aes(table: ColumnTable, default: bool = False) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# 面板拆分：上游 `Position$compute_layer()` 的 `dapply(data, "PANEL", ...)`
+# ---------------------------------------------------------------------------
+
+
+def _take(table: ColumnTable, rows: np.ndarray) -> ColumnTable:
+    """按行号取子表（保留 kind / levels / na_mask）。"""
+    return ColumnTable(
+        [
+            (
+                name,
+                Column(
+                    column.kind,
+                    column.values[rows],
+                    levels=column.levels,
+                    na_mask=column.na_mask[rows],
+                ),
+            )
+            for name, column in zip(table.names, table.columns(), strict=True)
+        ],
+        nrows=int(rows.size),
+    )
+
+
+def _stack(tables: Sequence[ColumnTable]) -> ColumnTable:
+    """竖向拼接（同一层各面板的同一阶段输出，列名与列序必须一致）。"""
+    pieces = [table for table in tables if table.nrows]
+    if not pieces:
+        return ColumnTable()
+    names = pieces[0].names
+    columns: list[tuple[str, Column]] = []
+    for name in names:
+        columns_in = [table.column(name) for table in pieces]
+        kinds = {column.kind for column in columns_in}
+        if len(kinds) > 1:
+            raise _build_error(f"面板拼接时列 {name!r} 的类型不一致：{sorted(kinds)}")
+        first = columns_in[0]
+        columns.append(
+            (
+                name,
+                Column(
+                    first.kind,
+                    np.concatenate([np.asarray(column.values) for column in columns_in]),
+                    levels=first.levels,
+                    na_mask=np.concatenate([np.asarray(column.na_mask) for column in columns_in]),
+                ),
+            )
+        )
+    return ColumnTable(columns, nrows=sum(table.nrows for table in pieces))
+
+
+def _restore_order(table: ColumnTable, order: np.ndarray) -> ColumnTable:
+    """拼接后的表按原行序还原（`order` 是拼接顺序里的源行号）。"""
+    if order.size == 0 or bool(np.array_equal(order, np.arange(order.size))):
+        return table
+    return _take(table, np.argsort(order))
+
+
+def _panel_rows(table: ColumnTable) -> list[np.ndarray]:
+    """`(PANEL, 行号)`：按 PANEL 首次出现顺序分组；没有 PANEL 列就是一块。"""
+    if "PANEL" not in table:
+        return [np.arange(table.nrows, dtype=np.int64)]
+    column = table.column("PANEL")
+    groups: dict[str, list[int]] = {}
+    for index, value in enumerate(column.values.tolist()):
+        groups.setdefault(repr(value), []).append(index)
+    return [np.asarray(rows, dtype=np.int64) for rows in groups.values()]
+
+
+class PanelPosition(Position):
+    """内置 position 的公共骨架：`compute_layer()` 按 PANEL 拆、`compute_panel()` 算一块。
+
+    上游 `Position$compute_layer()` 是 `dapply(data, "PANEL", ...)`，而
+    `setup_params()` / `setup_data()` 在**整层**数据上各跑一次。这个顺序有语义：
+    `dodge(preserve = "single")` 的 `n`、`dodge2` 的同名字段都是「全层最大
+    组数」，逐面板各算会得到不同结果（SIL-734 的夹具里有不均匀分面用例）。
+    """
+
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        """`Position$setup_params()` 的扩展点：在整层上解析参数。"""
+        return dict(params)
+
+    def setup_data(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        """`Position$setup_data()` 的扩展点：在整层上补列（`order` 等）。"""
+        return table
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        """`Position$compute_panel()` 的扩展点：只处理一个面板。"""
+        raise NotImplementedError(
+            f"position_{self.name} 没有实现 compute_panel(data, params)"
+            "（PanelPosition 的子类需要覆写它）"
+        )
+
+    def compute_layer(
+        self, data: ColumnTable, params: Mapping[str, Any] | None = None
+    ) -> ColumnTable:
+        if data.nrows == 0:
+            return data
+        resolved = self.setup_params(data, _merged(self.params, params))
+        prepared = self.setup_data(data, resolved)
+        groups = _panel_rows(prepared)
+        if len(groups) == 1:
+            return self.compute_panel(prepared, resolved)
+        pieces = [self.compute_panel(_take(prepared, rows), resolved) for rows in groups]
+        return _restore_order(_stack(pieces), np.concatenate(groups))
+
+
+# ---------------------------------------------------------------------------
 # 分组 / 名次的小工具（对齐上游 vec_ave(..., match_sorted) 的口径）
 # ---------------------------------------------------------------------------
 
@@ -284,27 +400,44 @@ class PositionIdentity(Position):
 
 
 @dataclass(frozen=True, slots=True)
-class PositionStack(Position):
+class PositionStack(PanelPosition):
     """`position_stack()`：同 x 的行按 group 反向累加（上游 `collide(pos_stack)`）。"""
 
     name: str = "stack"
+    #: `PositionFill` 把它打开（上游 `PositionFill <- ggproto(..., fill = TRUE)`）。
+    fill: ClassVar[bool] = False
 
-    def compute_layer(
-        self, data: ColumnTable, params: Mapping[str, Any] | None = None
-    ) -> ColumnTable:
-        return _collide_stack(data, _merged(self.params, params), fill=False)
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        """上游 `PositionStack$setup_params()` 的 `var` 分支。
+
+        x 没有重复、非 fill、`vjust == 1` 时整层退化成 identity（`var = NULL`）：
+        判断在**整层**上做，逐面板判断会让「A 面板唯一、B 面板重复」时两个面板
+        的列集不一致（拼接时报错）。
+        """
+        frame = _Frame(table)
+        flipped = flipped_aes(table)
+        frame.flip(flipped)
+        resolved = {**params, "flipped_aes": flipped}
+        if "x" not in frame:
+            return {**resolved, "stacked": True}
+        keys = [repr(value) for value in frame.values("x").tolist()]
+        resolved["stacked"] = (
+            self.fill or float(params.get("vjust", 1.0)) != 1.0 or len(set(keys)) != len(keys)
+        )
+        return resolved
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        if not params.get("stacked", True):
+            return table
+        return _collide_stack(table, params, fill=self.fill)
 
 
 @dataclass(frozen=True, slots=True)
-class PositionFill(Position):
+class PositionFill(PositionStack):
     """`position_fill()`：stack 之后把每个 x 的 y / ymin / ymax 归一到 0..1。"""
 
     name: str = "fill"
-
-    def compute_layer(
-        self, data: ColumnTable, params: Mapping[str, Any] | None = None
-    ) -> ColumnTable:
-        return _collide_stack(data, _merged(self.params, params), fill=True)
+    fill: ClassVar[bool] = True
 
 
 def _merged(params: Mapping[str, Any], extra: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -333,11 +466,9 @@ def _collide_stack(table: ColumnTable, params: Mapping[str, Any], *, fill: bool)
     nrows = frame.nrows
     group = frame.numeric("group", default=1.0)
 
+    # 「整层退化成 identity」的判断在 `setup_params()`（整层）做：这里再按面板
+    # 判一次会让 x 恰好唯一的那个面板少加 xmin/xmax，`_stack()` 拼不回列集。
     keys = [repr(value) for value in x.tolist()]
-    # 上游 `PositionStack$setup_params()`：x 没有重复、非 fill、vjust 全 1 时
-    # `var` 为 NULL，整层退化成 identity（否则用 ymax/y 累加）。
-    if not fill and len(set(keys)) == len(keys) and vjust == 1.0:
-        return table
 
     ymin = np.zeros(nrows, dtype=np.float64)
     ymax = np.zeros(nrows, dtype=np.float64)
@@ -392,58 +523,66 @@ def _collide_stack(table: ColumnTable, params: Mapping[str, Any], *, fill: bool)
 
 
 @dataclass(frozen=True, slots=True)
-class PositionDodge(Position):
+class PositionDodge(PanelPosition):
     """`position_dodge()`：同 x 的 group 并排（上游 `pos_dodge()`）。"""
 
     name: str = "dodge"
 
-    def compute_layer(
-        self, data: ColumnTable, params: Mapping[str, Any] | None = None
-    ) -> ColumnTable:
-        return _dodge(data, _merged(self.params, params), dodge2=False)
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        return _dodge_setup_params(table, params, dodge2=False)
+
+    def setup_data(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        return _dodge_setup_data(table, params)
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        return _dodge_compute_panel(table, params, dodge2=False)
 
 
 @dataclass(frozen=True, slots=True)
-class PositionDodge2(Position):
-    """`position_dodge2()`：按重叠区间分组并排，可加 padding（上游 `pos_dodge2()`）。"""
+class PositionDodge2(PositionDodge):
+    """`position_dodge2()`：按重叠区间分组并排，可加 padding（上游 `pos_dodge2()`）。
+
+    上游 `PositionDodge2` 继承 `PositionDodge`，只覆写 `setup_params()` /
+    `compute_panel()`——`setup_data()`（补 x 中点、`order` 列）也是继承来的，
+    所以这里同样只覆写那两个。
+    """
 
     name: str = "dodge2"
 
-    def compute_layer(
-        self, data: ColumnTable, params: Mapping[str, Any] | None = None
-    ) -> ColumnTable:
-        return _dodge(data, _merged(self.params, params), dodge2=True)
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        return _dodge_setup_params(table, params, dodge2=True)
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        return _dodge_compute_panel(table, params, dodge2=True)
 
 
-def _dodge(table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool) -> ColumnTable:
-    """dodge / dodge2 的共同前半段 + 各自的并排策略。"""
+def _dodge_setup_params(
+    table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool
+) -> dict[str, Any]:
+    """上游 `PositionDodge(2)$setup_params()`：翻转朝向 + preserve="single" 的 n。
+
+    `n` 是**全层**的最大组数（R 在 setup_params 里算一次，再喂给每个面板的
+    `compute_panel()`），所以不均匀分面时每个面板都按同一个 n 分槽。
+    """
     name = "position_dodge2" if dodge2 else "position_dodge"
-    width_param = params.get("width")
     preserve = _arg_match(params.get("preserve", "total"), ("total", "single"), "preserve")
     reverse = bool(params.get("reverse", False))
 
-    frame = _Frame(table)
+    # 上游 setup_params() 的必需美学校验在**翻转之前**的原列名上做
+    # （`if (flipped_aes) "y|ymin" else "x|xmin"`），翻转后再查会看错轴。
     flipped = flipped_aes(table, default=bool(params.get("orientation") == "y"))
-    frame.flip(flipped)
-
-    # 上游 setup_params() 的必需美学校验（在翻转后的坐标里看主轴）。
     main, edges = ("y", "ymin") if flipped else ("x", "xmin")
-    if main not in frame and edges not in frame:
-        raise _build_error(f"{name} 需要 {main} 或 {edges} 列；已有列：{', '.join(frame.columns)}")
+    if main not in table and edges not in table:
+        raise _build_error(f"{name} 需要 {main} 或 {edges} 列；已有列：{', '.join(table.names)}")
+
+    frame = _Frame(table)
+    frame.flip(flipped)
 
     # 上游 `PositionDodge2$setup_params()` 是 `if ("x" %in% names(data))
     # table(panel$x) else find_x_overlaps`：分支要在**补 x 之前**定下来，
     # 否则只有 xmin/xmax 的表会被当成「每行一个 x」，n 恒为 1（SIL-692）。
     has_x = "x" in frame
-    _ensure_x(frame)
-    # --- PositionDodge$setup_data()：补 order 列（pos_dodge() 的 groupidx 来源）
-    order = _dodge_order(frame, preserve=preserve, reverse=reverse)
-    # R 的 order 列是 integer（`xtfrm()` / `match_sorted()` 都返回 integer）。
-    frame.set("order", order, kind="int")
-
-    # --- PositionDodge$setup_params()：preserve="single" 时 n 取全局最大组数
     panel = frame.panel()
-    group = frame.numeric("group", default=1.0)
     if preserve == "total":
         n_total: float | None = None
     elif dodge2:
@@ -455,17 +594,75 @@ def _dodge(table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool) -> Co
         )
     else:
         xmin = frame.values("xmin") if "xmin" in frame else frame.values("x")
-        n_total = _max_groups(xmin, panel, group)
+        n_total = _max_groups(xmin, panel, frame.numeric("group", default=1.0))
 
-    # --- collide_setup()：宽度缺省取第一个 (xmax - xmin)
-    width = _collide_width(frame, width_param)
+    resolved: dict[str, Any] = {
+        "width": None if params.get("width") is None else float(params["width"]),
+        "n": n_total,
+        "preserve": preserve,
+        "reverse": reverse,
+        "flipped_aes": flipped,
+    }
+    if dodge2:
+        resolved["padding"] = float(params.get("padding", 0.1))
+    else:
+        resolved["orientation"] = _arg_match(
+            params.get("orientation", "x"), ("x", "y"), "orientation"
+        )
+    return resolved
+
+
+def _dodge_setup_data(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+    """上游 `PositionDodge$setup_data()`：只有 xmin/xmax 时补 x 中点，再补 `order`。
+
+    `order` 是 `pos_dodge()` 的 groupidx 来源：每个 (x, PANEL) 内 group 的升序
+    名次；`reverse` 取负；`preserve = "single"` 时全局重新取名次。
+    """
+    frame = _Frame(table)
+    flipped = bool(params.get("flipped_aes", flipped_aes(table)))
+    frame.flip(flipped)
+    _ensure_x(frame)
+    if "x" not in frame:
+        raise _build_error("position_dodge 需要 x 或 xmin/xmax 列")
+
+    x = frame.values("x")
+    panel = frame.panel()
+    keys = _keys(x, panel)
+    if "order" in frame:
+        order = frame.values("order")
+    else:
+        order = _ave_match_sorted(frame.numeric("group", default=1.0), keys)
+    if bool(params.get("reverse", False)):
+        order = -order
+    if params.get("n") is None:
+        order = _ave_match_sorted(order, keys)
+    else:
+        order = _match_sorted(order)
+    # R 的 order 列是 integer（`xtfrm()` / `match_sorted()` 都返回 integer）。
+    frame.set("order", order, kind="int")
+    frame.flip(flipped)
+    return frame.table()
+
+
+def _dodge_compute_panel(
+    table: ColumnTable, params: Mapping[str, Any], *, dodge2: bool
+) -> ColumnTable:
+    """上游 `PositionDodge(2)$compute_panel()`：`collide(2)()` + `pos_dodge(2)()`。"""
+    frame = _Frame(table)
+    flipped = bool(params.get("flipped_aes", flipped_aes(table)))
+    frame.flip(flipped)
+
+    # collide_setup()：宽度缺省取第一个 (xmax - xmin)。
+    width = _collide_width(frame, params.get("width"))
+    n_total = params.get("n")
     if dodge2:
         result = _dodge2_panel(frame, width, n_total, params)
     else:
+        order = frame.values("order") if "order" in frame else None
         result = _dodge_panel(frame, width, n_total, order)
-    if not dodge2 and "ymax" not in frame and "y" in frame:
-        # 上游 collide()：没有 ymax 时把 y 复制过去（柱/点的 dodge 输出因此多一列）。
-        frame.set("ymax", frame.values("y"))
+        if "ymax" not in frame and "y" in frame:
+            # 上游 collide()：没有 ymax 时把 y 复制过去（柱/点的 dodge 输出因此多一列）。
+            frame.set("ymax", frame.values("y"))
     frame.set("x", result["x"])
     frame.set("xmin", result["xmin"])
     frame.set("xmax", result["xmax"])
@@ -477,26 +674,6 @@ def _ensure_x(frame: _Frame) -> None:
     """上游 setup_data()：只有 xmin/xmax 时用中点补 x。"""
     if "x" not in frame and "xmin" in frame and "xmax" in frame:
         frame.set("x", (frame.values("xmin") + frame.values("xmax")) / 2.0)
-
-
-def _dodge_order(frame: _Frame, *, preserve: str, reverse: bool) -> np.ndarray:
-    """上游 `PositionDodge$setup_data()` 的 `order` 列（pos_dodge 的位移序号）。
-
-    1. 每个 (x, PANEL) 内把 group 换成升序名次；
-    2. `reverse` 取负；
-    3. preserve="total" 时每组内再取名次（= 组内第几个），"single" 时全局取名次
-       （= 跨 x 的最大组数那一套）。
-    """
-    x = frame.values("x")
-    panel = frame.panel()
-    group = frame.numeric("group", default=1.0)
-    keys = _keys(x, panel)
-    order = _ave_match_sorted(group, keys)
-    if reverse:
-        order = -order
-    if preserve == "total":
-        return _ave_match_sorted(order, keys)
-    return _match_sorted(order)
 
 
 def _collide_width(frame: _Frame, width_param: Any) -> float:
@@ -518,9 +695,14 @@ def _collide_width(frame: _Frame, width_param: Any) -> float:
 
 
 def _dodge_panel(
-    frame: _Frame, width: float, n_total: float | None, order: np.ndarray
+    frame: _Frame, width: float, n_total: float | None, order: np.ndarray | None
 ) -> dict[str, np.ndarray]:
-    """上游 `pos_dodge()`：按 xmin 分组，groupidx 由 order 列给出。"""
+    """上游 `pos_dodge()`：按 xmin 分组，groupidx 由 `order` 列（或组内 group 名次）给出。
+
+    `order is None` 是 `position_jitterdodge()` 的路径：上游那里没有
+    `PositionDodge$setup_data()` 的 `order` 列，`pos_dodge()` 回退到
+    `match_sorted(df$group)` —— 注意是**组内**（按 xmin 切出的那一段）重新取名次。
+    """
     x = frame.values("x")
     xmin = frame.values("xmin")
     xmax = frame.values("xmax")
@@ -535,7 +717,8 @@ def _dodge_panel(
             continue
         # R 的 max(..., na.rm = FALSE)：组里有 NA 时整组变 NA。
         d_width = float(np.max(xmax[rows] - xmin[rows]))
-        shifted = x[rows] + width * ((order[rows] - 0.5) / n - 0.5)
+        groupidx = _match_sorted(group[rows]) if order is None else order[rows]
+        shifted = x[rows] + width * ((groupidx - 0.5) / n - 0.5)
         new_x[rows] = shifted
         new_xmin[rows] = shifted - d_width / n / 2.0
         new_xmax[rows] = shifted + d_width / n / 2.0
@@ -657,27 +840,132 @@ def _fill_missing(values: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# 实现：jitter / nudge
+# 实现：jitter / jitterdodge / nudge
 # ---------------------------------------------------------------------------
 
 
+def _random_seed() -> int:
+    """R 的 `sample.int(.Machine$integer.max, 1L)`：不碰全局 RNG。"""
+    return int(np.random.default_rng().integers(0, 2**31 - 1))
+
+
 @dataclass(frozen=True, slots=True)
-class PositionJitter(Position):
+class PositionJitter(PanelPosition):
     """`position_jitter()`：按 width / height 均匀抖动（seed 给定时可复现）。"""
 
     name: str = "jitter"
 
-    def compute_layer(
-        self, data: ColumnTable, params: Mapping[str, Any] | None = None
-    ) -> ColumnTable:
-        return _jitter(data, _merged(self.params, params))
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        """上游 `PositionJitter$setup_params()`：只把 `NA` 的 seed 换成一个随机整数。
+
+        seed 在**整层**上定一次，再喂给每个面板 —— 与 R 的
+        `with_seed_null()` 每个面板重设同一个 seed 同效，因此各面板的抖动
+        偏移相同。
+        """
+        seed = params.get("seed")
+        if seed is not None and isinstance(seed, float) and np.isnan(seed):
+            seed = None
+        return {
+            "width": params.get("width"),
+            "height": params.get("height"),
+            "seed": _random_seed() if seed is None else int(seed),
+        }
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        return _jitter(table, params)
+
+
+@dataclass(frozen=True, slots=True)
+class PositionJitterdodge(PanelPosition):
+    """`position_jitterdodge()`：先按 `dodge.width` 并排，再抖动（`geom_point` 配 boxplot）。
+
+    参数名在 Python 侧是 `jitter_width` / `jitter_height` / `dodge_width`；
+    R 的点号写法（`jitter.width` 等）由构造器一并接受。
+    """
+
+    name: str = "jitterdodge"
+
+    def setup_params(self, table: ColumnTable, params: Mapping[str, Any]) -> dict[str, Any]:
+        """上游 `PositionJitterdodge$setup_params()`。
+
+        `jitter.width` 缺省是 40% resolution，再按 `ndodge + 2` 收缩；`ndodge` 是
+        「同一 (PANEL, x) 上的最多 group 数」——这是**全层**统计量。
+        """
+        frame = _Frame(table)
+        flipped = flipped_aes(table)
+        frame.flip(flipped)
+        if "x" not in frame or "y" not in frame:
+            raise _build_error("position_jitterdodge 需要 x 与 y 两列")
+
+        x = frame.values("x")
+        width = params.get("jitter_width")
+        width = float(_resolution(x) * 0.4) if width is None else float(width)
+        ndodge = _max_groups(x, frame.panel(), frame.numeric("group", default=1.0))
+        dodge_width = params.get("dodge_width")
+        jitter_height = params.get("jitter_height")
+        seed = params.get("seed")
+        return {
+            "dodge_width": 0.75 if dodge_width is None else float(dodge_width),
+            "jitter_height": 0.0 if jitter_height is None else float(jitter_height),
+            "jitter_width": width / (ndodge + 2.0),
+            "seed": _random_seed() if seed is None else int(seed),
+            "flipped_aes": flipped,
+            "reverse": bool(params.get("reverse", False)),
+        }
+
+    def compute_panel(self, table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+        return _jitterdodge_panel(table, params)
+
+
+def _jitterdodge_panel(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
+    """上游 `PositionJitterdodge$compute_panel()`：`collide(pos_dodge)` 后 `compute_jitter()`。
+
+    注意上游 `reverse` 在这里**不改变结果**：`collide()` 只拿它决定行序，
+    而 `pos_dodge()` 的 groupidx 来自 `match_sorted(group)`；夹具里
+    `jitterdodge_zero_jitter_reverse` 与正向逐值相等，钉住这个口径。
+    """
+    frame = _Frame(table)
+    flipped = bool(params["flipped_aes"])
+    frame.flip(flipped)
+
+    width = float(params["dodge_width"])
+    if "xmin" not in frame or "xmax" not in frame:
+        # collide_setup()：显式 width → xmin/xmax = x ∓ width / 2。
+        x = frame.values("x")
+        frame.set("xmin", x - width / 2.0)
+        frame.set("xmax", x + width / 2.0)
+    if "ymax" not in frame and "y" in frame:
+        frame.set("ymax", frame.values("y"))
+
+    result = _dodge_panel(frame, width, None, None)
+    frame.set("x", result["x"])
+    frame.set("xmin", result["xmin"])
+    frame.set("xmax", result["xmax"])
+
+    jittered = _jitter(
+        frame.table(),
+        {
+            "width": params["jitter_width"],
+            "height": params["jitter_height"],
+            "seed": params["seed"],
+        },
+    )
+    out = _Frame(jittered)
+    out.flip(flipped)
+    return out.table()
 
 
 @dataclass(frozen=True, slots=True)
 class PositionNudge(Position):
-    """`position_nudge()`：x / y 整体平移。"""
+    """`position_nudge()`：x / y 整体平移。
+
+    上游 `PositionNudge` 的 `default_aes` 是 `nudge_x = 0` / `nudge_y = 0`：
+    流水线在 `compute_position()` 里按这两列补缺（`geom_text(nudge_x = …)` 这类
+    图层参数因此能传到位置层），`compute_layer()` 再读列做逐行平移。
+    """
 
     name: str = "nudge"
+    default_aes: ClassVar[Mapping[str, float]] = MappingProxyType({"nudge_x": 0.0, "nudge_y": 0.0})
 
     def compute_layer(
         self, data: ColumnTable, params: Mapping[str, Any] | None = None
@@ -738,12 +1026,23 @@ def _nudge(table: ColumnTable, params: Mapping[str, Any]) -> ColumnTable:
 
 
 def _nudge_shift(frame: _Frame, value: Any, column: str) -> np.ndarray:
-    """nudge 的位移量：参数 > 数据列 > 0（参数是标量，数据列是逐行的）。"""
-    if value is not None:
+    """nudge 的位移量：参数 > 数据列 > 0。
+
+    参数可以是标量、长度 1 的向量，或逐行向量（与 R 的
+    `x = c(0.1, 0.2)` 回调一致）；长度既不等于 1 也不等于行数时报错。
+    """
+    if value is None:
+        return frame.values(column) if column in frame else np.zeros(frame.nrows)
+    if isinstance(value, (int, float, np.integer, np.floating)):
         return np.full(frame.nrows, float(value))
-    if column in frame:
-        return frame.values(column)
-    return np.zeros(frame.nrows)
+    shift = np.asarray(value, dtype=np.float64)
+    if shift.size == 1:
+        return np.full(frame.nrows, float(shift.reshape(-1)[0]))
+    if shift.size != frame.nrows:
+        raise _build_error(
+            f"nudge 的位移长度必须是 1 或 {frame.nrows}（数据行数），得到 {shift.size}"
+        )
+    return shift.reshape(-1).astype(np.float64, copy=True)
 
 
 def _resolution(values: np.ndarray) -> float:
@@ -841,11 +1140,70 @@ def _position_jitter(
     )
 
 
-def _position_nudge(x: float | None = None, y: float | None = None) -> PositionNudge:
-    return PositionNudge(
+def _shift_arg(value: Any, name: str) -> float | tuple[float, ...] | None:
+    """nudge 的 `x` / `y`：`None` / 标量 / 长度 1 的向量 / 逐行向量。
+
+    R 的 `position_nudge(x = c(0.2))` 与标量等价；长度大于 1 时按行广播
+    （长度不等于行数由 `_nudge_shift()` 在知道行数后报错）。
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return float(value)
+    try:
+        values = tuple(float(item) for item in value)
+    except TypeError:
+        raise TypeError(
+            f"nudge 的 {name} 必须是数字或数字序列，得到 {type(value).__name__}"
+        ) from None
+    if not values:
+        raise ValueError(f"nudge 的 {name} 不能是空序列")
+    return values
+
+
+def _position_nudge(
+    x: float | Sequence[float] | None = None,
+    y: float | Sequence[float] | None = None,
+) -> PositionNudge:
+    return PositionNudge(params={"x": _shift_arg(x, "x"), "y": _shift_arg(y, "y")})
+
+
+def _position_jitterdodge(
+    jitter_width: float | None = None,
+    jitter_height: float | None = 0.0,
+    dodge_width: float | None = 0.75,
+    reverse: bool = False,
+    seed: int | None = None,
+    **aliases: Any,
+) -> PositionJitterdodge:
+    """`position_jitterdodge()`：点号写法（`jitter.width` 等）与 snake_case 都认。"""
+    values: dict[str, Any] = {
+        "jitter_width": jitter_width,
+        "jitter_height": jitter_height,
+        "dodge_width": dodge_width,
+    }
+    for dotted, target in (
+        ("jitter.width", "jitter_width"),
+        ("jitter.height", "jitter_height"),
+        ("dodge.width", "dodge_width"),
+    ):
+        if dotted in aliases:
+            values[target] = aliases.pop(dotted)
+    if aliases:
+        raise TypeError(f"position_jitterdodge() 不认识的参数：{', '.join(sorted(aliases))}")
+    return PositionJitterdodge(
         params={
-            "x": None if x is None else float(x),
-            "y": None if y is None else float(y),
+            "jitter_width": None
+            if values["jitter_width"] is None
+            else float(values["jitter_width"]),
+            "jitter_height": (
+                None if values["jitter_height"] is None else float(values["jitter_height"])
+            ),
+            "dodge_width": (
+                None if values["dodge_width"] is None else float(values["dodge_width"])
+            ),
+            "reverse": _check_bool(reverse, "reverse"),
+            "seed": None if seed is None else int(seed),
         }
     )
 
@@ -859,6 +1217,7 @@ POSITION_FACTORIES: Mapping[str, Callable[..., Position]] = MappingProxyType(
         "dodge": _position_dodge,
         "dodge2": _position_dodge2,
         "jitter": _position_jitter,
+        "jitterdodge": _position_jitterdodge,
         "nudge": _position_nudge,
     }
 )

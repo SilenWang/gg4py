@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Any
 
@@ -1214,6 +1214,9 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
             position = POSITION_FACTORIES["jitter"](
                 width=params.pop("width", None), height=params.pop("height", None)
             )
+        resolved_position = as_position(position, spec.position)
+        if name == "boxplot":
+            resolved_position = _boxplot_position(resolved_position, position, params)
         return Layer(
             geom=Geom(
                 name=name,
@@ -1223,7 +1226,7 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
                 optional_aes=spec.optional_aes,
             ),
             stat=as_stat(stat, spec.stat),
-            position=as_position(position, spec.position),
+            position=resolved_position,
             mapping=as_aes(mapping),
             data=data,
             params=params,
@@ -1232,6 +1235,37 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
         )
 
     return factory
+
+
+def _boxplot_position(
+    resolved: Position, raw: Position | str | None, params: Mapping[str, Any]
+) -> Position:
+    """上游 `geom_boxplot()` 的 `varwidth` 规则（`R/geom-boxplot.R:162`）。
+
+    `varwidth = TRUE` 与 `preserve = "total"` 不兼容：
+
+    - `position` 是名字 / 缺省 → 换成 `position_dodge2(preserve = "single")`；
+    - `position` 是显式对象且 `preserve = "total"` → 警告后改成 `"single"`。
+
+    对位置层本身没有新语义（`preserve` 早已实现），但**组合**要靠这一条才能与
+    R 对齐：箱宽按 `relvarwidth` 变化时，`total` 会把每个箱压成 `width / n`。
+    """
+    if not bool(params.get("varwidth", False)):
+        return resolved
+    if raw is None or isinstance(raw, str):
+        return construct("position", "dodge2", preserve="single")
+    if isinstance(raw, Position) and raw.name == "dodge2":
+        if raw.params.get("preserve", "total") == "single":
+            return resolved
+        import warnings
+
+        warnings.warn(
+            "Can't preserve total widths when varwidth = TRUE.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        return replace(raw, params={**raw.params, "preserve": "single"})
+    return resolved
 
 
 #: 参考线三兄弟的「参数即数据」工厂（上游 `geom_abline()` / `geom_hline()` /

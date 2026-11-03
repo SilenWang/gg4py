@@ -30,7 +30,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from ggcore import plot, registry
+from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
+from ggcore.position import POSITION_FACTORIES, PositionDodge, PositionJitterdodge
 from ggcore.registry import construct
 
 REPO = Path(__file__).resolve().parents[1]
@@ -53,10 +56,80 @@ EXPECTED_CASES = (
     "fill_horizontal",
     "jitter_seed",
     "nudge",
+    "dodge2_preserve_total_uneven",
+    "dodge2_preserve_single_uneven",
+    "dodge2_boxplot",
+    "dodge2_boxplot_varwidth",
+    "dodge2_horizontal",
+    "jitterdodge_zero_jitter",
+    "jitterdodge_dodge_width",
+    "jitterdodge_zero_jitter_reverse",
+    "jitterdodge_defaults",
+    "jitterdodge_two_panels",
+    "nudge_text_default",
+    "nudge_text_params",
+    "nudge_text_vector",
+    "nudge_vector_param",
+    "stack_two_panels",
+    "dodge_two_panels",
+    "dodge2_preserve_single_two_panels",
+    "jitter_seed_two_panels",
+    "identity_noop",
 )
 
-#: 唯一一个随机流跨语言不一致的 case（其余逐值相等）。
-RNG_CASES = frozenset({"jitter_seed"})
+#: 随机流跨语言不一致、只比「包络」的 case（其余逐值相等）。
+RNG_CASES = frozenset({"jitter_seed", "jitterdodge_defaults", "jitter_seed_two_panels"})
+
+#: R 的点号参数名 → gg4py 的 snake_case。
+_PARAM_ALIASES = {
+    "dodge.width": "dodge_width",
+    "jitter.width": "jitter_width",
+    "jitter.height": "jitter_height",
+}
+
+#: `setup_params()` 逐项对拍：case → 要比的键。`seed` 单独处理（随机缺省不比较）。
+PARAM_CASES = {
+    "stack_two_groups": ("vjust", "reverse", "flipped_aes"),
+    "stack_horizontal": ("vjust", "reverse", "flipped_aes"),
+    "stack_two_panels": ("vjust", "reverse", "flipped_aes"),
+    "dodge_two_groups": ("width", "n", "reverse", "flipped_aes"),
+    "dodge_preserve_single": ("width", "n", "reverse", "flipped_aes"),
+    "dodge_horizontal": ("width", "n", "reverse", "flipped_aes"),
+    "dodge_two_panels": ("width", "n", "reverse", "flipped_aes"),
+    "dodge2_two_groups": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_padding": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_preserve_single_no_x": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_preserve_total_uneven": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_preserve_single_uneven": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_boxplot": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_boxplot_varwidth": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_horizontal": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "dodge2_preserve_single_two_panels": ("width", "n", "padding", "reverse", "flipped_aes"),
+    "jitter_seed": ("width", "height", "seed"),
+    "jitterdodge_zero_jitter": (
+        "dodge.width",
+        "jitter.width",
+        "jitter.height",
+        "reverse",
+        "flipped_aes",
+    ),
+    "jitterdodge_dodge_width": (
+        "dodge.width",
+        "jitter.width",
+        "jitter.height",
+        "reverse",
+        "flipped_aes",
+    ),
+    "jitterdodge_zero_jitter_reverse": (
+        "dodge.width",
+        "jitter.width",
+        "jitter.height",
+        "reverse",
+        "flipped_aes",
+    ),
+    "jitterdodge_defaults": ("dodge.width", "jitter.width", "jitter.height", "flipped_aes"),
+    "jitterdodge_two_panels": ("dodge.width", "jitter.width", "jitter.height", "flipped_aes"),
+}
 
 
 @pytest.fixture(scope="module")
@@ -113,20 +186,44 @@ def test_fixture_case_set_is_pinned(reference: dict) -> None:
             "dodge",
             "dodge2",
             "jitter",
+            "jitterdodge",
             "nudge",
         }
         assert case["input"], case["id"]
         assert case["output"], case["id"]
 
 
-def test_only_jitter_has_an_rng_dependent_output(reference: dict) -> None:
-    """11 个 case 里只有 jitter 的随机流跨语言不一致；其余必须逐值可对。"""
-    assert RNG_CASES == {"jitter_seed"}
+def test_only_rng_cases_have_an_envelope(reference: dict) -> None:
+    """随机流跨语言不一致的 case 记包络（`envelope`），其余必须逐值可对。"""
     for case in reference["cases"]:
         if case["id"] in RNG_CASES:
             assert case["envelope"] is not None, case["id"]
         else:
             assert case["envelope"] is None, case["id"]
+
+
+@pytest.mark.parametrize("case_id", sorted(PARAM_CASES))
+def test_setup_params_matches_r(reference: dict, case_id: str) -> None:
+    """`setup_params()` 的解析结果逐项与 R 相等（整层口径：n / jitter.width / …）。"""
+    case = _case(reference, case_id)
+    source = _table(case["input"])
+    position = construct("position", case["position"], **case["position_params"])
+    merged = {**position.params, **case["position_params"]}
+    resolved = position.setup_params(source, merged)
+
+    for key in PARAM_CASES[case_id]:
+        py_key = _PARAM_ALIASES.get(key, key)
+        assert py_key in resolved, f"{case_id}: setup_params() 少了 {py_key}"
+        want = case["params"][key]
+        got = resolved[py_key]
+        if want is None or got is None:
+            assert got is None and want is None, f"{case_id}.{key}: {got!r} != {want!r}"
+        elif isinstance(want, bool):
+            assert bool(got) is want, f"{case_id}.{key}: {got!r} != {want!r}"
+        else:
+            assert float(got) == pytest.approx(float(want), abs=TOLERANCE), (
+                f"{case_id}.{key}: {got!r} != {want!r}"
+            )
 
 
 @pytest.mark.parametrize("case_id", [case for case in EXPECTED_CASES if case not in RNG_CASES])
@@ -173,40 +270,69 @@ def test_compared_cell_count(reference: dict) -> None:
             continue
         for spec in case["output"]:
             values += len(spec["values"])
-    assert len(EXPECTED_CASES) == 14
-    assert values == 496
+    assert len(EXPECTED_CASES) == 33
+    assert values == 1182
 
 
-def test_jitter_envelope_and_determinism(reference: dict) -> None:
-    """jitter：缺省包络与 R 一致、seed 可复现、R 的值也在同一包络内。"""
-    case = _case(reference, "jitter_seed")
-    source, first = _run(case)
-    _, second = _run(case)
-    assert first == second
+def test_rng_envelope_and_determinism(reference: dict) -> None:
+    """随机流 case：包络与 R 一致、seed 可复现、R 的值落在同一包络内。
 
-    width = case["envelope"]["width"]
-    height = case["envelope"]["height"]
-    assert width == pytest.approx(0.4, abs=TOLERANCE)
-    assert height == pytest.approx(0.4, abs=TOLERANCE)
+    jitter 与 jitterdodge 的抖动值跨语言不可能相等，比的是：
 
-    r_output = {spec["name"]: _column(spec) for spec in case["output"]}
-    for name, limit in (("x", width), ("y", height)):
-        jittered = _values(first, name)
-        original = _values(source, name)
-        assert np.all(np.abs(jittered - original) <= limit + TOLERANCE), name
-        # R 的值（不同随机流）同样落在同一个半宽里 —— 说明分辨率口径一致。
-        r_values = r_output[name].values.astype(np.float64)
-        assert np.all(np.abs(r_values - original) <= limit + TOLERANCE), name
-        assert not np.allclose(jittered, original), name
+    - 同一个 seed 两次调用逐位相同；
+    - 每个抖动偏移不超过半宽（jitter 相对输入；jitterdodge 的 dodge 相位是
+      确定量，所以比「与 R 输出的差」≤ 两边半宽之和）；
+    - `height = 0` 时 y 列必须逐值相等。
+    """
+    assert RNG_CASES == {"jitter_seed", "jitterdodge_defaults", "jitter_seed_two_panels"}
+    for case_id in RNG_CASES:
+        case = _case(reference, case_id)
+        source, first = _run(case)
+        _, second = _run(case)
+        assert first == second, case_id
+
+        width = case["envelope"]["width"]
+        height = case["envelope"]["height"]
+        r_output = {spec["name"]: _column(spec) for spec in case["output"]}
+        for name, limit in (("x", width), ("y", height)):
+            got = _values(first, name)
+            original = _values(source, name)
+            r_values = r_output[name].values.astype(np.float64)
+            if case["position"] == "jitterdodge":
+                # dodge 相位相同，只有抖动不同：两边差 ≤ 2 × 半宽。
+                assert np.all(np.abs(got - r_values) <= 2 * limit + TOLERANCE), (case_id, name)
+                if limit == 0:
+                    assert np.array_equal(got, r_values), (case_id, name)
+            else:
+                assert np.all(np.abs(got - original) <= limit + TOLERANCE), (case_id, name)
+                # R 的值同样落在同一个半宽里 —— 说明分辨率口径一致。
+                assert np.all(np.abs(r_values - original) <= limit + TOLERANCE), (case_id, name)
+                assert not np.allclose(got, original), (case_id, name)
+
+    jitter = _case(reference, "jitter_seed")["envelope"]
+    assert jitter["width"] == pytest.approx(0.4, abs=TOLERANCE)
+    assert jitter["height"] == pytest.approx(0.4, abs=TOLERANCE)
+    jitterdodge = _case(reference, "jitterdodge_defaults")["envelope"]
+    # 40% resolution / (ndodge + 2) = 0.4 / 4；height 缺省 0。
+    assert jitterdodge["width"] == pytest.approx(0.1, abs=TOLERANCE)
+    assert jitterdodge["height"] == 0
 
 
 def test_jitter_without_seed_is_not_reproducible(reference: dict) -> None:
-    case = _case(reference, "jitter_seed")
+    for case_id in ("jitter_seed",):
+        case = _case(reference, case_id)
+        source = _table(case["input"])
+        params = dict(case["position_params"])
+        params.pop("seed")
+        first = construct("position", case["position"], **params).compute_layer(source)
+        second = construct("position", case["position"], **params).compute_layer(source)
+        assert not np.allclose(_values(first, "x"), _values(second, "x"))
+
+    # jitterdodge 的 seed 缺省同样每次重抽。
+    case = _case(reference, "jitterdodge_defaults")
     source = _table(case["input"])
-    params = dict(case["position_params"])
-    params.pop("seed")
-    first = construct("position", "jitter", **params).compute_layer(source)
-    second = construct("position", "jitter", **params).compute_layer(source)
+    first = construct("position", "jitterdodge").compute_layer(source)
+    second = construct("position", "jitterdodge").compute_layer(source)
     assert not np.allclose(_values(first, "x"), _values(second, "x"))
 
 
@@ -226,3 +352,145 @@ def test_parity_has_teeth(reference: dict) -> None:
         atol=TOLERANCE,
         equal_nan=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# build_plot() 流水线：位置调整在**整层**调用（SIL-764 / SIL-770）
+#
+# 上面几节直接调 `Position.compute_layer()`，输入本来就是整层表；真实流水线
+# 若在调用前按 PANEL 预切片，`setup_params()` 就只会看到单面板数据，全层口径
+# 的 `n` / `ndodge` / seed 全部退化。下面三条断言都走 `build_plot()`，把这条
+# 接线钉死（把 `_compute_panel_stages()` 改回逐面板调用就会红）。
+# ---------------------------------------------------------------------------
+
+
+def _str_column(values: list[str]) -> Column:
+    return Column("str", np.array(values, dtype=object))
+
+
+def _faceted_uneven_table() -> ColumnTable:
+    """R `faceted_uneven`（tools/refs/position_ref.R）：A 面板最多 2 组，B 面板 3 组。"""
+    return ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]))),
+            ("g", _str_column(["p", "p", "q", "p", "q", "r", "p"])),
+            ("f", _str_column(["a", "a", "a", "b", "b", "b", "b"])),
+        ]
+    )
+
+
+def _faceted_even_table() -> ColumnTable:
+    """R `faceted`（同上）：两个面板各 4 行，x 图案相同。"""
+    return ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]))),
+            ("g", _str_column(["p", "q", "p", "q", "p", "q", "p", "q"])),
+            ("f", _str_column(["a", "a", "a", "a", "b", "b", "b", "b"])),
+        ]
+    )
+
+
+def test_build_plot_dodge2_preserve_single_uses_whole_layer_n(reference: dict) -> None:
+    """`dodge2(preserve="single")` × facet_wrap：`n` 是全层 3，不是逐面板 2。"""
+    case = _case(reference, "dodge2_preserve_single_two_panels")
+    p = (
+        plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", fill="g"))
+        + plot.geom_col(position=plot.position_dodge2(preserve="single"))
+        + plot.facet_wrap(("f",))
+    )
+    data = build_plot(p).layers[0].data
+
+    expected = {spec["name"]: spec for spec in case["output"]}
+    assert data.column("PANEL").values.tolist() == _column(expected["PANEL"]).values.tolist()
+    for name in ("x", "xmin", "xmax"):
+        assert np.allclose(
+            _values(data, name),
+            _values(_table([expected[name]]), name),
+            rtol=0,
+            atol=TOLERANCE,
+            equal_nan=True,
+        ), name
+    # 钉住最容易被逐面板切片掰弯的那两列：PANEL 1 的 x=2 两根柱按 n=3 分槽。
+    assert _values(data, "x")[1:3] == pytest.approx([1.85, 2.15], abs=TOLERANCE)
+
+
+def test_build_plot_dodge_preserve_single_uses_whole_layer_n() -> None:
+    """`dodge(preserve="single")` 分面：`n` 也是全层 3（逐面板会把 A 算成 2）。"""
+    seen: list[dict] = []
+
+    class _RecordingDodge(PositionDodge):
+        def setup_params(self, table, params):  # type: ignore[override]
+            resolved = super().setup_params(table, params)
+            seen.append(resolved)
+            return resolved
+
+    original = POSITION_FACTORIES["dodge"]
+    registry.register_position(
+        "dodge",
+        lambda **kwargs: _RecordingDodge(params=kwargs),
+        allow_override=True,
+    )
+    try:
+        p = (
+            plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", fill="g"))
+            + plot.geom_col(position=plot.position_dodge(preserve="single"))
+            + plot.facet_wrap(("f",))
+        )
+        build_plot(p)
+    finally:
+        registry.register_position("dodge", original, allow_override=True)
+
+    assert len(seen) == 1, "setup_params() 必须整层只跑一次（逐面板会看到 2 次）"
+    assert seen[0]["n"] == pytest.approx(3.0, abs=TOLERANCE)
+
+
+def test_build_plot_jitter_without_seed_reuses_one_seed_per_panel() -> None:
+    """`jitter(seed=None)`：整层抽一次 seed，两个面板按行序重置同一个 seed。"""
+    p = (
+        plot.ggplot(_faceted_even_table(), plot.aes(x="x", y="y"))
+        + plot.geom_point(position=plot.position_jitter())
+        + plot.facet_wrap(("f",))
+    )
+    data = build_plot(p).layers[0].data
+    original = np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0])
+    offsets = _values(data, "x") - original
+    # 每个面板 4 行、x 图案相同：同序号行的偏移必须相同（seed 每面板重置）。
+    assert offsets[:4] == pytest.approx(offsets[4:], abs=TOLERANCE)
+    assert not np.allclose(offsets[:4], 0.0)
+
+
+def test_build_plot_jitterdodge_default_width_uses_whole_layer_ndodge() -> None:
+    """`jitterdodge` 缺省 `jitter.width` = `0.4 / (ndodge + 2)`，`ndodge` 按全层。
+
+    A 面板最多 2 组、B 面板 3 组：逐面板会把 A 算成 `0.4 / 4 = 0.1`，全层口径
+    两个面板都必须是 `0.4 / 5 = 0.08`。这里用一个记录参数的位置子类观察
+    `setup_params()`：既要求只被调用一次（整层），也要求宽度是 0.08。
+    """
+    seen: list[dict] = []
+
+    class _RecordingJitterdodge(PositionJitterdodge):
+        def setup_params(self, table, params):  # type: ignore[override]
+            resolved = super().setup_params(table, params)
+            seen.append(resolved)
+            return resolved
+
+    original = POSITION_FACTORIES["jitterdodge"]
+    registry.register_position(
+        "jitterdodge",
+        lambda **kwargs: _RecordingJitterdodge(params=kwargs),
+        allow_override=True,
+    )
+    try:
+        p = (
+            plot.ggplot(_faceted_uneven_table(), plot.aes(x="x", y="y", group="g"))
+            + plot.geom_point(position=plot.position_jitterdodge())
+            + plot.facet_wrap(("f",))
+        )
+        build_plot(p)
+    finally:
+        registry.register_position("jitterdodge", original, allow_override=True)
+
+    assert len(seen) == 1, "setup_params() 必须整层只跑一次（逐面板会看到 2 次）"
+    assert seen[0]["jitter_width"] == pytest.approx(0.4 / (3 + 2), abs=TOLERANCE)

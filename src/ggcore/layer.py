@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from types import MemberDescriptorType
+from types import MappingProxyType, MemberDescriptorType
 from typing import Any, ClassVar
 
 from ggcore.aes import Aes, as_aes, frozen_mapping
@@ -73,19 +73,35 @@ class Stat:
 
 @dataclass(frozen=True, slots=True)
 class Position:
-    """位置调整（`identity` / `dodge` / `stack` / `jitter`）。
+    """位置调整（`identity` / `dodge` / `stack` / `jitter` / `jitterdodge` / `nudge`）。
 
-    子类覆写 :meth:`compute_layer` 后用 `register_position()` 登记。
+    子类覆写 :meth:`compute_layer`（或继承
+    :class:`ggcore.position.PanelPosition` 只覆写 `compute_panel`）后用
+    `register_position()` 登记。
+
+    `required_aes` / `default_aes` 对应上游 `Position` 的字段：
+    `default_aes`（`nudge_x = 0` / `nudge_y = 0`）由流水线在
+    `compute_position()` 里补缺，位置实现再据此读列。
     """
 
     name: str = "identity"
     params: dict[str, Any] = field(default_factory=dict)
+    required_aes: ClassVar[tuple[str, ...]] = ()
+    default_aes: ClassVar[Mapping[str, Any]] = MappingProxyType({})
 
     def __post_init__(self) -> None:
         name = _declared_attr(self, "name", Position)
         if name is not _MISSING:
             object.__setattr__(self, "name", name)
         object.__setattr__(self, "params", frozen_mapping(self.params))
+
+    def aesthetics(self) -> tuple[str, ...]:
+        """`Position$aesthetics()`：`required_aes`（`|` 备选写法拆开）+ `default_aes`。"""
+        names: list[str] = []
+        for group in self.required_aes:
+            names.extend(group.split("|"))
+        names.extend(self.default_aes)
+        return tuple(dict.fromkeys(names))
 
     def compute_layer(self, data: Any, params: Mapping[str, Any] | None = None) -> Any:
         """`Position$compute_layer()` 的扩展点。"""

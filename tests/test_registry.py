@@ -99,7 +99,16 @@ EXPECTED = {
         "spoke",
         "ydensity",
     ),
-    "position": ("identity", "stack", "fill", "dodge", "dodge2", "jitter", "nudge"),
+    "position": (
+        "identity",
+        "stack",
+        "fill",
+        "dodge",
+        "dodge2",
+        "jitter",
+        "jitterdodge",
+        "nudge",
+    ),
     "scale": (
         "x_continuous",
         "y_continuous",

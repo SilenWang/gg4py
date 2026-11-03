@@ -233,7 +233,7 @@ BUILDERS = {
     ),
     "box_varwidth": lambda: (
         ggplot(_table(BOX_VAR), aes(x="cls", y="v"))
-        + registry.geom_boxplot(varwidth=True, position="identity")
+        + registry.geom_boxplot(varwidth=True, position=registry.position_identity())
     ),
     "box_inf": lambda: ggplot(_table(BOX_INF), aes(x="cls", y="v")) + registry.geom_boxplot(),
     "box_horizontal": lambda: (
