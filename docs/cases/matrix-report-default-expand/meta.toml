@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-cartesian", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
+ci = true
+title = "coord_cartesian × 右侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "单面板对照：默认 expand 下的断点位置由 tests/test_cases_matrix_report.py 逐值断言。"

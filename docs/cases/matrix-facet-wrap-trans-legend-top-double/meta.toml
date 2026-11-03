@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-trans", "scale-limits", "legend-pos-top", "guide-direction-horizontal", "shape-aes", "legend-double"]
+ci = true
+title = "2×2 facet_wrap × coord_trans(sqrt) × 上侧横排双图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "分面 × coord_trans × 顶部双图例。"

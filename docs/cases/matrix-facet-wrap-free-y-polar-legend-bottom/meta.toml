@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "facet-free", "coord-polar", "legend-pos-bottom", "guide-direction-auto", "legend-single"]
+ci = true
+title = "facet_wrap(free_y) × coord_polar × 下侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "free_y × 极坐标 × 底部图例：每个面板各自的 r 范围。"

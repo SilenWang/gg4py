@@ -289,6 +289,45 @@ SIL-715（M2 缺口池）：
 | `coord`（径向） | `radial-partial`（半圆）/ `radial-inner`（内半径 0.3） |
 | `coord`（次轴 / 近似投影） | `sec-axis`（右侧 `sec_axis(~ . * 2)`）/ `quickmap`（经纬度等距圆柱） |
 
+### M2-11：组合矩阵（51 条）
+
+M1 复验暴露的「单独都对、组合就错」（SIL-715 #7）在 `matrix-*` 这批 case 里逐格
+铺开：同一份 12 行数据（4 个分面 × 2 个离散分组），只换分面 / 坐标 / 图例的组件。
+参考图由 `pixi run -e refs refs:matrix-cases`（`tools/refs/matrix_cases_ref.R`）生成，
+该脚本也写 `tests/fixtures/matrix_r_reference.json`（默认 expand 下的断点位置 +
+分面 × 极坐标的图例行高）。规格表与各 case 的 `plot.py` 一一对应，改一边必须改另一边。
+
+| 组 | 条数 | 铺开的格子 |
+| --- | --- | --- |
+| A `facet-{wrap,grid}-coord-*` | 10 | 2 种分面 × 5 种坐标（`cartesian` / `flip` / `polar` / `trans` / `radial`） |
+| B `legend-{pos}-{dir}-{count}` | 16 | 4 种位置 × 竖/横排（`guide_legend(direction=)`）× 单/双图例 |
+| C `report-*` | 4 | report-style：`theme_grey` + `labs()` + **默认 expand**（单面板 / wrap / grid / polar） |
+| D `facet-polar-legend-*` | 4 | 分面 × 极坐标 × 图例（位置 × 方向 × 单双） |
+| E `coord-{flip,trans,radial,polar}-legend-*` | 8 | 坐标 × 图例位置（不铺分面） |
+| F `facet-*`（长尾分面）× 坐标 × 图例 | 9 | `free_x` / `free_y` / `space=free` / `margins` / 只有行变量的 grid |
+
+「没有空格」由 `tests/test_cases_matrix_combos.py` 守着：A 的 10 格与 B 的 16 格
+（位置 × 方向 × 个数）必须每格至少一条 case，且这批 case 的族 / 特性都已登记进
+`taxonomy.toml`。
+
+`ci = false` 的三条是 SIL-715 #7 的缺口本身（`notes` 里带 SIL-715，报告见
+`.cases-matrix/report.md`）：
+
+| case | 图级 / 均值 | 归因 |
+| --- | --- | --- |
+| `matrix-report-facet-wrap-grey` | 4.48% / 0.78% | 默认主题的网格线 + 四块面板的文字行：逐行 1px 抗锯齿差 |
+| `matrix-report-facet-grid-grey` | 4.53% / 0.92% | 同上 + 行列 strip |
+| `matrix-report-facet-polar-grey` | 23.99% / 3.28% | **面板尺寸**：R 的面板 64.80pt，我们 68.21pt（`panel_area` 少留 6.8pt），整图缩放不同 |
+
+最后一条是真实缺口（不是阈值问题）：极坐标 + `theme_grey` 时 R 在面板四周为
+theta / r 轴标签留出的空间比我们多，面板因此放大 5.3%。`theme_void` 下的极坐标
+组合（A / D / F 组）都在 1.1% 以内。
+
+顺带修掉的组合 bug（SIL-743）：**横向图例的水平居中区**。R 的 `guide-box-bottom`
+只跨 panel 列，`facet_grid` 的行 strip 自成一列；此前用整个 `panel_area` 居中，图例
+被右推半个 strip 宽（`matrix-facet-grid-margins-cartesian-legend-bottom` 从 2.12%
+降到 1.76%，正好由红转绿）。
+
 ### M2-S2：geom 长尾 A（18 条）
 
 参考图由 `pixi run -e refs refs:geom` 生成（与 fixture 同一个脚本，`tools/refs/geom_ref.R`

@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-flip", "scale-limits", "legend-pos-top", "guide-direction-auto", "legend-single"]
+ci = true
+title = "coord_flip × 上侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "coord_flip 下顶部图例：图例与翻转后的轴标题不重叠。"

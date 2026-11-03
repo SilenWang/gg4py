@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-polar", "scale-limits", "legend-pos-bottom", "guide-direction-auto", "legend-single"]
+ci = true
+title = "2×2 facet_wrap × coord_polar × 下侧单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "极坐标 × 分面 × 底部横排图例：图例占整行，面板区随之缩短。"

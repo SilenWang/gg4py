@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-grid", "coord-flip", "scale-limits", "legend-pos-left", "guide-direction-horizontal", "legend-single"]
+ci = true
+title = "2×2 facet_grid × coord_flip × 左侧横排单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "分面 × coord_flip × 左侧横排图例。"

@@ -1,0 +1,7 @@
+family = "matrix"
+features = ["aes-mapping", "colour-aes", "guide-legend", "coord-polar", "scale-limits", "legend-pos-bottom", "guide-direction-horizontal", "legend-single"]
+ci = true
+title = "coord_polar × 下侧横排单图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "coord_polar × 底部横排图例（theta 轴标题与图例共存）。"

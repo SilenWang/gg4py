@@ -50,6 +50,8 @@ families = [
   "guide",
   "lab",
   "extension",
+  # M2-11 组合矩阵（SIL-743）：分面 × 坐标 × 图例的整格组合，单独一族。
+  "matrix",
 ]
 
 features = [
@@ -138,4 +140,21 @@ features = [
   "contour-band",
   "bin-hex",
   "api-extension",
+  # M2-11 组合矩阵（SIL-743）：显式坐标 / 图例位置 / 排布方向 / 图例个数 / 双轴标题。
+  # 组合 case 的「位置 × 方向 × 个数」与 `facet-*` 一起构成没有空格的网格，
+  # `tests/test_cases_matrix_combos.py` 守着这 10 + 16 个格子。
+  "coord-cartesian",
+  "legend-pos-right",
+  "legend-pos-left",
+  "legend-pos-top",
+  "legend-pos-bottom",
+  "guide-direction-auto",
+  "guide-direction-vertical",
+  "guide-direction-horizontal",
+  "legend-single",
+  "legend-double",
+  "lab-axis-title",
+  # facet 长尾标签：在 M2-3 的 case 里先用上了，这里补登记（矩阵不再点名）。
+  "facet-margins",
+  "facet-space-free",
 ]

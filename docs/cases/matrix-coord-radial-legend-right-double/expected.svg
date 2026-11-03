@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='288.00pt' height='216.00pt' viewBox='0 0 288.00 216.00'>
+<g class='svglite'>
+<defs>
+  <style type='text/css'><![CDATA[
+    .svglite line, .svglite polyline, .svglite polygon, .svglite path, .svglite rect, .svglite circle {
+      fill: none;
+      stroke: #000000;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-miterlimit: 10.00;
+    }
+    .svglite text {
+      white-space: pre;
+    }
+    .svglite g.glyphgroup path {
+      fill: inherit;
+      stroke: none;
+    }
+  ]]></style>
+</defs>
+<rect width='100%' height='100%' style='stroke: none; fill: #FFFFFF;'/>
+<defs>
+  <clipPath id='cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA='>
+    <rect x='0.00' y='0.00' width='288.00' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+</g>
+<defs>
+  <clipPath id='cpMTkuMzR8MjY4LjY2fDAuMDB8MjE2LjAw'>
+    <rect x='19.34' y='0.00' width='249.32' height='216.00' />
+  </clipPath>
+</defs>
+<g clip-path='url(#cpMTkuMzR8MjY4LjY2fDAuMDB8MjE2LjAw)'>
+<rect x='19.34' y='0.00' width='249.32' height='216.00' style='stroke-width: 0.00; stroke: none;' />
+</g>
+<g clip-path='url(#cpMC4wMHwyODguMDB8MC4wMHwyMTYuMDA=)'>
+<circle cx='151.80' cy='90.23' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<circle cx='146.03' cy='165.52' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<polygon points='84.14,103.47 88.07,110.27 80.21,110.27 ' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='176.64,87.45 180.57,94.25 172.72,94.25 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='127.34' cy='129.60' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='65.71,83.44 69.64,90.24 61.79,90.24 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='161.90' cy='108.00' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='105.98,169.20 109.91,176.00 102.06,176.00 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='88.90' cy='80.07' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='180.75,120.82 184.68,127.62 176.83,127.62 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<circle cx='112.10' cy='128.97' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #F8766D;' />
+<polygon points='91.79,54.54 95.72,61.34 87.87,61.34 ' style='stroke-width: 0.71; stroke: none; fill: #00BA38;' />
+<text x='241.01' y='63.22' style='font-size: 11.00px; font-family: "Arimo";' textLength='6.12px' lengthAdjust='spacingAndGlyphs'>g</text>
+<circle cx='249.65' cy='78.48' r='2.92' style='stroke-width: 0.71; stroke: #F8766D; fill: #F8766D;' />
+<circle cx='249.65' cy='95.76' r='2.92' style='stroke-width: 0.71; stroke: #00BA38; fill: #00BA38;' />
+<text x='263.77' y='81.51' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>p</text>
+<text x='263.77' y='98.79' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>q</text>
+<text x='241.01' y='120.31' style='font-size: 11.00px; font-family: "Arimo";' textLength='5.50px' lengthAdjust='spacingAndGlyphs'>s</text>
+<circle cx='249.65' cy='135.57' r='2.92' style='stroke-width: 0.71; stroke: none; fill: #000000;' />
+<polygon points='249.65,148.32 253.58,155.12 245.72,155.12 ' style='stroke-width: 0.71; stroke: none; fill: #000000;' />
+<text x='263.77' y='138.60' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.89px' lengthAdjust='spacingAndGlyphs'>u</text>
+<text x='263.77' y='155.88' style='font-size: 8.80px; font-family: "Arimo";' textLength='4.41px' lengthAdjust='spacingAndGlyphs'>v</text>
+</g>
+</g>
+</svg>
