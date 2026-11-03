@@ -216,6 +216,10 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # Every gate is a plain script with a non-zero exit code, so it runs both from
 # `pixi run check` and standalone. See docs/notes/gates.md.
 "gate:imports" = "python tools/gates/check_import_whitelist.py"
+# SIL-758：contourpy 只在等值线路径上加载。脚本把 contourpy 从 `sys.meta_path`
+# 上挡掉，断言 4 个非 contour stat + density_2d(contour=FALSE) 照常可用、只有
+# contour 族失败，且非 contour 路径没导入 `ggcore.contour`。
+"gate:contourpy-lazy" = "PYTHONPATH=src python tools/gates/check_contourpy_lazy.py"
 "gate:ir-json" = "python tools/gates/check_ir_json.py"
 "gate:determinism" = "python tools/gates/check_determinism.py"
 # M0-10: 同一份 plot → IR 在 CPython（cbor2）与 Pyodide（ggcore 自带纯 Python
@@ -247,6 +251,7 @@ check = { depends-on = [
   "lint",
   "test",
   "gate:imports",
+  "gate:contourpy-lazy",
   "gate:ir-json",
   "gate:determinism",
   "gate:metrics",

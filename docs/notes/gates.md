@@ -5,6 +5,7 @@
 | 任务 | 脚本 | 拦截什么 | 失败样例 |
 | --- | --- | --- | --- |
 | `pixi run gate:imports` | `tools/gates/check_import_whitelist.py` | `src/ggcore/` 里出现白名单外的 import | `import pandas` |
+| `pixi run gate:contourpy-lazy` | `tools/gates/check_contourpy_lazy.py` | 非等值线的 2D stat 依赖 contourpy（缺包就炸） | `bin_2d` 在缺 contourpy 时 `ImportError` |
 | `pixi run gate:ir-json` | `tools/gates/check_ir_json.py` | ggcore 里出现 JSON 序列化调用 | `json.dumps(scene)` |
 | `pixi run gate:determinism` | `tools/gates/check_determinism.py` | 同输入序列化出不同字节 | 两个进程摘要不一致 |
 | `pixi run gate:metrics` | `tools/gates/check_metrics.py` | 双端文本度量不一致（M0-7，X5） | CanvasKit 把整串按主字族排版 |
@@ -71,8 +72,10 @@ Pyodide 里也要跑的纯 Python 内核，DataFrame-like 输入在边界处转�
 - **惰性加载**：`ggcore/contour.py` 顶层不 import contourpy，只有 `_generator()`
   （等值线几何）才加载；`ggcore/stat2d.py` 也不在顶层导入 `ggcore.contour`，只有
   contour 族与 `density_2d` 的 contour 分支才导入。所以缺 contourpy 时
-  `bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` 照常可用，回归用例见
-  `tests/test_stat2d_lazy_contourpy.py`（SIL-758）。
+  `bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` 与
+  `density_2d(contour = FALSE)` 照常可用。回归由 `pixi run gate:contourpy-lazy`
+  （`tools/gates/check_contourpy_lazy.py`，挂在 `pixi run check` 里）与
+  `tests/test_stat2d_lazy_contourpy.py` 两层守着（SIL-758）。
 - **门禁覆盖**：`gate:pyodide` 现在会在 Pyodide 里真的跑一遍等值线——`run_ir.py`
   额外产出 `stat_contour` / `stat_contour_filled` 的列摘要，两端（同版本 contourpy）
   必须逐字节相同，并打印两端的 contourpy 版本；版本不同也算红。
