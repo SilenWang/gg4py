@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "facet-wrap", "legend-right", "theme-bw"]
+ci = true
+title = "上游快照：theme_bw()"
+source = "upstream:tests/testthat/_snaps/theme/theme-bw.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-745：上游 _snaps 逐条纳入，expected.svg 只增不改（X4）。"

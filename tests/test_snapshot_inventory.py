@@ -1,0 +1,115 @@
+"""上游快照清单与阈值分档的契约（SIL-745）。"""
+
+from __future__ import annotations
+
+import importlib.util
+import re
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load(name: str, relative: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / relative)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+SNAPSHOTS = _load("gg_snapshots_for_tests", "tools/upstream/snapshots.py")
+TIERS = _load("gg_tiers_for_tests", "tools/cases/snapshot_tiers.py")
+
+
+def test_manifest_pin_matches_upstream_doc() -> None:
+    doc = (ROOT / "docs" / "notes" / "upstream.md").read_text(encoding="utf-8")
+    commit = re.search(r"^- commit: ([0-9a-f]{40})$", doc, re.MULTILINE)
+    assert commit
+    manifest = SNAPSHOTS.load_manifest()
+    assert manifest["pin"]["commit"] == commit.group(1)
+    assert manifest["pin"]["tag"] == "v4.0.3"
+
+
+def test_manifest_is_complete_and_deduplicated() -> None:
+    manifest = SNAPSHOTS.load_manifest()
+    paths = [entry["path"] for entry in manifest["snapshots"]]
+    assert len(paths) == len(set(paths))
+    # 钉住的 commit 上 `_snaps/**/*.svg` 实际是 311（计划里写的 314，见 snapshot-policy）。
+    assert len(paths) == 311
+    for entry in manifest["snapshots"]:
+        assert re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]), entry["path"]
+        assert entry["bytes"] > 0
+        assert entry["path"].endswith(".svg")
+
+
+def test_every_snapshot_has_a_disposition() -> None:
+    rows = SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), SNAPSHOTS.load_dispositions())
+    for row in rows:
+        assert not row.get("error"), row["path"]
+        if row["case"]:
+            continue
+        assert re.fullmatch(r"SIL-\d+", row["issue"]), row["path"]
+        assert row["reason"].strip(), row["path"]
+
+
+def test_imported_cases_match_the_upstream_bytes() -> None:
+    problems, summary = SNAPSHOTS.check()
+    assert not problems, problems
+    assert summary["imported"] > 0
+    assert summary["imported"] + summary["gaps"] == summary["total"]
+
+
+def test_large_base_size_outliers_stay_gaps() -> None:
+    """三条实测超 2% 的大字号快照是**实现缺口**，不能用分档放绿（SIL-715）。"""
+    rows = {
+        row["path"]: row
+        for row in SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), SNAPSHOTS.load_dispositions())
+    }
+    for path in (
+        "theme/theme-bw-large.svg",
+        "theme/theme-classic-large.svg",
+        "theme/theme-linedraw-large.svg",
+    ):
+        assert rows[path]["case"] is None, path
+        assert rows[path]["issue"] == "SIL-715"
+        assert "from_theme" in rows[path]["reason"]
+
+
+def test_band_ceilings_are_monotonic_and_never_below_two_percent() -> None:
+    loads = [band[1] for band in TIERS.BANDS]
+    assert loads == sorted(loads)
+    for _name, _upper, image_cap, mean_cap in TIERS.BANDS:
+        assert image_cap >= 0.02
+        assert mean_cap >= 0.01
+        # 任何一个档位都不许把整体 2% / 1% 口径调松到「没边」。
+        assert image_cap <= 0.025
+
+
+def test_declared_tolerances_fit_their_band() -> None:
+    measured = TIERS.rows(with_ink=False)
+    assert measured, "docs/cases 下应当有 expected.svg"
+    assert TIERS.check(measured) == []
+
+
+def test_text_load_counts_font_scale() -> None:
+    """同一个标签在 33px 下的负载是 11px 的 9 倍——档位必须能区分大字号。"""
+    import tempfile
+
+    def svg(font: float) -> Path:
+        handle = tempfile.NamedTemporaryFile("w", suffix=".svg", delete=False, encoding="utf-8")
+        handle.write(f"<svg><text style='font-size: {font}px'>abc</text></svg>")
+        handle.close()
+        return Path(handle.name)
+
+    small = svg(11)
+    large = svg(33)
+    try:
+        assert TIERS.text_stats(small) == (1, 3.0)
+        assert TIERS.text_stats(large) == (1, pytest.approx(27.0))
+        assert TIERS.band_of(3.0)[0] == "text-light"
+        assert TIERS.band_of(27.0)[0] == "text-medium"
+    finally:
+        small.unlink()
+        large.unlink()

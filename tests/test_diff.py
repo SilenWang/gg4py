@@ -319,7 +319,9 @@ def test_repository_baselines_pass_the_gate() -> None:
     assert len(cases) >= 3
     for case in cases:
         meta = (case / "meta.toml").read_text(encoding="utf-8")
-        assert 'source = "svglite:' in meta
+        # `ci = true` 的参考图只认外部产线：R + svglite 自产，或上游 vdiffr 快照
+        # （SIL-745 起 `upstream:` 也是一等来源，见 docs/notes/snapshot-policy.md）。
+        assert 'source = "svglite:' in meta or 'source = "upstream:' in meta, case.name
         assert (case / "expected.svg").is_file()
 
 

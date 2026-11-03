@@ -1,0 +1,7 @@
+family = "guides"
+features = ["aes-mapping", "facet-grid", "legend-left"]
+ci = true
+title = "上游快照：facet_grid, legend on left"
+source = "upstream:tests/testthat/_snaps/guides/facet-grid-legend-on-left.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-745：vdiffr 快照原样纳入；标题是 doppelganger 名。"

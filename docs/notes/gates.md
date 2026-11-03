@@ -11,8 +11,20 @@
 | `pixi run gate:metrics` | `tools/gates/check_metrics.py` | 双端文本度量不一致（M0-7，X5） | CanvasKit 把整串按主字族排版 |
 | `pixi run gate:pyodide` | `tools/gates/check_pyodide_ir.py` | CPython 与 Pyodide 的 IR 字节不一致（M0-10） | 两个 CBOR 实现写出的字节不同 |
 | `pixi run gate:cbor` | `tools/gates/check_cbor_diff.py` | `_cbor` 与 `cbor2` canonical 不等价（M0-10/SIL-646） | NaN 不归一成 `f97e00`、长度头写错 |
+| `pixi run api:coverage:check` | `tools/gates/api_coverage.py` | v4.0.3 的 NAMESPACE 导出在任何分类里掉到 90% 以下，或有缺口没登记 issue 归口（SIL-745） | `theme` 覆盖率 40% 且 `theme_set` 没归口 |
+| `pixi run snapshots:check` | `tools/upstream/snapshots.py` | 上游 311 份 SVG 快照里有条目没处置、缺口没归口、或已纳管 case 的 `expected.svg` 与上游不再逐字节相同 | 改了 `docs/cases/upstream-*/expected.svg` |
+| `pixi run tiers:check` | `tools/cases/snapshot_tiers.py` | 某个 case 声明的容差超过它所在文本负载档位的上限（SIL-745 #3） | `text-light` case 写 `tolerance = { png = 0.05 }` |
 
 `pixi run check` = `lint` + `test` + 几道门全部。
+
+### API 覆盖率（SIL-745）
+
+分母是上游 v4.0.3 的 `NAMESPACE`（快照在 `tools/gates/upstream_api.json`，CI 不
+联网），按前缀分 geom / stat / scale / coord / facet / guide / position / theme 八类。
+分子取「注册表 **或** `ggcore.plot` 命名空间」：`theme_set()`、`theme_sub_*()` 与
+`guide_train()` 这类导出不是组件构造器，进注册表会让 `registered("theme")` 里混进
+不存在的主题。口径、当前数字与缺口清单见 `docs/notes/api-coverage.md`
+（`pixi run api:coverage` 生成）。
 
 ### X5 只有一个含义：双端度量一致性
 

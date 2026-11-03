@@ -106,6 +106,23 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 静态校验（不渲染）：契约错 → 非 0；矩阵过期 → 非 0。挂进 `check`，所以普通
 # CI job 就能守住「新增 case 必须重生成矩阵」。真渲染/比对仍走 `cases:matrix`。
 "cases:matrix:check" = "PYTHONPATH=src python tools/cases/matrix.py --check --no-run"
+# SIL-745：API 覆盖率门禁（M2 出口验收）。分母钉在上游 v4.0.3 的 NAMESPACE
+# （快照 tools/gates/upstream_api.json），分子是注册表 ∪ ggcore.plot 命名空间；
+# 每个分类 ≥ 90%，缺口必须登记 issue 归口。`api:coverage` 重写 docs/notes/api-coverage.md，
+# `:check` 只校验（含文档新鲜度），挂在 `pixi run check` 里。
+"api:coverage" = "PYTHONPATH=src python tools/gates/api_coverage.py"
+"api:coverage:check" = "PYTHONPATH=src python tools/gates/api_coverage.py --check"
+# SIL-745：上游 311 份 SVG 快照的纳管（M2-10）。`fetch` 按 pin 拉源码并逐个校验
+# sha256；`check` 不联网，只校验清单完整性 / 处置齐全 / 已纳管 case 与快照同字节。
+"snapshots:fetch" = "python tools/upstream/snapshots.py --fetch"
+"snapshots:refresh" = "python tools/upstream/snapshots.py --refresh"
+"snapshots:import" = "python tools/upstream/import_snapshot_cases.py"
+"snapshots:report" = "python tools/upstream/snapshots.py --report"
+"snapshots:check" = "python tools/upstream/snapshots.py"
+# SIL-745 #3：阈值分档。`measure` 量 text_load / 墨量并写 docs/notes/snapshot-tiers.md；
+# `check` 只校验「声明的容差不超过档位上限」（CI 里没有运行产物，不拿旧实测判红）。
+"tiers:measure" = "PYTHONPATH=src python tools/cases/snapshot_tiers.py --measure"
+"tiers:check" = "PYTHONPATH=src python tools/cases/snapshot_tiers.py --check"
 # 设备三路冒烟（M0-8）：一张手搓图 → PNG / SVG / PDF，产物进 docs/cases/device-smoke/current。
 "cases:device" = "PYTHONPATH=src python tools/cases/device_cases.py"
 # M1-5 等比例验证：2×2 合成 panel → PNG / SVG，量面板像素宽高比
@@ -257,6 +274,9 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # skia-python per-glyph parity and the offline fallback table (M0-7).
 "gate:metrics" = { cmd = "python tools/gates/check_metrics.py", depends-on = ["assets:canvaskit"] }
 
+# M2-13：r-graph-gallery 35 图核对脚本（只写 .gallery-audit/，不挂进 check）
+"audit:gallery" = "PYTHONPATH=src python tools/audit/gallery_plots.py"
+
 # --- 度量表 (M0-7) --------------------------------------------------------
 # 兜底表由同一脚本从受管字体生成；`--check` 重新生成并比对，CI 里由 gate:metrics 调用。
 "metrics:table" = "python tools/metrics/build_table.py"
@@ -280,5 +300,8 @@ check = { depends-on = [
   "gate:pyodide:selftest",
   "gate:cbor",
   "cases:matrix:check",
+  "api:coverage:check",
+  "snapshots:check",
+  "tiers:check",
   "docs:theme:check",
 ] }

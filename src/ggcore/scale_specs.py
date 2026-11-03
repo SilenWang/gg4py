@@ -195,7 +195,11 @@ def _entries() -> tuple[ScaleEntry, ...]:
         )
     )
 
-    return base + position + tuple(colours) + extras + tuple(b_segment)
+    # SIL-745：A 段 base 里只有 `colour_discrete` / `fill_discrete`，`color_discrete`
+    # 这个别名漏了（其它 `color_*` 都是循环生成的）。追加在末尾，不打乱既有顺序。
+    alias = (_entry("color_discrete", "colour", "discrete"),)
+
+    return base + position + tuple(colours) + extras + tuple(b_segment) + alias
 
 
 SCALE_ENTRIES: tuple[ScaleEntry, ...] = _entries()

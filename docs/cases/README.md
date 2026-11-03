@@ -23,6 +23,23 @@ docs/cases/
 - 历史快照目录（只有 `case.json`）不套三文件约定，由 `pixi run cases:viewport` /
   `pixi run cases:grob` 维护，只在矩阵的「其他来源」里登记。
 
+## 上游快照 case（`upstream-*`，SIL-745）
+
+`upstream-<族>-<语义>` 是把 ggplot2 v4.0.3 的 `tests/testthat/_snaps/**/*.svg`
+**原样**变成三文件 case：`expected.svg` 就是上游那份（逐字节，`pixi run
+snapshots:check` 用 sha256 守），`plot.py` 复刻同一条 R 测试的图。
+
+两个约定不一样，别混：
+
+- `source = "upstream:tests/testthat/_snaps/<path>"`；
+- 上游快照的标题是 vdiffr 的 doppelganger 名，所以 `plot.py` 里那句
+  `labs(title="...")` 不是装饰，去掉就必然红。
+
+新增一条：改 `tools/upstream/snapshots.toml` 的处置（`case = "<slug>"`），
+把复刻写进 `tools/upstream/import_snapshot_cases.py` 的表里，然后
+`pixi run snapshots:import && pixi run cases:matrix`。逐条处置清单见
+`docs/notes/snapshot-inventory.md`，阈值分档见 `docs/notes/snapshot-policy.md`。
+
 ## 三个文件
 
 ### `plot.py`：定义

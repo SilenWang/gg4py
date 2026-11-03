@@ -114,6 +114,10 @@ def test_repo_cases_build_into_scenes() -> None:
     directories = sorted(path for path in CASES.iterdir() if (path / "plot.py").is_file())
     assert len(directories) >= 3
     for directory in directories:
-        scene = build_scene(load_plot(directory), metrics=metrics)
-        assert scene.size == pytest.approx((288.0, 216.0))
+        spec = load_plot(directory)
+        scene = build_scene(spec, metrics=metrics)
+        # 尺寸跟着 case 自己声明的 `size`（默认 [4, 3]）；上游 vdiffr 快照是 10×8 in
+        # （SIL-745），所以这里不能写死 288×216。
+        width, height = spec.get("size", (4, 3))
+        assert scene.size == pytest.approx((width * 72.0, height * 72.0))
         assert scene.root.children

@@ -40,9 +40,35 @@ from ggcore.coord import coord_munch as coord_munch
 from ggcore.fills import linear_gradient as linear_gradient
 from ggcore.fills import radial_gradient as radial_gradient
 from ggcore.fills import tile_pattern as tile_pattern
+
+# SIL-745：NAMESPACE 里这些导出不是「可加到图上的组件」（全局主题状态、4.0 的
+# theme_sub_* 简写、guide 的协议钩子），所以不进注册表，也不该被
+# `registered("theme")` 当成一套主题。它们在这里挂到公开命名空间，
+# `tools/gates/api_coverage.py` 按 NAMESPACE 逐个核对名字。
+from ggcore.guide import guide_colorbar as guide_colorbar
+from ggcore.guide import guide_custom as guide_custom
+from ggcore.guide import guide_gengrob as guide_gengrob
+from ggcore.guide import guide_geom as guide_geom
+from ggcore.guide import guide_merge as guide_merge
+from ggcore.guide import guide_train as guide_train
+from ggcore.guide import guide_transform as guide_transform
 from ggcore.layer import Layer, Position
 from ggcore.scales import scale_type as scale_type
 from ggcore.theme import merge_theme, theme_get
+from ggcore.theme import theme_replace as theme_replace
+from ggcore.theme import theme_set as theme_set
+from ggcore.theme import theme_sub_axis as theme_sub_axis
+from ggcore.theme import theme_sub_axis_bottom as theme_sub_axis_bottom
+from ggcore.theme import theme_sub_axis_left as theme_sub_axis_left
+from ggcore.theme import theme_sub_axis_right as theme_sub_axis_right
+from ggcore.theme import theme_sub_axis_top as theme_sub_axis_top
+from ggcore.theme import theme_sub_axis_x as theme_sub_axis_x
+from ggcore.theme import theme_sub_axis_y as theme_sub_axis_y
+from ggcore.theme import theme_sub_legend as theme_sub_legend
+from ggcore.theme import theme_sub_panel as theme_sub_panel
+from ggcore.theme import theme_sub_plot as theme_sub_plot
+from ggcore.theme import theme_sub_strip as theme_sub_strip
+from ggcore.theme import theme_update as theme_update
 
 __all__: list[str] = []
 
