@@ -19,6 +19,7 @@ import type { Color, FloatBuffer, Gpar, IrNode, IrScene } from "./ir.js";
 import { IrError } from "./ir.js";
 import { curvePoints, xsplinePoints } from "./curves.js";
 import type { Point } from "./curves.js";
+import { DEFAULT_FAMILY, FALLBACK_FAMILIES } from "./fonts.generated.js";
 
 export type Matrix = [number, number, number, number, number, number];
 
@@ -63,7 +64,6 @@ export interface RenderResult {
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const XLINK_NS = "http://www.w3.org/1999/xlink";
-const DEFAULT_FONT_STACK = "sans-serif";
 /** grid 的缺省 `lineheight = 1.2`，绘制行距 = 1.2 × 1.2 × size（`docs/notes/ir.md` §7）。 */
 const LINE_SPACING = 1.44;
 
@@ -83,6 +83,14 @@ export function compose(parent: Matrix, child: Matrix): Matrix {
 export function mapPoint(matrix: Matrix, x: number, y: number): [number, number] {
   const [a, b, c, d, e, f] = matrix;
   return [a * x + c * y + e, b * x + d * y + f];
+}
+
+/** 绕原点的旋转矩阵。`degrees` 按 SVG 的 y 向下坐标系（顺时针为正）。 */
+export function rotateMatrix(degrees: number): Matrix {
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return [cos, sin, -sin, cos, 0, 0];
 }
 
 export function matrixScale(matrix: Matrix): number {
@@ -948,13 +956,29 @@ class Renderer {
         });
       }
       // 文本的包围盒按 IR 给的最终宽度估：宽度是跨端对账的字段（ir.md §7）。
+      // 旋转（`angle != 0`）必须进包围盒：轴对齐的旧算法在 rot=90 时把一段
+      // 竖排文字算成一条水平细条，hover / 裁剪 / 视口统计全偏。
       const left = anchor === "right" ? -width : anchor === "center" ? -width / 2 : 0;
       const top = baseline === "top" ? 0 : baseline === "bottom" ? -size : -size / 2;
+      const height = (lines.length - 1) * size * LINE_SPACING + size;
+      const placement = angle
+        ? compose(anchorMatrix, rotateMatrix(-angle))
+        : anchorMatrix;
       const corners = [
-        mapPoint(anchorMatrix, left, top),
-        mapPoint(anchorMatrix, left + width, top + size * lines.length),
-      ];
-      const box = normaliseBox(corners[0][0], corners[0][1], corners[1][0], corners[1][1]);
+        [left, top],
+        [left + width, top],
+        [left + width, top + height],
+        [left, top + height],
+      ].map(([x, y]) => mapPoint(placement, x, y));
+      const box = corners.reduce(
+        (acc, [x, y]) => ({
+          x0: Math.min(acc.x0, x),
+          y0: Math.min(acc.y0, y),
+          x1: Math.max(acc.x1, x),
+          y1: Math.max(acc.y1, y),
+        }),
+        { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity },
+      );
       this.emit(node, id, parent, viewport, element, row, rows, box, node.texts[row]);
     }
   }
@@ -1127,17 +1151,25 @@ function baselineAttribute(baseline: string): string {
  * IR 的 `font` 是已解析的单个字族 key（`Noto Sans CJK SC`、`Noto Sans CJK SC:bold`、
  * `…:italic`、`…:bold-italic`），不是回退栈（ir.md §7）。浏览器端补系统栈，并把
  * 后缀翻成 `font-weight` / `font-style`；只把 key 当 family 会把粗斜体画成常规字面。
+ *
+ * 回退栈来自 `fonts.generated.ts`（由 `tools/viewer/emit_fonts.py` 从 rules.json
+ * 生成），因此只有受管字族、**没有 `sans-serif`**：浏览器不会悄悄落到宿主字体上。
+ * 字体文件由 `fonts.css` 的 `@font-face` 从 `web/viewer/fonts/` 加载。
  */
 function fontSpec(font: string): { family: string; weight: string; style: string } {
   const [rawFamily, ...suffixes] = font.split(":");
   const suffix = suffixes.join(":").trim().toLowerCase();
-  const family = rawFamily.trim() || DEFAULT_FONT_STACK;
-  const quoted = family.includes(" ") ? `"${family}"` : family;
+  const family = rawFamily.trim() || DEFAULT_FAMILY;
+  const stack = [family, ...FALLBACK_FAMILIES.filter((name) => name !== family)];
   return {
-    family: `${quoted}, "Noto Sans CJK SC", "DejaVu Sans", sans-serif`,
+    family: stack.map(quoteFamily).join(", "),
     weight: suffix.includes("bold") ? "bold" : "normal",
     style: suffix.includes("italic") ? "italic" : "normal",
   };
+}
+
+function quoteFamily(name: string): string {
+  return /^[A-Za-z][\w-]*$/.test(name) ? name : `"${name}"`;
 }
 
 function toBase64(data: Uint8Array): string {

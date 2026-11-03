@@ -1,12 +1,14 @@
 {
-  "version": 3,
+  "version": 4,
   "note": "M0-7 度量规则的唯一声明：run 切分（字族回退 + 粘着码点）、兜底表不支持的书写字系统、受管字体与默认字体栈。Python（ggcore.metrics）与 CanvasKit 度量脚本（tools/metrics/measure_canvaskit.cjs）都读这一份，改这里必须同时 bump version 并重新生成度量表（pixi run metrics:table）。码点用十六进制字符串表示。",
   "default_font_stack": [
+    "Arimo-Italic-VF.ttf",
     "NotoSansCJKsc-VF.ttf",
     "NotoColorEmoji.ttf",
     "DejaVuSans.ttf"
   ],
   "fonts": [
+    { "file": "Arimo-Italic-VF.ttf", "family": "Arimo" },
     { "file": "DejaVuSans.ttf", "family": "DejaVu Sans" },
     { "file": "DejaVuSans-Bold.ttf", "family": "DejaVu Sans" },
     { "file": "DejaVuSans-Oblique.ttf", "family": "DejaVu Sans" },

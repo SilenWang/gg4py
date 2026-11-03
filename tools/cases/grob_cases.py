@@ -97,6 +97,7 @@ from ggcore.viewport import (  # noqa: E402
     viewport,
 )
 from ggskia import SkiaRasterDevice  # noqa: E402
+from ggskia.text import ShaperMetrics  # noqa: E402
 
 CASES = REPO / "docs" / "cases"
 # 「Noto Sans CJK SC」同时覆盖拉丁与中日韩字形；DejaVu 只作兜底。
@@ -355,38 +356,6 @@ def font_file() -> Path:
     raise SystemExit(f"找不到受管字体 {FONT_NAMES}（pixi 的 font-ttf-* 应提供它们）")
 
 
-class SkiaMetrics:
-    """`ggcore.units.Metrics` 的 skia 实现：返回英寸（单位系统要的口径）。
-
-    口径与设备端 `ggskia.text.ShaperMetrics` 相同：线性推进（R 的 cairo/svglite
-    同一套，`setLinearMetrics(True)`）与 cap height 的 `strheight`。IR 里的
-    `text.width` 因此和 SVG/PNG 里实际占的宽度、高度是同一套数，不再是 hinted
-    与 linear 的混合态（见 `docs/notes/metrics-ledger.md` · M1-e）。
-    """
-
-    def __init__(self, typeface: skia.Typeface) -> None:
-        self.typeface = typeface
-
-    def _font(self, fontsize: float, cex: float) -> skia.Font:
-        font = skia.Font(self.typeface, max(float(fontsize) * float(cex), 1e-3))
-        font.setLinearMetrics(True)
-        return font
-
-    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
-        return float(self._font(fontsize, cex).measureText(text)) / 72.0
-
-    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
-        metrics = self._font(fontsize, cex).getMetrics()
-        # R 的 `stringHeight` = cap height × 72.27/72（不是 ascent + descent）；
-        # 位图字体没有 cap height 时退回升降部。与设备端同一公式。
-        box = float(metrics.fCapHeight)
-        if box > 0:
-            box *= 72.27 / 72.0
-        else:
-            box = float(-metrics.fAscent + metrics.fDescent)
-        return box / 72.0
-
-
 # ---------------------------------------------------------------------------
 # case → PNG
 # ---------------------------------------------------------------------------
@@ -399,10 +368,9 @@ def build(case: dict[str, Any]) -> tuple[Any, float]:
     device_spec = case["device"]
     ppi = float(device_spec["pixels_per_inch"])
     device = Device(float(device_spec["width_in"]), float(device_spec["height_in"]))
-    typeface = skia.Typeface.MakeFromFile(str(font_file()))
-    if typeface is None:  # pragma: no cover - 字体损坏才会发生
-        raise SystemExit(f"无法加载字体 {font_file()}")
-    tree = ViewportTree(device, metrics=SkiaMetrics(typeface))
+    # 度量直接问设备（`ggskia.text.ShaperMetrics`）：同一份 shaping、同一套
+    # kerning。这里再维护一份「与设备相同」的实现只会在改口径时悄悄漂移。
+    tree = ViewportTree(device, metrics=ShaperMetrics())
     viewports = [_build_viewport(spec) for spec in case.get("viewports", [])]
     for step in case.get("steps", []):
         if step["op"] == "push":

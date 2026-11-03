@@ -75,7 +75,7 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # （不入库），产物落 web/viewer/dist（不入库）；`pixi run viewer:sample` 生成
 # 手测 / 截图用的 2×2 分面 + 图例场景。测试要真 Chromium，`viewer:browsers`
 # 把浏览器装进仓库（$HOME 只读，同 spike:e1）。
-"viewer:build" = "npm install --no-save --no-package-lock typescript && npx tsc -p web/viewer"
+"viewer:build" = "PYTHONPATH=src python tools/viewer/emit_fonts.py && npm install --no-save --no-package-lock typescript && npx tsc -p web/viewer"
 "viewer:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
 "viewer:sample" = "PYTHONPATH=src python tools/viewer/export_scene.py"
 "viewer:shot" = "PYTHONPATH=src python tools/viewer/screenshot.py"

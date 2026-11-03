@@ -116,6 +116,13 @@ class HarfBuzzBackend:
     def notdef_advance(self, filename: str) -> int:
         return int(self._font(filename).get_glyph_h_advance(0))
 
+    def hb_font(self, filename: str) -> hb.Font:
+        """该字体文件的 `hb.Font`（scale = upem，advance 即设计单位）。
+
+        兜底表生成脚本用它逐对枚举 kerning；生产路径不应该绕过 provider。
+        """
+        return self._font(filename)
+
     # --- 内部 -------------------------------------------------------------
 
     def _face(self, filename: str) -> hb.Face:

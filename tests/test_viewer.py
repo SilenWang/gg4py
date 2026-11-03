@@ -558,6 +558,39 @@ def test_viewport_clip_rect_is_page_absolute(session, tmp_path: Path) -> None:
     assert sorted(got) == [[10, 20, 210, 220], [100, 50, 300, 250]]
 
 
+def rotated_text_scene() -> ir.Scene:
+    """一段 rot=90 的文字：IR 带最终宽度（20pt）、锚点 left/top、位置 (100, 100)。
+
+    轴对齐的旧算法把包围盒算成 20×10 的水平条；旋转之后它应该是 10×20 的竖条
+    （`docs/notes/ir.md` §7：`angle` 必须进包围盒）。
+    """
+    text = ir.Node(
+        ir.NodeKind.TEXT,
+        params={"font": "sans", "size": 10.0, "anchor": "left", "baseline": "top", "angle": 90.0},
+        bufs={"pos": ir.f32([[100.0, 100.0]]), "width": ir.f32([20.0])},
+        texts=("rot",),
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "page", "clip": False},
+        children=(text,),
+    )
+    return ir.Scene(root=root, size=(320.0, 240.0))
+
+
+def test_rotated_text_bbox_follows_the_rotation(session, tmp_path: Path) -> None:
+    """`angle != 0` 时包围盒是旋转后的盒子（hover / 裁剪 / 视口统计都靠它）。"""
+    page, _ = session
+    path = tmp_path / "rotated-text.ggir.cbor"
+    path.write_bytes(ir.encode(rotated_text_scene()))
+    load_scene(page, path)
+    leaves = page.evaluate("() => window.ggViewer.leaves()")
+    text = [leaf for leaf in leaves if leaf["kind"] == "text"]
+    assert len(text) == 1
+    x0, y0, x1, y1 = text[0]["bbox"]
+    assert [round(value, 3) for value in (x0, y0, x1, y1)] == [100.0, 80.0, 110.0, 100.0]
+
+
 def raster_scene() -> ir.Scene:
     """一个 clip + raster blob：覆盖查看器的 `<image>` 与 data URL 路径。"""
     import io

@@ -46,9 +46,10 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 - 定位顺序：显式 `FontCatalog(root=...)` → `GG_FONT_DIR` → `$CONDA_PREFIX/fonts`。
   **不经过宿主 fontconfig**：L2 已实测容器内 fontconfig 配置缺失时 skia 的 `SkFont`
   文本 API 会段错误；按文件路径建 face 不会。
-- 字族名（`DejaVu Sans` / `Noto Sans CJK SC` / `Noto Color Emoji`）与字体文件名的
-  映射也写在 rules.json，浏览器端 `TypefaceFontProvider.registerFont` 和以后 TS SVG
-  的 `font-family` 用同一份，不另写。
+- 字族名（`Arimo` / `DejaVu Sans` / `Noto Sans CJK SC` / `Noto Color Emoji` …）与
+  字体文件名的映射也写在 rules.json，浏览器端 `TypefaceFontProvider.registerFont`
+  和 viewer 的 `font-family` 用同一份（M2-e 起由 `tools/viewer/emit_fonts.py` 生成），
+  不另写。
 
 ### M0-7-c · 后端分离：HarfBuzz 在 ggcore 之外
 
@@ -59,14 +60,16 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 - 「量成什么规则」（run 切分、`font_units / upem * size`）留在 `ggcore.metrics`，
   两端必须一致，不属于后端。
 
-### M0-7-d · 兜底度量表的能力边界
+### M0-7-d · 兜底度量表的能力边界（数字在 M2-b 之后更新，见那一节）
 
 - 生成：`pixi run metrics:table` → `src/ggcore/metrics/data/metrics_table_v1.{bin,json}`
   （79 KB 二进制 + 人读元数据）。**同一批字体 + 同一套规则 → 字节完全相同**，
   `pixi run metrics:check-table` 重新生成并比对；`gate:metrics` 每次都跑这个检查。
 - 内容：每个受管字体的 upem / ascent / descent / `.notdef` advance / 是否把 emoji
   序列合成单字形，以及 cmap 覆盖的每个码点的 advance（字体设计单位）。
-- 精度（200 条语料 × 4 字号，`gate:metrics` 每次实测，**只对这份冻结语料成立**）：
+- 精度（200 条语料 × 4 字号，`gate:metrics` 每次实测，**只对这份冻结语料成立**）。
+  下面这组是 **v1（不建模 kerning）** 的读数，留作对照；M2-S1 的 v2 已经把它们
+  压到 0（见 M2-b）：
   - run 切分与 HarfBuzz **逐条一致（0/800 不一致）**；
   - 兜底表声明支持的文字（178/200 条）最大相对差 **2.374%**；有差的只有其中 **73 条**，
     这 73 条的算术平均 **0.38%**，另外 105 条与 HarfBuzz 逐条相同，178 条整体平均
@@ -137,6 +140,8 @@ M0-7 之前只有 M-1 的实验脚本（`pixi run spike:e2`）；现在是生产
 kerning/ligature shaping（`Total` 的 `To` 对，`Width` 的 `Wi` 对都会被算宽 2–30%）。
 桌面端的文字宽度只能来自 HarfBuzz shaping（L2 的轮廓路径本来也是这条路），skia
 只负责字形到轮廓/像素的最后一步。
+
+> M2-b 之后表中那一行是 **0 / 0**：兜底表 v2 带上了字对 kerning，判据也从 5% 收到 1%。
 
 ## M1 · 文字测量（SIL-655）
 
@@ -270,13 +275,116 @@ emoji 轮廓、hinted vs linear 推进。每条都能用仓库里的命令复现
   不同（mean 0.156），`grob-text-rot` 171 px（mean 0.032）；IR 宽度与
   `strwidth()` 的线性计算值逐位相等。
 
-### M1-f · 已知偏差：CJK 族里的拉丁字形
+### M1-f · 已知偏差：CJK 族里的拉丁字形（默认栈已在 M2-a 改掉，显式族仍在）
 
 - R 的 fontconfig 对 `fontfamily = "Noto Sans CJK SC"` 的拉丁字形回退到
   Noto Sans 的度量（"Latin width sample" @10pt：R 89.35 vs 我们 83.76，
   **+6.26%**）；纯 CJK 与 Noto Sans 族本身都在 0.39% 内。
 - 我们的 run 切分按 M0-7 的共享规则「第一个 cmap 覆盖的字族」把拉丁留在
   CJK 字面（这条规则要与 CanvasKit 一致，本 issue 不改）。
+- M2-a 之后**默认栈**把 Arimo 排在首位，缺省字面的拉丁不再落进 CJK 字面；
+  这一条只对**显式**请求 `Noto Sans CJK SC` 的图成立。
 - 影响：CJK 族里的拉丁标签窄 6%；`text-multiline`（含一行中英混排）实测
   图级 1.33%，仍在 2% 内。`tests/test_text_parity.py` 把这一条钉成
   **已知偏差**（≤ 7%），其它组合仍按 0.5% 判。
+
+## M2 · 文字度量对齐（SIL-728）
+
+M1 的缺省拉丁字面是 `Noto Sans CJK SC`，而参考产线（ggplot2 4.0.3 + svglite）画的是
+**Arimo**；两套 advance 差 4%（`Noto Sans` 族）到 14%（DejaVu），多文本节点的图会整体错位。
+本节四条口径都能用仓库命令复现。
+
+### M2-a · 默认拉丁字面 = 参考产线的 Arimo
+
+- 解析链：ggplot2 的 `base_family = ""` → grid `gpar(fontfamily = "")` → svglite 设备
+  把它当 `sans` 交给 systemfonts/fontconfig。实测（`pixi run -e refs Rscript`）：
+  `grid.text()` 分别写 `family = ""` / `"sans"` / `"Arimo"`，导出的 `expected.svg`
+  **三种都写成 `font-family: "Arimo"`**；`systemfonts::match_font("Arimo")` 落到
+  `$CONDA_PREFIX/fonts/Arimo-Italic-VF.ttf` —— `font-ttf-noto` 20201206 只提供这一份
+  Arimo（`fvar` 的 `wght` 轴只有一个 400 实例，`post.italicAngle = -12`）。
+- 是不是这一份，用 `expected.svg` 的 `textLength` 认：`"Total 0.00 To"` @8.8px 是
+  **50.17**；同一串在 HarfBuzz 下 Arimo-Italic-VF **50.2348（+0.13%）**、不带 kern
+  51.85（+3.35%）、Google Fonts 的 Arimo 正体 49.74（−0.86%）。15 条 Arimo 标签逐条
+  在 +0.10%～+0.26%，是 2 位小数的转录差（`'l'` 1.9500 / 1.9551）。
+- 口径：`rules.json` 把 `Arimo-Italic-VF.ttf` 登记为字族 `Arimo` 并排在
+  `default_font_stack` 首位；`faces.py` 的常规 / 粗体 / 斜体都落这一份文件——
+  conda 侧没有别的 Arimo，R 侧 fontconfig 同样只能拿到它（粗体就是合成粗体），
+  编一个不存在的 `wght` 轴反而会把粗体画错。
+- 复现：`pixi run -e refs Rscript -e 'print(systemfonts::match_font("Arimo"))'`。
+
+### M2-b · kerning：设备端一律 HarfBuzz，兜底表 v2 带字对 kerning
+
+- 设备端（`ggskia.text._shape_one`）以前对「简单文字」走 skia 的 `measureText` /
+  `getXPos`，两者都不做 kerning：`"Total 0.00 To"` @8.8px 在 Noto Sans 上是 52.83，
+  带 kern 的 HarfBuzz 是 51.62（偏宽 2.3%）。IR 的 `text.width` 与笔画位置都来自它，
+  所以布局跟着偏。现在**一律 HarfBuzz shaping**（glyph id + 累计笔位 + 推进），
+  skia 只负责把字形画出来。
+- 兜底表（`metrics_table_v2`）新增字对 kerning：构建期对 cmap 里 `U+0000–U+2FFF` 的
+  单码点字对逐对 shape，存 `(first, second, delta)`（int16，设计单位）；
+  `TableBackend.shape` 在相邻码点之间加这个增量。对的取舍是「单独 shape 恰好一个
+  字形、推进等于 hmtx」——格式控制符（U+2062 之类不可见运算符）会被 HarfBuzz 整个
+  吞掉，不剔除会算出几 em 的假 kerning。
+- 覆盖：Arimo 905 对、DejaVu 8634 对、CJK 18134 对、emoji 0 对；表 102 KB（v1 79 KB）。
+  字对表只在默认实例上取（可变字重不逐字重展开），与 v1 的边界相同。
+- 结果（`pixi run gate:metrics`，200 条语料 × 4 字号）：兜底表最大相对差
+  **2.374% → 0**、均值 **0.1574% → 0**（178 条支持子集，逐条与 HarfBuzz 相同）；
+  判据从 5% 收到 **1%**（`tools/gates/check_metrics.py` 的 `TABLE_GATE`）。
+  双端（HarfBuzz × CanvasKit）不变：0.241% @16px、run 切分 0 不一致（`spike:e2` 同）。
+- 复现：`pixi run metrics:table && pixi run gate:metrics`。
+
+### M2-c · 旋转文字的包围盒
+
+- IR 的 `text` 节点带 `pos`（锚点）、`width`（最终宽度）、`angle`（绕 `pos` 的局部旋转，
+  `ir.md` §7）。查看器算叶子包围盒时只用了平移矩阵：`angle != 0` 时把一条竖排文字
+  算成水平细条（20×10 的文字 rot=90 仍算成 20×10，而不是 10×20），hover / 裁剪 /
+  视口统计全跟着错。现在旋转进包围盒。
+- `tests/test_viewer.py::test_rotated_text_bbox_follows_the_rotation` 钉住：
+  `pos=(100,100)`、`width=20`、`size=10`、`anchor=left`、`baseline=top`、`angle=90`
+  → 包围盒 `(100,80)-(110,100)`。
+- 设备侧本来就在 `_place_text` 里绕锚点转，不用改。轴标签自身的 `angle`
+  （`axis.text` 的 rot）仍是 M1-11 的已知缺口，`axis.py:_angle()` 对
+  `angle % 360 != 0` 直接报未实现。
+
+### M2-d · 量化：密集报告图与 case 集
+
+图：`scripts/exit_report.py` 对 `scripts/exit_report.R`（同数据、同绘图代码，svglite
+出 SVG），比法 `pixi run diff <ref> /tmp/after/report.svg`（svgtext 把参考文本转轮廓、
+resvg 72 dpi）。
+
+| 指标 | 修前 | 修后 |
+| --- | --- | --- |
+| 图级差异 | **21.78%** | **20.98%** |
+| 平均差异 | **4.06%** | **3.78%** |
+
+文本度量已经对齐：同一张图 22 条文本的宽度（R 的 `textLength` vs 我们 IR 的
+`text.width`）最大相对差 **0.17%**（标题 216.09 / 216.45），其余 ≤0.06%
+（`control` 26.39/26.41、`Series` 31.19/31.18、`Elapsed time (days)` 97.25/97.21、
+`Response (arb. units)` 105.22/105.16）。
+
+剩下的 21% 不是字体、也不是 AA，份额如下（都在本 task 的边界外）：
+
+- **面板几何（主因，占差异像素 56.6%）**：面板宽 87.13 vs R 88.56（−1.43pt，−1.6%），
+  改字面前后只动 0.09pt（87.04 → 87.13，文本宽度收敛带来的）。面板内 33.45% 的像素
+  不同，整块网格/曲线/点随面板宽度平移。
+- **分面轴重复（占差异像素 5.4%）**：我们这张图有 34 个 text 节点、R 只有 22 ——
+  上排也画了 x 轴标签、右列也画了 y 轴标签。面积小，但把行距与条带位置进一步推开。
+- **AA 不是主因**：两版都做 σ=0.8 / 1.5 的高斯模糊后差异不降反升
+  （0.2098 → 0.2475 / 0.2330），说明差的是整块内容错位，不是边缘抗锯齿。
+
+前两条归 SIL-715 #7（report-style case 覆盖盲区）与 #8（facet 列宽用文本高度近似），
+本 task 明确不碰 gtable / 布局。
+
+case 集（`pixi run viewer:cases`，61 条全绿；括号里是 M1 出口时的读数）：
+`text-bold-italic` 1.25% → **0.51%**、`theme-grey-basic` 1.8695% → **1.73%**、
+`theme-minimal-basic` 1.8727% → **1.70%**、`guide-colourbar` 1.7409% → **1.63%**、
+`geom-text-cjk` 0.17% → 0.17%、`text-emoji` 1.67% → 1.69%。
+
+### M2-e · 浏览器端的字面只有一份来源
+
+- 查看器以前写死 `"Noto Sans CJK SC", "DejaVu Sans", sans-serif`，真正画字的是宿主
+  fontconfig（`tools/viewer/playwright_env.py` 把 `FONTCONFIG_FILE` 指进 pixi 环境）。
+  现在 `tools/viewer/emit_fonts.py` 从 `rules.json` + `faces.py` 生成
+  `web/viewer/fonts.css`（逐字面 `@font-face`，`src` 指向 `web/viewer/fonts/` 里的
+  受管字体副本）与 `web/viewer/src/fonts.generated.ts`（文件 → 字族、默认栈）；
+  `render.ts` 的 `font-family` 只由后者拼，**不带 `sans-serif`**。
+- `pixi run viewer:build` 先跑该脚本再 `tsc`；字体副本与生成物都不入库。

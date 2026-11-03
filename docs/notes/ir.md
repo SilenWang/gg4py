@@ -256,6 +256,10 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 写方**不要**把视口旋转预乘进 `angle`——那是重复应用（`docs/notes/grobs.md` §7.1
 记的就是这次修正）。
 
+消费方算包围盒 / hover 命中区时必须把 `angle` 一起用上（绕 `pos` 转 `width × 行高`
+那个盒子）；只看 `pos` 与 `width` 会把它当成轴对齐的水平条。M2-S1 修的就是查看器
+这一处，`tests/test_viewer.py::test_rotated_text_bbox_follows_the_rotation` 钉住。
+
 **不携带**测量意图：没有 `font_stack` / `fallback` / `glyphs` / `advance` / `shaping` /
 `hjust` / `vjust` 之类的字段（`tests/test_ir.py::test_text_node_carries_no_measurement_intent`
 逐名断言，加这类字段会红）。逐元素的 hjust/vjust 差异由写 IR 的一方折进 `pos`。
