@@ -15,6 +15,17 @@ ggplot2 自己不做设备。
   `tests/test_grob_cases.py`（16 张快照）
 - 冒烟图：`pixi run cases:device` → `docs/cases/device-smoke/current/`
 
+M2-S2 新增两件事：
+
+- **箭头**：`segments` / `polyline` / `curve` 节点的 `arrow*` 参数（`ir.md` §4.1）。
+  设备按端点切向画箭翼：线段 / 折线取端点相邻两点，曲线按采样后的端点取切向；
+  几何公式在 `ggcore.arrow.head_geometry()`（查看器逐行移植）。`open` 两条边、
+  `closed` 填色三角（填充用 gpar 的 `fill`）。
+- **位图的 SVG 路径**：SVG 只是把位图交出去，光栅化在后面（resvg / 浏览器）。
+  `interpolate = FALSE` 时 `SkiaSvgDevice` 先做最近邻放大，让 `<image>` 与目标
+  矩形 1:1、后续不再重采样——参考产线（svglite）也是先按设备像素铺好再嵌
+  （否则 2×2 的 `geom_raster` 会被平滑成一团，SIL-737 的 raster 用例 90%）。
+
 ## 1. 分层：协议在 `ggcore`，后端在包外
 
 X1 门禁要求 `src/ggcore/` 只 import 标准库 / numpy / cbor2——ggcore 是 Pyodide 里

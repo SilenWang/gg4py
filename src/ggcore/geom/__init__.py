@@ -1,6 +1,7 @@
-"""geom 绘制实现注册表（M1-7）。
+"""geom 绘制实现注册表（M1-7 / M2-S2）。
 
-9 个 geom 各有一个 :class:`~ggcore.geom.base.GeomRenderer` 实现；绘制入口挂在
+M1-7 的 9 个 + M2-S2 的 20 个长尾 geom，各有一个
+:class:`~ggcore.geom.base.GeomRenderer` 实现；绘制入口挂在
 :class:`ggcore.layer.Geom` 上（`Geom.draw()` / `Geom.setup_data()` /
 `Geom.handle_na()` / `Geom.setup_params()`），**构造函数路径不变**：`as_geom()` /
 `geom_*()` 仍然只产生 `Geom(name=…)` 数据对象。
@@ -16,6 +17,7 @@ geom.renderer_for("point").draw(geom_obj, build, panel, coord, theme, metrics)
 
 from __future__ import annotations
 
+from ggcore.geom.annotation import BlankRenderer, MapRenderer, RugRenderer
 from ggcore.geom.bar import AreaRenderer, BarRenderer, HistogramRenderer
 from ggcore.geom.base import (
     GeomError,
@@ -25,23 +27,60 @@ from ggcore.geom.base import (
     table_strings,
 )
 from ggcore.geom.boxplot import BoxplotRenderer
+from ggcore.geom.interval import (
+    CrossbarRenderer,
+    ErrorbarhRenderer,
+    ErrorbarRenderer,
+    LinerangeRenderer,
+    PointrangeRenderer,
+)
 from ggcore.geom.line import LineRenderer, PathRenderer
 from ggcore.geom.point import PointRenderer
+from ggcore.geom.polygon import PolygonRenderer, RibbonRenderer, StepRenderer
+from ggcore.geom.rect import RasterRenderer, RectRenderer, TileRenderer
+from ggcore.geom.segment import (
+    AblineRenderer,
+    CurveRenderer,
+    HlineRenderer,
+    SegmentRenderer,
+    SpokeRenderer,
+    VlineRenderer,
+)
 from ggcore.geom.smooth import SmoothRenderer
 
 __all__ = [
     "GEOM_RENDERERS",
+    "AblineRenderer",
     "AreaRenderer",
     "BarRenderer",
+    "BlankRenderer",
     "BoxplotRenderer",
     "ColRenderer",
+    "CrossbarRenderer",
+    "CurveRenderer",
+    "ErrorbarRenderer",
+    "ErrorbarhRenderer",
     "GeomError",
     "GeomRenderer",
     "HistogramRenderer",
+    "HlineRenderer",
     "LineRenderer",
+    "LinerangeRenderer",
+    "MapRenderer",
     "PathRenderer",
     "PointRenderer",
+    "PointrangeRenderer",
+    "PolygonRenderer",
+    "RasterRenderer",
+    "RectRenderer",
+    "RibbonRenderer",
+    "RugRenderer",
+    "SegmentRenderer",
     "SmoothRenderer",
+    "SpokeRenderer",
+    "StepRenderer",
+    "TileRenderer",
+    "VlineRenderer",
     "flip_data",
     "registered_renderers",
     "renderer_for",
@@ -67,6 +106,27 @@ GEOM_RENDERERS: dict[str, GeomRenderer] = {
     "histogram": HistogramRenderer(),
     "boxplot": BoxplotRenderer(),
     "smooth": SmoothRenderer(),
+    # M2-S2：线段 / 矩形 / 区间 / 标注族（20 个导出）
+    "abline": AblineRenderer(),
+    "hline": HlineRenderer(),
+    "vline": VlineRenderer(),
+    "segment": SegmentRenderer(),
+    "curve": CurveRenderer(),
+    "spoke": SpokeRenderer(),
+    "rect": RectRenderer(),
+    "tile": TileRenderer(),
+    "raster": RasterRenderer(),
+    "polygon": PolygonRenderer(),
+    "ribbon": RibbonRenderer(),
+    "step": StepRenderer(),
+    "errorbar": ErrorbarRenderer(),
+    "errorbarh": ErrorbarhRenderer(),
+    "linerange": LinerangeRenderer(),
+    "pointrange": PointrangeRenderer(),
+    "crossbar": CrossbarRenderer(),
+    "blank": BlankRenderer(),
+    "rug": RugRenderer(),
+    "map": MapRenderer(),
 }
 
 

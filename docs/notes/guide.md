@@ -209,7 +209,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 轴、图例、标题都是既有 grob（`segments` / `text` / `rect` / `Geom.draw()` 的产物）
 拼出来的，没有新增 IR 字段；同一张图两次 `scene_from_plot()` → `ir.encode()` 的
 sha256 相等（`tests/test_guide.py::test_axis_and_legend_are_deterministic`，覆盖
-2×2 分面 + colour 图例 + 标题；9 个 geom 的旧断言仍在
+2×2 分面 + colour 图例 + 标题；9 个 M1-7 geom 的旧断言仍在（M2-S2 的 20 个 geom 另在 `tests/test_geom_longtail.py`）
 `tests/test_geom_draw.py`）。`pixi run gate:determinism` 的载荷也加上了同一份整页
 场景（`tools/gates/_determinism_child.py` 的 `plot_scene()`），三个
 `PYTHONHASHSEED` 进程的 `plot_digest` 必须一致。

@@ -1,7 +1,7 @@
 {
   "r_version": "4.5.3",
   "ggplot2_version": "4.0.3",
-  "scale": "9 geom / 15 case；data[[1]] 的列名+列序+kind+逐值；panel_params 的 continuous_range；handle_na 的 warning",
+  "scale": "29 geom / 36 case；data[[1]] 的列名+列序+kind+逐值；panel_params 的 continuous_range；handle_na 的 warning",
   "cases": {
     "point_shapes": {
       "description": "point：shape + colour 双离散映射",
@@ -3756,6 +3756,2653 @@
         ],
         "discrete_x": false,
         "discrete_y": false
+      },
+      "warnings": []
+    },
+    "segment_arrow": {
+      "description": "segment：两端闭合箭头",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.55000000000000004
+            ]
+          },
+          {
+            "name": "xend",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "yend",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              0.25
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#E45756"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.38660578386605782,
+              0.38660578386605782
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "curve_arrow": {
+      "description": "curve：curvature = -0.4 + 单端箭头",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.55000000000000004
+            ]
+          },
+          {
+            "name": "xend",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "yend",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              0.25
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.38660578386605782,
+              0.38660578386605782
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "spoke_basic": {
+      "description": "spoke：angle / radius 映射",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "angle",
+            "kind": "float",
+            "values": [
+              0,
+              0.78539816339744828
+            ]
+          },
+          {
+            "name": "radius",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.25
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "xend",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.77677669529663684
+            ]
+          },
+          {
+            "name": "yend",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.77677669529663684
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.42175176421751759,
+              0.42175176421751759
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "rect_basic": {
+      "description": "rect：两个带 alpha 的矩形",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.5
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.80000000000000004
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.20000000000000001
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.28116784281167845,
+              0.28116784281167845
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "float",
+            "values": [
+              0.59999999999999998,
+              0.59999999999999998
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "abline_basic": {
+      "description": "abline：y = x + 0.1",
+      "stat": "identity",
+      "data": {
+        "rows": 1,
+        "columns": [
+          {
+            "name": "intercept",
+            "kind": "float",
+            "values": [
+              0.10000000000000001
+            ]
+          },
+          {
+            "name": "slope",
+            "kind": "float",
+            "values": [
+              1
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.35145980351459799
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "hline_basic": {
+      "description": "hline：y = 0.75",
+      "stat": "identity",
+      "data": {
+        "rows": 1,
+        "columns": [
+          {
+            "name": "yintercept",
+            "kind": "float",
+            "values": [
+              0.75
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#E45756"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "str",
+            "values": [
+              "dashed"
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "vline_basic": {
+      "description": "vline：x = 0.6",
+      "stat": "identity",
+      "data": {
+        "rows": 1,
+        "columns": [
+          {
+            "name": "xintercept",
+            "kind": "float",
+            "values": [
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#54A24B"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "tile_basic": {
+      "description": "tile：默认 width / height = 1",
+      "stat": "identity",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.25,
+              0.75,
+              0.25,
+              0.75
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.25,
+              0.25,
+              0.75,
+              0.75
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#F58518",
+              "#F58518",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              0.5,
+              0,
+              0.5
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.5,
+              1,
+              0.5,
+              1
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.20000000000000001,
+              0.20000000000000001,
+              0.20000000000000001
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "height",
+            "kind": "float",
+            "values": [
+              1,
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "raster_basic": {
+      "description": "raster：像素矩阵 + 不插值",
+      "stat": "identity",
+      "data": {
+        "rows": 4,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.25,
+              0.75,
+              0.25,
+              0.75
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.25,
+              0.25,
+              0.75,
+              0.75
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#F58518",
+              "#F58518",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              2,
+              1
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              0.5,
+              0,
+              0.5
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.5,
+              1,
+              0.5,
+              1
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "polygon_basic": {
+      "description": "polygon：两个分组三角",
+      "stat": "identity",
+      "data": {
+        "rows": 6,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.40000000000000002,
+              0.34999999999999998,
+              0.69999999999999996,
+              0.84999999999999998,
+              0.5
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.14999999999999999,
+              0.5,
+              0.55000000000000004,
+              0.90000000000000002,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#F58518",
+              "#F58518",
+              "#F58518"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333",
+              "#333333",
+              "#333333",
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.28116784281167845,
+              0.28116784281167845,
+              0.28116784281167845,
+              0.28116784281167845,
+              0.28116784281167845,
+              0.28116784281167845
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.80000000000000004,
+              0.80000000000000004,
+              0.80000000000000004,
+              0.80000000000000004,
+              0.80000000000000004
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "ribbon_upper": {
+      "description": "ribbon：outline.type = upper",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.29999999999999999,
+              0.5,
+              0.69999999999999996,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.20000000000000001,
+              0.14999999999999999,
+              0.29999999999999999,
+              0.25
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.5,
+              0.45000000000000001,
+              0.59999999999999998,
+              0.55000000000000004
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.20000000000000001,
+              0.14999999999999999,
+              0.29999999999999999,
+              0.25
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333",
+              "#333333",
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822,
+              0.31631382316313822,
+              0.31631382316313822,
+              0.31631382316313822,
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "step_basic": {
+      "description": "step：direction = hv",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.10000000000000001,
+              0.29999999999999999,
+              0.5,
+              0.69999999999999996,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.5,
+              0.34999999999999998,
+              0.69999999999999996,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759,
+              0.42175176421751759
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "errorbar_basic": {
+      "description": "errorbar：width = 0.2",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.45000000000000001
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.19999999999999998,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.79999999999999993
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822,
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.20000000000000001
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "errorbarh_basic": {
+      "description": "errorbarh：height → width",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.45000000000000001
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              true,
+              true
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.19999999999999998,
+              0.59999999999999998
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.40000000000000002,
+              0.79999999999999993
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#E45756",
+              "#E45756"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822,
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.90000000000000002,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "linerange_basic": {
+      "description": "linerange：竖线",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.45000000000000001
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#54A24B",
+              "#54A24B"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.52718970527189701,
+              0.52718970527189701
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "pointrange_basic": {
+      "description": "pointrange：竖线 + 中点",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.45000000000000001
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              1.3999999999999999,
+              1.3999999999999999
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.31631382316313822,
+              0.31631382316313822
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          },
+          {
+            "name": "stroke",
+            "kind": "float",
+            "values": [
+              1,
+              1
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "crossbar_basic": {
+      "description": "crossbar：箱体 + 中位线",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.45000000000000001
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.29999999999999999
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              0.80000000000000004,
+              0.69999999999999996
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              false,
+              false
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0.14999999999999999,
+              0.54999999999999993
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              0.44999999999999996,
+              0.84999999999999998
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#F58518",
+              "#F58518"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.28116784281167845,
+              0.28116784281167845
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "rug_basic": {
+      "description": "rug：bl 三条短刻度",
+      "stat": "identity",
+      "data": {
+        "rows": 3,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              0.20000000000000001,
+              0.5,
+              0.80000000000000004
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              0.29999999999999999,
+              0.59999999999999998,
+              0.90000000000000002
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              -1,
+              -1,
+              -1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.28116784281167845,
+              0.28116784281167845,
+              0.28116784281167845
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "map_basic": {
+      "description": "map：两份 map 多边形",
+      "stat": "identity",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "map_id",
+            "kind": "str",
+            "values": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.28116784281167845,
+              0.28116784281167845
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          1
+        ],
+        "y_range": [
+          0,
+          1
+        ],
+        "discrete_x": false,
+        "discrete_y": false
+      },
+      "warnings": []
+    },
+    "boxplot_horizontal_auto": {
+      "description": "boxplot：y 离散、x 连续，未写 orientation（自动 flipped_aes）",
+      "stat": "boxplot",
+      "data": {
+        "rows": 2,
+        "columns": [
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              1.5,
+              0.5
+            ]
+          },
+          {
+            "name": "xlower",
+            "kind": "float",
+            "values": [
+              2.125,
+              1.125
+            ]
+          },
+          {
+            "name": "xmiddle",
+            "kind": "float",
+            "values": [
+              2.75,
+              1.75
+            ]
+          },
+          {
+            "name": "xupper",
+            "kind": "float",
+            "values": [
+              3.375,
+              2.375
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              4,
+              2.5
+            ]
+          },
+          {
+            "name": "outliers",
+            "kind": "list",
+            "values": [
+              null,
+              [
+                5
+              ]
+            ]
+          },
+          {
+            "name": "notchupper",
+            "kind": "float",
+            "values": [
+              3.5562903736661298,
+              2.5562903736661298
+            ]
+          },
+          {
+            "name": "notchlower",
+            "kind": "float",
+            "values": [
+              1.9437096263338705,
+              0.94370962633387045
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              true,
+              true
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "xmin_final",
+            "kind": "float",
+            "values": [
+              1.5,
+              0.5
+            ]
+          },
+          {
+            "name": "xmax_final",
+            "kind": "float",
+            "values": [
+              4,
+              5
+            ]
+          },
+          {
+            "name": "ymin",
+            "kind": "float",
+            "values": [
+              0.69999999999999996,
+              1.7000000000000002
+            ]
+          },
+          {
+            "name": "ymax",
+            "kind": "float",
+            "values": [
+              1.3,
+              2.2999999999999998
+            ]
+          },
+          {
+            "name": "order",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "xid",
+            "kind": "int",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "newx",
+            "kind": "float",
+            "values": [
+              1,
+              2
+            ]
+          },
+          {
+            "name": "new_width",
+            "kind": "float",
+            "values": [
+              0.60000000000000009,
+              0.59999999999999987
+            ]
+          },
+          {
+            "name": "weight",
+            "kind": "float",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "str",
+            "values": [
+              "#333333",
+              "#333333"
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#F58518",
+              "#F58518"
+            ]
+          },
+          {
+            "name": "size",
+            "kind": "float",
+            "values": [
+              1.5,
+              1.5
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null
+            ]
+          },
+          {
+            "name": "shape",
+            "kind": "float",
+            "values": [
+              19,
+              19
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "width",
+            "kind": "float",
+            "values": [
+              0.59999999999999998,
+              0.59999999999999998
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          6
+        ],
+        "y_range": [
+          0.40000000000000002,
+          2.6000000000000001
+        ],
+        "discrete_x": false,
+        "discrete_y": true
+      },
+      "warnings": []
+    },
+    "area_horizontal": {
+      "description": "area：横向（orientation = y，上游 area 不做自动探测）",
+      "stat": "identity",
+      "data": {
+        "rows": 5,
+        "columns": [
+          {
+            "name": "x",
+            "kind": "float",
+            "values": [
+              1,
+              2.5,
+              1.8,
+              3.2000000000000002,
+              2.2000000000000002
+            ]
+          },
+          {
+            "name": "y",
+            "kind": "float",
+            "values": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "PANEL",
+            "kind": "str",
+            "values": [
+              "1",
+              "1",
+              "1",
+              "1",
+              "1"
+            ],
+            "levels": [
+              "1"
+            ]
+          },
+          {
+            "name": "group",
+            "kind": "int",
+            "values": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          },
+          {
+            "name": "flipped_aes",
+            "kind": "bool",
+            "values": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "name": "xmin",
+            "kind": "float",
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "name": "xmax",
+            "kind": "float",
+            "values": [
+              1,
+              2.5,
+              1.8,
+              3.2000000000000002,
+              2.2000000000000002
+            ]
+          },
+          {
+            "name": "colour",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "name": "fill",
+            "kind": "str",
+            "values": [
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8",
+              "#4C78A8"
+            ]
+          },
+          {
+            "name": "linewidth",
+            "kind": "float",
+            "values": [
+              0.5,
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          {
+            "name": "linetype",
+            "kind": "int",
+            "values": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ]
+          },
+          {
+            "name": "alpha",
+            "kind": "bool",
+            "values": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "panel_params": {
+        "x_range": [
+          0,
+          4
+        ],
+        "y_range": [
+          0.40000000000000002,
+          5.5999999999999996
+        ],
+        "discrete_x": false,
+        "discrete_y": true
       },
       "warnings": []
     }

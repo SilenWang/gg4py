@@ -1,0 +1,7 @@
+family = "geom-polygon"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "alpha-aes"]
+ci = true
+title = "geom_polygon：两个分组三角"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`fill` 吃 alpha；每组一只多边形（IR 的 polygon 一个节点一份 gp）。"

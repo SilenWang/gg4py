@@ -1,0 +1,7 @@
+family = "geom-map"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_map：map 表 + map_id（最小可用）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`map` 是 `{x, y, id}` 三列的映射；与数据的 `map_id` 取交集后按 id 画多边形。"

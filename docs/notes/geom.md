@@ -1,4 +1,4 @@
-# geom 绘制口径（M1-7）
+# geom 绘制口径（M1-7 / M2-S2）
 
 M1-7 把 `Geom.draw()` 从 `NotImplementedError` 做成真绘制：9 个 geom 的 grob 生成、
 `handle_na()` / `setup_data()` / `setup_params()` 契约、坐标变换与裁剪，以及
@@ -15,6 +15,12 @@ M1-7 把 `Geom.draw()` 从 `NotImplementedError` 做成真绘制：9 个 geom �
 | `src/ggcore/geom/boxplot.py` | `geom_boxplot`（五数 + 须线 + 中位线 + 离群点） |
 | `src/ggcore/geom/smooth.py` | `geom_smooth`（se 带 + 拟合线） |
 | `src/ggcore/geom/scene.py` | `PlotBuild + FacetTable → ir.Scene`（面板 / strip / clip） |
+| `src/ggcore/geom/segment.py` | `segment` / `curve` / `spoke` / `abline` / `hline` / `vline`（M2-S2） |
+| `src/ggcore/geom/rect.py` | `rect` / `tile` / `raster`（M2-S2，位图见 `ggcore.png`） |
+| `src/ggcore/geom/polygon.py` | `polygon` / `ribbon` / `step`（M2-S2） |
+| `src/ggcore/geom/interval.py` | `linerange` / `errorbar` / `errorbarh` / `pointrange` / `crossbar` |
+| `src/ggcore/geom/annotation.py` | `blank` / `rug` / `map`（`map` 只做最小可用） |
+| `src/ggcore/arrow.py` | `grid::arrow()` 的对等物 + 箭翼几何（`head_geometry`） |
 
 ## 1. 契约
 
@@ -52,7 +58,7 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 - 每个面板一个 viewport + 自己的一份裁剪矩形；`facet_wrap` 2×2 的场景里有
   4 个互不相同、互不重叠的 `clip_rect`。
 
-## 3. 九个 geom
+## 3. 九个 geom（M1-7）
 
 | geom | 绘制口径（对 R 4.0.3） |
 | --- | --- |
@@ -93,11 +99,47 @@ page viewport（整页）
   见 `docs/notes/guide.md`）：M1-7 的面板 + strip 装配仍是同一条路径，
   `plot_layout()` 只是把面板区从整页里扣出来。
 
+## 4.1 长尾 A 的 20 个 geom（M2-S2）
+
+| geom | 绘制口径（对 R 4.0.3） |
+| --- | --- |
+| `segment` | 线性坐标一条 `segmentsGrob`（逐行 col / lwd / lty；`lineend` / `linejoin` 走参数）；非线性坐标逐行拆成折线 |
+| `curve` | `curveGrob(square = FALSE, squareShape = 1, open = TRUE)`；一条曲线一个 grob（IR 的 curve 节点一次一段） |
+| `spoke` | `setup_data()` 先算 `xend = x + cos(angle) * radius`，绘制同 segment |
+| `abline` / `hline` / `vline` | 端点取自 `PanelParams.backtransform_range()`；`abline` 在 `clip == "on"` 时先把范围扩一个跨度；`unique0(data)` 去重（参数形态的图层数据是 1 行，不去重会画两遍） |
+| `rect` | `resolve_rect()` 补缺角（`x/width/xmin/xmax` 里给两个），`rectGrob(xmin, ymax, just = c("left","top"))` |
+| `tile` | `compute_data_size(panels = "by", discrete = TRUE)` 求 `width` / `height`（缺省 1） |
+| `raster` | 等距格点 → `(nrow, ncol, 4)` 像素矩阵 → RGBA PNG（`ggcore.png`）+ `rasterGrob(interpolate)`；非线性坐标降级成 rect（`linewidth = 0.3`、`colour = fill`） |
+| `polygon` | `coord_munch(..., is_closed = TRUE)` 后每组一只多边形；有 `subgroup` 时走 `pathGrob(rule)` |
+| `ribbon` | 上沿正向 + 下沿反向拼**一个环**；`outline.type` = both / upper / lower / full；沿 ribbon 变化的美学报错 |
+| `step` | `stairstep()` 逐 group 展开（`hv` / `vh` / `mid`，横向时 hv ↔ vh 互换），再交给 `GeomPath` |
+| `errorbar` / `errorbarh` | 每行 8 个顶点（帽、竖线、帽），NaN 断开；`width` 走 `compute_data_size(..., discrete = TRUE)`；`errorbarh` 在 4.0.3 是 `geom_errorbar(orientation = "y")` 的软弃用别名（`height` → `width`） |
+| `linerange` | 纵向 `(x, ymin)→(x, ymax)`；横向 `(xmin, y) → (xmax, y)`；方向由 `range_is_orthogonal` 推断 |
+| `pointrange` | linerange + 中点（点大小 `size * 4`） |
+| `crossbar` | 箱体多边形 + 中位线（`linewidth * fatten`，`fatten = 2.5`）；`middle.*` / `box.*` 覆盖参数；缺口报错 |
+| `blank` | `nullGrob()`：只训练标度，不产出叶子 |
+| `rug` | 按 `sides`（t/b/l/r）在面板边上画短刻度；`length` 缺省 0.03 npc，`outside = TRUE` 伸到面板外 |
+| `map` | `map`（`{x, y, id}`）与 `map_id` 取交集，逐 id 一只多边形；不做投影、不带地图数据 |
+
+**横向（`flipped_aes`）的推断**照 `has_flipped_aes()`：
+
+- `boxplot` / `area`：`boxplot` 走 `main_is_orthogonal` + 列类型（y 离散 → 横向）；
+  `area` 传 `ambiguous = TRUE`，**没有 explicit orientation 时永远竖向**（R 侧
+  `StatAlign` 也是同一个开关）。横向面积两侧都写 `orientation = "y"`（或 R 的
+  `coord_flip()`）——见 `docs/cases/README.md` 的 SIL-715 #4。
+- 区间族（`ribbon` / `linerange` / `errorbar*`）：`range_is_orthogonal = TRUE`，
+  按「y 族区间在场 → 纵向 / x 族区间在场 → 横向」推断，不看列类型。
+
+**箭头的段长换算**：`lty` 的段长是 `lwd` 的倍数，且 `lwd < 1` 时按 1 算（参考产线
+svglite 的口径；细线的虚线不会退化成实线）。段长本身在写 IR 之前折成 pt。
+
 ## 5. 与 R 的已知差异 / 未实现清单
 
 | 能力 | 现状 | 去向 |
 | --- | --- | --- |
-| `arrow =` | 无 IR 表达 → `GeomError` 点名 | 箭头需要 IR schema 扩展 |
+| `arrow =` | v0.3 起是 `segments` / `polyline` / `curve` 的节点参数（§4.1 of `ir.md`），设备画箭翼 | 无 |
+| `geom_crossbar(notch)` / 缺口 | 无 IR 表达 → `GeomError` | 后续 |
+| `geom_map` 的投影 / 地图数据 | 只做「map 表 + map_id」的最小可用 | 归 M3-2 |
 | `geom_boxplot(notch = TRUE)` | 无 IR 表达（缺口多边形）→ `GeomError` | 后续 |
 | `geom_boxplot(staplewidth != 0)` | 无 IR 表达（须帽）→ `GeomError` | 后续 |
 | 逐点 `size` / 逐点 `pch` | IR 的 `points.size` / `pch` 是标量；绘制层按 `(pch,size)` 分组画多个节点 | 视觉等价，节点数更多 |
@@ -115,11 +157,15 @@ page viewport（整页）
 ```bash
 pixi run -e refs refs:geom          # 夹具 + 9 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
 pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py -q
-pixi run cases:matrix               # 9 个 geom 用例逐张 render + diff
+pixi run cases:matrix               # 全部 geom 用例逐张 render + diff
 pixi run check                      # 全量门禁
 ```
 
-夹具：`tests/fixtures/geom_r_reference.json`，14 个 case，记录
+M2-S2 的 20 个 geom 另有 18 条 case（`geom-segment-arrow` … `geom-area-horizontal`）
+与 22 条 R 夹具 case（`tests/test_geom_r_parity.py` 的 `NEW_BUILDERS`），逐列对拍
+`ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 值；像素对拍全部 < 2% / < 1%。
+
+夹具：`tests/fixtures/geom_r_reference.json`，36 个 case，记录
 `ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 逐值、`panel_params` 的
 `continuous_range`，以及 `ggplotGrob()` 期间的 warning（`handle_na` 的
 "Removed N rows"）。stat 已实现的 7 个 case 在 Python 侧重放整条流水线逐列对拍；
@@ -145,4 +191,5 @@ stat 未实现的 4 个（histogram / boxplot / smooth）把 R 的 `$data` 当�
 
 | 日期 | 任务 | 改动 | 原因 |
 | --- | --- | --- | --- |
+| 2026-11-03 | SIL-737 / M2-S2 | 长尾 A：20 个 geom（线段 / 矩形 / 区间 / 标注族）+ IR 0.3 的箭头标记属性（`segments` / `polyline` / `curve`）+ `geom_raster` 的位图路径（`ggcore.png`）+ lty 段长按 `max(lwd, 1)` 折算（参考产线口径）。`geom_abline` / `hline` / `vline` 改成上游的「参数即图层数据」形态（`inherit_aes = FALSE`、`unique0(data)`）。 | M2 长尾补齐；SIL-715 #4/#5 结案。 |
 | 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |

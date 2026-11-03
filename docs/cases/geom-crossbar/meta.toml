@@ -1,0 +1,7 @@
+family = "geom-crossbar"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_crossbar：箱体 + 中位线（fatten = 2.5）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "箱体多边形 + 中位线；`middle.*` / `box.*` 参数可覆盖对应的图形参数。"

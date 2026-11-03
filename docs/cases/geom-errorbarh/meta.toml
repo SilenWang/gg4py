@@ -1,0 +1,7 @@
+family = "geom-errorbarh"
+features = ["aes-mapping", "orientation-horizontal", "colour-aes"]
+ci = true
+title = "geom_errorbarh：横向误差棒（height 改名叫 width）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "4.0.3 起 `geom_errorbarh()` 是 `geom_errorbar(orientation = \"y\")` 的软弃用别名。"

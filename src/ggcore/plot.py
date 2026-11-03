@@ -30,6 +30,7 @@ from ggcore import registry
 from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
+from ggcore.arrow import arrow as arrow
 from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
@@ -247,7 +248,16 @@ registry.bind_plot(ggplot)
 def _export_registry_entries() -> list[str]:
     # `sec_axis` / `dup_axis` 不是注册表项（没有 coord_/scale_ 前缀），
     # 但用户从 `ggcore.plot` 取它们最顺手，与 ggplot2 的用法一致（M2-1）。
-    names = ["aes", "after_stat", "ggplot", "gg_add", "coord_munch", "sec_axis", "dup_axis"]
+    names = [
+        "aes",
+        "after_stat",
+        "arrow",
+        "ggplot",
+        "gg_add",
+        "coord_munch",
+        "sec_axis",
+        "dup_axis",
+    ]
     for kind in registry.KINDS:
         for name in registry.registered(kind):
             entry = registry.entry_name(kind, name)

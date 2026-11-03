@@ -50,6 +50,7 @@ from typing import Any
 import numpy as np
 
 from ggcore import ir
+from ggcore.arrow import Arrow, arrow_node_params
 from ggcore.gtable import GTable, gtable_height, gtable_width, is_gtable
 from ggcore.ir import Blob, BlobTable, NodeKind
 from ggcore.units import (
@@ -370,7 +371,7 @@ _LTY_CODES: Mapping[int, str] = {
 
 
 def _dash_pattern(lty: Any) -> tuple[float, ...] | None:
-    """`lty` → 段长（lwd 倍数）；`None` 表示“不描边”（`blank` / `NA`）。"""
+    """`lty` → 段长（`lwd` 的倍数，`lwd < 1` 时按 1 算）；`None` 表示不描边。"""
     if lty is None or lty is NA:
         return None
     if isinstance(lty, bool):
@@ -434,7 +435,11 @@ def _ir_gpar(gp: ResolvedGpar) -> ir.Gpar:
     lwd = float(gp.lwd) * _LWD_UNITS_TO_PT
     pattern: tuple[float, ...] = ()
     if dashes is not None:
-        pattern = tuple(round(segment * lwd, 6) for segment in dashes)
+        # 段长 = 模式 × max(lwd, 1)：R 的 `lwd` 是 1/96 inch，参考产线（svglite）
+        # 把小于 1 的 lwd 按 1 算段长（`lty = "dashed"` 在 lwd < 1 时恒为 4,4 pt），
+        # 用 lwd 本身会在细线上把虚线画密（SIL-737 的 abline 用例）。
+        scale = max(float(gp.lwd), 1.0)
+        pattern = tuple(round(segment * scale, 6) for segment in dashes)
     return ir.Gpar(
         fill=_paint(gp.fill),
         col=col,
@@ -662,6 +667,7 @@ class SegmentsGrob(Grob):
     y0: Unit = field(default_factory=lambda: unit(0.0, "npc"))
     x1: Unit = field(default_factory=lambda: unit(1.0, "npc"))
     y1: Unit = field(default_factory=lambda: unit(1.0, "npc"))
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -669,6 +675,7 @@ class PolylineGrob(Grob):
     x: Unit = field(default_factory=lambda: unit([0.0, 1.0], "npc"))
     y: Unit = field(default_factory=lambda: unit([0.0, 1.0], "npc"))
     id: Any = None
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -747,6 +754,7 @@ class CurveGrob(Grob):
     square: bool = True
     inflect: bool = False
     open: bool = True
+    arrow: Arrow | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -950,6 +958,7 @@ def segments_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> SegmentsGrob:
     """`segmentsGrob()`：互不相连的线段，每行一条。"""
     x0_unit = _as_unit("x0", x0, default_units)
@@ -966,6 +975,7 @@ def segments_grob(
         y0=y0_unit,
         x1=x1_unit,
         y1=y1_unit,
+        arrow=arrow,
     )
 
 
@@ -977,6 +987,7 @@ def polyline_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> PolylineGrob:
     """`polylineGrob()`：`id` 变化即切一条折线（grid 的 `id` 语义）。"""
     x_unit = _as_unit("x", x, default_units)
@@ -990,6 +1001,7 @@ def polyline_grob(
         x=x_unit,
         y=y_unit,
         id=id,
+        arrow=arrow,
     )
 
 
@@ -1236,6 +1248,7 @@ def curve_grob(
     name: str | None = None,
     gp: Gpar | Mapping[str, Any] | None = None,
     vp: Viewport | None = None,
+    arrow: Arrow | None = None,
 ) -> CurveGrob:
     """`curveGrob()`：两端点 + 弯曲参数，曲线形状由设备按同一公式复现。"""
     if isinstance(ncp, bool) or not isinstance(ncp, int) or ncp < 1:
@@ -1263,6 +1276,7 @@ def curve_grob(
         square=bool(square),
         inflect=bool(inflect),
         open=bool(open),
+        arrow=arrow,
     )
 
 
@@ -1857,7 +1871,9 @@ class _Traverser:
         x1 = _recycle(frame.loc(grob.x1, "x"), n)
         y1 = _recycle(frame.flip(frame.loc(grob.y1, "y")), n)
         return _Resolved(
-            NodeKind.SEGMENTS, {"segments": np.column_stack([x0, y0, x1, y1])}, lambda gp: {}
+            NodeKind.SEGMENTS,
+            {"segments": np.column_stack([x0, y0, x1, y1])},
+            lambda gp: arrow_node_params(grob.arrow),
         )
 
     def _resolve_polyline(self, grob: PolylineGrob) -> _Resolved:
@@ -1865,7 +1881,9 @@ class _Traverser:
         bufs = {"points": points}
         if ids is not None:
             bufs["id"] = ids
-        return _Resolved(NodeKind.POLYLINE, bufs, lambda gp: {}, split=False)
+        return _Resolved(
+            NodeKind.POLYLINE, bufs, lambda gp: arrow_node_params(grob.arrow), split=False
+        )
 
     def _resolve_polygon(self, grob: PolygonGrob) -> _Resolved:
         points, ids = self._path_points(grob)
@@ -2013,6 +2031,7 @@ class _Traverser:
                 "square": grob.square,
                 "inflect": grob.inflect,
                 "open": grob.open,
+                **arrow_node_params(grob.arrow),
             },
             split=False,
         )

@@ -65,7 +65,7 @@ except ImportError:  # pragma: no cover - 只有 Pyodide 走这里
     CBOR_BACKEND = "ggcore.ir._cbor"
 
 #: 当前写出的 IR 版本：(major, minor)。major 涨 = 不兼容，minor 涨 = 只加字段。
-IR_VERSION: tuple[int, int] = (0, 2)
+IR_VERSION: tuple[int, int] = (0, 3)
 IR_VERSION_STR = ".".join(str(part) for part in IR_VERSION)
 MAGIC = "ggir"
 

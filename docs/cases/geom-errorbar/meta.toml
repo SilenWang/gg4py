@@ -1,0 +1,7 @@
+family = "geom-errorbar"
+features = ["aes-mapping", "colour-aes"]
+ci = true
+title = "geom_errorbar：width = 0.2 的两根误差棒"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "8 个顶点一条折线（上帽、竖线、下帽），NA 断开；`width` 走 `compute_data_size(..., discrete = TRUE)`。"

@@ -655,10 +655,12 @@ def test_transparent_and_na_paint_nothing() -> None:
     "lty,expected",
     [
         (1, ()),
-        (2, (6.0, 6.0)),  # dashed (4,4) × lwd 1.5pt（R 的 lwd 2 = 2/96 in）
-        ("dashed", (6.0, 6.0)),
-        ("44", (6.0, 6.0)),
-        ((1, 2, 3), (1.5, 3.0, 4.5)),
+        # dashed (4,4) × max(lwd, 1)：R 的参考产线（svglite）按 gpar 的 lwd 换算段长，
+        # 小于 1 的 lwd 记作 1（细线的虚线不会退化成实线）。lwd = 2 → 8pt。
+        (2, (8.0, 8.0)),
+        ("dashed", (8.0, 8.0)),
+        ("44", (8.0, 8.0)),
+        ((1, 2, 3), (2.0, 4.0, 6.0)),
     ],
 )
 def test_lty_is_folded_into_pt_dashes(lty, expected) -> None:
