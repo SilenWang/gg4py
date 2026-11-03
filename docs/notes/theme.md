@@ -154,7 +154,7 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 | `theme_linedraw()` | `linedraw` | ✓ | 56 | 146 | `theme_linedraw()`：`theme_bw()` 的纯黑线条变体（网格线是实黑）。 |
 | `theme_minimal()` | `minimal` | ✓ | 58 | 146 | `theme_minimal()`：白底、无边框、无刻度线。 |
 | `theme_test()` | `test` | ✓ | 55 | 146 | `theme_test()`：白底 + 面板边框、无网格（上游是独立定义，不派生）。 |
-| `theme_void()` | `void` | ✓ | 41 | 146 | `theme_void()`：完全不画背景/网格/坐标轴，只留标题类文字。 |
+| `theme_void()` | `void` | ✓ | 43 | 146 | `theme_void()`：完全不画背景/网格/坐标轴，只留标题类文字。 |
 <!-- END GENERATED: registered-themes -->
 
 派生关系（上游一律用 `%+replace%`：整份替换同名元素，**不**合并字段）：
