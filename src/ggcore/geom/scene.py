@@ -67,7 +67,7 @@ from ggcore.guide import (
     GuideBuild,
     GuideError,
     build_guides,
-    legend_grob,
+    legend_box_layout,
     legend_layout,
 )
 from ggcore.theme import (
@@ -180,6 +180,10 @@ class PlotLayout:
     y_title_right_cm: float = 0.0
     secondary_x: bool = False
     secondary_y: bool = False
+    #: 图例盒（M2-2）：每个方位的 `LegendBoxLayout`（行列尺寸 + 盒内偏移）
+    #: 与它在页面上的矩形，二者一一对应。
+    legend_box_layouts: tuple[Any, ...] = ()
+    legend_box_origins: tuple[Box, ...] = ()
 
     @property
     def legend_width_cm(self) -> float:
@@ -343,19 +347,19 @@ def _legend_position(theme: ResolvedTheme) -> str | None:
         return "right"
     if isinstance(value, str):
         position = value
-    elif isinstance(value, (int, float)):
-        raise GuideError(
-            f"legend.position = {value!r}（数值坐标）尚未实现；"
-            "M1-11 只支持 'right' / 'left' / 'top' / 'bottom' / 'none'"
-        )
     else:
-        raise GuideError(f"legend.position 无法解析：{value!r}")
-    if position == "inside":
+        # R：`legend.position = c(x, y)` 等价于 `"inside"` + `legend.position.inside`。
+        try:
+            items = list(value)
+        except TypeError:
+            items = []
+        if len(items) == 2 and all(isinstance(item, (int, float)) for item in items):
+            return "inside"
         raise GuideError(
-            'legend.position = "inside" 尚未实现（面板内图例需要 panel-relative 定位，'
-            "见 docs/notes/guide.md「未实现」）"
+            f"legend.position 无法解析：{value!r}；用 right / left / top / bottom / none / "
+            "inside 或 c(x, y)"
         )
-    if position not in ("right", "left", "top", "bottom", "none"):
+    if position not in ("right", "left", "top", "bottom", "none", "inside"):
         raise GuideError(
             f"legend.position 只能是 right / left / top / bottom / none / inside，收到 {position!r}"
         )
@@ -390,9 +394,18 @@ def plot_layout(
 
     position = _legend_position(theme)
     guides = build_guides(build) if position != "none" else ()
+    guide_sides = tuple(guide.position or position for guide in guides)
     legend_layouts = tuple(
-        legend_layout(guide, theme, position, metrics=metrics) for guide in guides
+        legend_layout(guide, theme, side, metrics=metrics)
+        for guide, side in zip(guides, guide_sides, strict=True)
     )
+    group_indices: dict[str, list[int]] = {}
+    for index, side in enumerate(guide_sides):
+        group_indices.setdefault(str(side), []).append(index)
+    box_layouts = {
+        side: legend_box_layout([legend_layouts[index] for index in indices], side, theme)
+        for side, indices in group_indices.items()
+    }
 
     x_axis = 0.0
     y_axis = 0.0
@@ -442,35 +455,23 @@ def plot_layout(
     y_title = axis_title_extent(theme, "left", _axis_title_text(build, "y"), metrics=metrics)
 
     spacing = _box_spacing_cm(theme)
-    conn_w, conn_h = 0.0, 0.0
-    if legend_layouts:
-        if position in ("right", "left"):
-            conn_w = max(item.width_cm for item in legend_layouts)
-            conn_h = sum(item.height_cm for item in legend_layouts) + _legend_gap(theme) * (
-                len(legend_layouts) - 1
-            )
-            conn_w += _box_margin_width(theme)
-            conn_h += _box_margin_height(theme)
-        else:
-            conn_w = sum(item.width_cm for item in legend_layouts) + _legend_gap(theme) * (
-                len(legend_layouts) - 1
-            )
-            conn_h = max(item.height_cm for item in legend_layouts)
-            conn_w += _box_margin_width(theme)
-            conn_h += _box_margin_height(theme)
+    right_box = box_layouts.get("right")
+    left_box = box_layouts.get("left")
+    top_box = box_layouts.get("top")
+    bottom_box = box_layouts.get("bottom")
+    right_extent = right_box.width_cm + spacing if right_box is not None else 0.0
+    left_extent = left_box.width_cm + spacing if left_box is not None else 0.0
+    top_extent = top_box.height_cm + spacing if top_box is not None else 0.0
+    bottom_extent = bottom_box.height_cm + spacing if bottom_box is not None else 0.0
 
     content_top = inner.top - title_cm - subtitle_cm
     content_bottom = inner.y_cm + caption_cm
     content_left = inner.x_cm
     content_right = inner.right
-    if legend_layouts and position == "right":
-        content_right -= conn_w + spacing
-    elif legend_layouts and position == "left":
-        content_left += conn_w + spacing
-    elif legend_layouts and position == "top":
-        content_top -= conn_h + spacing
-    elif legend_layouts and position == "bottom":
-        content_bottom += conn_h + spacing
+    content_right -= right_extent
+    content_left += left_extent
+    content_top -= top_extent
+    content_bottom += bottom_extent
 
     panel_bottom = content_bottom + x_axis + x_title
     panel_left = content_left + y_axis + y_title
@@ -531,21 +532,35 @@ def plot_layout(
         rows_top = max(box.top for box in panel_boxes.values())
         panel_rows = Box(panel_area.x_cm, rows_bottom, panel_area.width_cm, rows_top - rows_bottom)
 
-    legend_boxes: list[Box] = []
-    if legend_layouts:
-        legend_boxes = _place_legends(
-            legend_layouts,
-            position=position,
+    legend_boxes: list[Box | None] = [None] * len(guides)
+    legend_box_origins: list[Box] = []
+    legend_box_layouts: list[Any] = []
+    for side in ("top", "right", "bottom", "left", "inside"):
+        indices = group_indices.get(side)
+        if not indices:
+            continue
+        box_layout = box_layouts[side]
+        origin = _place_legend_box(
+            box_layout,
+            position=side,
             inner=inner,
             panel_area=panel_area,
             panel_rows=panel_rows,
             content_top=content_top,
             spacing=spacing,
             caption_cm=caption_cm,
-            conn_w=conn_w,
-            conn_h=conn_h,
             theme=theme,
         )
+        legend_box_origins.append(origin)
+        legend_box_layouts.append(box_layout)
+        for offset, index in zip(box_layout.boxes, indices, strict=True):
+            legend_boxes[index] = Box(
+                origin.x_cm + offset.x_cm,
+                origin.y_cm + offset.y_cm,
+                offset.width_cm,
+                offset.height_cm,
+            )
+    legend_boxes = [box for box in legend_boxes if box is not None]
 
     return PlotLayout(
         width_cm=width_cm,
@@ -569,6 +584,8 @@ def plot_layout(
         legend_side=position if legend_layouts else None,
         legend_layouts=legend_layouts,
         legend_boxes=tuple(legend_boxes),
+        legend_box_layouts=tuple(legend_box_layouts),
+        legend_box_origins=tuple(legend_box_origins),
         guides=guides,
         x_axis_top_cm=x_axis_top,
         y_axis_right_cm=y_axis_right,
@@ -617,51 +634,97 @@ def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:
     return Box(x, y, used_w, used_h)
 
 
-def _place_legends(
-    layouts: tuple[Any, ...],
+def _place_legend_box(
+    box_layout: Any,
     *,
-    position: str | None,
+    position: str,
     inner: Box,
     panel_area: Box,
     panel_rows: Box,
     content_top: float,
     spacing: float,
     caption_cm: float,
-    conn_w: float,
-    conn_h: float,
     theme: ResolvedTheme,
-) -> list[Box]:
-    """图例盒的页面矩形。
+) -> Box:
+    """一个方位的 `guide-box` 在页面上的矩形。
 
     竖向（right / left）在**panel 行**（`panel_rows`，所有面板单元格的并集）里
     垂直居中：R 把 guide-box 挂在 panel 行上的 0.5null 里，facet 的顶部 / 底部
     strip 带不在这一行，所以分面时图例比整个 `panel_area` 的中心低半个 strip。
     横向（top / bottom）贴着内容区的上/下边缘：top 在副标题行之下
     （`content_top` 已经扣掉了 `legend.box.spacing`），bottom 在注脚之上。
+    inside 用 `legend.position.inside`（npc）+ `legend.justification.inside`
+    锚在面板区内，不占版面。
     """
-    gap = _legend_gap(theme)
-    boxes: list[Box] = []
-    if position in ("right", "left"):
-        union_x = inner.right - conn_w if position == "right" else inner.x_cm
-        top = panel_rows.y_cm + (panel_rows.height_cm + conn_h) / 2.0
-        for index, item in enumerate(layouts):
-            y = top - sum(previous.height_cm for previous in layouts[:index]) - gap * index
-            y -= item.height_cm
-            x = union_x + (conn_w - item.width_cm) / 2.0
-            boxes.append(Box(x, y, item.width_cm, item.height_cm))
-    else:
-        if position == "bottom":
-            union_y = inner.y_cm + caption_cm
-        else:
-            # content_top = 内区顶 - 标题/副标题 - conn_h - spacing
-            union_y = content_top + spacing - conn_h
-        left = panel_area.x_cm + (panel_area.width_cm - conn_w) / 2.0
-        x = left
-        for index, item in enumerate(layouts):
-            x += sum(previous.width_cm for previous in layouts[:index]) + gap * index
-            y = union_y + (conn_h - item.height_cm) / 2.0
-            boxes.append(Box(x, y, item.width_cm, item.height_cm))
-    return boxes
+    width = float(box_layout.width_cm)
+    height = float(box_layout.height_cm)
+    if position == "right":
+        x = inner.right - width
+        y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
+        return Box(x, y, width, height)
+    if position == "left":
+        x = inner.x_cm
+        y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
+        return Box(x, y, width, height)
+    if position == "top":
+        y = content_top + spacing
+        x = panel_area.x_cm + (panel_area.width_cm - width) / 2.0
+        return Box(x, y, width, height)
+    if position == "bottom":
+        y = inner.y_cm + caption_cm
+        x = panel_area.x_cm + (panel_area.width_cm - width) / 2.0
+        return Box(x, y, width, height)
+    # inside
+    anchor_x, anchor_y = _inside_position(theme)
+    just_x, just_y = _inside_justification(theme)
+    x = panel_area.x_cm + anchor_x * panel_area.width_cm - just_x * width
+    y = panel_area.y_cm + anchor_y * panel_area.height_cm - just_y * height
+    return Box(x, y, width, height)
+
+
+def _inside_position(theme: ResolvedTheme) -> tuple[float, float]:
+    """`legend.position.inside`（npc 0..1）；缺省沿用 `legend.justification.inside`。"""
+    value = theme.get("legend.position.inside")
+    if value is None:
+        value = theme.get("legend.position")
+    if isinstance(value, str):
+        value = None
+    if value is None:
+        return (0.5, 0.5)
+    try:
+        items = list(value)
+    except TypeError:
+        return (0.5, 0.5)
+    if len(items) != 2:
+        raise GuideError(f"legend.position.inside 需要 c(x, y)，收到 {value!r}")
+    return (float(items[0]), float(items[1]))
+
+
+def _inside_justification(theme: ResolvedTheme) -> tuple[float, float]:
+    value = theme.get("legend.justification.inside")
+    if value is None:
+        value = theme.get("legend.justification")
+    if value is None:
+        return (0.5, 0.5)
+    if isinstance(value, str):
+        mapping = {
+            "left": (0.0, 0.5),
+            "right": (1.0, 0.5),
+            "top": (0.5, 1.0),
+            "bottom": (0.5, 0.0),
+            "center": (0.5, 0.5),
+            "centre": (0.5, 0.5),
+        }
+        return mapping.get(value.lower(), (0.5, 0.5))
+    try:
+        items = list(value)
+    except TypeError:
+        return (0.5, 0.5)
+    if len(items) == 1:
+        return (float(items[0]), float(items[0]))
+    if len(items) >= 2:
+        return (float(items[0]), float(items[1]))
+    return (0.5, 0.5)
 
 
 def _box_spacing_cm(theme: ResolvedTheme) -> float:
@@ -671,27 +734,6 @@ def _box_spacing_cm(theme: ResolvedTheme) -> float:
     if value is None:
         return 0.0
     return float(np.asarray(convert_width(value, "cm", ctx=UnitContext())).sum())
-
-
-def _legend_gap(theme: ResolvedTheme) -> float:
-    from ggcore.units import convert_width
-
-    value = theme.get("legend.spacing")
-    if value is None:
-        return 0.0
-    return float(np.asarray(convert_width(value, "cm", ctx=UnitContext())).sum())
-
-
-def _box_margin_width(theme: ResolvedTheme) -> float:
-    mt, mr, mb, ml = margin_sides_cm(theme.get("legend.box.margin"))
-    del mt, mb
-    return mr + ml
-
-
-def _box_margin_height(theme: ResolvedTheme) -> float:
-    mt, mr, mb, ml = margin_sides_cm(theme.get("legend.box.margin"))
-    del mr, ml
-    return mt + mb
 
 
 def _panel_scale(build: PlotBuild, panel: int, aesthetic: str) -> Any:
@@ -1280,7 +1322,8 @@ def _legend_grobs(
     for index, (guide, legend, box) in enumerate(
         zip(layout.guides, layout.legend_layouts, layout.legend_boxes, strict=True)
     ):
-        children = legend_grob(
+        # 走 `Guide.gengrob()`：自定义 guide 覆盖它就能接管整张图例的绘制。
+        children = guide.guide.gengrob(
             guide,
             build,
             theme,

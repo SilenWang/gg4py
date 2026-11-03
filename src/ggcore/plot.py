@@ -32,7 +32,7 @@ from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
 from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
-from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
+from ggcore.components import Coord, Facet, Guide, Guides, Labels, Scale, Theme
 from ggcore.coord import coord_munch as coord_munch
 from ggcore.layer import Layer, Position
 from ggcore.scales import scale_type as scale_type
@@ -217,6 +217,19 @@ def _add_guide(component: Guide, plot: ggplot) -> ggplot:
     return new
 
 
+@_add_component.register(Guides)
+def _add_guides(component: Guides, plot: ggplot) -> ggplot:
+    """`p + guides(colour = "none", size = guide_legend(...))`。
+
+    后加的条目替换先加的（与 `plot.scales` 同一口径）；值为 `None` 的条目表示
+    「取消 plot 级设置、回落到 `scale_*(guide=)`」，与 R 的 `guides(colour = NULL)`
+    一致。
+    """
+    new = plot.clone()
+    new.guides.update(component.entries)
+    return new
+
+
 @_add_component.register(Labels)
 def _add_labels(component: Labels, plot: ggplot) -> ggplot:
     new = plot.clone()
@@ -242,12 +255,61 @@ def _add_position(component: Position, plot: ggplot) -> ggplot:
 registry.bind_plot(ggplot)
 
 
+def guides(*args: Any, **kwargs: Any) -> Guides:
+    """`guides(colour = "none", size = guide_legend(nrow = 2))`（M2-2）。
+
+    对齐 ggplot2 4.0.3 的 `guides()`：
+
+    - 键可以是**美学名**（`"colour"` / `"fill"` / `"size"` …），也可以是自定义
+      guide 的自由名字（`guides(custom = guide_custom(...))`）；
+    - 值可以是字符串（`"none"` / `"legend"` / `"colourbar"`）、注册表组件
+      （`registry.guide_legend(...)`）或 `ggcore.guide` 的实现对象；
+    - `guides(colour = None)` 取消 plot 级设置、回落到 `scale_*(guide = )`
+      （R 的 `guides(colour = NULL)`）；`False` 是老写法，按 `"none"` 处理；
+    - 也可以传一份 dict（R 的 `guides(list(colour = "none"))`）。
+    """
+    entries: dict[str, Any] = {}
+    if len(args) > 1:
+        raise TypeError(f"guides() 最多接受一个位置参数，收到 {len(args)} 个")
+    if args:
+        first = args[0]
+        if isinstance(first, Guides):
+            entries.update(first.entries)
+        elif isinstance(first, Mapping):
+            entries.update(first)
+        else:
+            raise TypeError(f"guides() 的位置参数必须是 dict / Guides，收到 {first!r}")
+    entries.update(kwargs)
+    normalised: dict[str, Any] = {}
+    for key, value in entries.items():
+        name = _rename_aesthetic(str(key))
+        if value is False:
+            # 3.3.4 起 `FALSE` 是 `"none"` 的弃用写法，语义保留。
+            value = "none"
+        normalised[name] = value
+    return Guides(normalised)
+
+
+def _rename_aesthetic(name: str) -> str:
+    """`color` → `colour`（R 的 `rename_aes()` 对这两个别名同口径）。"""
+    return "colour" if name == "color" else name
+
+
 # 模块级函数与 registry 里的**同一个函数对象**（两个入口，一条注册表）。
 # label 的入口叫 `labs`，没有前缀，其余形如 `geom_point` / `scale_x_log10`。
 def _export_registry_entries() -> list[str]:
     # `sec_axis` / `dup_axis` 不是注册表项（没有 coord_/scale_ 前缀），
     # 但用户从 `ggcore.plot` 取它们最顺手，与 ggplot2 的用法一致（M2-1）。
-    names = ["aes", "after_stat", "ggplot", "gg_add", "coord_munch", "sec_axis", "dup_axis"]
+    names = [
+        "aes",
+        "after_stat",
+        "ggplot",
+        "gg_add",
+        "guides",
+        "coord_munch",
+        "sec_axis",
+        "dup_axis",
+    ]
     for kind in registry.KINDS:
         for name in registry.registered(kind):
             entry = registry.entry_name(kind, name)

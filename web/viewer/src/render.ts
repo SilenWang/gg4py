@@ -66,6 +66,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const XLINK_NS = "http://www.w3.org/1999/xlink";
 /** grid 的缺省 `lineheight = 1.2`，绘制行距 = 1.2 × 1.2 × size（`docs/notes/ir.md` §7）。 */
 const LINE_SPACING = 1.44;
+/**
+ * `lty` 段长的折算（`docs/notes/scales.md` 的「lty 串的段长折算」）：
+ * IR 里的段长是 `lwd` 的倍数 × **pt 口径**的 lwd（`lwd = 1/96 in × 0.75`），
+ * 而 svglite 写 `stroke-dasharray` 时只把线宽折成 pt、段长仍按 1/96 in 的
+ * 数值写，所以参考图里的段长比「物理 pt」大 4/3。两渲染器都按参考口径写，
+ * 与 `ggskia` 的 `_paint` 同一份常量（M2-12）。
+ */
+const DASH_UNIT = 4 / 3;
 
 export function compose(parent: Matrix, child: Matrix): Matrix {
   const [a1, b1, c1, d1, e1, f1] = parent;
@@ -208,7 +216,9 @@ function styleAttributes(gpar: Gpar, scale: number, options: { fill?: boolean; s
     attrs["stroke-linejoin"] = gpar.linejoin;
     attrs["stroke-miterlimit"] = num(gpar.linemitre);
     if (gpar.lty.length > 0) {
-      attrs["stroke-dasharray"] = gpar.lty.map((segment) => num(segment * scale)).join(" ");
+      attrs["stroke-dasharray"] = gpar.lty
+        .map((segment) => num(segment * scale * DASH_UNIT))
+        .join(" ");
     }
   }
   return attrs;

@@ -1,0 +1,8 @@
+family = "geom-col"
+features = ["alpha-aes", "scale-discrete"]
+ci = true
+title = "col：`alpha` 映射到填充（fill-opacity 的合成口径）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """四根柱子只有 fill 没有描边：`fill-opacity` 必须是「颜色 alpha × gpar.alpha」，
+漏掉任何一项都会在对白底的合成上偏色（M1 的 geom-point-alpha 只走了描边色那一侧）。"""

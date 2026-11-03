@@ -84,6 +84,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 跑 12 条代表性子集（挂进 `pixi run check`，避免每个 PR 全量 61 条）。
 "viewer:cases" = "PYTHONPATH=src python tools/viewer/cases.py"
 "viewer:cases:ci" = { cmd = "PYTHONPATH=src python tools/viewer/cases.py --sample 12 --min-pass 12", depends-on = ["viewer:build", "viewer:browsers"] }
+# M2-12：同一份 IR 的两条渲染腿对拍 —— skia SVG 设备 vs 浏览器 DOM SVG。
+# 归一化属性后：样式集合必须相等、墨迹包围盒 ≤ 0.5 pt、resvg 像素差 ≤ 0.5%。
+# 全量写报告进 docs/notes/viewer-parity.md；CI 只跑代表性子集、不写文件。
+"viewer:parity" = "PYTHONPATH=src python tools/viewer/parity.py"
+"viewer:parity:ci" = { cmd = "PYTHONPATH=src python tools/viewer/parity.py --sample 12 --no-report --selftest", depends-on = ["viewer:build", "viewer:browsers"] }
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"
@@ -157,6 +162,9 @@ r-hexbin = ">=1.28,<2"
 # `cases_battery_ref.R` 是 M1-15 的语法层首批 40 张（与各 case 的 plot.py 一一对应）。
 # 只在换 pin 或有意改口径时重跑；产物入库，CI 不装 R。
 "refs:cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/cases_battery_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/coord_cases_ref.R"
+# M2-12：查看器渲染器专项 case 的参考图（lty 全量 / pch 0..25 / alpha 合成）。
+# 独立脚本是刻意的：`refs:cases` 会重写全部历史 expected.svg，本组只新增。
+"refs:viewer-cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/viewer_cases_ref.R"
 # 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
 "refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
 # M1-3 图层流水线夹具：16+ 张图的内置数据（列名 / 列序 / 类型 / 逐行值）。
@@ -228,6 +236,7 @@ check = { depends-on = [
   "viewer:build",
   "viewer:browsers",
   "viewer:cases:ci",
+  "viewer:parity:ci",
   "lint",
   "test",
   "gate:imports",

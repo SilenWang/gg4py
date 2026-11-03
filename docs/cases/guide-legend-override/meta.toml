@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "guide-legend", "scale-limits"]
+ci = true
+title = "guide：override.aes"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "`guide_legend(override.aes = list(colour = \"black\", shape = 17))` 只改图例键、不改面板里的点；R 的 override 在键数据映射之后应用（M2-2 SIL-738）。"

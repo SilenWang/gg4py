@@ -49,6 +49,7 @@ families = [
   "annotation",
   "guide",
   "lab",
+  "extension",
 ]
 
 features = [
@@ -96,6 +97,9 @@ features = [
   "guide-legend",
   "guide-merged",
   "guide-colourbar",
+  "guide-horizontal",
+  "guide-inside",
+  "guide-multi",
   "annotation-text",
   "lab-title",
   "rotation",
@@ -110,4 +114,5 @@ features = [
   "label-background",
   "contour-band",
   "bin-hex",
+  "api-extension",
 ]
