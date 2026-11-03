@@ -68,6 +68,9 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 - **方向**：`dir = "h"`（默认）→ `as.table` 为真时 `"lt"`（左上起、行优先），
   假时 `"lb"`（左下起）；`dir = "v"` → `tl` / `tr`。也接受上游的 8 个方向
   `lt / tl / lb / bl / rt / tr / rb / br`。
+- **`space`**：只有 `"fixed"`（默认）/ `"free_x"` / `"free_y"`（上游不接受
+  `"free"`）。`free_x` 强制**一行**、列宽按各面板 x 范围差分配；`free_y`
+  强制一列。给 `nrow` / `ncol` 也会被覆盖（R 同样是覆盖 + warning）。
 - 例：4 个水平 `d, c, b, a` + `ncol = 2` + `as.table = FALSE` 得到
   PANEL 1=`d`(ROW 2, COL 1)、2=`c`(2, 2)、3=`b`(1, 1)、4=`a`(1, 2)。
 
@@ -80,9 +83,14 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 - PANEL 按「行优先、行内按列」编号；ROW / COL 从 1 起。
 - `as.table = FALSE` **只倒行**（上游 `rev_order()`），列顺序不变。
 - 只有 `rows` 或只有 `cols` 时另一维固定为 1 行 / 1 列。
-- `margins = TRUE` 与任何非 `"fixed"` 的 `space` **尚未实现**：参数能进
-  `Facet.params`，但 `facet_from_component()` 会报明确的 `FacetError`
-  （见 §7；`facet_wrap` 同样校验）。这样不会静默画出一张与 R 不同的图。
+- **`margins`**：`True` 给两维都加 `(all)` 边际面板；字符串 / 序列只给点名
+  的变量加（`margins="a"` → 只多一列）。多变量的部分 margin 是**后缀**组合
+  （上游 `reshape_margins()`：`rows=(a,b)`、`margins=True` → `(a,b)` 与 `(b)`
+  两组），布局里 `(all)` 排在每个变量的水平末尾；`map_data()` 把一行数据同时
+  复制进普通面板与它所属的每个 margin 面板。
+- **`space`**：`"fixed"` / `"free"` / `"free_x"` / `"free_y"`。非 fixed 时
+  面板列 / 行的 null 权重 = 该列（`ROW == 1`）/ 行（`COL == 1`）面板的范围差
+  （上游 `Facet$init_gtable()`）；离散标度因此按水平数、连续标度按数据跨度分配。
 
 ## 4. 自由刻度的分配
 
@@ -147,23 +155,46 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 | 面板间距 | `panel.spacing` → `panel.spacing.x` / `.y`（默认 5.5pt） |
 | 裁剪 | `strip.clip`（默认 `"on"`） |
 
-strip 的行高 / 列宽 = 文本高度 + 上下（左右）margin。顶部 strip 读
+strip 的行高 / 列宽 = 文字的外向尺寸 + 对应 margin。顶部 strip 读
 `strip.text.x`，右侧 strip 读 `strip.text.y`（字号改大时右 strip 变宽，
 顶部高度不变）；背景读 `strip.background.x` / `.y`（继承
 `strip.background`），落在 `FacetStrip.fill`，`element_blank()` 时为 None。
-M1-6 用 `0.955em × strip.text.size + margin` 近似 grid 的 `stringHeight()`
-（R 在 8.8pt 下量到 8.4pt / 0.6071cm；我们 0.6058cm，差 0.2%），无度量时保留
-这个历史口径。**真实渲染路径**（有 `metrics`）走设备口径：行高 = `TEXT_LINE_EM`
-（0.894em = R 的 `stringHeight()` + `font_descent()`，见 `docs/notes/guide.md`），
-8.8pt 下整行 16.67pt，与 svglite 的 16.66pt 对齐；早先误用
-`Metrics.strheight()`（只有 cap height，0.735em）会矮 1.4pt，分面的面板行因此
-高 1.4pt、竖向图例中心偏 0.7pt（SIL-725 修复）。
+
+尺寸口径照 grid 的 `widthDetails()` / `heightDetails()`（`_strip_extent()`）：
+
+| 文字角度 | 宽（列宽） | 高（行高） |
+| --- | --- | --- |
+| 0 / 180 | 最宽一行的 `stringWidth` | 行高 × 行数 |
+| ±90 / 270 | 行高 × 行数 | 最宽一行的 `stringWidth` |
+
+行高 = `TEXT_LINE_EM`（0.8945em = R 的 `stringHeight()` + descent，见
+`docs/notes/guide.md`）；宽度走 `text_width_cm()`：有 `metrics` 时是真实
+`stringWidth`（缺省 sans 与 svglite 的 Arimo 同度量），没有时按
+`FALLBACK_CHAR_EM` 估。**没有**「无度量时用 0.955em 近似」的分支了——
+SIL-715 #8：旧实现把 `strip.text.y` 的列宽也当成行高（7.87pt），而
+`.facet-grid-ab`（`theme_void()`，angle 0）的 R 值只有 `stringWidth("t")` =
+4.89pt，右 strip 列因此宽 3pt、面板整体左移。
+
+**逐变量 strip**：多变量分面在 R 里是每个变量一条 strip（顶部自上而下堆叠、
+右侧自左向右并排），不是一条多行文本。`FacetStrip.parts` 保留变量粒度，
+`strip_height_cm` / `strip_width_cm` 是整块的总尺寸；`label_both` 的两个变量
+因此是 2 × 0.5877cm = 1.1753cm（与 R 逐值一致）。
+
+**`strip.placement`**：`"inside"`（默认）strip 在面板与轴之间；`"outside"`
+时 `FacetStrip.outside = True`，strip 块不占 facet gtable 行列，由
+`plot_layout()` 在轴带之外另行留位（`PlotLayout.top_strip_band` /
+`right_strip_band`），有轴的一侧再留 `strip.switch.pad.grid/wrap` 间隙。
 
 wrap 有多个面板行时，行结构是
 `strip / panel / panel.spacing.y / strip / panel / …`——每个面板行上方都有
 自己的 strip；grid 只有最上面一行有 `strip-t-<col>`，行 strip
 `strip-r-<row>` 在右侧与面板行同高。`FacetTable.strip_height_cm` /
-`strip_width_cm` 分别给顶部 strip 行高与右侧 strip 列宽。
+`strip_width_cm` 分别给顶部 strip 块总高与右侧 strip 块总宽。
+
+**labeller**：`"label_value"`（默认）/ `"label_both"`（`变量: 值`）/
+`"label_context"`（单变量同 value，多变量同 both）、`labeller(a={...})`
+（逐变量覆盖，未覆盖的走 `.default`）、`{值: 标签}` 简写与任意
+`f(labels) -> labels` 函数。`FacetBase.strip_labels()` 给逐变量标签。
 
 完整 grob 绘制（面板背景、网格线、geom 墨迹、坐标轴、图例）不在 M1-6，
 留给 M1-7；这里的占位 grob 只携带 `kind / name / text / panel / side / fill`。
@@ -172,10 +203,8 @@ wrap 有多个面板行时，行结构是
 
 | 能力 | 现状 | 计划 |
 | --- | --- | --- |
-| `facet_grid(margins = TRUE)` | 报 `FacetError` | M1-6+ |
-| `facet_wrap(space = ...)` / `facet_grid(space = ...)` 的非 `"fixed"` 值 | 报 `FacetError`（`"free" / "free_x" / "free_y"` 未实现；非法值同样报错） | 后续任务 **M1-6+「facet space 的面板尺寸约束」**（按范围给 null 权重） |
-| `labeller = "label_both" / "label_context"` | 报 `FacetError` | 未排期（目前只有 `label_value`、`{变量: {值: 标签}}` 映射与函数） |
 | `facet_wrap(strip.position = "bottom"/"left"/"right")` | 报 `FacetError`（只支持 top） | M1-7 |
+| 右侧 strip 的 `strip.placement = "outside"` + 次轴 | 按 inside 画（没有右侧轴时两者视觉等价） | 与次轴版式一起收 |
 | 自由刻度 + `coord_fixed(ratio=…)` | 报错（与上游一致） | — |
 | 完整 grob / 坐标轴 / 图例 | 只给结构 | M1-7 / M1-11 |
 

@@ -26,8 +26,10 @@ from ggcore import registry
 from ggcore.aes import aes
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.plot import ggplot
+from ggcore.facet import labeller
+from ggcore.plot import coord_polar, ggplot
 from ggcore.theme import element_text, theme
+from ggskia.text import ShaperMetrics
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "facet_r_reference.json"
 REFERENCE = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -385,4 +387,190 @@ def test_strip_text_y_width_matches_r() -> None:
     assert right_widths
     assert table.strip_width_cm == pytest.approx(_cm(right_widths[0]), rel=0.02)
     # 右 strip 变宽不影响顶部 strip 的高度（strip.text.x 未被改）。
-    assert table.strip_height_cm == pytest.approx(0.6058, abs=5e-4)
+    assert table.strip_height_cm == pytest.approx(0.5870, abs=5e-4)
+
+
+# ---------------------------------------------------------------------------
+# full：M2-3 facet 全量（SIL-733）—— free scales / space=free / margins /
+# labellers / strip 主题 / polar×facet
+# ---------------------------------------------------------------------------
+
+FULL = {case["name"]: case for case in REFERENCE["full"]}
+METRICS = ShaperMetrics()
+
+FULL_BUILDERS = {
+    "wrap_free_x": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), ncol=2, scales="free_x")
+    ),
+    "wrap_free_y": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), ncol=2, scales="free_y")
+    ),
+    "grid_free_x": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",), scales="free_x")
+    ),
+    "grid_free_y": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",), scales="free_y")
+    ),
+    "wrap_space_free_x": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("g",), space="free_x", scales="free")
+    ),
+    "wrap_space_free_y": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("g",), space="free_y", scales="free")
+    ),
+    "grid_space_free": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("h",), ("g",), space="free", scales="free")
+    ),
+    "grid_margins": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",), margins=True)
+    ),
+    "grid_margins_var": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",), margins="a")
+    ),
+    "wrap_label_both": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a", "b"), labeller="label_both")
+    ),
+    "wrap_label_context": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), labeller="label_context")
+    ),
+    "grid_label_both": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",), labeller="label_both")
+    ),
+    "wrap_labeller_named": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), labeller=labeller(a={"q": "Q level", "p": "P level"}))
+    ),
+    "strip_y_angle0": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_grid(("b",), ("a",))
+        + theme(**{"strip.text.y": element_text(angle=0)})
+    ),
+    "strip_x_size20": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), ncol=2)
+        + theme(**{"strip.text.x": element_text(size=20)})
+    ),
+    "strip_outside": lambda table: (
+        ggplot(table, aes(x="x", y="y"))
+        + registry.geom_point()
+        + registry.facet_wrap(("a",), ncol=2)
+        + theme(**{"strip.placement": "outside"})
+    ),
+    "polar_facet": lambda table: (
+        ggplot(table, aes(x="a", y="y"))
+        + registry.geom_point()
+        + coord_polar()
+        + registry.facet_wrap(("b",), ncol=2)
+    ),
+}
+
+
+def _null_weight(text: str) -> float:
+    assert text.endswith("null"), text
+    return float(text[: -len("null")])
+
+
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_layout_matches_r(name: str) -> None:
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    assert _typed_records(build) == case["layout"]
+
+
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_labels_match_r(name: str) -> None:
+    """labeller 的全形态：每条 strip 的文本（含 `label_both` 的 `变量: 值`）。"""
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    layout = build.layout
+    assert layout is not None
+    labels = [build.facet.strip_labels(layout, panel) for panel in layout.panel_ids]
+    assert labels == case["labels"]
+
+
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_panel_ranges_match_r(name: str) -> None:
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    expected = case["panels"]
+    assert [panel.panel for panel in build.panels] == [item["PANEL"] for item in expected]
+    for panel, reference in zip(build.panels, expected, strict=True):
+        if reference.get("x_range"):
+            assert panel.panel_params.x_range == pytest.approx(
+                tuple(reference["x_range"]), abs=TOLERANCE
+            )
+        if reference.get("y_range"):
+            assert panel.panel_params.y_range == pytest.approx(
+                tuple(reference["y_range"]), abs=TOLERANCE
+            )
+
+
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_panel_weights_match_r(name: str) -> None:
+    """`space = "free"`：面板 null 权重 = R `init_gtable()` 的范围差。"""
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    table = build.facet_table()
+    expected_columns = [_null_weight(text) for text in _as_list(case["gtable"]["panel_columns"])]
+    expected_rows = [_null_weight(text) for text in _as_list(case["gtable"]["panel_rows"])]
+    actual_columns = [
+        _null_weight(str(unit)) for unit in table.gtable.widths if str(unit).endswith("null")
+    ]
+    actual_rows = [
+        _null_weight(str(unit)) for unit in table.gtable.heights if str(unit).endswith("null")
+    ]
+    assert actual_columns == pytest.approx(expected_columns, rel=1e-9)
+    assert actual_rows == pytest.approx(expected_rows, rel=1e-9)
+
+
+@pytest.mark.parametrize("name", sorted(FULL_BUILDERS))
+def test_full_strip_extents_match_r(name: str) -> None:
+    """strip 块的高 / 宽（cm）与 `ggplotGrob()` 逐项一致（svglite 口径）。"""
+    case = FULL[name]
+    build = build_plot(FULL_BUILDERS[name](_extra_table(case)))
+    table = build.facet_table(metrics=METRICS)
+    strips = case["gtable"]["strips"]
+    top = [strip for strip in strips if strip["name"].startswith("strip-t")]
+    right = [strip for strip in strips if strip["name"].startswith("strip-r")]
+    if top:
+        expected = _cm(_as_list(top[0]["height"])[0])
+        assert table.strip_height_cm == pytest.approx(expected, rel=0.02)
+    else:
+        assert table.strip_height_cm == 0.0
+    if right:
+        expected = _cm(_as_list(right[0]["width"])[0])
+        assert table.strip_width_cm == pytest.approx(expected, rel=0.02)
+    else:
+        assert table.strip_width_cm == 0.0
+
+
+def test_full_fixture_covers_the_required_families() -> None:
+    assert set(FULL_BUILDERS) == set(FULL)
+    assert {"wrap_free_x", "wrap_free_y", "grid_space_free", "grid_margins"} <= set(FULL)
+    assert any(name.startswith("polar") for name in FULL)

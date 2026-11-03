@@ -35,10 +35,14 @@
 suppressPackageStartupMessages({
   library(ggplot2)
   library(jsonlite)
+  library(svglite)
 })
 
-# 不开默认绘图设备：否则 ggplot 会在 CWD 留下 Rplots.pdf（产物不可复现）。
-invisible(pdf(NULL))
+# 度量设备与渲染产线一致：`refs:cases` 的 expected.svg 用 svglite 画，
+# 所以 strip / 面板尺寸也要在 svglite 上读——pdf 设备的字面（Helvetica）比
+# svglite（Arimo）高 1.4pt，混用会让 strip 行高对不上（SIL-715 #8）。
+# 不要开默认绘图设备：否则 ggplot 会在 CWD 留下 Rplots.pdf（产物不可复现）。
+invisible(svglite(tempfile(fileext = ".svg"), width = 4, height = 3))
 
 out_path <- "tests/fixtures/facet_r_reference.json"
 
@@ -163,9 +167,13 @@ label_records <- function(build) {
   labels <- build$layout$facet$params$labeller(layout[vars])
   lapply(seq_len(nrow(layout)), function(i) {
     record <- list()
-    for (name in vars) {
+    # 多变量 labeller（label_both / label_context）返回的是**无名**列表，
+    # 只能按位置取；单变量时按名字取。
+    for (j in seq_along(vars)) {
+      name <- vars[[j]]
+      value <- if (name %in% names(labels)) labels[[name]][i] else labels[[j]][i]
       # grid 把 NA 标签渲染成 "NA"（`grid::textGrob(label = NA)` 的显示）。
-      record[[name]] <- if (is.na(labels[[name]][i])) "NA" else as.character(labels[[name]][i])
+      record[[name]] <- if (length(value) == 0 || is.na(value)) "NA" else as.character(value)
     }
     record
   })
@@ -336,6 +344,185 @@ extra <- list(
   )
 )
 
+# --- full：M2-3 facet 全量（SIL-733）---------------------------------------
+#
+#   free scales 的逐面板 range、space = "free" 的面板 null 权重（宽高比）、
+#   margins 的 (all) 面板、labeller 各形态（逐变量 strip）、strip 主题
+#   （字号 / angle）、strip.placement、polar × facet。
+#
+# 记录 gtable 的 panel 列 / 行单位串（`1.1null` 这类）与每条 strip 的单元格
+# 宽高（cm）—— Python 侧 `facet_table()` 用同一份数值逐项比。
+
+# 离散 x：space = "free_x" 时列宽按水平数分配（连续 x 按 range 差）。
+discrete_data <- data.frame(
+  x = factor(c("a", "a", "b", "b", "c", "c", "a", "b", "c", "a"),
+             levels = c("a", "b", "c")),
+  y = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+  g = factor(c("p", "p", "p", "q", "q", "q", "r", "r", "r", "p"),
+             levels = c("p", "q", "r")),
+  h = factor(c("u", "u", "u", "u", "v", "v", "v", "v", "u", "v"),
+             levels = c("v", "u"))
+)
+
+full_gtable <- function(plot) {
+  grob <- ggplotGrob(plot)
+  panels <- grob$layout[grepl("^panel", grob$layout$name), , drop = FALSE]
+  strips <- grob$layout[grepl("^strip", grob$layout$name), , drop = FALSE]
+  list(
+    panel_columns = as.character(grob$widths[sort(unique(panels$l))]),
+    panel_rows = as.character(grob$heights[sort(unique(panels$t))]),
+    respect = isTRUE(grob$respect),
+    strips = lapply(seq_len(nrow(strips)), function(i) {
+      list(
+        name = as.character(strips$name[i]),
+        t = as.integer(strips$t[i]),
+        l = as.integer(strips$l[i]),
+        width = as.character(grob$widths[strips$l[i]]),
+        height = as.character(grob$heights[strips$t[i]])
+      )
+    })
+  )
+}
+
+describe_full <- function(name, plot, df) {
+  cat("case:", name, "\n")
+  build <- ggplot_build(plot)
+  list(
+    name = name,
+    data = data_payload(df),
+    layout = typed_layout_records(build),
+    labels = label_records(build),
+    panels = panel_params(build),
+    gtable = full_gtable(plot)
+  )
+}
+
+full <- list(
+  describe_full(
+    "wrap_free_x",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, ncol = 2, scales = "free_x"),
+    facet_data
+  ),
+  describe_full(
+    "wrap_free_y",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, ncol = 2, scales = "free_y"),
+    facet_data
+  ),
+  describe_full(
+    "grid_free_x",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a, scales = "free_x"),
+    facet_data
+  ),
+  describe_full(
+    "grid_free_y",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a, scales = "free_y"),
+    facet_data
+  ),
+  describe_full(
+    "wrap_space_free_x",
+    ggplot(discrete_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~g, space = "free_x", scales = "free"),
+    discrete_data
+  ),
+  describe_full(
+    "wrap_space_free_y",
+    ggplot(discrete_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~g, space = "free_y", scales = "free"),
+    discrete_data
+  ),
+  describe_full(
+    "grid_space_free",
+    ggplot(discrete_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(h ~ g, space = "free", scales = "free"),
+    discrete_data
+  ),
+  describe_full(
+    "grid_margins",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a, margins = TRUE),
+    facet_data
+  ),
+  describe_full(
+    "grid_margins_var",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a, margins = "a"),
+    facet_data
+  ),
+  describe_full(
+    "wrap_label_both",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a + b, labeller = "label_both"),
+    facet_data
+  ),
+  describe_full(
+    "wrap_label_context",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, labeller = "label_context"),
+    facet_data
+  ),
+  describe_full(
+    "grid_label_both",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a, labeller = "label_both"),
+    facet_data
+  ),
+  describe_full(
+    "wrap_labeller_named",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, labeller = labeller(a = c(q = "Q level", p = "P level"))),
+    facet_data
+  ),
+  describe_full(
+    "strip_y_angle0",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_grid(b ~ a) +
+      theme(strip.text.y = element_text(angle = 0)),
+    facet_data
+  ),
+  describe_full(
+    "strip_x_size20",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, ncol = 2) +
+      theme(strip.text.x = element_text(size = 20)),
+    facet_data
+  ),
+  describe_full(
+    "strip_outside",
+    ggplot(facet_data, aes(x = x, y = y)) +
+      geom_point() +
+      facet_wrap(~a, ncol = 2) +
+      theme(strip.placement = "outside"),
+    facet_data
+  ),
+  describe_full(
+    "polar_facet",
+    ggplot(facet_data, aes(x = a, y = y)) +
+      geom_point() +
+      coord_polar() +
+      facet_wrap(~b, ncol = 2),
+    facet_data
+  )
+)
+
 payload <- list(
   ggplot2 = as.character(packageVersion("ggplot2")),
   data = list(
@@ -349,7 +536,8 @@ payload <- list(
     c_levels = levels(facet_data$c)
   ),
   cases = cases,
-  extra = extra
+  extra = extra,
+  full = full
 )
 
 dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)

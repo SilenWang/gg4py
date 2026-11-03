@@ -839,12 +839,21 @@ class PlotBuild:
         """分面的 gtable（panel 矩形 + strip + spacing）；单面板给 1×1 表。
 
         `metrics` 给出时 strip 尺寸走真实字体度量（M1-7 的场景装配）。
+        `space = "free"` 需要逐面板范围：这里从各面板的 `PanelParams` 取
+        `x_range` / `y_range` 一起交给 `facet_table()`（上游 `init_gtable()` 的
+        `ranges` 参数）。
         """
         from ggcore.facet import facet_table
 
         if self.layout is None or self.facet is None:
             raise BuildError("这张图没有分面布局；请先用 build_plot() 构建")
-        return facet_table(self.layout, self.facet, self.theme, metrics=metrics)
+        ranges = {
+            panel.panel: (panel.panel_params.x_range, panel.panel_params.y_range)
+            for panel in self.panels
+        }
+        return facet_table(
+            self.layout, self.facet, self.theme, metrics=metrics, ranges=ranges or None
+        )
 
 
 @dataclass(frozen=True, slots=True)
