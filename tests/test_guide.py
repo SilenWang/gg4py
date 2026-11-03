@@ -607,3 +607,86 @@ def _walk(scene: ir.Scene):
         node = stack.pop()
         yield node
         stack.extend(node.children)
+
+
+# ---------------------------------------------------------------------------
+# SIL-723：色条按标度 limits 的全量程取色（不是断点色的插值）
+# ---------------------------------------------------------------------------
+
+
+def _colourbar_plot(*, limits=(16.2, 30.3), reverse: bool = False):
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([0.1, 0.2, 0.3, 0.4, 0.5]))),
+            ("y", Column("float", np.array([0.2, 0.5, 0.3, 0.7, 0.4]))),
+            ("v", Column("float", np.array([20.0, 22.0, 25.0, 27.0, 30.0]))),
+        ]
+    )
+    return (
+        ggplot(table, aes(x="x", y="y", colour="v"))
+        + registry.geom_point()
+        + registry.scale_x_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + registry.scale_colour_gradient(limits=limits)
+        + registry.guide_colourbar("colour", nbin=64, reverse=reverse)
+        + registry.theme_void()
+    )
+
+
+def _bar_fills(plot) -> list[str]:
+    build, theme_value, guides, layouts = _layout(plot)
+    grobs = legend_grob(guides[0], build, theme_value, layouts[0], name="g")
+    return [grob.gp.fill for grob in grobs if ".bar-" in grob.name]
+
+
+def test_colourbar_samples_the_full_scale_range() -> None:
+    """`limits = (16.2, 30.3)`：色条首末是这个范围端点的颜色，不是最低断点 20 的色。"""
+    fills = _bar_fills(_colourbar_plot())
+    assert len(fills) == 64
+    # 缺省 low / high（`#132B43` / `#56B1F7`）：全量程端点必须都在色条里。
+    assert fills[0] == "#132B43"
+    assert fills[-1] == "#56B1F7"
+    # 最低断点 20 的色（约 t = 0.27）不是端点——旧实现把色条画成 20..30，端点是它。
+    scale = build_plot(_colourbar_plot()).scales.scale("colour")
+    assert scale is not None
+    at_lowest_break = scale.palette([0.0])[0]
+    assert at_lowest_break == fills[0]  # 只是一个 sanity check（palette 起点）
+    assert fills[0] != "#22496C"  # 断点 20 的色不是色条低端
+
+
+def test_colourbar_reverse_flips_the_full_range() -> None:
+    normal = _bar_fills(_colourbar_plot())
+    flipped = _bar_fills(_colourbar_plot(reverse=True))
+    assert flipped == list(reversed(normal))
+    assert flipped[0] == "#56B1F7" and flipped[-1] == "#132B43"
+
+
+def test_colourbar_endpoints_match_the_data_mapping() -> None:
+    """色条端点 = 标度 limits 的端点色（与 `scale.map()` 同一条 palette）。"""
+    plot = _colourbar_plot()
+    build = build_plot(plot)
+    scale = build.scales.scale("colour")
+    assert scale is not None
+    endpoints = scale.palette([0.0, 1.0])
+    fills = _bar_fills(plot)
+    assert (fills[0], fills[-1]) == (endpoints[0], endpoints[1])
+    # 低值 20 的颜色确实出现在色条里（旧实现只覆盖断点色阶，仍会有；关键是端点）。
+    low_value = scale.map(Column("float", np.array([20.0]))).values.tolist()[0]
+    assert low_value in fills
+
+
+def test_scale_colour_gradient_aliases_are_registered() -> None:
+    """`scale_colour_gradient` / `scale_fill_gradient` 与 `*_continuous` 同义。"""
+    assert registry.scale_colour_gradient().name == "colour_gradient"
+    assert registry.scale_fill_gradient().name == "fill_gradient"
+    table = data()
+    p = ggplot(table, aes(x="x", y="y"))
+    # 方法链入口与 `+` 入口产生同一实现（同一个注册表）。
+    by_method = p.scale_colour_gradient(low="#000000")
+    by_plus = p + registry.scale_colour_gradient(low="#000000")
+    assert next(iter(by_method.scales.values())).name == "colour_gradient"
+    assert next(iter(by_plus.scales.values())).name == "colour_gradient"
+    from ggcore.scales import GradientScale, scale_from_component
+
+    scale = scale_from_component(registry.scale_fill_gradient(limits=(0, 1)))
+    assert isinstance(scale, GradientScale)

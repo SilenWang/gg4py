@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
@@ -647,3 +648,71 @@ def test_scale_colour_helpers_are_registered_aliases() -> None:
     assert size.name == "size_continuous" and shape.name == "shape_discrete"
     continuous = scale_x_continuous()
     assert continuous.name == "x_continuous"
+
+
+def test_minor_breaks_are_the_midpoints_of_major_breaks() -> None:
+    """`panel.grid.minor` 的次断点：连续标度 = 主断点中点（变换后的空间）。"""
+    scale = scale_from_component(Scale("x_continuous", "x", {"limits": [0, 6], "expand": [0, 0]}))
+    scale.train(column([0.0, 6.0]))
+    assert scale.breaks() == (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+    assert scale.minor_breaks() == (0.5, 1.5, 2.5, 3.5, 4.5, 5.5)
+
+    log = scale_from_component(Scale("x_log10", "x", {"limits": [1, 100]}))
+    log.train(column([1.0, 100.0]))
+    # 断点在 log10 空间；中点也在 log10 空间（R 的 get_breaks_minor 同口径）。
+    major = [value for value in log.breaks() if value is not None]
+    minor = log.minor_breaks()
+    expected = [(first + second) / 2.0 for first, second in itertools.pairwise(major)]
+    assert minor == pytest.approx(expected)
+
+
+def test_minor_breaks_discrete_and_single_break() -> None:
+    discrete = scale_from_component(Scale("x_discrete", "x", {}))
+    discrete.train(column(["a", "b", "c"]))
+    assert discrete.minor_breaks() == ()
+
+    scale = scale_from_component(Scale("x_continuous", "x", {"breaks": [2.0], "expand": [0, 0]}))
+    scale.train(column([0.0, 4.0]))
+    assert scale.minor_breaks() == ()
+
+
+def test_sec_axis_is_rejected_on_both_entry_points() -> None:
+    """`sec.axis` 不再静默：`+` 入口与方法链入口都点名报错（修前两条都静默）。"""
+    table = ColumnTable(
+        [("x", Column("float", np.array([1.0, 2.0]))), ("y", Column("float", np.array([1.0, 2.0])))]
+    )
+    plot = ggplot(table, aes(x="x", y="y")) + geom_point()
+    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
+        plot + scale_x_continuous(**{"sec.axis": "x"})
+    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
+        plot.scale_x_continuous(**{"sec.axis": "x"})
+    with pytest.raises(ScaleError, match=r"sec[._]axis.*未实现"):
+        plot.scale_y_continuous(**{"sec_axis": 1})
+    # 直接构造组件也要在同一条解析路径上报错（plotspec / 反序列化入口）。
+    with pytest.raises(ScaleError, match=r"sec[._]axis"):
+        scale_from_component(Scale("x_continuous", "x", {"sec.axis": "x"}))
+
+
+def test_other_unimplemented_scale_messages_are_intact() -> None:
+    """`guide_bins` 与 `geom_line(arrow=)` 的既有报错文案没被这次改动动到。"""
+    from ggcore import registry
+    from ggcore.geom.line import LineRenderer
+    from ggcore.theme import theme_void
+
+    table = ColumnTable(
+        [("x", Column("float", np.array([1.0, 2.0]))), ("y", Column("float", np.array([1.0, 2.0])))]
+    )
+    plot = (
+        ggplot(table, aes(x="x", y="y")) + registry.geom_line(arrow={"length": 0.1}) + theme_void()
+    )
+    from ggcore.geom.scene import scene_from_plot
+
+    with pytest.raises(ValueError, match=r"arrow.*无法表达"):
+        scene_from_plot(plot, width_in=4, height_in=3)
+    assert LineRenderer.name == "line"
+
+    from ggcore.guide import build_guides
+
+    base = ggplot(table, aes(x="x", y="y", colour="x")) + geom_point()
+    with pytest.raises(Exception, match="guide_bins"):
+        build_guides(build_plot(base + registry.scale_colour_continuous(guide="bins")))

@@ -36,3 +36,6 @@ web/viewer/samples/
 .viewer-shot/
 # `pixi run viewer:cases` 的逐 case 产物与报告
 .viewer-cases/
+
+# `pixi run viewer:cases` 的 gallery 资产（卡片链接按 viewer 根目录解析）
+web/viewer/gallery/

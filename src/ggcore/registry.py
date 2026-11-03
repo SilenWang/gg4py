@@ -411,8 +411,12 @@ SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("x_log10", "x", {"trans": "log10"}),
     ("y_log10", "y", {"trans": "log10"}),
     ("colour_continuous", "colour", {"type": "continuous"}),
+    # ggplot2 的 `scale_colour_gradient()` / `scale_fill_gradient()` 与
+    # `scale_*_continuous()` 同一实现（Lab 插值、low/high 默认值相同）。
+    ("colour_gradient", "colour", {"type": "continuous"}),
     ("colour_discrete", "colour", {"type": "discrete"}),
     ("fill_continuous", "fill", {"type": "continuous"}),
+    ("fill_gradient", "fill", {"type": "continuous"}),
     ("fill_discrete", "fill", {"type": "discrete"}),
     ("size_continuous", "size", {"type": "continuous"}),
     ("shape_discrete", "shape", {"type": "discrete"}),
@@ -503,7 +507,13 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
 
 def _scale_factory(name: str, aesthetic: str, defaults: Mapping[str, Any]) -> Callable[..., Scale]:
     def factory(**params: Any) -> Scale:
-        return Scale(name=name, aesthetic=aesthetic, params={**defaults, **params})
+        # 未实现的标度参数在**构造时**就点名报错：`p + scale_x_continuous(sec.axis=…)`
+        # 与 `p.scale_x_continuous(sec.axis=…)` 走的是同一个工厂，两条路径一致。
+        from ggcore.scales import reject_unimplemented_scale_params
+
+        merged = {**defaults, **params}
+        reject_unimplemented_scale_params(name, merged)
+        return Scale(name=name, aesthetic=aesthetic, params=merged)
 
     return factory
 

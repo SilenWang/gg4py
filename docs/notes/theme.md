@@ -324,14 +324,15 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 
 ## 与后续任务的接口
 
-- **`panel.grid.*` 的绘制还没有接进 `ggcore.geom.scene`**：`_panel_children()` 只装
-  `panel.background` / `panel.border`，`panel.grid.major` / `.minor` 的解析值拿到了
-  但没画。后果是 `theme_grey()` / `theme_minimal()` 的网格线整片缺失（M1-15 的
-  `theme-grey-basic` / `theme-minimal-basic` 因此标 `ci = false`），参考图已入库，
-  接上网格线后把 `ci` 翻成 `true` 即可。次要难点在 minor breaks：`ggcore.scales` /
-  `ggcore.axis` 目前没有 `minor_breaks` 的实现。缺口能力与归口：**SIL-715（M2
-  缺口池）第 1 条（`theme_grey`）/ 第 2 条（`theme_minimal`）**——按 theme 解析值
-  绘制 `panel.grid.major` / `.minor`。
+- **`panel.grid.*` 的绘制（SIL-723 已接上）**：`ggcore.geom.scene._panel_children()`
+  按 `panel.background → panel.grid.major.{x,y} → panel.grid.minor.{x,y} →
+  panel.border → 图层` 的顺序装 grob。位置与轴同源：major 用该面板标度的
+  `breaks()`，minor 用 `ScaleBase.minor_breaks()`（连续 = 相邻主断点中点，
+  离散没有次网格；log10 的中点在对数空间）。元素走继承链
+  （`panel.grid.major.x` ← `.major` ← `panel.grid` ← `line`），`element_blank()`
+  或 `colour = NA` 不画，`linewidth` / `linetype` / `lineend` 生效。
+  `theme_grey()` / `theme_minimal()` 现在都是 1.87%（`theme-grey-basic` /
+  `theme-minimal-basic`），SIL-715 #1/#2 关闭。
 
 - `resolve_theme()` 的结果是只读映射：`resolved["axis.text"]` 拿到具体元素，
   `resolved.size_pt("axis.text")` 直接拿字号（pt），`resolved.is_blank(name)`

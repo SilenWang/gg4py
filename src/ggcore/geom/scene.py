@@ -29,6 +29,7 @@ page viewport（整页，plot.background）
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
@@ -37,6 +38,7 @@ import numpy as np
 
 from ggcore import ir
 from ggcore.axis import (
+    AxisError,
     axis_extent,
     axis_grobs,
     axis_ticks,
@@ -57,6 +59,7 @@ from ggcore.grobs import (
     g_tree,
     rect_grob,
     scene,
+    segments_grob,
     text_grob,
 )
 from ggcore.gtable import CellBox
@@ -68,6 +71,7 @@ from ggcore.guide import (
     legend_layout,
 )
 from ggcore.theme import (
+    ElementLine,
     ElementRect,
     ElementText,
     ResolvedTheme,
@@ -605,12 +609,26 @@ def _panel_children(
     metrics: Any,
 ) -> list[Any]:
     children: list[Any] = []
-    for name, border_only in (("panel.background", False), ("panel.border", True)):
+    for name, border_only in (("panel.background", False),):
         element = theme.get(name)
         if isinstance(element, ElementRect):
             grob = _rect_from_element(element, border_only=border_only, name=name)
             if grob is not None:
                 children.append(grob)
+
+    # 网格线顺序照 ggplot2 的 panel gtable：major 在 minor 之下，两者都在面板
+    # 边框 / 图层之下（R 4.0.3 的 guide_grid() 只由主题元素给颜色、线型与线宽）。
+    for kind in ("major", "minor"):
+        for axis in ("x", "y"):
+            grid = _grid_grob(build, panel, params, theme, kind=kind, axis=axis)
+            if grid is not None:
+                children.append(grid)
+
+    element = theme.get("panel.border")
+    if isinstance(element, ElementRect):
+        grob = _rect_from_element(element, border_only=True, name="panel.border")
+        if grob is not None:
+            children.append(grob)
 
     layer_grobs: list[Any] = []
     for layer in layers:
@@ -633,6 +651,93 @@ def _panel_children(
     else:
         children.extend(layer_grobs)
     return children
+
+
+def _grid_positions(
+    scale: Any, params: PanelParams, axis: str, *, minor: bool
+) -> tuple[float, ...]:
+    """一个面板的网格位置（npc 0..1），断点口径与 `axis_ticks()` 同源。
+
+    major 用该面板标度的主断点，minor 用 `scale.minor_breaks()`（连续标度是相邻
+    主断点的中点）；离散标度没有次要网格。越界断点（`None`）不画。
+    """
+    if scale is None:
+        return ()
+    low, high = params.x_range if axis == "x" else params.y_range
+    span = float(high) - float(low)
+    if span == 0:
+        raise AxisError(f"{axis} 轴的面板范围跨度为 0（{low!r} == {high!r}）")
+    values = scale.minor_breaks() if minor else scale.breaks()
+    discrete = bool(getattr(scale, "discrete", False))
+    levels = tuple(scale.levels) if discrete else ()
+    positions: list[float] = []
+    for value in values:
+        if value is None:
+            continue
+        if discrete:
+            try:
+                number = float(levels.index(str(value)) + 1)
+            except ValueError:
+                continue
+        else:
+            number = float(value)
+            if not math.isfinite(number):
+                continue
+        position = (number - float(low)) / span
+        if not math.isfinite(position):
+            continue
+        if -1e-9 <= position <= 1.0 + 1e-9:
+            positions.append(min(max(position, 0.0), 1.0))
+    return tuple(positions)
+
+
+def _grid_grob(
+    build: PlotBuild,
+    panel: int,
+    params: PanelParams,
+    theme: ResolvedTheme,
+    *,
+    kind: str,
+    axis: str,
+) -> Any | None:
+    """一条网格线（`panel.grid.<kind>.<axis>`）；元素 blank / 颜色 NA 时返回 None。"""
+    name = f"panel.grid.{kind}.{axis}"
+    element = theme.get(name)
+    if not isinstance(element, ElementLine):
+        return None
+    colour = paint(element.colour)
+    if colour is None:
+        return None
+    scale = _panel_scale(build, panel, axis)
+    positions = _grid_positions(scale, params, axis, minor=kind == "minor")
+    if not positions:
+        return None
+    gp = gpar(
+        col=colour,
+        lwd=_mm_to_pt(element.linewidth),
+        lty=element.linetype if element.linetype is not None else 1,
+        lineend=element.lineend or "butt",
+        linejoin=element.linejoin or "round",
+    )
+    if axis == "x":
+        return segments_grob(
+            positions,
+            [0.0] * len(positions),
+            positions,
+            [1.0] * len(positions),
+            default_units="npc",
+            gp=gp,
+            name=name,
+        )
+    return segments_grob(
+        [0.0] * len(positions),
+        positions,
+        [1.0] * len(positions),
+        positions,
+        default_units="npc",
+        gp=gp,
+        name=name,
+    )
 
 
 def _panel_rows(data: ColumnTable, panel: int) -> ColumnTable | None:

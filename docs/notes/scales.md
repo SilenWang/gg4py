@@ -70,7 +70,9 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 注册表里的 13 个名字就是全部实现：`x/y_continuous`、`x/y_discrete`、
 `x/y_log10`、`colour/fill_continuous`（= gradient）、`colour/fill_discrete`
 （= hue）、`size_continuous`、`shape_discrete`、`alpha_continuous`。
-`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的别名
+`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的别名；
+`scale_colour_gradient()` / `scale_fill_gradient()` 在 SIL-723 也注册成同义名
+（`colour_gradient` / `fill_gradient` → `GradientScale`，`+` 与方法链两条入口）
 （`tools/refs/scales_ref.R` 末尾有自检）。
 
 ## 3. limits / expand
@@ -116,6 +118,9 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
   `n.breaks`）。
 - `breaks = c(2, 4, 6)` 手动断点优先；`trans = "log10"` 时用
   `breaks_log()`（整十次幂，不够时走 `log_sub_breaks`）。
+- **次断点**（`panel.grid.minor` 的位置）由 `ScaleBase.minor_breaks()` 给：
+  连续标度 = 相邻主断点的中点（`None` 先剔除，log10 的中点也在对数空间）；
+  离散标度没有次网格（返回空）。SIL-723。
 - 断点在**变换后**的空间里；`labels()` 反向变换回数据空间再格式化。
 - **越界断点记 `None`**（R 的 `NA`）：面板范围 expand 之后，`get_breaks()` 里
   落在外面的项会被 censor——`scale_x_log10()` 的默认断点是

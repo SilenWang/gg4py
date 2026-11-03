@@ -1,6 +1,6 @@
 """theme：`theme_minimal()` 完整主题（无面板底色 / 边框，只有轴与网格）。
 
-**ci = false**：同 `theme-grey-basic`，当前渲染器还没有画 `panel.grid.*`。
+网格线与 `theme_grey()` 走同一条绘制路径（SIL-723），图级差异 1.87%。
 """
 
 from ggcore.plot import (

@@ -851,6 +851,10 @@ class ScaleBase:
     def breaks(self) -> tuple[Any, ...]:
         raise NotImplementedError
 
+    def minor_breaks(self) -> tuple[Any, ...]:
+        """次断点（`panel.grid.minor` 的位置）；离散标度没有次要网格。"""
+        return ()
+
     def labels(self) -> tuple[Any, ...]:
         raise NotImplementedError
 
@@ -999,6 +1003,19 @@ class ContinuousScale(ScaleBase):
             else:
                 out.append(float(value))
         return tuple(out)
+
+    def minor_breaks(self) -> tuple[float, ...]:
+        """次断点 = 相邻主断点的中点（R 的 `get_breaks_minor()` 缺省口径）。
+
+        位置在主断点同一个（变换后的）空间里，所以 `scale_x_log10()` 的次网格
+        落在对数空间的中点，与 R 一致；越界主断点先按 :meth:`breaks` 的规则剔除。
+        """
+        values = [value for value in self.breaks() if value is not None]
+        if len(values) < 2:
+            return ()
+        return tuple(
+            (float(first) + float(second)) / 2.0 for first, second in itertools.pairwise(values)
+        )
 
     def labels(self) -> tuple[str | None, ...]:
         breaks = self.breaks()
@@ -1396,19 +1413,42 @@ def _apply_labels(
 # 组件 → 实现
 # ---------------------------------------------------------------------------
 
+#: 标度参数里没有实现的项：点名报错，不静默忽略。R 的 `sec.axis` 接受
+#: `sec_axis(~ . * 2)` / `dup_axis()`，要第二条断点 / 标签轴与绘制；M1 只做主轴，
+#: 所以这里和 `guide_bins` / `geom_line(arrow=)` 同一口径（明确报错、点名）。
+_UNIMPLEMENTED_SCALE_PARAMS: Mapping[str, str] = MappingProxyType(
+    {
+        "sec.axis": "secondary axis（`sec_axis()` / `dup_axis()`）",
+        "sec_axis": "secondary axis（`sec_axis()` / `dup_axis()`）",
+    }
+)
+
+
+def reject_unimplemented_scale_params(name: str, params: Mapping[str, Any]) -> None:
+    """标度参数里的未实现项 → `ScaleError`（构造与解析两条路径都调用）。"""
+    for key, what in _UNIMPLEMENTED_SCALE_PARAMS.items():
+        if key in params:
+            raise ScaleError(
+                f"{name}({key} = ...) 未实现：{what} 需要第二条轴，"
+                "M1 只做主轴（见 docs/notes/guide.md「未实现」）"
+            )
+
 
 def scale_from_component(spec: Scale) -> ScaleBase:
     """`components.Scale`（注册名 + 参数）→ 具体的标度实现。"""
     name = spec.name
     aesthetic = spec.aesthetic
     params = dict(spec.params)
+    reject_unimplemented_scale_params(name, params)
     if name in ("x_continuous", "y_continuous"):
         return PositionContinuousScale(aesthetic, params)
     if name in ("x_discrete", "y_discrete"):
         return PositionDiscreteScale(aesthetic, params)
     if name in ("x_log10", "y_log10"):
         return PositionContinuousScale(aesthetic, {**params, "trans": "log10"})
-    if name in ("colour_continuous", "fill_continuous"):
+    if name in ("colour_continuous", "colour_gradient"):
+        return GradientScale(aesthetic, params)
+    if name in ("fill_continuous", "fill_gradient"):
         return GradientScale(aesthetic, params)
     if name in ("colour_discrete", "fill_discrete"):
         return HueScale(aesthetic, params)

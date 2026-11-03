@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
+import urllib.parse
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -55,7 +57,10 @@ def test_viewer_cases_runs_two_real_cases(tmp_path: Path) -> None:
         pytest.fail("web/viewer/dist 不存在：先跑 `pixi run viewer:build`")
     module = _module()
     out = tmp_path / "out"
-    gallery = tmp_path / "gallery.html"
+    # gallery.html 按契约放在 `<viewer>/dist/` 下：卡片链 `../index.html`、资产落在
+    # `<viewer>/gallery/`（用 tmp 的 viewer 根，不写仓库）。
+    viewer = tmp_path / "viewer"
+    gallery = viewer / "dist" / "gallery.html"
     code = module.main(
         [
             "--case",
@@ -84,5 +89,42 @@ def test_viewer_cases_runs_two_real_cases(tmp_path: Path) -> None:
     page = gallery.read_text(encoding="utf-8")
     assert "geom-col-basic" in page
     assert "geom-text-cjk" in page
-    assert "index.html?scene=gallery/geom-col-basic.ggir.cbor" in page
+    assert "../index.html?scene=gallery/geom-col-basic.ggir.cbor" in page
     assert "零 wasm：是" in (out / "report.md").read_text(encoding="utf-8")
+
+
+def test_gallery_card_links_resolve_to_real_files(tmp_path: Path) -> None:
+    """卡片链接按 URL 解析后，index.html / scene / 缩略图都真的存在（不是字符串比对）。"""
+    module = _module()
+    viewer = tmp_path / "viewer"
+    gallery = viewer / "dist" / "gallery.html"
+    viewer.mkdir(parents=True)
+    (viewer / "index.html").write_text("<!doctype html><title>viewer</title>", encoding="utf-8")
+    thumb = tmp_path / "thumb.png"
+    thumb.write_bytes(b"\x89PNG\r\n\x1a\n")
+    ir_file = tmp_path / "geom-col-basic.ggir.cbor"
+    ir_file.write_bytes(b"\xa0")
+    result = module.Result(
+        case="geom-col-basic",
+        family="geom-col",
+        status=module.PASS,
+        elements=3,
+        thumbnail=str(thumb),
+        ir_path=str(ir_file),
+    )
+    module.write_gallery([result], gallery, tmp_path / "out", "now")
+    page = gallery.read_text(encoding="utf-8")
+
+    hrefs = re.findall(r'<a href="([^"]+)"', page)
+    srcs = re.findall(r'<img src="([^"]+)"', page)
+    assert len(hrefs) == 1 and len(srcs) == 1
+    index_path, _, query = hrefs[0].partition("?")
+    # 1) ../index.html 从 dist/ 解析到 viewer 根目录的入口页。
+    assert (gallery.parent / index_path).resolve().is_file()
+    # 2) scene 参数相对 viewer 根目录（index.html 所在目录）解析 → 真实文件。
+    scene = urllib.parse.parse_qs(query)["scene"][0]
+    scene_file = (viewer / scene).resolve()
+    assert scene_file.is_file()
+    assert scene_file.suffixes[-2:] == [".ggir", ".cbor"]
+    # 3) 缩略图相对 gallery.html 解析 → 真实文件。
+    assert (gallery.parent / srcs[0]).resolve().is_file()

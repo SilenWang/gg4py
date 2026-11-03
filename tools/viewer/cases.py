@@ -71,13 +71,10 @@ ERROR = "error"
 SKIP = "skip"
 RED = {FAIL, ERROR}
 
-# ci = false 的三条 case：参考图能生成，但实现侧本身有缺口（SIL-709 已登记），
-# 由 M2 修。这里只解释，不把它们算成 viewer 的缺口。
-IMPLEMENTATION_GAPS = {
-    "theme-grey-basic": "panel.grid.major/minor 解析了但没绘制（M2）",
-    "theme-minimal-basic": "panel.grid.major/minor 解析了但没绘制（M2）",
-    "guide-colourbar": "渐变条仍是 256 条细矩形，resvg 光栅化偏白（M2）",
-}
+# ci = false 的 case：参考图能生成，但实现侧有缺口时在这里点名解释，不把它们
+# 算成 viewer 的缺口。SIL-723 修掉 theme 网格线与 colourbar 取色后这里已空；
+# 之后再有缺口按同样的格式登记。
+IMPLEMENTATION_GAPS: dict[str, str] = {}
 
 
 def _load_matrix_module():
@@ -404,8 +401,19 @@ def render_report(
     return "\n".join(lines)
 
 
+def gallery_assets_dir(gallery: Path) -> Path:
+    """gallery 的图片 / IR 资产目录。
+
+    `gallery.html` 在 `<viewer>/dist/` 下，但卡片链到的是 `<viewer>/index.html`
+    （viewer 根目录），`scene` 参数按**相对 viewer 根目录**解析（`fetch()` 相对
+    文档 URL）。所以资产放 `<viewer>/gallery/`，而不是 `dist/gallery/`：
+    否则点开卡片会 `GET /gallery/<case>.ggir.cbor` → 404。
+    """
+    return gallery.parent.parent / "gallery"
+
+
 def write_gallery(results: list[Result], gallery: Path, out_dir: Path, now: str) -> None:
-    assets = gallery.parent / "gallery"
+    assets = gallery_assets_dir(gallery)
     assets.mkdir(parents=True, exist_ok=True)
     cards: list[str] = []
     for item in results:
@@ -422,8 +430,8 @@ def write_gallery(results: list[Result], gallery: Path, out_dir: Path, now: str)
         shutil.copyfile(REPO / item.ir_path, ir_file)
         cards.append(
             f'<article class="card {item.status}">'
-            f'<a href="index.html?scene=gallery/{html.escape(item.case)}.ggir.cbor">'
-            f'<img src="gallery/{html.escape(item.case)}.png" alt="{html.escape(item.case)}" loading="lazy">'
+            f'<a href="../index.html?scene=gallery/{html.escape(item.case)}.ggir.cbor">'
+            f'<img src="../gallery/{html.escape(item.case)}.png" alt="{html.escape(item.case)}" loading="lazy">'
             f"</a><h2>{html.escape(item.case)}</h2>"
             f"<p>{html.escape(item.family)} · {item.elements} 个图元</p>"
             f'<p class="diff">{_fmt_percent(item.diff)} / 均值 {_fmt_percent(item.mean)} '
