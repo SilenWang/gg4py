@@ -117,6 +117,16 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        "bin_2d": (("fill", "count"),),
+        "bin_hex": (("fill", "count"),),
+        "summary_2d": (("fill", "value"),),
+        "summary_hex": (("fill", "value"),),
+        "contour": (("order", "level"),),
+        "contour_filled": (("order", "level"), ("fill", "level")),
+        # `stat_density_2d` 的链式 contour **不经过** map_statistic()：密度族即使
+        # 做了等值线也不会有 `order` 列（上游 `StatDensity2d$compute_layer()`）。
+        "density_2d": (),
+        "density_2d_filled": (("fill", "level"),),
         # M2-6 的长尾 stat（`ggcore.stat_longtail.DEFAULT_AES` 的同一份表；
         # 这里内联是因为 build 在 import 期不能反向 import stat_longtail）。
         "qq": (("x", "theoretical"), ("y", "sample")),
@@ -477,6 +487,9 @@ def map_statistic(layer: Layer, statistic: ColumnTable, aesthetics: Aesthetics) 
         if name in dict(columns) or any(name == key for key, _ in aesthetics.deferred):
             continue
         if source not in stat_values:
+            # 空图层（例如等值线一层都没生成）：没有统计量可映射，列也就没有。
+            if nrows == 0:
+                continue
             raise BuildError(
                 f"stat {layer.stat.name!r} 的缺省映射 {name} = after_stat({source}) 找不到"
                 f"统计量 {source!r}；stat 输出列：{', '.join(stat_values)}"

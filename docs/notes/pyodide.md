@@ -12,6 +12,8 @@
 | node | 22.23.4（pixi 的 `nodejs = "22.*"`） |
 | Pyodide 侧 numpy | 2.4.6（`numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl`） |
 | CPython 侧 numpy | 2.5.4 |
+| contourpy（两端） | **1.3.3**（Pyodide 的 wasm 轮子 + 桌面端 `pixi.lock`，同一版本；SIL-758） |
+| 等值线冒烟（SIL-758） | `stat_contour` 10 行、`stat_contour_filled` 37 行，两端摘要相同 |
 | CPython 侧 CBOR | `cbor2` 6.1.5（Rust 扩展，canonical） |
 | Pyodide 侧 CBOR | `ggcore.ir._cbor`（纯 Python，canonical） |
 | IR 字节 | 两侧都是 **1848 B**，sha256 `0d1ca19c7214f35d98a10159f090df57365f99a133d3760e8b200c5ce593e89b` |
@@ -29,6 +31,7 @@
 | 依赖 | 在 Pyodide 里 | 依据 |
 | --- | --- | --- |
 | numpy | **有**，官方 wasm 轮子 | pyodide-lock 里 `numpy 2.4.6`，`loadPackage("numpy")` 从本地目录加载，无需联网 |
+| contourpy | **有**，官方 wasm 轮子（1.3.3） | pyodide-lock 里 `contourpy 1.3.3`（`contourpy-1.3.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl`）；桌面端 `pixi.toml` 因此钉 `>=1.3.3, <1.4`，两边同一个版本（SIL-758） |
 | cbor2 | **没有** | pyodide 314.0.7 的包索引共 357 个包，不含 `cbor2`（也没有任何 CBOR 编码库，只有 `cbor-diag` 诊断工具） |
 | cbor2 的 PyPI 轮子 | **不能用于 wasm** | 6.2.0.post1 共 65 个文件（`cp310`–`cp314` × 各平台轮子 + 1 个 sdist），没有 `py3-none-any`；6.x 起是 **Rust**（PyO3）实现，sdist 需要 Rust 工具链交叉编译到 `wasm32-unknown-emscripten`。micropip 编译不了 |
 
@@ -67,11 +70,16 @@ pixi run gate:pyodide:selftest   # 负向对照：故意差 1 比特，门禁必
    第二份是 SIL-646 加的边角取值 scene：f32 缓冲里的 NaN 全部位型、±Inf、-0.0，
    以及取到 64 位上界的 `int` 参数——一份「正常」scene 相同证明不了这些边角
    两边写得一样（NaN 作为 CBOR 浮点时的 `f97e00` 归一化由 `gate:cbor` 守）。
-4. 前置断言：CPython 侧必须真的用上 `cbor2`、Pyodide 侧必须真的没有用它。否则
+4. 等值线冒烟（M2-6 / SIL-758）：`run_ir.py` 额外把 `stat_contour` /
+   `stat_contour_filled` 的产物做摘要（列名 + kind + 逐值字节），两端必须相同，
+   并且两端的 `contourpy` 版本必须一致（否则「一致」是两个实现的巧合）。这一步
+   会把 `contourpy` 的 wasm 轮子装进 Pyodide——`ggcore` 里唯一的 C++ 扩展，
+   也是「内核能进浏览器」最需要实测的依赖。
+5. 前置断言：CPython 侧必须真的用上 `cbor2`、Pyodide 侧必须真的没有用它。否则
    「一致」只说明同一个实现跑了两遍，判定直接失败（退出码 2）。
 
-两个任务都 `depends-on = ["spike:e1:assets"]`，所以 Pyodide 运行时与 numpy 轮子
-都从本地目录来（sha256 由 E1 的 manifest 固定），不碰 CDN。
+两个任务都 `depends-on = ["spike:e1:assets"]`，所以 Pyodide 运行时与 numpy /
+contourpy 轮子都从本地目录来（sha256 由 E1 的 manifest 固定），不碰 CDN。
 
 一份 scene 相同证明不了 `_cbor` 是 canonical CBOR，所以另有一道
 `pixi run gate:cbor`（`tools/gates/check_cbor_diff.py`）：9330 个取值逐个与
