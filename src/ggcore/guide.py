@@ -258,6 +258,19 @@ def guide_from_component(component: Any) -> Guide:
         return guide_legend(**{k: v for k, v in _clean(params, _LEGEND_PARAMS).items()})
     if name == "colourbar":
         return guide_colourbar(**{k: v for k, v in _clean(params, _COLOURBAR_PARAMS).items()})
+    from ggcore.components import Guide as GuideComponent
+
+    builder = getattr(component, "build_guide", None)
+    if callable(builder) and getattr(type(component), "build_guide", None) is not (
+        GuideComponent.build_guide
+    ):
+        built = builder()
+        if not isinstance(built, Guide):
+            raise GuideError(
+                f"guide_{name} 的 build_guide() 必须返回 ggcore.guide.Guide，"
+                f"得到 {type(built).__name__}"
+            )
+        return built
     raise GuideError(
         f"未知的 guide {name!r}；已实现：legend / colourbar / none"
         "（guide_bins 未实现，见 docs/notes/guide.md）"
@@ -1107,6 +1120,10 @@ def legend_grob(
                 name=f"{name}.title",
             )
         )
+    draw_keys = getattr(guide_build.guide, "draw_keys", None)
+    if callable(draw_keys):
+        grobs.extend(draw_keys(guide_build, theme, layout, metrics=metrics, name=name))
+        return grobs
     if isinstance(guide_build.guide, GuideColourbar) and layout.bar is not None:
         grobs.extend(_colourbar_grobs(guide_build, theme, layout, name=name))
         return grobs

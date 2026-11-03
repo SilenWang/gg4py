@@ -1383,6 +1383,10 @@ def coord_from_component(component: Any) -> CoordBase:
         raise TypeError(f"coord 需要 ggcore.components.Coord，收到 {type(component).__name__}")
     name = component.name
     if name not in _COORD_PARAMS:
+        builder = getattr(component, "build_coord", None)
+        overridden = getattr(type(component), "build_coord", None) is not Coord.build_coord
+        if callable(builder) and overridden:
+            return builder()
         raise CoordError(
             f"坐标系 {name!r} 尚未实现（已实现：{', '.join(sorted(COORD_IMPLEMENTATIONS))}）"
         )
