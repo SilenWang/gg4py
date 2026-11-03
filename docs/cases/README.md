@@ -245,7 +245,7 @@ M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) +
 | `geom-smooth` | `-default`（loess 默认口径）/ `-groups` / `-span` |
 | `scale` | `x-log10` / `y-log10` / `-colour-default`（hue）/ `-colour-gradient` / `-limits-drop` |
 | `facet` | `wrap-2x2` / `grid-ab` / `wrap-free-y` / `wrap-free-x` |
-| `theme` | `grey-basic` / `minimal-basic` / `void-basic`（同一份数据，只换主题） |
+| `theme` | `grey` / `bw` / `classic` / `light` / `dark` / `linedraw` / `test` / `minimal` / `void` 各 `-basic`（同一份数据，只换主题） |
 | `guide` | `legend-single` / `legend-merged`（colour + shape）/ `colourbar` |
 
 SIL-723 在 M1 内结掉了 SIL-715 的 #1/#2/#3：这三条从 `ci = false` 翻成

@@ -40,7 +40,18 @@ from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
-from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
+from ggcore.theme import (
+    theme_bw,
+    theme_classic,
+    theme_dark,
+    theme_gray,
+    theme_grey,
+    theme_light,
+    theme_linedraw,
+    theme_minimal,
+    theme_test,
+    theme_void,
+)
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。`position` 紧跟 `stat`：
 #: 它作用在 stat 之后、标度映射之前（就是流水线第 4 阶段）。
@@ -1182,9 +1193,16 @@ def _register_defaults() -> None:
         register_facet(name, _facet_factory(name))
     for name in GUIDE_NAMES:
         register_guide(name, _guide_factory(name))
+    # 9 套完整主题（`gray` 是 `grey` 的美式拼写别名，上游两个都导出）。
     register_theme("grey", theme_grey)
+    register_theme("gray", theme_gray)
     register_theme("bw", theme_bw)
+    register_theme("classic", theme_classic)
+    register_theme("light", theme_light)
+    register_theme("dark", theme_dark)
+    register_theme("linedraw", theme_linedraw)
     register_theme("minimal", theme_minimal)
+    register_theme("test", theme_test)
     register_theme("void", theme_void)
     register_label("labs", _labels_factory)
 
