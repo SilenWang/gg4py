@@ -253,6 +253,9 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # skia-python per-glyph parity and the offline fallback table (M0-7).
 "gate:metrics" = { cmd = "python tools/gates/check_metrics.py", depends-on = ["assets:canvaskit"] }
 
+# M2-13：r-graph-gallery 35 图核对脚本（只写 .gallery-audit/，不挂进 check）
+"audit:gallery" = "PYTHONPATH=src python tools/audit/gallery_plots.py"
+
 # --- 度量表 (M0-7) --------------------------------------------------------
 # 兜底表由同一脚本从受管字体生成；`--check` 重新生成并比对，CI 里由 gate:metrics 调用。
 "metrics:table" = "python tools/metrics/build_table.py"

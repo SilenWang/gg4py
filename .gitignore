@@ -6,6 +6,9 @@ __pycache__/
 .pytest_cache/
 # pytest-benchmark 的自动存档（`pixi run bench`）
 .benchmarks/
+# `pixi run audit:gallery` 的 35 图产物（M2-13 / SIL-744，不入库）
+.gallery-audit/
+
 # 案例的渲染产物与按需拉取的上游参考图（纳管策略见 docs/notes/snapshot-policy.md）
 docs/cases/*/current/
 docs/cases/*/expected/
