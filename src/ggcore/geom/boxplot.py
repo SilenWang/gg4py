@@ -32,6 +32,7 @@ from ggcore.geom.base import (
     GeomRenderer,
     alpha_colour,
     default_size,
+    fill_values,
     flip_data,
     lty_value,
     npc_values,
@@ -165,7 +166,7 @@ class BoxplotRenderer(GeomRenderer):
             box_high = npc_values(panel, data, "xmax", "x")
 
         colours = _values(data, "colour", "grey20")
-        fills = _values(data, "fill", "white")
+        fills = fill_values(data, params, "white")
         alpha = table_numeric(data, "alpha", default=math.nan)
         linewidth = table_numeric(data, "linewidth", default=0.5)
         linetype = _values(data, "linetype", 1)

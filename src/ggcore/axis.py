@@ -258,8 +258,14 @@ def margin_sides_cm(
     return (out[0], out[1], out[2], out[3])
 
 
-def paint(value: Any) -> str | None:
-    """主题颜色 → 可绘制的颜色；`NA` / `transparent` / 缺失 → None。"""
+def paint(value: Any) -> Any:
+    """主题颜色 → 可绘制的颜色；`NA` / `transparent` / 缺失 → None。
+
+    渐变 / 图案的待解析规格（`ggcore.fills`）原样透传——`panel.background` /
+    `plot.background` 的 `element_rect(fill = 渐变)` 走这一条。
+    """
+    if hasattr(type(value), "resolve"):
+        return value
     if value is None or value is NA or not isinstance(value, str):
         return None
     text = value.strip()

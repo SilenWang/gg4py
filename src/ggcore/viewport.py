@@ -313,6 +313,10 @@ class Gpar:
             value = getattr(self, name)
             if value is UNSET or value is None or value is NA:
                 continue
+            if name == "fill" and hasattr(type(value), "resolve"):
+                # 渐变 / 图案的**待解析**规格（`ggcore.fills`）：坐标要等包围盒
+                # 才知道，写 IR 时才折成具体几何（SIL-751）。
+                continue
             if not isinstance(value, str):
                 raise ViewportError(f"gpar.{name} 必须是颜色字符串、NA 或 None，收到 {value!r}")
         for name in ("lwd", "alpha", "cex", "fontsize", "lineheight", "linemitre", "lex"):

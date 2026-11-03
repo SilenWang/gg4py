@@ -15,8 +15,50 @@
 
 export type Color = [number, number, number, number];
 
+/** 渐变 / 图案的 `extend`（对标 SVG `spreadMethod` 与 grid 的 `extend`）。 */
+export type Extend = "pad" | "repeat" | "reflect";
+
+/** 一个色标：`offset` 是 0..1 的位置，颜色是 8 位 RGBA。 */
+export interface GradientStop {
+  offset: number;
+  colour: Color;
+}
+
+export interface LinearGradientFill {
+  kind: "linear";
+  stops: GradientStop[];
+  start: [number, number];
+  end: [number, number];
+  extend: Extend;
+}
+
+export interface RadialGradientFill {
+  kind: "radial";
+  stops: GradientStop[];
+  center: [number, number];
+  radius: number;
+  focal: [number, number, number] | null;
+  extend: Extend;
+}
+
+/** 平铺图案：`content` 的坐标与几何同一个局部坐标系（`userSpaceOnUse`）。 */
+export interface TilePatternFill {
+  kind: "pattern";
+  size: [number, number];
+  origin: [number, number];
+  extend: Extend;
+  content: IrNode[];
+}
+
+/** `gpar.fill` 的联合类型：纯色仍是 `[r, g, b, a]`，其余带 `kind`。 */
+export type Fill = Color | LinearGradientFill | RadialGradientFill | TilePatternFill;
+
+export function isColour(fill: Fill | null): fill is Color {
+  return Array.isArray(fill);
+}
+
 export interface Gpar {
-  fill: Color | null;
+  fill: Fill | null;
   col: Color | null;
   lwd: number;
   lty: number[];
@@ -74,7 +116,7 @@ export class IrVersionError extends IrError {
 }
 
 export const IR_MAJOR = 0;
-export const IR_MINOR = 2;
+export const IR_MINOR = 3;
 export const DEFAULT_MIME = "application/octet-stream";
 
 export const DEFAULT_GPAR: Gpar = {
@@ -500,7 +542,7 @@ function decodeGpar(raw: unknown, id: string, strict: boolean): Gpar {
   const map = asMap(raw, "gpar", id);
   if (strict) rejectUnknown(map, GPAR_KEYS, "gpar", id);
   const gpar: Gpar = { ...DEFAULT_GPAR };
-  if (map.has("fill")) gpar.fill = colour(map.get("fill"), "gpar.fill", id);
+  if (map.has("fill")) gpar.fill = decodeFill(map.get("fill"), "gpar.fill", id, strict);
   if (map.has("col")) gpar.col = colour(map.get("col"), "gpar.col", id);
   if (map.has("lwd")) {
     gpar.lwd = asNumber(map.get("lwd"), "gpar.lwd", id);
@@ -772,13 +814,141 @@ function colour(raw: unknown, where: string, id: string): Color {
   }) as Color;
 }
 
+function decodeExtend(raw: unknown, where: string, id: string): Extend {
+  if (raw === undefined) return "pad";
+  if (raw !== "pad" && raw !== "repeat" && raw !== "reflect") {
+    throw new IrError(`${where} 不认识 ${describe(raw)}；可选 pad / repeat / reflect`, id);
+  }
+  return raw;
+}
+
+/**
+ * 色标：线格式是**一条** f4 `(n, 5)` 缓冲（offset + r, g, b, a），不是逐档的小映射
+ * （`docs/notes/ir.md` §6.1）。偏移必须单调不减、颜色必须是 0..255 的整数。
+ */
+function decodeStops(raw: unknown, where: string, id: string, strict: boolean): GradientStop[] {
+  const entry = asMap(raw, where, id);
+  if (strict) rejectUnknown(entry, new Set(["dtype", "shape", "data"]), where, id);
+  if (entry.get("dtype") !== "f4") {
+    throw new IrError(`${where}.dtype 必须是 f4`, id);
+  }
+  const shape = entry.get("shape");
+  if (
+    !Array.isArray(shape) ||
+    shape.length !== 2 ||
+    !shape.every((dim) => Number.isInteger(dim) && (dim as number) >= 0)
+  ) {
+    throw new IrError(`${where}.shape 必须是 [n, 5]，收到 ${describe(shape)}`, id);
+  }
+  const [rows, cols] = shape as [number, number];
+  if (cols !== 5) throw new IrError(`${where}.shape 每行必须是 5 个分量`, id);
+  if (rows < 2) throw new IrError(`${where} 至少要两个色标，收到 ${rows} 个`, id);
+  const data = entry.get("data");
+  if (!(data instanceof Uint8Array)) {
+    throw new IrError(`${where}.data 必须是字节串`, id);
+  }
+  if (data.byteLength !== rows * cols * 4) {
+    throw new IrError(
+      `${where}.data 长度 ${data.byteLength} 与 shape=[${rows}, ${cols}] 不符`,
+      id,
+    );
+  }
+  const values = readBuffer(data, "f4", rows * cols);
+  const stops: GradientStop[] = [];
+  let previous = -Infinity;
+  for (let row = 0; row < rows; row++) {
+    const offset = values[row * cols] as number;
+    if (!(offset >= 0 && offset <= 1)) {
+      throw new IrError(`${where}[${row}].offset 必须在 [0, 1]，收到 ${offset}`, id);
+    }
+    if (offset < previous) {
+      throw new IrError(`${where} 的 offset 必须单调不减`, id);
+    }
+    previous = offset;
+    const channels: number[] = [];
+    for (let column = 1; column < cols; column++) {
+      const channel = values[row * cols + column] as number;
+      if (!Number.isInteger(channel) || channel < 0 || channel > 255) {
+        throw new IrError(
+          `${where}[${row}] 的颜色分量必须是 0..255 的整数，收到 ${channel}`,
+          id,
+        );
+      }
+      channels.push(channel);
+    }
+    stops.push({ offset, colour: channels as Color });
+  }
+  return stops;
+}
+
+function decodeFill(raw: unknown, where: string, id: string, strict: boolean): Fill {
+  if (Array.isArray(raw)) return colour(raw, where, id);
+  const map = asMap(raw, where, id);
+  const kind = map.get("kind");
+  if (kind !== "linear" && kind !== "radial" && kind !== "pattern") {
+    throw new IrError(
+      `${where}.kind 不认识 ${describe(kind)}；可选 linear / radial / pattern` +
+        "（纯色 fill 是不带 kind 的 4 元组）",
+      id,
+    );
+  }
+  const keys: Record<string, string[]> = {
+    linear: ["kind", "stops", "start", "end", "extend"],
+    radial: ["kind", "stops", "center", "radius", "focal", "extend"],
+    pattern: ["kind", "size", "origin", "extend", "content"],
+  };
+  if (strict) rejectUnknown(map, new Set(keys[kind]), `${where}（${kind}）`, id);
+  const extend = decodeExtend(map.get("extend"), `${where}.extend`, id);
+  if (kind === "pattern") {
+    const contentRaw = map.get("content");
+    if (!Array.isArray(contentRaw)) {
+      throw new IrError(`${where}.content 必须是节点数组`, id);
+    }
+    const content = contentRaw.map((item, index) =>
+      decodeNode(item, `${id}/fill.content[${index}]`, strict),
+    );
+    return {
+      kind: "pattern",
+      size: asNumberPair(map.get("size"), `${where}.size`),
+      origin: asNumberPair(map.get("origin"), `${where}.origin`),
+      extend,
+      content,
+    };
+  }
+  const stops = decodeStops(map.get("stops"), `${where}.stops`, id, strict);
+  if (kind === "linear") {
+    return {
+      kind: "linear",
+      stops,
+      start: asNumberPair(map.get("start"), `${where}.start`),
+      end: asNumberPair(map.get("end"), `${where}.end`),
+      extend,
+    };
+  }
+  const focalRaw = map.get("focal");
+  let focal: [number, number, number] | null = null;
+  if (focalRaw !== undefined && focalRaw !== null) {
+    if (!Array.isArray(focalRaw) || focalRaw.length !== 3) {
+      throw new IrError(`${where}.focal 必须是三个数（fx, fy, fr）`, id);
+    }
+    focal = focalRaw.map((value) => asNumber(value, `${where}.focal`)) as [number, number, number];
+  }
+  return {
+    kind: "radial",
+    stops,
+    center: asNumberPair(map.get("center"), `${where}.center`),
+    radius: asNumber(map.get("radius"), `${where}.radius`),
+    focal,
+    extend,
+  };
+}
+
 function rejectUnknown(
   map: Map<string, unknown>,
   allowed: Set<string>,
   where: string,
   id: string,
-): void {
-  for (const key of map.keys()) {
+): void {  for (const key of map.keys()) {
     if (!allowed.has(key)) {
       throw new IrError(`${where} 有不认识的字段 ${JSON.stringify(key)}`, id);
     }

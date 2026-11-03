@@ -90,6 +90,14 @@ E3 的结论：CanvasKit 只有栅格后端，PDF 走 HarfBuzz 轮廓）：
 页面底色在 M0 是白的（`clear(WHITE)`），不做透明背景；页眉页脚不参与场景遍历
 （快照工具的说明文字直接画在画布上）。
 
+渐变与图案（SIL-751）三路共用同一套绘制入口：渐变走 `skia.GradientShader`
+（`MakeLinear` / `MakeRadial` / `MakeTwoPointConical`，坐标是 IR 的节点局部坐标，
+`extend` 映射成 `TileMode`），图案走**逐 tile 裁剪 + 平移画内容**的矢量平铺
+（`_tile_path`，不落位图，单节点上限 `MAX_PATTERN_TILES`）。SVG 后端由 skia 自己
+序列化成 `<linearGradient>` / `<radialGradient>`，因此有两个**序列化器**缺口（不在
+我们这一层）：不写 `spreadMethod`、focal 渐变把 `fr` / `r` 写反——口径与影响见
+`docs/notes/ir.md` §6.1 的消费端缺口表。
+
 SVG 产物的 id（skia 给 `<clipPath>` 的 `cl_N`）是进程级递增的，同一进程里第二个
 画布会接着数。`SkiaSvgDevice._finish` 按出现顺序把它们重编号成 `cl_0…` 并同步改
 `url(#…)`，所以同一份 IR 两次出图的字节相同（M1-12 的 `ggsave` 逐字节验收靠它；
@@ -256,7 +264,7 @@ M2-12 的 dash 口径（`DASH_UNIT = 4/3`，见 `docs/notes/viewer.md` §10.1）
 | 标签里的 `\n` | `grid.text` 断行 | M1 已支持：行距 1.44×fontsize、整块 vjust（M1-b） |
 | 非默认 `lineheight` | `gpar(lineheight)` | IR 的 `text` 节点没有 lineheight 字段，设备固定按缺省 1.2 画（M1-b 的 IR 缺口） |
 | 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
-| 渐变 / 图案填充 | grid 的 gpar 支持 | IR 的 gpar 只有 RGBA |
+| 渐变 / 图案填充 | grid 的 gpar 支持 | M2 已支持 `fill` 的 `linear` / `radial` / `pattern`（`ir.md` §6.1）：渐变走 shader、图案逐 tile 矢量平铺；skia 的 SVG 序列化器有两个已知缺口（`spreadMethod`、focal 的 `fr`/`r`） |
 | 透明背景 | 设备相关 | 页面固定白底 |
 | 多页 / 多文档 | PDF 支持 | 一台设备一页（M1-12 的 `ggsave` 也只出一页，见 `docs/notes/io.md` §4） |
 

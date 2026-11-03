@@ -30,6 +30,7 @@ from ggcore.geom.base import (
     GeomError,
     GeomRenderer,
     alpha_colour,
+    fill_values,
     npc_values,
     table_numeric,
 )
@@ -108,7 +109,7 @@ class PointRenderer(GeomRenderer):
         stroke = table_numeric(data, "stroke", default=0.5)
         alpha = table_numeric(data, "alpha", default=math.nan)
         colours = np.array(_colour_values(data, "colour", "black"), dtype=object)
-        fills = np.array(_colour_values(data, "fill", None), dtype=object)
+        fills = np.array(fill_values(data, build.params, None), dtype=object)
         size_pt = size * POINT_PER_MM + stroke * STROKE_PER_MM / 2.0
         lwd = stroke * STROKE_PER_MM / 2.0
 
