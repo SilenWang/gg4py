@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-bins", "scale-size"]
+ci = true
+title = "上游快照：guide_bins can show arrows"
+source = "upstream:tests/testthat/_snaps/guides/guide-bins-can-show-arrows.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

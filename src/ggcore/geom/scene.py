@@ -76,6 +76,7 @@ from ggcore.guide import (
     GuideBuild,
     GuideError,
     build_guides,
+    guide_theme,
     legend_box_layout,
     legend_layout,
 )
@@ -419,12 +420,22 @@ def plot_layout(
         legend_layout(guide, theme, side, metrics=metrics)
         for guide, side in zip(guides, guide_sides, strict=True)
     )
+    # 同一方位的图例排进一个 `guide-box`；`inside` 是例外：R 4.0.3 里每张
+    # `position = "inside"` 的图例各自是一个覆盖在面板上的 guide-box，各用各的
+    # `legend.position.inside` / `justification.inside`（可能来自 guide 自己的
+    # `theme=`），所以按 guide 分组（SIL-788）。
     group_indices: dict[str, list[int]] = {}
     for index, side in enumerate(guide_sides):
-        group_indices.setdefault(str(side), []).append(index)
+        key = f"inside:{index}" if side == "inside" else str(side)
+        group_indices.setdefault(key, []).append(index)
+    box_positions: dict[str, str] = {
+        key: str(guide_sides[indices[0]]) for key, indices in group_indices.items()
+    }
     box_layouts = {
-        side: legend_box_layout([legend_layouts[index] for index in indices], side, theme)
-        for side, indices in group_indices.items()
+        key: legend_box_layout(
+            [legend_layouts[index] for index in indices], box_positions[key], theme
+        )
+        for key, indices in group_indices.items()
     }
 
     x_axis = 0.0
@@ -614,11 +625,15 @@ def plot_layout(
     legend_boxes: list[Box | None] = [None] * len(guides)
     legend_box_origins: list[Box] = []
     legend_box_layouts: list[Any] = []
-    for side in ("top", "right", "bottom", "left", "inside"):
-        indices = group_indices.get(side)
-        if not indices:
-            continue
-        box_layout = box_layouts[side]
+    for key in (
+        key
+        for side in ("top", "right", "bottom", "left", "inside")
+        for key in group_indices
+        if box_positions[key] == side
+    ):
+        indices = group_indices[key]
+        side = box_positions[key]
+        box_layout = box_layouts[key]
         origin = _place_legend_box(
             box_layout,
             position=side,
@@ -629,7 +644,7 @@ def plot_layout(
             content_top=content_top,
             spacing=spacing,
             caption_cm=caption_cm,
-            theme=theme,
+            theme=(theme if side != "inside" else guide_theme(theme, guides[indices[0]].guide)),
         )
         legend_box_origins.append(origin)
         legend_box_layouts.append(box_layout)
@@ -1431,10 +1446,11 @@ def _legend_grobs(
         zip(layout.guides, layout.legend_layouts, layout.legend_boxes, strict=True)
     ):
         # 走 `Guide.gengrob()`：自定义 guide 覆盖它就能接管整张图例的绘制。
+        # `theme=` 是逐 guide 覆盖，自定义 guide 的 `gengrob` 也要看得到它。
         children = guide.guide.gengrob(
             guide,
             build,
-            theme,
+            guide_theme(theme, guide.guide),
             legend,
             metrics=metrics,
             name=f"guide-{index}",

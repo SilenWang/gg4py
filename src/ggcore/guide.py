@@ -66,9 +66,12 @@ from ggcore.eval import parse_aes
 from ggcore.grobs import NullGrob, ZeroGrob, rect_grob, text_grob
 from ggcore.theme import (
     ElementBlank,
+    ElementLine,
     ElementRect,
     ElementText,
     ResolvedTheme,
+    merge_theme,
+    resolve_theme,
 )
 from ggcore.units import UnitContext, convert_height, convert_width, unit
 from ggcore.viewport import NA, gpar, viewport
@@ -103,6 +106,7 @@ __all__ = [
     "guide_legend",
     "guide_merge",
     "guide_none",
+    "guide_theme",
     "guide_train",
     "guide_transform",
     "legend_box_layout",
@@ -208,6 +212,8 @@ class GuideLegend(Guide):
     label_position: str | None = None
     label_hjust: float | None = None
     label_vjust: float | None = None
+    #: 逐 guide 的主题覆盖（R 4.0.3 的 `guide_legend(theme = theme(...))`）。
+    theme: Any = None
     kind: str = "legend"
 
     def __post_init__(self) -> None:
@@ -268,6 +274,8 @@ class GuideColourbar(Guide):
     alpha: float | None = None
     reverse: bool = False
     order: float = 0.0
+    #: 逐 guide 的主题覆盖（R 4.0.3 的 `guide_colourbar(theme = theme(...))`）。
+    theme: Any = None
     kind: str = "colourbar"
 
     def __post_init__(self) -> None:
@@ -311,6 +319,8 @@ class GuideBins(Guide):
     reverse: bool = False
     order: float = 0.0
     show_limits: bool | None = None
+    #: 逐 guide 的主题覆盖（R 4.0.3 的 `guide_bins(theme = theme(...))`）。
+    theme: Any = None
     kind: str = "bins"
 
     def __post_init__(self) -> None:
@@ -334,6 +344,8 @@ class GuideColoursteps(Guide):
     alpha: float | None = None
     reverse: bool = False
     order: float = 0.0
+    #: 逐 guide 的主题覆盖（R 4.0.3 的 `guide_coloursteps(theme = theme(...))`）。
+    theme: Any = None
     kind: str = "coloursteps"
 
     def __post_init__(self) -> None:
@@ -393,6 +405,8 @@ class GuideCustom(Guide):
     title: str | None = None
     position: str | None = None
     order: float = 0.0
+    #: 逐 guide 的主题覆盖（R 4.0.3 的 `guide_custom(theme = theme(...))`）。
+    theme: Any = None
     kind: str = "custom"
     available_aes: tuple[str, ...] = ("any",)
 
@@ -455,6 +469,7 @@ def guide_legend(
     label_position: str | None = None,
     label_hjust: float | None = None,
     label_vjust: float | None = None,
+    theme: Any = None,
 ) -> GuideLegend:
     return GuideLegend(
         title=title,
@@ -475,6 +490,7 @@ def guide_legend(
         label_position=label_position,
         label_hjust=label_hjust,
         label_vjust=label_vjust,
+        theme=theme,
     )
 
 
@@ -495,6 +511,7 @@ def guide_colourbar(
     reverse: bool = False,
     order: float = 0.0,
     position: str | None = None,
+    theme: Any = None,
     *,
     raster: bool | None = None,
     **legacy: Any,
@@ -525,6 +542,7 @@ def guide_colourbar(
         alpha=None if alpha is None else float(alpha),
         reverse=bool(reverse),
         order=float(order),
+        theme=theme,
     )
 
 
@@ -539,6 +557,7 @@ def guide_custom(
     title: str | None = None,
     position: str | None = None,
     order: float = 0.0,
+    theme: Any = None,
 ) -> GuideCustom:
     return GuideCustom(
         grob=grob,
@@ -547,6 +566,7 @@ def guide_custom(
         title=title,
         position=position,
         order=float(order),
+        theme=theme,
     )
 
 
@@ -559,6 +579,7 @@ def guide_bins(
     reverse: bool = False,
     order: float = 0.0,
     show_limits: bool | None = None,
+    theme: Any = None,
     **legacy: Any,
 ) -> GuideBins:
     """`guide_bins()`：分箱图例。`show.limits` 的点号写法也认。"""
@@ -575,6 +596,7 @@ def guide_bins(
         reverse=bool(reverse),
         order=float(order),
         show_limits=show_limits,
+        theme=theme,
     )
 
 
@@ -588,6 +610,7 @@ def guide_coloursteps(
     alpha: float | None = None,
     reverse: bool = False,
     order: float = 0.0,
+    theme: Any = None,
     **legacy: Any,
 ) -> GuideColoursteps:
     """`guide_coloursteps()`（别名 `guide_colorsteps`）。"""
@@ -608,6 +631,7 @@ def guide_coloursteps(
         alpha=None if alpha is None else float(alpha),
         reverse=bool(reverse),
         order=float(order),
+        theme=theme,
     )
 
 
@@ -643,6 +667,7 @@ _LEGEND_PARAMS = frozenset(
         "label_position",
         "label_hjust",
         "label_vjust",
+        "theme",
     }
 )
 _COLOURBAR_PARAMS = frozenset(
@@ -667,6 +692,7 @@ _COLOURBAR_PARAMS = frozenset(
         "alpha",
         "reverse",
         "order",
+        "theme",
     }
 )
 _BINS_PARAMS = frozenset(
@@ -681,6 +707,7 @@ _BINS_PARAMS = frozenset(
         "order",
         "show_limits",
         "show.limits",
+        "theme",
     }
 )
 _STEPS_PARAMS = frozenset(
@@ -696,9 +723,10 @@ _STEPS_PARAMS = frozenset(
         "alpha",
         "reverse",
         "order",
+        "theme",
     }
 )
-_CUSTOM_PARAMS = frozenset({"grob", "width", "height", "title", "position", "order"})
+_CUSTOM_PARAMS = frozenset({"grob", "width", "height", "title", "position", "order", "theme"})
 
 #: R 4.0.3 的旧参数名（带点）→ gg4py 的字段名。新旧写法等价。
 _PARAM_ALIASES = {
@@ -1747,10 +1775,41 @@ def _text_element(theme: ResolvedTheme, name: str) -> ElementText:
     return ElementText(size=11.0, colour="#000000")
 
 
-def legend_direction(guide: Guide, position: str | None) -> str:
+def _text_footprint(
+    text: str,
+    size: float,
+    element: ElementText,
+    metrics: Any,
+) -> tuple[float, float]:
+    """一段图例文字的外接尺寸（cm）：`angle = 90 / 270` 时宽高互换。
+
+    R 在 gtable 里量的是**旋转后**的 grob（`legend.text` 竖排时宽 = 行高、
+    高 = 字符串长度），以前这里只量不旋转的那一版，竖排标签的列宽会大出一整条
+    字符串的宽度（SIL-788 的 rotated guide titles and labels）。
+    """
+    width = text_width_cm(text, size, metrics, element.family or "")
+    height = text_line_cm(size)
+    angle = float(getattr(element, "angle", 0.0) or 0.0)
+    if round(angle) % 180 == 90:
+        return height, width
+    return width, height
+
+
+def legend_direction(guide: Guide, position: str | None, theme: ResolvedTheme | None = None) -> str:
+    """键的排布方向：guide 的 `direction` > 主题 `legend.direction` > 方位默认。
+
+    R 4.0.3 的 `Guide$setup_params()`：`params$direction <- params$direction %||%
+    theme$legend.direction %||% (position %in% c("top", "bottom") ? "horizontal" :
+    "vertical")`。主题这一档以前漏了，`theme(legend.direction = ...)` 因此不生效
+    （SIL-788）。
+    """
     explicit = getattr(guide, "direction", None)
     if explicit is not None:
         return explicit
+    if theme is not None:
+        value = theme.get("legend.direction")
+        if isinstance(value, str) and value in ("horizontal", "vertical"):
+            return value
     return "horizontal" if position in ("top", "bottom") else "vertical"
 
 
@@ -1992,6 +2051,21 @@ def legend_box_layout(
     )
 
 
+def guide_theme(theme: ResolvedTheme, guide: Any) -> ResolvedTheme:
+    """把 guide 自己的 `theme=` 覆到 plot 主题上（R 4.0.3 的 `guide$theme`）。
+
+    R 在 `guide$draw()` 里按 `plot_theme %+% guide$theme` 给**这一张**图例算元素，
+    不影响其它图例；`merge_theme()` 的语义与 `%+%` 一致（override 优先）。
+    """
+    extra = getattr(guide, "theme", None)
+    if extra is None:
+        return theme
+    base = getattr(theme, "theme", None)
+    if base is None:
+        return theme
+    return resolve_theme(merge_theme(base, extra), getattr(theme, "metrics", None))
+
+
 def legend_layout(
     guide_build: GuideBuild,
     theme: ResolvedTheme,
@@ -2001,7 +2075,8 @@ def legend_layout(
 ) -> LegendLayout:
     """一张图例的尺寸与内部格位（cm；不含外部的 `legend.box.spacing`）。"""
     guide = guide_build.guide
-    direction = legend_direction(guide, position)
+    theme = guide_theme(theme, guide)
+    direction = legend_direction(guide, position, theme)
     padding = margin_sides_cm(theme.get("legend.margin"))
     pad_t, pad_r, pad_b, pad_l = padding
     title_el = _text_element(theme, "legend.title")
@@ -2087,11 +2162,13 @@ def legend_layout(
 
     # --- 标签 / 标题的文字盒（R：legend.text / legend.title 的 margin + gap）---
     mt, mr, mb, ml = margin_sides_cm(text_el.margin)
-    label_text_w = [
-        text_width_cm(key.label, text_size, metrics, text_el.family or "")
-        for key in guide_build.keys
+    label_footprints = [
+        _text_footprint(key.label, text_size, text_el, metrics) for key in guide_build.keys
     ]
-    label_text_h = text_line_cm(text_size)
+    label_text_w = [width for width, _height in label_footprints]
+    label_text_h = max(
+        (height for _width, height in label_footprints), default=text_line_cm(text_size)
+    )
     if text_position == "right":
         label_w = [ml + value + mr + gap for value in label_text_w]
         label_h = mt + label_text_h + mb
@@ -2106,12 +2183,12 @@ def legend_layout(
         label_pad_x = 0.0
 
     tmt, tmr, tmb, tml = margin_sides_cm(title_el.margin)
-    title_text_w = (
-        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
-        if guide_build.title
-        else 0.0
-    )
-    title_text_h = text_line_cm(title_size) if guide_build.title else 0.0
+    if guide_build.title:
+        title_text_w, title_text_h = _text_footprint(
+            guide_build.title, title_size, title_el, metrics
+        )
+    else:
+        title_text_w, title_text_h = 0.0, 0.0
     if title_position == "top":
         title_w = tml + title_text_w + tmr
         title_h = tmt + title_text_h + tmb + gap
@@ -2829,6 +2906,7 @@ def _draw_title(
             y,
             hjust=h,
             vjust=v,
+            rot=float(title_el.angle or 0.0),
             default_units="cm",
             gp=gpar(**_text_gp(title_el)),
             name=f"{name}.title",
@@ -2904,6 +2982,7 @@ def legend_grob(
     name: str = "guide",
 ) -> list[Any]:
     """一张图例的 grob 列表（局部 cm 坐标；调用方给外框视口）。"""
+    theme = guide_theme(theme, guide_build.guide)
     if isinstance(guide_build.guide, GuideCustom):
         return custom_grob(guide_build, theme, layout, metrics=metrics, name=name)
     width = layout.width_cm
@@ -3008,6 +3087,7 @@ def legend_grob(
                 y,
                 hjust=hjust,
                 vjust=vjust,
+                rot=float(text_el.angle or 0.0),
                 default_units="cm",
                 gp=gpar(**_text_gp(text_el)),
                 name=f"{name}.label-{index}",
@@ -3026,6 +3106,7 @@ def custom_grob(
 ) -> list[Any]:
     """`guide_custom(grob)` 的绘制：内容 grob + 标题 + 背景。"""
     guide = guide_build.guide
+    theme = guide_theme(theme, guide)
     assert isinstance(guide, GuideCustom)
     grobs: list[Any] = []
     background = theme.get("legend.background")
@@ -3153,6 +3234,53 @@ def _bar_bands(
                 )
             )
     return grobs
+
+
+def _legend_axis_line_grob(
+    layout: LegendLayout,
+    theme: ResolvedTheme,
+    *,
+    name: str,
+) -> list[Any]:
+    """`legend.axis.line`：沿 key 区外侧边缘的轴线（`guide_bins` 的默认元素）。
+
+    R 的 `GuideBins$draw()` 把轴线放在 key 的 gtable 边上，端点随
+    `legend.text.position` 走（`right` → `x = (1, 1)`、`left` → `x = (0, 0)`、
+    `bottom` → `y = (0, 0)`、`top` → `y = (1, 1)`）；箭头由元素自带的
+    `element_line(arrow = arrow(...))` 决定（`legend.axis.line` 的箭头那条快照）。
+    """
+    element = theme.get("legend.axis.line")
+    box = layout.bar
+    if not isinstance(element, ElementLine) or box is None:
+        return []
+    colour = paint(element.colour)
+    if colour is None:
+        return []
+    text_position = layout.label_position
+    if layout.direction == "horizontal":
+        y = box.y_cm if text_position == "bottom" else box.y_cm + box.height_cm
+        x0, y0 = box.x_cm, y
+        x1, y1 = box.x_cm + box.width_cm, y
+    else:
+        x = box.x_cm + box.width_cm if text_position == "right" else box.x_cm
+        x0, y0 = x, box.y_cm
+        x1, y1 = x, box.y_cm + box.height_cm
+    arrow = None if isinstance(element.arrow, bool) else element.arrow
+    width = float(element.linewidth or 0.0) * 72.0 / 25.4
+    from ggcore.grobs import segments_grob
+
+    return [
+        segments_grob(
+            [x0],
+            [y0],
+            [x1],
+            [y1],
+            default_units="cm",
+            gp=gpar(col=colour, lwd=width),
+            arrow=arrow,
+            name=f"{name}.axis-line",
+        )
+    ]
 
 
 def _bar_axis_grobs(
@@ -3392,6 +3520,7 @@ def _bins_grobs(
             if decor is None:
                 continue
             grobs.append(replace(decor, vp=vp) if getattr(decor, "vp", None) is None else decor)
+    grobs.extend(_legend_axis_line_grob(layout, theme, name=name))
     grobs.extend(
         _bar_axis_grobs(
             layout,

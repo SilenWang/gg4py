@@ -1223,3 +1223,133 @@ def test_guide_extension_functions_forward_to_methods() -> None:
     theme_value = resolve_theme(Theme())
     layout = legend_layout(trained, theme_value, "right", metrics=METRICS)
     assert guide_gengrob(trained, build, theme_value, layout, metrics=METRICS)
+
+
+# ---------------------------------------------------------------------------
+# SIL-788（G1a）：位置参数约定、逐 guide 主题、inside 独立定位
+# ---------------------------------------------------------------------------
+
+
+def test_guide_factory_positional_argument_is_a_title_not_an_aesthetic() -> None:
+    """`guide_legend("colour title")` 的第一个位置参数是 `title`（R 的签名）。
+
+    美学的写法（`registry.guide_colourbar("colour", ...)`）与位置 guide 的
+    `guide_axis("x", ...)` 仍走 `aesthetic`。
+    """
+    titled = registry.guide_legend("colour title with hjust = 0")
+    assert titled.aesthetic is None
+    assert titled.params["title"] == "colour title with hjust = 0"
+
+    aesthetic = registry.guide_colourbar("colour", nbin=8)
+    assert aesthetic.aesthetic == "colour"
+    assert "title" not in aesthetic.params
+
+    axis = registry.guide_axis("x", angle=45)
+    assert axis.aesthetic == "x"
+
+
+def test_construct_accepts_name_keyword_for_scales() -> None:
+    """`scale_colour_discrete(name = "…")` 不能被 `construct(name=)` 吃掉。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + registry.scale_colour_discrete(name="Cyl")
+    )
+    build = build_plot(plot)
+    titles = [guide.title for guide in build_guides(build)]
+    assert titles == ["Cyl"]
+
+
+def test_guide_theme_overrides_only_that_guide() -> None:
+    """`guide_*(theme = theme(...))` 只改这一张图例的主题。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g", fill="g"))
+        + registry.geom_point(shape=21)
+        + guides(
+            colour=guide_legend(
+                title="left",
+                order=1,
+                theme=make_theme(**{"legend.title.position": "left"}),
+            ),
+            fill=guide_legend(title="top", order=2),
+        )
+    )
+    build = build_plot(plot)
+    theme_value = resolve_theme(Theme())
+    guides_built = build_guides(build)
+    assert len(guides_built) == 2
+    layouts = [
+        legend_layout(guide, theme_value, "right", metrics=METRICS) for guide in guides_built
+    ]
+    assert [layout.title_position for layout in layouts] == ["left", "top"]
+
+
+def test_inside_guides_use_their_own_anchor() -> None:
+    """每张 `position = "inside"` 的图例各自成一个 guide-box（各用各的 anchor）。"""
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="g", fill="g"))
+        + registry.geom_point(shape=21)
+        + guides(
+            colour=guide_legend(
+                title="colour",
+                position="inside",
+                theme=make_theme(**{"legend.position.inside": (0.0, 1.0)}),
+            ),
+            fill=guide_legend(
+                title="fill",
+                position="inside",
+                theme=make_theme(**{"legend.position.inside": (1.0, 0.0)}),
+            ),
+        )
+        + make_theme(**{"legend.position": "inside"})
+    )
+    layout = plot_layout(build_plot(plot), width_in=6, height_in=4, metrics=METRICS)
+    assert len(layout.legend_boxes) == 2
+    left, right = sorted(layout.legend_boxes, key=lambda box: box.x_cm)
+    assert left.x_cm < layout.panel_area.x_cm + layout.panel_area.width_cm / 2.0
+    assert right.x_cm > layout.panel_area.x_cm + layout.panel_area.width_cm / 2.0
+
+
+def test_theme_legend_direction_wins_over_position() -> None:
+    """`theme(legend.direction = ...)` 是 guide 显式方向之后的那一档。"""
+    from ggcore.guide import legend_direction
+
+    guide = guide_legend()
+    theme_value = resolve_theme(Theme(elements={"legend.direction": "horizontal"}))
+    assert legend_direction(guide, "right", theme_value) == "horizontal"
+    assert legend_direction(guide_legend(direction="vertical"), "top", theme_value) == "vertical"
+    assert legend_direction(guide, "top", resolve_theme(Theme())) == "horizontal"
+
+
+def test_rotated_legend_text_swaps_its_footprint() -> None:
+    """`angle = 90` 的标签在 gtable 里占「行高 × 文字长度」，不是「长度 × 行高」。"""
+    long_labels = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0]))),
+            ("g", Column("str", np.array(["a long label", "another long label"], dtype=object))),
+        ]
+    )
+    plain = (
+        ggplot(long_labels, aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + make_theme(**{"legend.text": element_text(size=11)})
+    )
+    rotated = (
+        ggplot(long_labels, aes(x="x", y="y", colour="g"))
+        + registry.geom_point()
+        + make_theme(**{"legend.text": element_text(size=11, angle=90)})
+    )
+    flat_build = build_plot(plain)
+    upright_build = build_plot(rotated)
+    flat_layout = legend_layout(
+        build_guides(flat_build)[0], resolve_theme(flat_build.theme), "right", metrics=METRICS
+    )
+    upright_layout = legend_layout(
+        build_guides(upright_build)[0],
+        resolve_theme(upright_build.theme),
+        "right",
+        metrics=METRICS,
+    )
+    # 竖排图例的行高由 `legend.key.height` 兜底（标签比 key 矮），所以只有列宽变。
+    assert upright_layout.width_cm < flat_layout.width_cm

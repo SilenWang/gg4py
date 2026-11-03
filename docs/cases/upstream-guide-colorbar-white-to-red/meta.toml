@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-colourbar", "scale-gradient"]
+ci = true
+title = "上游快照：white-to-red colorbar, white ticks, no frame"
+source = "upstream:tests/testthat/_snaps/guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

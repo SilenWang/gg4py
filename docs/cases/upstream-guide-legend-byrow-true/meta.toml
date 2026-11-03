@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend"]
+ci = true
+title = "上游快照：legend.byrow = TRUE"
+source = "upstream:tests/testthat/_snaps/guide-legend/legend-byrow-true.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"

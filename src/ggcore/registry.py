@@ -274,8 +274,13 @@ def unregister(kind: str, name: str) -> None:
         delattr(_PLOT_CLASS, entry)
 
 
-def construct(kind: str, name: str, *args: Any, **kwargs: Any) -> Any:
-    """按名字构造组件；入口函数与方法都在调用时走这里。"""
+def construct(kind: str, name: str, /, *args: Any, **kwargs: Any) -> Any:
+    """按名字构造组件；入口函数与方法都在调用时走这里。
+
+    `kind` / `name` 是**位置专用**参数：组件的工厂本身常有 `name=` 参数
+    （`scale_colour_discrete(name = "…")` 就是标度标题），转发时必须落到
+    ``kwargs`` 里而不是撞上本函数的 `name`。
+    """
     _check_kind(kind)
     try:
         factory = _REGISTRY[kind][name]
@@ -1535,8 +1540,55 @@ def _facet_factory(name: str) -> Callable[..., Facet]:
     return null_factory
 
 
+#: 位置参数可能是「作用的美学」的全部名字：非位置美学（`guide_legend("colour")`）
+#: 加上位置 guide 的 `x` / `y` / 次轴 / 极坐标轴。不在这个集合里的第一个位置
+#: 参数按上游的 `title` 解释（`guide_legend(title = waiver(), ...)`）。
+_GUIDE_AESTHETIC_NAMES = frozenset(
+    (
+        "any",
+        "colour",
+        "color",
+        "fill",
+        "size",
+        "shape",
+        "alpha",
+        "linetype",
+        "linewidth",
+        "x",
+        "y",
+        "x.sec",
+        "y.sec",
+        "theta",
+        "r",
+    )
+)
+
+
 def _guide_factory(name: str) -> Callable[..., Guide]:
-    def factory(aesthetic: str | None = None, **params: Any) -> Guide:
+    """`guide_<name>(...)` 的注册表项。
+
+    位置参数的两种写法都要认（SIL-788）：
+
+    - `registry.guide_colourbar("colour", nbin=8)` —— gg4py 自己的组件写法，
+      第一个位置参数是它作用的美学；
+    - `guide_legend("colour title with hjust = 0")` —— ggplot2 的写法，第一个
+      位置参数是 `title`（`guide_legend(title = waiver(), ...)`）。
+
+    判据是「这个字符串是不是美学名」：是就当美学，否则按上游当标题。
+    `guide_custom(grob)` 的第一个位置参数按上游是 grob。
+    """
+
+    def factory(*args: Any, aesthetic: str | None = None, **params: Any) -> Guide:
+        if len(args) > 1:
+            raise TypeError(f"guide_{name}() 最多接受一个位置参数，收到 {len(args)} 个")
+        if args:
+            first = args[0]
+            if name == "custom":
+                params.setdefault("grob", first)
+            elif isinstance(first, str) and first in _GUIDE_AESTHETIC_NAMES:
+                aesthetic = first
+            else:
+                params.setdefault("title", first)
         return Guide(name=name, aesthetic=aesthetic, params=params)
 
     return factory
