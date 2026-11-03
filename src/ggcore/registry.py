@@ -44,6 +44,7 @@ from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_s
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
 from ggcore.theme import (
+    FromTheme,
     theme_bw,
     theme_classic,
     theme_dark,
@@ -538,19 +539,27 @@ def bind_plot(cls: type[Any]) -> type[Any]:
 _BAR_DEFAULTS = {
     "colour": None,
     "fill": "grey35",
-    "linewidth": 0.5,
-    "linetype": 1,
+    "linewidth": FromTheme("borderwidth"),
+    "linetype": FromTheme("bordertype"),
     "alpha": None,
     "width": 0.9,
 }
-_LINE_DEFAULTS = {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None}
+#: 4.0 起 `Geom$default_aes` 引用 `element_geom()` 的字段（`from_theme()`）：
+#: 常量 0.5 / 1 / 1.5 是 `theme_grey(base_size = 11)` 下的取值，写成表达式后
+#: `base_size = 33` 的主题才会带动线宽 / 点径。键顺序仍是契约。
+_LINE_DEFAULTS = {
+    "colour": FromTheme("colour %||% ink", literal="black"),
+    "linewidth": FromTheme("linewidth"),
+    "linetype": FromTheme("linetype"),
+    "alpha": None,
+}
 #: `geom_rect` / `polygon` / `ribbon` 一族：`colour = NA`、`fill = col_mix(ink, paper, 0.35)`
 #: 在 theme_grey 下是 `grey35`；tile / raster / map 用 0.2 的混合（`grey20`）。
 _RECT_DEFAULTS = {
     "colour": None,
     "fill": "grey35",
-    "linewidth": 0.5,
-    "linetype": 1,
+    "linewidth": FromTheme("borderwidth"),
+    "linetype": FromTheme("bordertype"),
     "alpha": None,
 }
 
@@ -559,12 +568,12 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
         "point": GeomSpec(
             ("x", "y"),
             {
-                "shape": 19.0,
-                "colour": "black",
-                "fill": None,
-                "size": 1.5,
+                "shape": FromTheme("pointshape", numeric=True),
+                "colour": FromTheme("colour %||% ink", literal="black"),
+                "fill": FromTheme("fill %||% NA"),
+                "size": FromTheme("pointsize"),
                 "alpha": None,
-                "stroke": 0.5,
+                "stroke": FromTheme("borderwidth"),
             },
             non_missing_aes=("size", "shape", "colour"),
         ),

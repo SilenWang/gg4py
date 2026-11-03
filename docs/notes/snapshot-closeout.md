@@ -25,13 +25,13 @@ burndown 表在 `docs/notes/snapshot-inventory.md` 的「按簇 burndown」一�
 | --- | --- | ---: | --- | --- |
 | G1 guides | `guides` 37 + `guide-legend` 7 + `guide-colorbar` 3 + `legend-draw` 1 + `draw-key` 6 + `guide-axis` 23 | 77 | `guide.py`、`axis_guide.py`、`grobs.py` | **组内串行**：先 legend（54）后 axis（23），同一个 `guide.py` |
 | G2 dotplot | `geom-dotplot` | 35 | `geom/dist.py`、`position.py` | 与其他组无文件重叠 |
-| G3 theme | `theme`（含 3 条 `from_theme()` 大字号） | 26 | `theme.py`、`registry.py`、`geom/point.py`、`geom/line.py` | 与 G1/G2 无重叠；与 G4 抢 `geom/` 的默认尺寸，串行 |
+| G3 theme | `theme`（含 3 条 `from_theme()` 大字号） | 26 → **8**（SIL-792 纳管 18） | `theme.py`、`registry.py`、`geom/point.py`、`geom/line.py`、`geom/scene.py`、`facet.py`、`axis.py` | 与 G1/G2 无重叠；与 G4 抢 `geom/` 的默认尺寸，串行 |
 | G4 violin+raster | `geom-violin` 14 + `geom-raster` 12 | 26 | `geom/dist.py`、`geom/rect.py`、`position.py` | 与 G2 抢 `geom/dist.py`，串行 |
 | G5 polar+sec-axis | `coord-polar` 11 + `sec-axis` 7 + `coord-transform` 3 + `coord-cartesian` 5 + `coord-flip` 1 | 27 | `coord.py`、`axis.py` | 与其他组无重叠 |
 | G6 scales | `scales-breaks-labels` 13 + `scale_date` 8 | 21 | `scales.py`、`scales_date.py` | 与其他组无重叠 |
 | G7 小簇 | `aes` 6、`labels` 6、`geom-hline-vline-abline` 5、`geom-path` 5、`facet-` 4、`patterns` 4、`geom-boxplot` 3、`geom-hex` 3、`stat-align` 3、`stat-sum` 3、`facet-labels` 2、`geom-curve` 2、`geom-polygon` 2、`geom-smooth` 2、`facet-layout` 1、`facet-strips` 1、`geom-label` 1、`geom-text` 1、`position-stack` 1 | 55 | 分散 | 拆成 2–3 个 PR，按文件再分 |
 
-合计 77 + 35 + 26 + 26 + 27 + 21 + 55 = **267**。
+合计 77 + 35 + 26 + 26 + 27 + 21 + 55 = **267**（SIL-792 之后 `theme` 缺口 8）。
 
 ## 并行规则
 

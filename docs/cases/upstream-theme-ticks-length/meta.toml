@@ -1,0 +1,7 @@
+family = "theme"
+features = ["sec-axis", "axis-ticks-length"]
+ci = true
+title = "上游快照：ticks_length"
+source = "upstream:tests/testthat/_snaps/theme/ticks-length.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：四边刻度长度独立（含负值）。"

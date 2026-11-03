@@ -135,6 +135,35 @@ resolve_theme(scaled)["axis.text"].size  # 13.200000000000001（= 11 × 1.5 × 0
 `tests/test_theme.py::test_no_rel_survives_outside_the_whitelist` 守着这条
 约定（新增的 `Rel` 落点会让它变红）。
 
+## `from_theme()`：geom 缺省尺寸跟着主题走
+
+4.0 起 geom 的 `default_aes` 不再写死常量，而是引用 `element_geom()` 的字段
+（`R/geom-point.R`: `size = from_theme(pointsize)`）。ggcore 用
+`ggcore.theme.FromTheme` 表达同一件事，在 `build.finish()`（补齐缺省列）时求值：
+
+```python
+from ggcore.plot import aes, geom_point, ggplot
+from ggcore.theme import theme_bw
+
+plt = ggplot(table, aes(x="displ", y="hwy")) + geom_point() + theme_bw(base_size=33)
+build_plot(plt).layers[0].data["size"]  # 4.5（= (33 / 11) × 1.5）
+build_plot(plt).layers[0].data["stroke"]  # 1.5（= base_size / 22）
+```
+
+- 表达式只支持上游 `default_aes` 里出现过的写法：裸字段、`%||%` 回落
+  （`colour %||% ink`）、`col_mix(ink, paper, a)`、`*` / `/` 倍数；
+- 求值基数是 `calc_element("geom", theme)`；逐 geom 覆盖走
+  `theme(**{"geom.point": element_geom(pointsize=2)})`（上游按类链
+  `GeomPoint → Geom` 合并，ggcore 用注册名，其余回落到根 `geom`）；
+- 键顺序仍是契约：`default_aes` 的顺序决定补列的先后，与 R 的
+  `Geom$use_defaults()` 一致；
+- `theme_grey(11)` 下取值与 4.0 之前的常量相同（pointsize 1.5 / borderwidth
+  0.5），所以默认主题的 `ggplot_build()` 数据逐列不变；只有
+  `base_size != 11` 的主题（如 `theme_bw(base_size = 33)` 的三条快照）会变。
+- 已接上的 geom：`point`、`line` / `path` / 线段族、`rect` 族（`bar` / `col` /
+  `area` / `histogram` / `tile` / `raster` 的 `linewidth` / `linetype`）。
+  其余 geom 仍写静态常量，切到 `FromTheme` 时按同一条路径改。
+
 ## 主题族（9 套完整主题 + 一个别名）
 
 4.0.3 一共导出 9 套完整主题；它们全部登记在 `ggcore.registry`，所以

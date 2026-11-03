@@ -1,0 +1,7 @@
+family = "theme"
+features = ["legend-spacing", "legend-top"]
+ci = true
+title = "上游快照：horizontal legends placed apart"
+source = "upstream:tests/testthat/_snaps/theme/horizontal-legends-placed-apart.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：legend.spacing.x = unit(1, 'null')。"

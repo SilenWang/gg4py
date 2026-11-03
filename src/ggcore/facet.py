@@ -1691,11 +1691,13 @@ def facet_aspect(
     facet: FacetBase | None,
     coord: Any,
     params: Any,
+    theme_aspect: float | None = None,
 ) -> float | None:
     """`init_gtable()` 的 `aspect_ratio`（R `FacetGrid$draw_panels` 的解析）。
 
     上游 4.0.3 的顺序：
 
+    - `theme$aspect.ratio` 优先（`aspect_ratio %||% ...`），任何 facet 都认；
     - `space` 两维都 free（只有 grid 的 `"free"`）且坐标不自由（`coord_fixed`）：
       `aspect = coord$ratio`——**不是** `coord$aspect()`，范围差已经由行列权重承担；
     - 其余情形：`aspect = coord$aspect(ranges[[1]])`，即首个面板的
@@ -1704,6 +1706,8 @@ def facet_aspect(
     自由刻度与 `coord_fixed` 的非法组合在 `build._build_plot_facets()` 就报错，
     这里不重复判定（`params` 为 None 时给 None）。
     """
+    if theme_aspect is not None:
+        return abs(float(theme_aspect))
     if facet is None or getattr(facet, "kind", "null") == "null":
         return params.aspect_ratio if params is not None else None
     space = str(getattr(facet, "space", "fixed") or "fixed")

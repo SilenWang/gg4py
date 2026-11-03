@@ -221,7 +221,7 @@ wrap 有多个面板行时，行结构是
 | 右侧 strip 的 `strip.placement = "outside"` + 次轴 | **显式回退 inside**（strip 占 gtable 列、落在面板与次轴之间，不再压住次轴标签）；无右轴时仍按 outside 外置 | 与次轴版式（M2-1）一起收 |
 | 自由刻度 + `coord_fixed(ratio=…)` | 只允许 `facet_grid(space = "free")`（两维 free）；`space="free_x"/"free_y"` 与 `facet_wrap()` 报错（与 R 4.0.3 实测一致） | — |
 | `coord_polar()` / `coord_radial()` + `space = "free…"` | 报错：R 4.0.3 自己在 `init_gtable()` 里报 `values must be length 1`（上游 bug），gg4py 不再静默出非正圆面板 | 上游修复后再对齐 |
-| `theme(aspect.ratio)` | 解析进主题树但不参与版式（单面板与分面都一样）；R 在 `space` 非 fixed 时会直接报 `Free scales cannot be mixed with a fixed aspect ratio.` | M2-1 |
+| `theme(aspect.ratio)` | **已参与版式**（SIL-792）：折进面板行权重并开 `respect`，面板高/宽 = `|aspect.ratio|`，多出来的空间居中（单面板与 `facet_wrap` / `facet_grid` 一致）；`space` 非 fixed 时报 R 同样的 `Free scales cannot be mixed with a fixed aspect ratio.` | — |
 | 完整 grob / 坐标轴 / 图例 | 只给结构 | M1-7 / M1-11 |
 
 ## 8. 验收命令

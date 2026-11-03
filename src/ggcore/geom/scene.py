@@ -1668,16 +1668,32 @@ def _one_strip(
         if isinstance(background, ElementRect) and part.fill is not None:
             fill = _paint(part.fill)
             if fill is not None:
+                # R 把 strip 的每个单元格当 gtable 视口画，`clip = "on"`：
+                # `theme_classic()` 的 `strip.background(linewidth = rel(2))`
+                # 有一半线宽落在单元格之外，会被裁掉；不裁就会压到图表区。
                 grobs.append(
-                    rect_grob(
-                        x=unit(part_box.x_cm, "cm"),
-                        y=unit(part_box.y_cm, "cm"),
-                        width=unit(part_box.width_cm, "cm"),
-                        height=unit(part_box.height_cm, "cm"),
-                        hjust=0.0,
-                        vjust=0.0,
-                        gp=gpar(fill=fill, col=_paint(background.colour) or NA),
-                        name=name,
+                    clip_path(
+                        rect_grob(
+                            x=unit(part_box.x_cm, "cm"),
+                            y=unit(part_box.y_cm, "cm"),
+                            width=unit(part_box.width_cm, "cm"),
+                            height=unit(part_box.height_cm, "cm"),
+                            hjust=0.0,
+                            vjust=0.0,
+                            gp=gpar(
+                                fill=fill,
+                                col=_paint(background.colour) or NA,
+                                lwd=_mm_to_pt(background.linewidth),
+                                lty=background.linetype if background.linetype is not None else 1,
+                            ),
+                            name=name,
+                        ),
+                        x=part_box.x_cm,
+                        y=part_box.y_cm,
+                        width=part_box.width_cm,
+                        height=part_box.height_cm,
+                        default_units="cm",
+                        name=f"{name}-clip",
                     )
                 )
         if not isinstance(element, ElementText) or not part.text:

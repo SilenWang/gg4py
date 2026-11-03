@@ -262,7 +262,9 @@ def test_clip_on_off_and_inherit() -> None:
     rects = _clips(on)
     assert page in rects
     panels = sorted({rect for rect in rects if rect != page and 0 <= rect[0] < 288})
-    assert len(panels) == 2  # 2×2 里的两个面板，各自一块裁剪矩形
+    # 2×2 的两个面板各一块裁剪矩形；strip 单元格也是 gtable 视口（R `clip = "on"`），
+    # 同样各有一块，所以 2 个面板 + 2 条 strip 共 4 块。
+    assert len(panels) == 4
 
     off = scene_from_plot(
         _facet_plot() + registry.coord_cartesian(clip="off"), metrics=METRICS, **SIZE

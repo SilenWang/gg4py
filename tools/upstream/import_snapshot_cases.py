@@ -110,6 +110,13 @@ def _theme_specs() -> list[dict[str, Any]]:
                 "body": THEME_BODY.format(
                     theme=f"theme_{name}", args="base_size=33", title=f"theme_{name}_large"
                 ),
+                "features": [
+                    "aes-mapping",
+                    "facet-wrap",
+                    "legend-right",
+                    f"theme-{name}",
+                    "base-size-33",
+                ],
             }
         )
     return specs
@@ -690,22 +697,584 @@ def _dotplot_specs() -> list[dict[str, Any]]:
     return specs
 
 
+#: SIL-792（G3 theme）：SIL-745 的 `theme` 簇里除 8 套主题 / 3 个 `base_size = 33`
+#: 变体以外的 15 条。每条都是「同一条 R 测试里的某个 `expect_doppelganger()`」，
+#: 组合各不相同，所以同样直接给完整的 plot.py 正文（`source`）。
+_THEME_MISC_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-theme-strip-styling",
+        "snapshot": "theme/strip-styling.svg",
+        "title": "strip_styling",
+        "family": "theme",
+        "features": ["facet-grid", "strip-styling"],
+        "notes": "SIL-792：strip.background.x / .y 独立着色；无图层（geom_blank）。",
+        "source": '''
+"""upstream/theme：strip.background.x/.y 独立着色。"""
+
+from ggcore.plot import aes, facet_grid, geom_blank, ggplot, labs
+from ggcore.theme import element_rect, theme
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2], "y": [1, 2]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_blank()
+        + facet_grid(rows="x", cols="y")
+        + theme(
+            **{
+                "strip.background.x": element_rect(fill="red"),
+                "strip.background.y": element_rect(fill="green"),
+            }
+        )
+        + labs(title="strip_styling")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-rotated-x-axis-tick-labels",
+        "snapshot": "theme/rotated-x-axis-tick-labels.svg",
+        "title": "rotated x axis tick labels",
+        "family": "theme",
+        "features": ["axis-text-rotation"],
+        "notes": "SIL-792：`axis.text.x` 旋转 50°、hjust = 1。",
+        "source": '''
+"""upstream/theme：`axis.text.x` 旋转 50°、hjust=1。"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs
+from ggcore.theme import element_text, theme
+from ggio.frame import to_column_table
+
+DATA = {"label": ["short", "medium size", "very long label"], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="label", y="y"))
+        + geom_point()
+        + theme(**{"axis.text.x": element_text(angle=50, hjust=1)})
+        + labs(title="rotated x axis tick labels")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-titles-aligned-to-entire-plot",
+        "snapshot": "theme/titles-aligned-to-entire-plot.svg",
+        "title": "titles aligned to entire plot",
+        "family": "theme",
+        "features": ["plot-title-position"],
+        "notes": "SIL-792：plot.title.position = 'plot'。",
+        "source": '''
+"""upstream/theme：`plot.title.position = "plot"`。"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import theme
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3], "z": ["a", "b", "c"]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", color="z"))
+        + geom_point()
+        + facet_wrap("z")
+        + labs(
+            title="Plot title aligned to entire plot",
+            subtitle="Subtitle aligned to entire plot",
+            caption="Caption aligned to panels",
+        )
+        + theme(**{"plot.title.position": "plot"})
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-caption-aligned-to-entire-plot",
+        "snapshot": "theme/caption-aligned-to-entire-plot.svg",
+        "title": "caption aligned to entire plot",
+        "family": "theme",
+        "features": ["plot-caption-position"],
+        "notes": "SIL-792：plot.caption.position = 'plot'。",
+        "source": '''
+"""upstream/theme：`plot.caption.position = "plot"`。"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import theme
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3], "z": ["a", "b", "c"]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", color="z"))
+        + geom_point()
+        + facet_wrap("z")
+        + labs(
+            title="Plot title aligned to panels",
+            subtitle="Subtitle aligned to panels",
+            caption="Caption aligned to entire plot",
+        )
+        + theme(**{"plot.caption.position": "plot"})
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-large-spacing",
+        "snapshot": "theme/large-spacing.svg",
+        "title": "large spacing",
+        "family": "theme",
+        "features": ["theme-spacing"],
+        "notes": "SIL-792：theme(spacing = unit(1, 'cm'))。",
+        "source": '''
+"""upstream/theme：`theme(spacing = unit(1, "cm"))`。"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_gray
+from ggcore.viewport import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3], "z": ["a", "b", "a"], "a": [1, 1, 1]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", colour="z"))
+        + geom_point()
+        + facet_wrap("a")
+        + theme_gray()
+        + theme(**{"spacing": unit(1.0, "cm")})
+        + labs(title="large spacing")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-large-margins",
+        "snapshot": "theme/large-margins.svg",
+        "title": "large margins",
+        "family": "theme",
+        "features": ["theme-margins"],
+        "notes": "SIL-792：theme(margins = margin(1, 1, 1, 1, 'cm'))。",
+        "source": '''
+"""upstream/theme：`theme(margins = margin(1, 1, 1, 1, "cm"))`。"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import margin, theme, theme_gray
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3], "z": ["a", "b", "a"], "a": [1, 1, 1]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", colour="z"))
+        + geom_point()
+        + facet_wrap("a")
+        + theme_gray()
+        + theme(**{"margins": margin(1, 1, 1, 1, "cm")})
+        + labs(title="large margins")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-ticks-length",
+        "snapshot": "theme/ticks-length.svg",
+        "title": "ticks_length",
+        "family": "theme",
+        "features": ["sec-axis", "axis-ticks-length"],
+        "notes": "SIL-792：四边刻度长度独立（含负值）。",
+        "source": '''
+"""upstream/theme：四个方向的刻度长度独立。"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_text, margin, theme, theme_test
+from ggcore.viewport import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": list(range(1, 11)), "y": list(range(1, 11))}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + theme_test()
+        + geom_point()
+        + scale_x_continuous(sec_axis=dup_axis())
+        + scale_y_continuous(sec_axis=dup_axis())
+        + theme(
+            **{
+                "axis.ticks.length.x.top": unit(-0.5, "cm"),
+                "axis.ticks.length.x.bottom": unit(-0.25, "cm"),
+                "axis.ticks.length.y.left": unit(0.25, "cm"),
+                "axis.ticks.length.y.right": unit(0.5, "cm"),
+                "axis.text.x.bottom": element_text(margin=margin(t=0.25, unit="cm")),
+                "axis.text.x.top": element_text(margin=margin(b=0.25, unit="cm")),
+            }
+        )
+        + labs(title="ticks_length")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-axes-styling",
+        "snapshot": "theme/axes-styling.svg",
+        "title": "axes_styling",
+        "family": "theme",
+        "features": ["sec-axis", "axis-elements"],
+        "notes": "SIL-792：四边轴标题 / 文本 / 刻度 / 轴线独立着色。",
+        "source": '''
+"""upstream/theme：四边轴标题 / 文本 / 刻度 / 轴线独立着色。"""
+
+from ggcore.plot import (
+    aes,
+    dup_axis,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, element_text, theme
+from ggio.frame import to_column_table
+
+DATA = {"x": list(range(1, 11)), "y": list(range(1, 11))}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_x_continuous(sec_axis=dup_axis())
+        + scale_y_continuous(sec_axis=dup_axis())
+        + theme(
+            **{
+                "axis.title.x.top": element_text(colour="red"),
+                "axis.title.x.bottom": element_text(colour="green"),
+                "axis.title.y.left": element_text(colour="blue"),
+                "axis.title.y.right": element_text(colour="yellow"),
+                "axis.text.x.top": element_text(colour="red"),
+                "axis.text.x.bottom": element_text(colour="green"),
+                "axis.text.y.left": element_text(colour="blue"),
+                "axis.text.y.right": element_text(colour="yellow"),
+                "axis.ticks.x.top": element_line(colour="red"),
+                "axis.ticks.x.bottom": element_line(colour="green"),
+                "axis.ticks.y.left": element_line(colour="blue"),
+                "axis.ticks.y.right": element_line(colour="yellow"),
+                "axis.line.x.top": element_line(colour="red"),
+                "axis.line.x.bottom": element_line(colour="green"),
+                "axis.line.y.left": element_line(colour="blue"),
+                "axis.line.y.right": element_line(colour="yellow"),
+            }
+        )
+        + labs(title="axes_styling")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-height-is-3-times-width",
+        "snapshot": "theme/height-is-3-times-width.svg",
+        "title": "height is 3 times width",
+        "family": "theme",
+        "features": ["aspect-ratio"],
+        "notes": "SIL-792：theme(aspect.ratio = 3)。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = p + theme(**{"aspect.ratio": 3}) + labs(title="height is 3 times width")
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-width-is-3-times-height",
+        "snapshot": "theme/width-is-3-times-height.svg",
+        "title": "width is 3 times height",
+        "family": "theme",
+        "features": ["aspect-ratio"],
+        "notes": "SIL-792：theme(aspect.ratio = 1 / 3)。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = p + theme(**{"aspect.ratio": 1 / 3}) + labs(title="width is 3 times height")
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-height-is-3-times-width-2-wrap-facets",
+        "snapshot": "theme/height-is-3-times-width-2-wrap-facets.svg",
+        "title": "height is 3 times width, 2 wrap facets",
+        "family": "theme",
+        "features": ["aspect-ratio", "facet-wrap"],
+        "notes": "SIL-792：aspect.ratio + facet_wrap()。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = (
+        p
+        + theme(**{"aspect.ratio": 3})
+        + facet_wrap("f")
+        + labs(title="height is 3 times width, 2 wrap facets")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-height-is-3-times-width-2-column-facets",
+        "snapshot": "theme/height-is-3-times-width-2-column-facets.svg",
+        "title": "height is 3 times width, 2 column facets",
+        "family": "theme",
+        "features": ["aspect-ratio", "facet-grid"],
+        "notes": "SIL-792：aspect.ratio + facet_grid(. ~ f)。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = (
+        p
+        + theme(**{"aspect.ratio": 3})
+        + facet_grid(cols="f")
+        + labs(title="height is 3 times width, 2 column facets")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-height-is-3-times-width-2-row-facets",
+        "snapshot": "theme/height-is-3-times-width-2-row-facets.svg",
+        "title": "height is 3 times width, 2 row facets",
+        "family": "theme",
+        "features": ["aspect-ratio", "facet-grid"],
+        "notes": "SIL-792：aspect.ratio + facet_grid(f ~ .)。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = (
+        p
+        + theme(**{"aspect.ratio": 3})
+        + facet_grid(rows="f")
+        + labs(title="height is 3 times width, 2 row facets")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-height-is-3-times-width-2x2-facets",
+        "snapshot": "theme/height-is-3-times-width-2x2-facets.svg",
+        "title": "height is 3 times width, 2x2 facets",
+        "family": "theme",
+        "features": ["aspect-ratio", "facet-grid"],
+        "notes": "SIL-792：aspect.ratio + facet_grid(f1 ~ f2)。",
+        "source": '''
+"""upstream/theme：`theme(aspect.ratio = ...)`。"""
+
+from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 5, 6, 7, 8],
+    "y": [1, 2, 3, 4, 5, 6, 7, 8],
+    "f": ["a", "a", "a", "a", "b", "b", "b", "b"],
+    "f1": [1, 1, 1, 1, 2, 2, 2, 2],
+    "f2": [1, 2, 1, 2, 1, 2, 1, 2],
+    "rep": [1, 1, 2, 2, 1, 1, 2, 2],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + theme_test()
+        + labs(x=None, y=None)
+    )
+    p = (
+        p
+        + theme(**{"aspect.ratio": 3})
+        + facet_grid(rows="f1", cols="f2")
+        + labs(title="height is 3 times width, 2x2 facets")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+    {
+        "slug": "upstream-theme-horizontal-legends-placed-apart",
+        "snapshot": "theme/horizontal-legends-placed-apart.svg",
+        "title": "horizontal legends placed apart",
+        "family": "theme",
+        "features": ["legend-spacing", "legend-top"],
+        "notes": "SIL-792：legend.spacing.x = unit(1, 'null')。",
+        "source": '''
+"""upstream/theme：`legend.spacing.x = unit(1, "null")`。"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs
+from ggcore.theme import element_rect, theme
+from ggcore.viewport import unit
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3], "a": ["a", "b", "c"]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y", colour="a", shape="x"))
+        + geom_point()
+        + theme(
+            **{
+                "legend.box.background": element_rect(colour="blue", fill=None),
+                "legend.background": element_rect(colour="red", fill=None),
+            }
+        )
+        + theme(
+            **{
+                "legend.position": "top",
+                "legend.spacing.x": unit(1.0, "null"),
+            }
+        )
+        + labs(title="horizontal legends placed apart")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
+]
+
+
 def specs() -> list[dict[str, Any]]:
     # `upstream-theme-bw` 是先手写验证过的原型，保留它的 plot.py 不动。
     # 三个 `base_size = 33` 变体实测超阈（geom 缺省尺寸没跟 `theme$pointsize` 走，
     # 见 tools/upstream/snapshots.toml 的 reason），按缺口归口，不生成 case。
+    # `upstream-theme-bw` 是手写原型，保留不动；三个 `base_size = 33` 变体
+    # 已由 `from_theme()` 修好（SIL-792），重新纳入生成表。
     skip = {
         "upstream-theme-bw",
-        "upstream-theme-bw-large",
-        "upstream-theme-classic-large",
-        "upstream-theme-linedraw-large",
     }
     base = [
         spec
         for spec in _theme_specs() + _guide_specs() + _dotplot_specs()
         if spec["slug"] not in skip
     ]
-    return base + _G1A_SPECS + _G6_SPECS
+    return base + _G1A_SPECS + _G6_SPECS + _THEME_MISC_SPECS
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。
@@ -5704,17 +6273,19 @@ def _meta_source(spec: dict[str, Any]) -> str:
     # G6 的条目直接给 `meta` 正文，原样落盘（族 / 特性 / tolerance 各簇自己定）。
     if "meta" in spec:
         return spec["meta"]
-    # G1a（SIL-788）的条目直接给 `source`（完整 plot.py 正文）；dotplot 族也带
-    # `features`，所以判别键必须是 `source`，不能用 `features`。
+    # G1a（SIL-788）/ G3（SIL-792）的条目直接给 `source`（完整 plot.py 正文）；
+    # dotplot 族也带 `features`，所以判别键必须是 `source`，不能用 `features`。
     if "source" in spec:
+        family = spec.get("family", "guide")
+        notes = spec.get("notes", "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。")
         return (
-            'family = "guide"\n'
+            f'family = "{family}"\n'
             f"features = {json.dumps(spec['features'])}\n"
             "ci = true\n"
             f'title = "上游快照：{spec["title"]}"\n'
             f'source = "upstream:tests/testthat/_snaps/{spec["snapshot"]}"\n'
             "tolerance = { png = 0.02 }\n"
-            'notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"\n'
+            f"notes = {json.dumps(notes, ensure_ascii=False)}\n"
         )
     family = spec["snapshot"].split("/")[0]
     family = spec.get("family", family)
@@ -5738,7 +6309,9 @@ def _meta_source(spec: dict[str, Any]) -> str:
         facet = "facet-grid" if "facet-grid" in spec["slug"] else "facet-wrap"
         features = ["aes-mapping", facet, f"legend-{spec['title'].rsplit(' ', 1)[-1]}"]
     else:
-        features = ["aes-mapping", "facet-wrap", "legend-right", f"theme-{spec['title']}"]
+        features = spec.get(
+            "features", ["aes-mapping", "facet-wrap", "legend-right", f"theme-{spec['title']}"]
+        )
     return (
         f'family = "{family}"\n'
         f"features = {json.dumps(features)}\n"

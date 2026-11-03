@@ -1,0 +1,7 @@
+family = "theme"
+features = ["axis-text-rotation"]
+ci = true
+title = "上游快照：rotated x axis tick labels"
+source = "upstream:tests/testthat/_snaps/theme/rotated-x-axis-tick-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：`axis.text.x` 旋转 50°、hjust = 1。"

@@ -70,6 +70,7 @@ from ggcore.fills import FillSpec
 from ggcore.layer import Layer, Position
 from ggcore.registry import construct, registered, required_aes_groups
 from ggcore.scales import ScaleSet
+from ggcore.theme import ElementGeom, FromTheme, Theme, resolve_theme
 
 if TYPE_CHECKING:  # 只用于类型标注，避免 build ↔ plot 的运行时环
     from ggcore.plot import ggplot
@@ -643,12 +644,20 @@ def map_scales(scales: ScaleSet, positioned: ColumnTable) -> ColumnTable:
 # ---------------------------------------------------------------------------
 
 
-def finish(layer: Layer, scaled: ColumnTable, index: int = 0) -> ColumnTable:
+def finish(
+    layer: Layer,
+    scaled: ColumnTable,
+    index: int = 0,
+    theme: Any = None,
+) -> ColumnTable:
     """阶段 6：补 `default_aes` 与 `geom_*(...)` 的字面参数，得到 ggplot2 内置数据。
 
     顺序照上游 `Geom$use_defaults()`：
 
-    1. 先按 `default_aes` 的键序补缺失列（列序就是从这一步来的）；
+    1. 先按 `default_aes` 的键序补缺失列（列序就是从这一步来的）；其中
+       `from_theme(...)` 的缺省值（`size` / `linewidth` / `stroke` / …）在
+       **这一步**用 `theme$geom` 求值（4.0 的 `eval_from_theme()`），所以
+       `base_size = 33` 的点径 / 线宽会跟着放大；
     2. 再把 `intersect(geom$ aesthetics(), names(params))` 的层参数写回 data
        （`geom_point(colour = "red", size = 3)` / `geom_bar(fill = "steelblue")`
        / `geom_col(width = 0.3)`）：已有列原位覆盖，没有的列追加到末尾。
@@ -656,9 +665,15 @@ def finish(layer: Layer, scaled: ColumnTable, index: int = 0) -> ColumnTable:
     if scaled.nrows == 0:
         return _EMPTY
     columns = list(_items(scaled))
-    for name, value in layer.geom.default_aes.items():
+    defaults = layer.geom.default_aes
+    geom_element = None
+    if any(isinstance(value, FromTheme) for value in defaults.values()):
+        geom_element = _geom_element(theme, layer.geom.name)
+    for name, value in defaults.items():
         if name in dict(columns):
             continue
+        if isinstance(value, FromTheme):
+            value = value.evaluate(geom_element)
         columns = _put(columns, name, _default_column(value, scaled.nrows))
     for name, value in _aes_params(layer).items():
         if isinstance(value, FillSpec):
@@ -679,6 +694,21 @@ def _geom_aesthetics(geom: Any) -> tuple[str, ...]:
     names.extend(getattr(geom, "optional_aes", ()))
     names.append("group")
     return tuple(dict.fromkeys(names))
+
+
+def _geom_element(theme: Any, name: str) -> Any:
+    """`eval_from_theme(theme, class = <geom>)`：先 `geom.<class>`，再回落 `geom`。
+
+    上游从 `calc_element("geom", theme)` 起，按类链 `combine_elements(theme[[cls]], el)`
+    覆盖；ggcore 的 geom 类没有 R 的 `GeomPoint` 类名，逐 geom 覆盖用注册名
+    （`theme(**{"geom.point": element_geom(...)})`），其余走根 `geom`。
+    """
+    resolved = resolve_theme(theme if isinstance(theme, Theme) else Theme())
+    extra = resolved.elements.get(f"geom.{name}")
+    if isinstance(extra, ElementGeom):
+        return extra
+    base = resolved.elements.get("geom")
+    return base if isinstance(base, ElementGeom) else None
 
 
 def _aes_params(layer: Layer) -> dict[str, Any]:
@@ -939,13 +969,21 @@ class PlotBuild:
             for panel in self.panels
         }
         params = self.panels[0].panel_params if self.panels else self.panel_params
+        theme_aspect = resolve_theme(self.theme if isinstance(self.theme, Theme) else Theme()).get(
+            "aspect.ratio"
+        )
         return facet_table(
             self.layout,
             self.facet,
             self.theme,
             metrics=metrics,
             ranges=ranges or None,
-            aspect=facet_aspect(self.facet, self.coord, params),
+            aspect=facet_aspect(
+                self.facet,
+                self.coord,
+                params,
+                theme_aspect if isinstance(theme_aspect, (int, float)) else None,
+            ),
             right_inside=right_inside,
         )
 
@@ -978,10 +1016,10 @@ def _compute_stages(
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
 
 
-def _assemble(stages: _Stages, scales: ScaleSet) -> LayerBuild:
+def _assemble(stages: _Stages, scales: ScaleSet, theme: Any = None) -> LayerBuild:
     layer = stages.layer
     scaled = map_scales(scales, stages.positioned)
-    data = finish(layer, scaled, stages.index)
+    data = finish(layer, scaled, stages.index, theme)
     return LayerBuild(
         index=stages.index,
         geom=layer.geom.name,
@@ -1185,7 +1223,7 @@ def build_layer(
     # 派生的坐标列（xmin/xmax/ymin/ymax），连续标度要靠它才能把柱子的锚点收进
     # 范围（否则 stage 5 的 oob 会把锚点 censor 成 NA）。
     _train(scales, stages.positioned)
-    return _assemble(stages, scales)
+    return _assemble(stages, scales, plot.theme)
 
 
 def build_plot(plot: ggplot) -> PlotBuild:
@@ -1225,7 +1263,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
     scales.reset()
     for staged in stages:
         _train(scales, staged.positioned)
-    builds = tuple(_assemble(staged, scales) for staged in stages)
+    builds = tuple(_assemble(staged, scales, plot.theme) for staged in stages)
     coord = coord_from_component(plot.coordinates)
     panel_params = coord.panel_params(scales)
     scaled = tuple(build.scaled for build in builds)
@@ -1355,7 +1393,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     scaled_by_panel: list[dict[int, ColumnTable]] = []
     for staged in stages:
         scaled, per_panel = _map_scales_panels(scales, staged.positioned)
-        data = finish(staged.layer, scaled, staged.index)
+        data = finish(staged.layer, scaled, staged.index, plot.theme)
         builds.append(
             LayerBuild(
                 index=staged.index,

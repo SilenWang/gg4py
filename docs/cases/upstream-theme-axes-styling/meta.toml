@@ -1,0 +1,7 @@
+family = "theme"
+features = ["sec-axis", "axis-elements"]
+ci = true
+title = "上游快照：axes_styling"
+source = "upstream:tests/testthat/_snaps/theme/axes-styling.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-792：四边轴标题 / 文本 / 刻度 / 轴线独立着色。"
