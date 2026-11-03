@@ -28,6 +28,7 @@ from ggcore.geom.boxplot import BoxplotRenderer
 from ggcore.geom.line import LineRenderer, PathRenderer
 from ggcore.geom.point import PointRenderer
 from ggcore.geom.smooth import SmoothRenderer
+from ggcore.geom.stat2d import BUILD_ONLY_RENDERERS
 
 __all__ = [
     "GEOM_RENDERERS",
@@ -76,9 +77,18 @@ def registered_renderers() -> tuple[str, ...]:
 
 
 def renderer_for(name: str) -> GeomRenderer:
-    """按 geom 名取绘制实现；没有实现时点名。"""
+    """按 geom 名取绘制实现；没有实现时点名。
+
+    先查可绘制的 `GEOM_RENDERERS`，再查只有 build 级实现的
+    `BUILD_ONLY_RENDERERS`（M2-6 的 2D 族：`setup_data()` 有了，`draw()` 归
+    SIL-737（`tile`）与 SIL-735（其余 5 个））。
+    """
     try:
         return GEOM_RENDERERS[name]
+    except KeyError:
+        pass
+    try:
+        return BUILD_ONLY_RENDERERS[name]
     except KeyError:
         raise GeomError(
             f"geom_{name} 没有绘制实现；已实现：{', '.join(registered_renderers())}"
@@ -86,8 +96,13 @@ def renderer_for(name: str) -> GeomRenderer:
         ) from None
 
 
+def build_only_renderers() -> tuple[str, ...]:
+    """只有 build 级实现（没有 `draw()`）的 geom 名。"""
+    return tuple(BUILD_ONLY_RENDERERS)
+
+
 def has_renderer(name: str) -> bool:
-    return name in GEOM_RENDERERS
+    return name in GEOM_RENDERERS or name in BUILD_ONLY_RENDERERS
 
 
 def __getattr__(name: str) -> object:  # pragma: no cover - 兼容旧导入路径

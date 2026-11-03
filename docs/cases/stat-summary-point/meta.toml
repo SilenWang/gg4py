@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "scale-limits", "stat-summary"]
+ci = true
+title = "summary：原始点 + mean 汇总点"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_summary 的端到端：fun / fun.min / fun.max 三条路径都进数据，画面上两层点。"

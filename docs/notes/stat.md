@@ -1,17 +1,24 @@
-# stat 口径（M1-8）
+# stat 口径（M1-8 / M2-6）
 
-`ggcore.stat` 实现 ggplot2 4.0.3 的六个 stat：`identity` / `bin` / `count` /
-`boxplot` / `smooth` / `align`。流水线位置没变（仍是一个阶段）：
+`ggcore.stat` 实现 ggplot2 4.0.3 的十四个 stat：M1-8 的六个（`identity` /
+`bin` / `count` / `boxplot` / `smooth` / `align`）与 M2-6 的八个 2D 族
+（`bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` / `contour` /
+`contour_filled` / `density_2d` / `density_2d_filled`）。流水线位置没变（仍是
+一个阶段）：
 
 ```
 compute_aesthetics → compute_stat → map_statistic → compute_position → map_scales → finish
 ```
 
-- 代码：`src/ggcore/stat.py`；loess 两套面在 `src/ggcore/loess.py`；
+- 代码：`src/ggcore/stat.py`（M1-8 六个 + 派发）、`src/ggcore/stat2d.py`（M2-6
+  八个）、`src/ggcore/kde2d.py` / `hexbin.py` / `contour.py`（数值内核）；
+  loess 两套面在 `src/ggcore/loess.py`；
   派发在 `src/ggcore/build.py::compute_stat()`；
-- 夹具：`tests/fixtures/stat_r_reference.json`（30 个 case，`pixi run -e refs refs:stat`）；
-- 对拍：`tests/test_stat_r_parity.py`（列名 + 列序 + kind + 逐值 + NA，30 个 case）；
-- 端到端：`docs/cases/stat-{histogram-bin,histogram-horizontal,boxplot-stat,smooth-loess,area-align}`。
+- 夹具：`tests/fixtures/stat_r_reference.json`（55 个 case，`pixi run -e refs refs:stat`）；
+- 对拍：`tests/test_stat_r_parity.py`（M1-8 的 30 个 case）与
+  `tests/test_stat_2d_r_parity.py`（M2-6 的 25 个 case）；
+- 端到端：`docs/cases/stat-{histogram-bin,histogram-horizontal,boxplot-stat,smooth-loess,area-align}`
+  （M1-8 的 5 张 SVG）；M2-6 的 2D 族目前是 build 级端到端（见 §10）。
 
 `compute_stat(layer, aesthetics, scales=…, raw=…)` 多出两个可选入参：
 
@@ -246,17 +253,307 @@ ggplot(tbl, aes(x="cls", group=1, y=after_stat("prop"))) + geom_bar()
 | `stat_count` 的连续 x 宽度 | 沿用 geom 的 `resolution(x) × 0.9`（R 用 `discrete = TRUE`，差异只在连续 x 且非唯一值时出现） | 后续 |
 | `outliers` 的 list 列 | 用 `str` + `c(...)` 文本 | `ColumnTable` 加 list kind 时改 |
 
-## 9. 验收口径
+## 9. 长尾 B（M2-6）：实现一览
+
+M2-6 的 14 个 stat 在 `src/ggcore/stat_longtail.py`，派发仍从
+`ggcore.stat.compute_stat()` 进来（`_LONGTAIL` 里的名字转过去）。参数校验一律
+**构造 / 计算时点名报错**，不静默退化。各 stat 的默认 geom 照 4.0.3 的
+`stat_*` 构造器（`registry.STAT_GEOMS`）；`step` / `violin` / `pointrange` /
+`quantile` / `function` / `abline` 这几个默认 geom 属于 M2-7，落地之前用它们做
+缺省值的 `stat_*()` 会在**构造时**报错并点名可用的 `geom=`。
+
+### 9.1 `stat_qq` / `stat_qq_line`
+
+- 输入是 `sample` 美学；`quantiles` 缺省 `ppoints(n)`（n ≤ 10 用 `3/8`，否则
+  `1/2`），长度必须等于样本数；样本**升序**输出（`sample` 列）。
+- `distribution` 收字符串别名（`norm` / `t` / `unif` / `exp` / `logis` /
+  `cauchy`，也认带 `q` 的名字）或任意 `p → 分位数` 的可调用；分布参数走
+  `dparams`（`norm` 的 `mean`/`sd`、`t` 的 `df`、`unif` 的 `min`/`max`、
+  `exp` 的 `rate`、`logis`/`cauchy` 的 `location`/`scale`），不认识的键点名报错。
+- 正态分位数是 Acklam 近似 + 一步 Halley（`erfc`）修正，逐值差 ≤ 1e-15；
+  t 分位数复用 `ggcore.stat.t_quantile()`（下尾按 `qt(p) = -qt(1-p)` 补）。
+- `stat_qq_line` 过 `line.p`（缺省 `c(0.25, 0.75)`）两点：
+  `slope = diff(y)/diff(x)`、`intercept = y[1] - slope·x[1]`，`x` 取
+  `range(theoretical)`；`fullrange = TRUE` 时取 x 标度的 `dimension()`。
+  输出 `x, y, slope, intercept`，`sample` 进 `dropped_aes`（不告警）。
+
+### 9.2 `stat_ecdf`
+
+- 网格：`n = NULL` 时用 `unique0(x)`（出现顺序），否则
+  `seq(min, max, length.out = n)`；`pad = TRUE`（缺省）两端补 `-Inf` / `Inf`。
+- 权重：`weight` 美学按上游 `wecdf()` 聚合到唯一值 → 阶梯函数
+  （`approxfun(method = "constant", f = 0, yleft = 0, yright = 1)`）；非有限权重
+  按 0 处理并告警，权重和为 0 报错。
+- 输出 `x, y, ecdf, flipped_aes`；横向（只映射 y）时 `flipped_aes = TRUE` 并把
+  两列换回去。±Inf 是列里真实的值（IR / SVG 侧照常表达）。
+
+### 9.3 `stat_ellipse`
+
+- `type = "t"`（缺省）/ `"norm"` / `"euclid"`；`level = 0.95`、`segments = 51`
+  （输出 `segments + 1` 个点）。
+- `"norm"` = `stats::cov.wt()`（权重先归一到和为 1，无偏分母
+  `1 - Σw²`）；`"euclid"` 把协方差换成 `min(diag) · I`、半径用
+  `level / max(chol)`；`"t"` 是 `MASS::cov.trob()` 的逐行移植（`nu = 5`、
+  `maxit = 25`、`tol = 0.01`，注意 R 的 `X` 用的是**上一轮**的 `loc`，移植保持
+  同一顺序），对拍逐值差 7.6e-15。
+- 半径 `sqrt(2 · qf(level, 2, n-1))`；`qf` 用 `qbeta` 的二分反解（`_betai`），
+  不引 scipy。协方差不是正定 / 点数 < 4 时按上游的口径告警并给 NA 行。
+- 加权：`weight` 先归一到和为 1，再乘 `n` 传给 `cov.trob`（与 R 一致）。
+
+### 9.4 `stat_quantile`
+
+- `method` 只实现 `"rq"`（线性分位数回归，`quantreg::rq` 的 `y ~ x` 口径）；
+  `"rqss"` / 其他 formula 明确报错并点名（上游 `check_installed("quantreg")`）。
+- 求解用 Barrowman 的 IRLS：权重按 **tau 非对称**
+  （`r ≥ 0` 用 `tau/|r|`，`r < 0` 用 `(1-tau)/|r|`），到 `1e-15` 收敛；对拍
+  `quantreg` 6.1 的最大差 7.7e-13。`method.args` 只收 `max_iter` / `tol`。
+- 预测网格 `xseq` 缺省 `seq(min, max, length.out = 100)`；每个分位数输出
+  `x, y, quantile, group`，`group` **是字符**（上游
+  `paste(group, quantile, sep = "-")`）——`geom/line.py` 的 `setup_data()` 因此
+  按字符排序列（`_order_key()` / `_group_key()`），不再硬转 float。
+
+### 9.5 `stat_summary` / `stat_summary_bin`
+
+- `fun.data` 优先，其次 `fun` / `fun.min` / `fun.max`，都没有时按上游缺省
+  `mean_se()`（并告警）。字符串别名：`mean` / `median` / `sd` / `var` / `min` /
+  `max` / `sum` / `length` / `first` / `last`；`fun.data` 另有 `mean_se` /
+  `mean_cl_normal` / `mean_sdl` / `median_hilow`（Hmisc 那四个包装的闭式口径）。
+- `fun.args` 是映射，作为额外关键字参数传给汇总函数；点号参数在 Python 里也
+  可以写成下划线（`fun_data` / `fun_min` / `fun_max` / `fun_args`）。
+- `stat_summary` 按 `(group, x)` 汇总，x 升序；输出
+  `x, group, y, ymin, ymax` + 组内恒定列 + `flipped_aes`。
+- `stat_summary_bin` 先按 `bins` / `binwidth` / `breaks`（与 `stat_bin` 同一套
+  `_compute_bins()`）分箱，`bin` 列是 R 的 `cut()` 区间文本（`dig.lab = 3`
+  起跳，格式与 `formatC()` 一致），`x` 取箱中心、`width` 取箱宽。
+
+### 9.6 `stat_sum` / `stat_unique`
+
+- `stat_sum`：按 `(x, y, group, 其余映射美学)` 计数，`weight` 加权；输出
+  `PANEL, x, y, group, …, n, prop`（`prop = n / 该 group 的 Σ|n|`，与
+  `vec_ave(n, group, prop.table)` 一致）。`default_aes` 把 `size` 映射到
+  `after_stat(n)`，这就是 `geom_count()` 的口径。
+- `stat_unique`：`unique0(data)`（保留首次出现的行序），列与输入一致。
+
+### 9.7 `stat_density` / `stat_ydensity`
+
+- 密度**不是**直接核求和：`stats::density()` 在 R 4.5 里是「BinDist 线性分摊到
+  2n 网格 + FFT + 线性插值」，直接求和与它的相对差有 7e-5。这里照
+  `massdist.c` 的 `BinDist` 与 `density.default()` 的同一套参数
+  （`ext = 4`、`n = max(n, 512)`、`n > 512` 时取 2 的幂、`kords` 的镜像、
+  `pmax(0, ·)/length(y)`、`approx`）重写，逐值差 ≤ 1e-15。
+- 带宽：`bw` 收 `"nrd0"`（缺省，`bw.nrd0` 的 `!(lo <- min(...))` 退化口径也照抄）
+  / `"nrd"` 或正数；`adjust` 乘上去。`kernel` 只实现 `"gaussian"`（其余核是同一条
+  FFT 路径的纯算术，按需再加）。`ucv` / `bcv` / `sj` 明确报错。
+- `from` / `to`：`trim = FALSE` 取 x 标度的 `dimension()`，`trim = TRUE` 取数据
+  范围。`bounds` 的有限端按上游 `reflect_density()` 折回界外的尾巴。
+- 输出 `x, density, scaled, ndensity, count, wdensity, n`（`n` 是整数列）；
+  `scaled = density/max`、`count = density·n`、`wdensity = density·Σw`。
+- `stat_ydensity`：`trim = TRUE`（缺省）时 from/to 取数据范围，`FALSE` 时两端各
+  扩 3 个带宽；`scale` 收 `area` / `count` / `width` → `violinwidth`；分位线
+  （`quantiles = c(0.25, 0.5, 0.75)`，`NULL` 关闭）按 `approx()` 在密度网格上
+  插值后追加行，此时 `n` 被抬成 double（上游 `vec_c()` 的结果）。
+
+### 9.8 `stat_function` / `stat_connect` / `stat_manual` / `stat_spoke`
+
+- `stat_function`：空数据补一行 `group = 1`（上游
+  `ensure_nonempty_data()`），`fun` 收可调用或 `sin` / `cos` / `tan` / `exp` /
+  `log` / `sqrt` / `abs` / `identity` 的字符串别名；网格 `seq(xlim 或 x 标度
+  dimension, length.out = n)`（缺省 `n = 101`）。连续 x 标度先反变换再求值，连续
+  y 标度再正变换；离散 x 标度直接用网格值。
+- `stat_connect`：`connection` 收 `hv` / `vh` / `mid` / `linear` 或 2 列数值矩阵；
+  按 x 排序后在每一对相邻点之间插 `m` 个点（`connection` 的每一行是一个
+  (xjust, yjust) 对），首尾按 `connection[1, ] == c(0, 0)` / 末行 `== c(1, 1)`
+  补原始端点。
+- `stat_manual`：`fun` 收到「列名 → numpy 数组」的映射（NA 是 `nan` / `None`），
+  返回映射或 `ColumnTable`；`args` 是映射；缺省是恒等。
+- `stat_spoke`：4.0.3 里已是 `lifecycle::deprecate_stop()`，注册项保留但调用即
+  报错并指向 `geom_spoke()`（角度 / 半径是 geom 的参数，归 M2-7）。
+
+## 10. M2-6 的已知差异 / 未实现
+
+| 能力 | 现状 | 去向 |
+| --- | --- | --- |
+| `stat_qq` 的 `distribution` 为任意 R 函数 | 只支持 6 个字符串别名与 Python 可调用 | 需要 R 函数桥接时再加 |
+| `stat_ellipse(type = "t")` | `MASS::cov.trob()` 的移植（`nu = 5` 固定） | `nu` / `maxit` 还不是参数 |
+| `stat_quantile(method = "rqss")` | `BuildError` 点名 | 需要 `quantreg::rqss` 的平滑样条 |
+| `stat_quantile` 的其他 formula | `BuildError` 点名 | 需要完整设计矩阵 |
+| `stat_density(kernel = …)` 非 gaussian | `BuildError` 点名 | 同一条 FFT 路径的纯算术 |
+| `stat_density(bw = "ucv" / "bcv" / "sj")` | `BuildError` 点名 | 需要 R 的交叉验证实现 |
+| `stat_summary` 的 Hmisc 四个包装 | 用闭式口径实现（`mean_se` / `mean_cl_normal` / `mean_sdl` / `median_hilow`），不依赖 Hmisc | — |
+| `stat_ydensity` 的加权分位线 | 告警并按未加权分位计算（上游同样告警） | 需要加权分位 |
+| `stat_spoke` | 与上游一致：`deprecate_stop()` | 用 `geom_spoke()`（M2-7） |
+
+## 11. 验收口径
 
 ```bash
-pixi run -e refs refs:stat        # 夹具 + 5 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
-pixi run pytest tests/test_stat_r_parity.py -q
-pixi run cases:matrix             # 5 张 stat case 逐张 render + diff
-pixi run check                    # 全量门禁
+pixi run -e refs refs:stat             # 5 张 M1-8 的 expected.svg + 夹具
+pixi run -e refs refs:stat-longtail    # 14 张 M2-6 的 expected.svg + 夹具
+pixi run pytest tests/test_stat_r_parity.py tests/test_stat_longtail_r_parity.py -q
+pixi run cases:matrix                  # stat case 逐张 render + diff
+pixi run check                         # 全量门禁
 ```
+
+`refs:stat-longtail` 依赖 refs 环境的 `r-mass`（`type = "t"`）与 `r-quantreg`
+（`rq`）——两者只活在 refs 特性里，dev / prod 不会带上。夹具把 ±Inf 的位置记在
+`pos_inf` / `neg_inf`（1 起），因为 JSON 的 `null` 既表示 NA 也表示非有限值。
 
 夹具记录 `ggplot_build(p)$data[[1]]` 的列名、列序、kind、逐值（NA / NaN 写
 `null`）与 build / draw 两段 warning。比较口径：列名与列序完全一致；数值
 `allclose(rtol=0, atol=1e-9)`；字符串精确相等；NA 逐行一致；`kind` 相等——
 只有 `outliers` 按「解析出的数值列表」比（list vs str）。主题色列（`fill` /
 `colour`）在 M1-10 解析主题前只比列名与列序。
+
+## 10. 2D 统计（M2-6）
+
+八个 stat 在 `src/ggcore/stat2d.py`，公共流程（`remove_missing()` /
+`Stat$compute_panel()` 的分组与恒定列）仍复用 `ggcore.stat`。数值内核三份：
+
+| 模块 | 复刻对象 | 覆盖 |
+| --- | --- | --- |
+| `ggcore/kde2d.py` | `MASS::kde2d()` / `bandwidth.nrd()` / `bw.nrd0()` | `stat_density_2d` 的网格与带宽 |
+| `ggcore/hexbin.py` | `hexbin::hexbin()` 的 `hbin.f` / `hcell2xy()` + ggplot2 的 `hexBinSummarise()` | `stat_bin_hex` / `stat_summary_hex` |
+| `ggcore/contour.py` | `contour_breaks()`（含 R `pretty.c` 的移植）/ `isoband` 的输入网格 / `pretty_isoband_levels()` | `stat_contour[ _filled]` 与密度族的第二段 |
+
+### 10.1 分箱参数（`bins` / `binwidth` / `breaks` / `center` / `boundary` / `closed`）
+
+`bin_2d` / `summary_2d` 的这六个参数都走上游的 `dual_param()`：标量 → 两轴同值；
+长度 2 的序列（或命名 list）→ `x` / `y` 各一个；更长的序列（`breaks`）→ 两轴同一
+份。`bins` 的缺省是 30（`fix_bin_params()`），`boundary` 的缺省是 **0**：
+
+- `summary_2d` 的 `compute_group()` 形参就是 `boundary = 0`，`make_constructor()`
+  把它带进 params；
+- `bin_2d` 用 `boundary %||% if (is.null(center)) list(x = 0, y = 0)` 补同一份缺省。
+
+所以 `stat_bin_2d(binwidth = 1)` 的箱边界是 `1, 2, 3, …`（不是 `0.5, 1.5, …`），
+这条容易与 `stat_bin()` 的 `width / 2` 混淆，`tests/test_stat_2d_r_parity.py::
+test_bin_2d_boundary_defaults_to_zero` 钉住。
+
+`breaks` 只认显式数值序列（函数 / lambda 归后续任务，`BuildError` 点名）。
+
+### 10.2 `stat_bin_2d` / `stat_summary_2d`
+
+列序：`xbin, ybin, value, x, width, y, height`（`tapply_df()` + `bin_loc()`），
+`bin_2d` 再追加 `count, ncount, density, ndensity`。`xbin` / `ybin` 是 `cut()` 的
+1 起编码；`x` / `y` 是箱中点，`width` / `height` 是箱宽高。
+
+- `drop = TRUE` 去掉空单元格（缺省）；`drop = "none"` 保留。
+- `stat_bin_2d` 的 `z` 来自 `weight`（没有映射时是 1），`count = sum(z)`；
+  `ncount = count / max(count)`、`density = count / sum(count)`、
+  `ndensity = density / max(density)`。
+- `stat_summary_2d` 的 `fun` 缺省 `"mean"`，支持 `mean / sum / median / min /
+  max / var / sd` 与 Python 可调用对象（上游 `as_function()` 的可用子集）。
+- 两个 stat 的 `dropped_aes`：`z`；`bin_2d` 的 `weight` 在计算前就被吃掉了。
+
+### 10.3 `stat_bin_hex` / `stat_summary_hex`
+
+`hexbin.py` 逐行复刻 hexbin 包的 Fortran `hbin.f`：坐标缩放到单元格单位后按
+「到最近两个候选中心的平方距离（y 向 ×3）」判定编号，压缩后按编号升序输出；
+中心由 `hcell2xy()` 反算（不是逐点均值）。`hex_binwidth()` 取
+`diff(scale$dimension()) / bins`，`hex_bounds()` 先按 binwidth 取整再留 1e-6。
+
+- 输出列：`x, y, width, height, density, ndensity, count, ncount`
+  （`bin_hex`）/ `x, y, value, width, height`（`summary_hex`）。
+- `stat_bin_hex` 的 `count` 是整数（权重缺省是 `rep(1L, n)`，`sum` 仍是 integer），
+  与 `stat_bin_2d` 的 `count`（float，权重缺省是数值 1）不同——夹具里 `kind`
+  分别钉住。
+- `stat_summary_hex(fun = "mean")` 等与 2D 版同口径。
+
+### 10.4 `stat_contour` / `stat_contour_filled`
+
+层级：
+
+- `breaks` 显式数值序列原样用；
+- 只给 `bins` / `binwidth` 时走 `scales::fullseq()`（`contour_breaks()`），
+  `bins` 先用 `signif(diff(z_range), 1) / 10` 把范围夹到整数倍；
+- 都不给时走 R 的 `pretty(z_range, 10)`（`contour.py::pretty()` 是
+  `src/appl/pretty.c` 的移植，缺省 `min.n = n %/% 3`、`shrink.sml = .75`、
+  `high.u.bias = 1.5`、`u5.bias = 2.75`）。
+
+几何用 contourpy（`corner_mask = False`，与 isoband「四角有 NA 的单元整块不算」
+一致）。桌面端与浏览器端钉同一个版本（`pixi.toml` 的 `contourpy = ">=1.3.3, <1.4"`
+对齐 `pyodide@314.0.7` 的 1.3.3 wasm 轮子，见 `docs/notes/gates.md`），且
+`ggcore.contour` 是惰性导入的——非 contour 的 2D stat 不加载它（SIL-758）。
+**contourpy 与 isoband 的顶点拓扑不保证相同**：
+
+- 鞍点单元的解析、闭合环的拆分与方向都可能不同，所以顶点数 / 行数不逐行相等；
+- `level == max(z)` 时 isoband 会吐一段两点重合的退化线，contourpy 不给线——
+  这是几何差异，不是层级边界差异；对拍测试会把这种退化层级从 R 侧剔除，层级本身
+  由 `contour_breaks()` 的独立断言钉住。
+
+输出列：
+
+- 线：`level, x, y, piece, group, nlevel`；`level` 是数值，`group` 是
+  `"<原 group>-<break 序号:03d>-<线段序号:03d>"` 的因子（`piece` 是其 1 起编码），
+  `nlevel = level / max(level)`。
+- 带：`level, x, y, piece, group, subgroup, level_low, level_high, level_mid,
+  nlevel`；`level` 是有序因子（`"(low, high]"`，`dig.lab` 从 3 起按重复自动加宽），
+  `nlevel = level_high / max(level_high)`。
+
+`setup_data()` 会按 `(x, y, group, PANEL)` 去重（保留最后一行）并发 R 同文案的
+警告；`z` NA 行在 stat 之前由 `remove_missing()` 删掉。
+
+### 10.5 `stat_density_2d[ _filled]`
+
+两段式（上游 `StatDensity2d$compute_layer()`）：
+
+1. `compute_group()` 算密度网格：`h` 缺省是
+   `c(bandwidth.nrd(x), bandwidth.nrd(y))`（某维为 0 且 n > 1 时换
+   `bw.nrd0(x) * 4`），乘 `adjust`；`kde2d()` 内部再把 `h` 除以 4；
+   `n` 缺省 100；`lims` 取这一面板的 `scales$x$dimension()` /
+   `scales$y$dimension()`。输出 `x, y, density, group, ndensity, count, n,
+   level, piece`（x 变化最快）。
+2. `contour = TRUE`（缺省）时把整张网格交给 `StatContour` / `StatContourFilled`
+   的 `compute_panel()`，`contour_var` 选 `density` / `ndensity` / `count` 之一
+   作为 `z`。链式调用**不经过** `map_statistic()`，所以密度族即使做了等值线
+   也没有 `order` 列；`density` / `ndensity` / `count` 按 `dropped_aes` 静默丢弃，
+   `n` / `PANEL` / 主题色等恒定列保留。
+
+`contour = FALSE` 时直接返回密度网格（列序见上，末尾是 `PANEL` 与 geom 默认美学）。
+
+### 10.6 geom 侧（build 级）
+
+2D 族的六个 geom（`tile` / `hex` / `contour` / `contour_filled` /
+`density_2d` / `density_2d_filled`）在 `src/ggcore/geom/stat2d.py` 里只有
+**build 级**实现：
+
+- `geom_tile` 的 `setup_data()` 派生 `xmin/xmax/ymin/ymax` 并去掉 `width/height`
+  （`bin_2d` / `summary_2d` 的列序靠它）；
+- `contour` / `density_2d` 沿用 stat 给的行序（`GeomPath` 不排序，只有
+  `geom_line` 会按 `(PANEL, group, x)` 重排）；
+- `draw()` 明确报 `GeomError` 并点名**绘制归属任务**：`geom_tile` → SIL-737
+  （M2-S2 geom 长尾 A，已带 `docs/cases/geom-tile` 三文件 case），其余 5 个
+  （`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled`）
+  → SIL-735（M2-S2 geom 长尾 B · 2D 族）。
+
+所以本任务的「端到端 case」是 **build 级**：`ggplot() + stat_*()` 走完整条
+`ggplot_build()` 流水线，`$data` 的统计列完整（`tests/test_stat_2d_r_parity.py`
+§4 的 `test_every_2d_stat_has_an_end_to_end_case`）。SVG 快照 case 随绘制落地补：
+`tile` 在 SIL-737，其余 5 个在 SIL-735。
+
+### 10.7 验收
+
+```bash
+pixi run -e refs refs:stat                     # 55 case 夹具（旧 30 个零 diff）
+pixi run pytest tests/test_stat_2d_r_parity.py -q
+pixi run check                                 # 全量门禁（含 gate:imports 的 contourpy 放行）
+```
+
+对拍分两层：
+
+- **逐列**（`bin_2d` / `bin_hex` / `summary_2d` / `summary_hex` /
+  `density_2d(contour = FALSE)`）：列名 + 列序 + kind + 逐值 + NA，
+  `atol = 1e-9`；
+- **层级边界**（contour 族）：`level` / `level_low` / `level_high` /
+  `level_mid` 的取值集合与等值带标签逐一相等；再加一条几何自洽断言——每个顶点
+  处的双线性插值必须等于自己的层级（带的外边界允许落在数据域四条边上）。
+
+### 10.8 已知差异
+
+| 能力 | 现状 | 去向 |
+| --- | --- | --- |
+| 2D geom 的绘制 | `draw()` 报 `GeomError` 并点名归属：`tile` → SIL-737，其余 5 个 → SIL-735；build 级完整 | SIL-737 / SIL-735 |
+| contour 顶点拓扑 | contourpy 与 isoband 不同（鞍点 / 环拆分） | 按层级对拍，不逐顶点比 |
+| `level == max(z)` 的退化线 | isoband 给重合点，contourpy 不给 | 记录为几何差异 |
+| `stat_contour(breaks = <函数>)` | `BuildError` 点名 | 后续 |
+| `stat_summary_*` 的任意 R 函数 | 支持 Python 可调用对象与常用名字 | 后续（不做 R 表达式求值） |
+| `stat_bin_hex` / `summary_hex` 的 `hexbin` 细节（erode / cAtt） | 不需要（ggplot2 只用编号 + 中心） | — |
