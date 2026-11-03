@@ -67,6 +67,7 @@ EXPECTED = {
     "stat": (
         "identity",
         "bin",
+        "bindot",
         "count",
         "boxplot",
         "smooth",

@@ -56,7 +56,7 @@ from ggcore.axis_guide import (
     guide_for,
     polar_axis_grobs,
 )
-from ggcore.build import LayerBuild, PlotBuild, build_plot
+from ggcore.build import _STAT_DEFAULT_AES, LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
 from ggcore.data import ColumnTable
 from ggcore.facet import FacetStrip, FacetTable, StripPart
@@ -342,6 +342,12 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
     for mapping in getattr(build, "raw_mappings", ()):
         if aesthetic in mapping:
             return str(mapping[aesthetic])
+    # 上游 `setup_plot_labels()` 的最后一级：`Stat$default_aes`（`after_stat()`）
+    # 也参与轴标题，例如 `geom_dotplot()` / `geom_histogram()` 的 y = "count"。
+    for layer in getattr(build, "layers", ()):
+        for name, source in _STAT_DEFAULT_AES.get(layer.stat, ()):
+            if name == aesthetic:
+                return source
     return None
 
 

@@ -1,0 +1,7 @@
+family = "geom-dotplot"
+features = ["aes-mapping", "stat-bindot", "stackgroups", "binaxis-y"]
+ci = true
+title = "上游快照：3 stackgroups, bin y, histodot"
+source = "upstream:tests/testthat/_snaps/geom-dotplot/3-stackgroups-bin-y-histodot.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。"

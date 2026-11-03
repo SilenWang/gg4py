@@ -1,0 +1,7 @@
+family = "geom-dotplot"
+features = ["aes-mapping", "stat-bindot", "stackgroups", "method-histodot", "facet-grid"]
+ci = true
+title = "上游快照：facets, 3 groups, histodot, stackgroups"
+source = "upstream:tests/testthat/_snaps/geom-dotplot/facets-3-groups-histodot-stackgroups.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。"

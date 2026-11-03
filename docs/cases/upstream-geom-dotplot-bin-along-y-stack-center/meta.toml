@@ -1,0 +1,7 @@
+family = "geom-dotplot"
+features = ["aes-mapping", "stat-bindot", "binaxis-y", "stackdir-center"]
+ci = true
+title = "上游快照：bin along y, stack center"
+source = "upstream:tests/testthat/_snaps/geom-dotplot/bin-along-y-stack-center.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。"

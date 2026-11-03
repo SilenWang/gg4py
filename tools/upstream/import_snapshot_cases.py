@@ -18,8 +18,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import pprint
 import shutil
+import subprocess
 import sys
+import tempfile
+import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -135,6 +139,557 @@ def _guide_specs() -> list[dict[str, Any]]:
     return specs
 
 
+# ---------------------------------------------------------------------------
+# geom-dotplot（SIL-787）
+# ---------------------------------------------------------------------------
+
+#: `test-geom-dotplot.R` 的三份夹具：随机数取 `set.seed(111)` / `set.seed(112)`
+#: 之后逐位抄下来的值（R 4.5.3），不重新抽。
+_DOTPLOT_D1_X = [
+    -0.31423169595047251,
+    2.4033750787787032,
+    -0.71826396266405201,
+    -1.7606109629935416,
+    -1.1252811743977724,
+    -0.71954056575150671,
+    1.310223977253826,
+    0.45189845282321606,
+    0.15217740702295823,
+    0.65337078277679583,
+    -0.94733553853243446,
+    -1.071086252558543,
+    -0.17605937002612163,
+    1.8720502082968995,
+    -0.51033837959979045,
+    1.4388904417981778,
+    1.1531709539424315,
+    -0.15483976358124263,
+    -0.2599055202700481,
+    0.47136677086213369,
+]
+
+_DOTPLOT_DAT1_Y = [
+    0.2352207116136979,
+    -0.33073587162669138,
+    -0.31162382397876148,
+    -2.3023456584293767,
+    -0.17087604461386502,
+    0.14027822510323076,
+    -1.4974266555651168,
+    -1.010188419051379,
+    -0.94847560495244698,
+    -0.49396221723510808,
+    -0.17367412797058035,
+    -0.40659878004065225,
+    1.8456362638070769,
+    0.39405410997450147,
+    0.7975285012615172,
+    -1.5666653601855778,
+    -0.085851008822606156,
+    -0.35913948123778322,
+    -1.1936089665637317,
+    0.3641867370222206,
+    0.36166245158827537,
+    0.3469643701135664,
+    0.18973652668927543,
+    -0.15957680553877868,
+    0.32654923843186656,
+    0.5982542023934897,
+    -1.8415343000624469,
+    2.7180555995417524,
+    0.19124439045729366,
+    -1.3012960652783192,
+]
+
+_DOTPLOT_DAT2_Y = [
+    0.24887993672252107,
+    2.3002587881560244,
+    0.34407357929885268,
+    -1.4977663208912044,
+    -0.58758433165675328,
+    -0.58469279265297269,
+    -1.1205990348021924,
+    0.49205171983606183,
+    1.2326162706873334,
+    0.51884209877988796,
+    1.6653289953379988,
+    0.15217428819980339,
+    1.3330088320699756,
+    -0.11312635979024291,
+    0.29079286186156633,
+    -0.56103860173402187,
+    0.96620329329702181,
+    1.0207828051246959,
+    1.2033974143403428,
+    0.15250668702484685,
+    0.91859055286948732,
+    -0.029472936987090824,
+    -0.277222037705809,
+    0.038432098256917215,
+    2.2870604490585174,
+    0.20185010496763192,
+    0.96792349861687998,
+    -1.4306470899384824,
+    1.3768411527543938,
+    1.2529906517770286,
+    0.073561027835354897,
+    0.34287107097199809,
+    -0.3253027856738302,
+    0.25177040639006176,
+    -1.3042283750768202,
+    -0.3665697778995598,
+    -0.91310616144283874,
+    0.0017302910206192952,
+    -0.90483180613342473,
+    -0.60076354316502056,
+    -0.40462358365121154,
+    -0.55942185906755659,
+    -0.80847594259646705,
+    1.2927839383260777,
+    0.7841626812249084,
+    0.47720927110228795,
+    -0.63108789207386851,
+    -0.6649123756098646,
+    0.19511465527684818,
+    0.48073563793413515,
+    0.9059704504506777,
+    1.5672244142183465,
+    1.2909991406466983,
+    -2.0718711119335711,
+    0.7996848469058162,
+    -0.7419642349815968,
+    -1.363265798747116,
+    0.053080729537229421,
+    1.1405448007541588,
+    0.30858454632943755,
+    0.13576902412912278,
+    -0.64194299702134505,
+    -0.19982378816207119,
+    0.33887515900166387,
+    -0.97398280434253104,
+    1.0951809442480671,
+    -0.077863136718800449,
+    2.5029410662844982,
+    0.8879866230663479,
+    1.2036485337845353,
+    0.64555647411025319,
+    -0.25234371565020092,
+    -0.96069143361769982,
+    0.16674026253659979,
+    -0.07538117981102184,
+    0.69172324326952639,
+    -0.90270234513384051,
+    -0.59476760948903695,
+    -1.0515527530041857,
+    -0.065724062725264293,
+    1.111791472905175,
+    0.077596463762945295,
+    0.80506399888452185,
+    -0.71034094097585454,
+    0.46817656820136311,
+    0.27655628660026388,
+    -0.26463335737326671,
+    -0.59256402592468982,
+    0.85964675688526526,
+    -0.34167750873657976,
+]
+
+
+def _literal(values: list[Any]) -> str:
+    return "[" + ", ".join(repr(value) for value in values) + "]"
+
+
+def _dotplot_data() -> dict[str, str]:
+    dat1 = {
+        "x": ["A", "B"] * 15,
+        "y": _DOTPLOT_DAT1_Y,
+        "g": ["C", "D", "E"] * 10,
+    }
+    dat2 = {
+        "x": ["A", "B", "C"] * 30,
+        "y": _DOTPLOT_DAT2_Y,
+        "g": ["A", "B"] * 45,
+        "xn": [1.0, 2.0, 3.0] * 30,
+        "foo": ["foo"] * 90,
+    }
+    na_x = [None if index in (0, 9) else value for index, value in enumerate(_DOTPLOT_D1_X)]
+    tables = {
+        "D1": {"x": _DOTPLOT_D1_X},
+        # 视觉测试块里的 `dat`：x 连续 + 两水平 g（A / B）。
+        "DV": {"x": _DOTPLOT_D1_X, "g": ["A", "B"] * 10},
+        # `linetype` / `stroke` 逐行映射；stroke 已经按 R 的
+        # `continuous_scale("stroke", palette = rescale(x, to = c(1, 6)))` 预映射。
+        "LT": {
+            "x": _DOTPLOT_D1_X,
+            "lt": ["a", "b"] * 10,
+            "st": [1.0, 6.0] * 10,
+        },
+        "D1NA": {"x": na_x},
+        "DAT1": dat1,
+        "DAT2": dat2,
+        "SR": {"x": [1.0, 1.0, 1.0, 2.0, 2.0]},
+    }
+    return {
+        name: pprint.pformat(table, width=88, sort_dicts=False) for name, table in tables.items()
+    }
+
+
+def _dotplot_body(mapping: str, layers: list[str], title: str) -> str:
+    lines = [
+        "def build():",
+        "    p = (",
+        f"        ggplot(to_column_table(DATA), {mapping})",
+        *[f"        + {layer}" for layer in layers],
+        "        + theme_test()",
+        f'        + labs(title="{title}")',
+        "    )",
+        '    return {"plot": p, "size": [10, 8]}',
+    ]
+    return "\n".join(lines)
+
+
+def _dotplot_specs() -> list[dict[str, Any]]:
+    data = _dotplot_data()
+    specs: list[dict[str, Any]] = []
+
+    def add(
+        slug: str,
+        snapshot: str,
+        title: str,
+        table: str,
+        mapping: str,
+        layers: list[str],
+        features: list[str],
+        notes: str | None = None,
+    ) -> None:
+        spec: dict[str, Any] = {
+            "slug": slug,
+            "snapshot": f"geom-dotplot/{snapshot}.svg",
+            "title": title,
+            "data": data[table],
+            "body": _dotplot_body(mapping, layers, title),
+            "family": "geom-dotplot",
+            "features": features,
+        }
+        if notes is not None:
+            spec["notes"] = notes
+        specs.append(spec)
+
+    add(
+        "upstream-geom-dotplot-basic-dotdensity",
+        "basic-dotplot-with-dot-density-binning-binwidth-4",
+        "basic dotplot with dot-density binning, binwidth = .4",
+        "D1",
+        'aes(x="x")',
+        ["geom_dotplot(binwidth=0.4)"],
+        ["aes-mapping", "stat-bindot", "method-dotdensity"],
+    )
+    add(
+        "upstream-geom-dotplot-histodot",
+        "histodot-binning-equal-bin-spacing",
+        "histodot binning (equal bin spacing)",
+        "D1",
+        'aes(x="x")',
+        ['geom_dotplot(binwidth=0.4, method="histodot")'],
+        ["aes-mapping", "stat-bindot", "method-histodot"],
+    )
+    add(
+        "upstream-geom-dotplot-stackratio-half",
+        "dots-stacked-closer-stackratio-5-fill-white",
+        "dots stacked closer: stackratio=.5, fill=white",
+        "D1",
+        'aes(x="x")',
+        ['geom_dotplot(binwidth=0.4, stackratio=0.5, fill="white")'],
+        ["aes-mapping", "stat-bindot", "stackratio"],
+    )
+    add(
+        "upstream-geom-dotplot-dotsize-large",
+        "larger-dots-dotsize-1-5-fill-white",
+        "larger dots: dotsize=1.5, fill=white",
+        "D1",
+        'aes(x="x")',
+        ['geom_dotplot(binwidth=0.4, dotsize=1.4, fill="white")'],
+        ["aes-mapping", "stat-bindot", "dotsize"],
+    )
+    for stackdir in ("up", "down", "center", "centerwhole"):
+        add(
+            f"upstream-geom-dotplot-stack-{stackdir}",
+            f"stack-{stackdir}",
+            f"stack {stackdir}",
+            "D1",
+            'aes(x="x")',
+            [f'geom_dotplot(binwidth=0.4, stackdir="{stackdir}")'],
+            ["aes-mapping", "stat-bindot", f"stackdir-{stackdir}"],
+        )
+        add(
+            f"upstream-geom-dotplot-stack-{stackdir}-coord-flip",
+            f"stack-{stackdir}-with-coord-flip",
+            f"stack {stackdir} with coord_flip",
+            "D1",
+            'aes(x="x")',
+            [f'geom_dotplot(binwidth=0.4, stackdir="{stackdir}")', "coord_flip()"],
+            ["aes-mapping", "stat-bindot", f"stackdir-{stackdir}", "coord-flip"],
+        )
+    add(
+        "upstream-geom-dotplot-multiple-groups-bins-not-aligned",
+        "multiple-groups-bins-not-aligned",
+        "multiple groups, bins not aligned",
+        "DV",
+        'aes(x="x", fill="g")',
+        ["geom_dotplot(binwidth=0.4, alpha=0.4)"],
+        ["aes-mapping", "stat-bindot", "binpositions-bygroup"],
+    )
+    add(
+        "upstream-geom-dotplot-multiple-groups-bins-aligned",
+        "multiple-groups-bins-aligned",
+        "multiple groups, bins aligned",
+        "DV",
+        'aes(x="x", fill="g")',
+        ['geom_dotplot(binwidth=0.4, alpha=0.4, binpositions="all")'],
+        ["aes-mapping", "stat-bindot", "binpositions-all"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-along-y-stack-center",
+        "bin-along-y-stack-center",
+        "bin along y, stack center",
+        "D1",
+        'aes(x=0, y="x")',
+        ['geom_dotplot(binwidth=0.4, binaxis="y", stackdir="center")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "stackdir-center"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-along-y-stack-centerwhole",
+        "bin-along-y-stack-centerwhole",
+        "bin along y, stack centerwhole",
+        "D1",
+        'aes(x=0, y="x")',
+        ['geom_dotplot(binwidth=0.4, binaxis="y", stackdir="centerwhole")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "stackdir-centerwhole"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-along-y-stack-centerwhole-histodot",
+        "bin-along-y-stack-centerwhole-histodot",
+        "bin along y, stack centerwhole, histodot",
+        "D1",
+        'aes(x=0, y="x")',
+        ['geom_dotplot(binwidth=0.4, binaxis="y", stackdir="centerwhole", method="histodot")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "method-histodot"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-x-three-y-groups-stack-centerwhole",
+        "bin-x-three-y-groups-stack-centerwhole",
+        "bin x, three y groups, stack centerwhole",
+        "DAT2",
+        'aes(x="y", y="x")',
+        ['geom_dotplot(binwidth=0.25, binaxis="x", stackdir="centerwhole")'],
+        ["aes-mapping", "stat-bindot", "binaxis-x", "stackdir-centerwhole"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-three-x-groups-stack-centerwhole",
+        "bin-y-three-x-groups-stack-centerwhole",
+        "bin y, three x groups, stack centerwhole",
+        "DAT2",
+        'aes(x="x", y="y")',
+        ['geom_dotplot(binwidth=0.25, binaxis="y", stackdir="centerwhole")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "stackdir-centerwhole"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-across-groups",
+        "bin-y-three-x-groups-bins-aligned-across-groups",
+        "bin y, three x groups, bins aligned across groups",
+        "DAT2",
+        'aes(x="x", y="y")',
+        ['geom_dotplot(binwidth=0.25, binaxis="y", stackdir="center", binpositions="all")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "binpositions-all"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-coord-flip",
+        "bin-y-three-x-groups-bins-aligned-coord-flip",
+        "bin y, three x groups, bins aligned, coord_flip",
+        "DAT2",
+        'aes(x="x", y="y")',
+        [
+            'geom_dotplot(binwidth=0.25, binaxis="y", stackdir="center", binpositions="all")',
+            "coord_flip()",
+        ],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "binpositions-all", "coord-flip"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-dodged",
+        "bin-y-dodged",
+        "bin y, dodged",
+        "DAT2",
+        'aes(x="foo", y="y", fill="x")',
+        [
+            "scale_y_continuous(breaks=[-4.0, -3.6, -3.2, -2.8, -2.4, -2.0, -1.6, "
+            "-1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, "
+            "3.6, 4.0])",
+            'geom_dotplot(binwidth=0.25, position="dodge", binaxis="y", stackdir="center")',
+        ],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "position-dodge"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-dodged-coord-flip",
+        "bin-y-dodged-coord-flip",
+        "bin y, dodged, coord_flip",
+        "DAT2",
+        'aes(x="foo", y="y", fill="x")',
+        [
+            "scale_y_continuous(breaks=[-4.0, -3.6, -3.2, -2.8, -2.4, -2.0, -1.6, "
+            "-1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, "
+            "3.6, 4.0])",
+            'geom_dotplot(binwidth=0.25, position="dodge", binaxis="y", stackdir="center")',
+            "coord_flip()",
+        ],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "position-dodge", "coord-flip"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-three-x-groups-fill-and-dodge",
+        "bin-y-three-x-groups-fill-and-dodge",
+        "bin y, three x groups, fill and dodge",
+        "DAT2",
+        'aes(x="x", y="y", fill="g")',
+        [
+            "scale_y_continuous(breaks=[-4.0, -3.6, -3.2, -2.8, -2.4, -2.0, -1.6, "
+            "-1.2, -0.8, -0.4, 0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8, 3.2, "
+            "3.6, 4.0])",
+            'geom_dotplot(binwidth=0.2, position="dodge", binaxis="y", stackdir="center")',
+        ],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "position-dodge"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-continuous-x-grouping-by-x",
+        "bin-y-continous-x-axis-grouping-by-x",
+        "bin y, continous x-axis, grouping by x",
+        "DAT2",
+        'aes(x="xn", y="y", group="x")',
+        ['geom_dotplot(binwidth=0.2, binaxis="y", stackdir="center")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "grouping"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-continuous-x-single-group",
+        "bin-y-continous-x-axis-single-x-group",
+        "bin y, continous x-axis, single x group",
+        "DAT2",
+        'aes(x="xn", y="y")',
+        ['geom_dotplot(binwidth=0.2, binaxis="y", stackdir="center")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y"],
+    )
+    add(
+        "upstream-geom-dotplot-variable-linetype-size",
+        "variable-linetype-and-size-specified-as-aesthetics",
+        "variable linetype and size specified as aesthetics",
+        "LT",
+        'aes(x="x", linetype="lt", stroke="st")',
+        [
+            'geom_dotplot(binwidth=0.4, fill="red", colour="blue")',
+            "labs(\n"
+            '            linetype=\'rep(c("a", "b"), length.out = nrow(dat))\',\n'
+            "            stroke='rep(c(1, 2), length.out = nrow(dat))',\n"
+            "        )",
+        ],
+        ["aes-mapping", "stat-bindot", "linetype-aes", "stroke-aes"],
+        notes=(
+            "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 "
+            "theme_test()。残余偏差（SIL-715 #28）：linetype=b（lty 2）那 10 个点在 "
+            "skia SVG 设备上丢了描边——actual 只有 fill 的 ellipse，expected 是 "
+            "stroke-width 4.50 + stroke-dasharray 12,12 的蓝圈；图例侧 expected 7 key / "
+            "actual 2。IR 的 dash pattern 是对的（gpar.lty=(9,9)），卡在 SVGCanvas 不序列化 "
+            "PathEffect。实测 1.76% / 0.53%，仍在档内。"
+        ),
+    )
+    add(
+        "upstream-geom-dotplot-3-stackgroups-dotdensity-aligned",
+        "3-stackgroups-dot-density-with-aligned-bins",
+        "3 stackgroups, dot-density with aligned bins",
+        "DAT2",
+        'aes(x="y", fill="x")',
+        ['geom_dotplot(binwidth=0.25, stackgroups=True, binpositions="all", alpha=0.5)'],
+        ["aes-mapping", "stat-bindot", "stackgroups", "binpositions-all"],
+    )
+    add(
+        "upstream-geom-dotplot-3-stackgroups-histodot",
+        "3-stackgroups-histodot",
+        "3 stackgroups, histodot",
+        "DAT2",
+        'aes(x="y", fill="x")',
+        ['geom_dotplot(binwidth=0.25, stackgroups=True, method="histodot", alpha=0.5)'],
+        ["aes-mapping", "stat-bindot", "stackgroups", "method-histodot"],
+    )
+    add(
+        "upstream-geom-dotplot-3-stackgroups-bin-y-histodot",
+        "3-stackgroups-bin-y-histodot",
+        "3 stackgroups, bin y, histodot",
+        "DAT2",
+        'aes(x=1, y="y", fill="x")',
+        [
+            'geom_dotplot(binaxis="y", binwidth=0.25, stackgroups=True, '
+            'method="histodot", alpha=0.5)'
+        ],
+        ["aes-mapping", "stat-bindot", "stackgroups", "binaxis-y"],
+    )
+    add(
+        "upstream-geom-dotplot-bin-y-dodging-3-stackgroups-histodot",
+        "bin-y-dodging-3-stackgroups-histodot",
+        "bin y, dodging, 3 stackgroups, histodot",
+        "DAT2",
+        'aes(x="x", y="y", fill="g")',
+        [
+            'geom_dotplot(binaxis="y", binwidth=0.25, stackgroups=True, '
+            'method="histodot", alpha=0.5, stackdir="centerwhole")'
+        ],
+        ["aes-mapping", "stat-bindot", "stackgroups", "binaxis-y"],
+    )
+    add(
+        "upstream-geom-dotplot-facets-3-groups-histodot-stackgroups",
+        "facets-3-groups-histodot-stackgroups",
+        "facets, 3 groups, histodot, stackgroups",
+        "DAT2",
+        'aes(x="y", fill="g")',
+        [
+            'geom_dotplot(binwidth=0.25, stackgroups=True, method="histodot", alpha=0.5)',
+            'facet_grid(rows="x")',
+        ],
+        ["aes-mapping", "stat-bindot", "stackgroups", "method-histodot", "facet-grid"],
+    )
+    add(
+        "upstream-geom-dotplot-2-na-dotdensity",
+        "2-na-values-dot-density-binning-binwidth-4",
+        "2 NA values, dot-density binning, binwidth = .4",
+        "D1NA",
+        'aes(x="x")',
+        ["geom_dotplot(binwidth=0.4)"],
+        ["aes-mapping", "stat-bindot", "na-removal"],
+    )
+    add(
+        "upstream-geom-dotplot-2-na-bin-along-y",
+        "2-na-values-bin-along-y-stack-center",
+        "2 NA values, bin along y, stack center",
+        "D1NA",
+        'aes(x=0, y="x")',
+        ['geom_dotplot(binwidth=0.4, binaxis="y", stackdir="center")'],
+        ["aes-mapping", "stat-bindot", "binaxis-y", "na-removal"],
+    )
+    add(
+        "upstream-geom-dotplot-stackratio-1-5",
+        "stackratio-1-5",
+        "stackratio = 1.5",
+        "SR",
+        'aes(x="x")',
+        [
+            "geom_hline(yintercept=0.0)",
+            'geom_dotplot(aes(x="x"), binwidth=0.5, stackdir="down", stackratio=1.5, fill=None)',
+            'geom_dotplot(aes(x="x + 3"), binwidth=0.5, stackdir="up", stackratio=1.5, fill=None)',
+            'geom_dotplot(aes(x="x + 6"), binwidth=0.5, stackdir="center", '
+            "stackratio=1.5, fill=None)",
+            'geom_dotplot(aes(x="x + 9"), binwidth=0.5, stackdir="centerwhole", '
+            "stackratio=1.5, fill=None)",
+        ],
+        ["aes-mapping", "stat-bindot", "stackratio", "multi-layer"],
+    )
+    return specs
+
+
 def specs() -> list[dict[str, Any]]:
     # `upstream-theme-bw` 是先手写验证过的原型，保留它的 plot.py 不动。
     # 三个 `base_size = 33` 变体实测超阈（geom 缺省尺寸没跟 `theme$pointsize` 走，
@@ -145,7 +700,11 @@ def specs() -> list[dict[str, Any]]:
         "upstream-theme-classic-large",
         "upstream-theme-linedraw-large",
     }
-    base = [spec for spec in _theme_specs() + _guide_specs() if spec["slug"] not in skip]
+    base = [
+        spec
+        for spec in _theme_specs() + _guide_specs() + _dotplot_specs()
+        if spec["slug"] not in skip
+    ]
     return base + _G1A_SPECS
 
 
@@ -3239,8 +3798,11 @@ def build():
 
 _PLOT_NAMES = (
     "aes",
+    "coord_flip",
     "facet_grid",
     "facet_wrap",
+    "geom_dotplot",
+    "geom_hline",
     "geom_point",
     "ggplot",
     "labs",
@@ -3271,7 +3833,10 @@ def _plot_source(spec: dict[str, Any]) -> str:
     lines = [
         '"""上游快照复刻。',
         "",
-        f"源：{spec['snapshot']}（vdiffr 名 {spec['title']!r}）。",
+        *textwrap.wrap(
+            f"源：{spec['snapshot']}（vdiffr 名 {spec['title']!r}）。",
+            width=96,
+        ),
         "自动生成：`pixi run snapshots:import`。expected.svg 是上游那份，未改写。",
         '"""',
         "",
@@ -3292,11 +3857,13 @@ def _plot_source(spec: dict[str, Any]) -> str:
             body,
         ]
     )
-    return "\n".join(lines)
+    return "\n".join(lines) + "\n"
 
 
 def _meta_source(spec: dict[str, Any]) -> str:
-    if "features" in spec:
+    # G1a（SIL-788）的条目直接给 `source`（完整 plot.py 正文）；dotplot 族也带
+    # `features`，所以判别键必须是 `source`，不能用 `features`。
+    if "source" in spec:
         return (
             'family = "guide"\n'
             f"features = {json.dumps(spec['features'])}\n"
@@ -3307,6 +3874,22 @@ def _meta_source(spec: dict[str, Any]) -> str:
             'notes = "SIL-788：vdiffr 快照原样纳入；标题是 doppelganger 名。"\n'
         )
     family = spec["snapshot"].split("/")[0]
+    family = spec.get("family", family)
+    if family == "geom-dotplot":
+        features = spec.get("features", ["aes-mapping", "stat-bindot"])
+        notes = spec.get(
+            "notes",
+            "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。",
+        )
+        return (
+            f'family = "{family}"\n'
+            f"features = {json.dumps(features)}\n"
+            "ci = true\n"
+            f'title = "上游快照：{spec["title"]}"\n'
+            f'source = "upstream:tests/testthat/_snaps/{spec["snapshot"]}"\n'
+            "tolerance = { png = 0.02 }\n"
+            f'notes = "{notes}"\n'
+        )
     family = "guides" if family == "guides" else "theme"
     if family == "guides":
         facet = "facet-grid" if "facet-grid" in spec["slug"] else "facet-wrap"
@@ -3324,6 +3907,22 @@ def _meta_source(spec: dict[str, Any]) -> str:
     )
 
 
+def _ruff_format(source: str) -> str:
+    """生成物先过 ruff 格式化，写盘内容与 `pixi run lint` 期望的一致。"""
+    try:
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "case.py"
+            path.write_text(source, encoding="utf-8")
+            result = subprocess.run(
+                ["ruff", "format", str(path)], capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0:
+                return path.read_text(encoding="utf-8")
+    except OSError:  # pragma: no cover - 没有 ruff 时退回原样
+        pass
+    return source
+
+
 def write_cases(*, only: list[str] | None = None, dry_run: bool = False) -> int:
     tree = snapshots.fetch(force=False)
     snaps = tree / "tests" / "testthat" / "_snaps"
@@ -3337,7 +3936,7 @@ def write_cases(*, only: list[str] | None = None, dry_run: bool = False) -> int:
             return 1
         target = CASES / spec["slug"]
         files = {
-            target / "plot.py": _plot_source(spec),
+            target / "plot.py": _ruff_format(_plot_source(spec)),
             target / "meta.toml": _meta_source(spec),
         }
         for path, content in files.items():

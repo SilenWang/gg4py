@@ -81,6 +81,7 @@ _LONGTAIL: tuple[str, ...] = (
 IMPLEMENTED_STATS: tuple[str, ...] = (
     "identity",
     "bin",
+    "bindot",
     "count",
     "boxplot",
     "smooth",
@@ -94,6 +95,7 @@ _EMPTY = ColumnTable()
 #: 上游 `Stat$compute_layer()` 的 `required_aes`（`x|y` = 二选一）。
 _REQUIRED: Mapping[str, tuple[str, ...]] = {
     "bin": ("x", "y"),
+    "bindot": ("x", "y"),
     "count": ("x", "y"),
     "boxplot": ("x", "y"),
     "smooth": ("x", "y"),
@@ -110,6 +112,7 @@ _REQUIRED: Mapping[str, tuple[str, ...]] = {
 #: `Stat*$non_missing_aes`（`remove_missing()` 也看这些列）。
 _NON_MISSING: Mapping[str, tuple[str, ...]] = {
     "bin": (),
+    "bindot": ("weight",),
     "count": (),
     "boxplot": ("weight",),
     "smooth": (),
@@ -262,6 +265,8 @@ def compute_stat(
         return _stat_count(table, params, flipped=flipped)
     if name == "bin":
         return _stat_bin(table, params, scales=scales, flipped=flipped, raw=raw)
+    if name == "bindot":
+        return _stat_bindot(table, params, scales=scales)
     if name == "boxplot":
         return _stat_boxplot(table, params, flipped=flipped)
     if name == "smooth":
@@ -321,6 +326,16 @@ def _take(column: Column, rows: np.ndarray) -> Column:
         levels=column.levels,
         na_mask=column.na_mask[rows],
     )
+
+
+def _put(columns: list[tuple[str, Column]], name: str, column: Column) -> list[tuple[str, Column]]:
+    """R 的 `data[[name]] <- value`：已有同名列原位替换，否则追加到末尾。"""
+    for position, (key, _) in enumerate(columns):
+        if key == name:
+            columns[position] = (name, column)
+            return columns
+    columns.append((name, column))
+    return columns
 
 
 def _slice(table: ColumnTable, rows: np.ndarray) -> ColumnTable:
@@ -935,6 +950,190 @@ def _bin_counts(values: np.ndarray, weights: np.ndarray, bins: _Bins) -> np.ndar
     valid = index >= 0
     np.add.at(count, index[valid], weights[valid])
     return count
+
+
+def _bindot_float(value: Any, name: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, np.integer, np.floating)):
+        raise BuildError(f"stat_bindot 的 {name} 必须是数值，收到 {value!r}")
+    number = float(value)
+    if not math.isfinite(number):
+        raise BuildError(f"stat_bindot 的 {name} 必须是有限数，收到 {value!r}")
+    return number
+
+
+def _densitybin(
+    values: np.ndarray,
+    weights: np.ndarray,
+    binwidth: float | None,
+    *,
+    scale_range: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """上游 `densitybin()`：按数据扫描切 bin，返回 (x, bin, binwidth, weight, bincenter)。
+
+    扫描口径逐字照抄：从 `-Inf` 起，值 `x[i] >= binend` 就开一个新 bin，
+    `binend = x[i] + binwidth`（半开区间 `[start, start + binwidth)`）。
+    """
+    order = np.argsort(values, kind="stable")
+    x = np.asarray(values, dtype=np.float64)[order]
+    weight = np.asarray(weights, dtype=np.float64)[order]
+    if x.size == 0:
+        empty = np.zeros(0, dtype=np.float64)
+        return empty, empty.astype(np.int64), empty, empty, empty
+    if binwidth is None:
+        if scale_range is not None:
+            low, high = float(scale_range[0]), float(scale_range[1])
+        else:
+            low, high = float(np.min(x)), float(np.max(x))
+        binwidth = (high - low) / 30.0
+    width = float(binwidth)
+    bins = np.empty(x.size, dtype=np.int64)
+    binend = -math.inf
+    current = 0
+    for index in range(x.size):
+        if x[index] >= binend:
+            binend = x[index] + width
+            current += 1
+        bins[index] = current
+    centers = np.zeros(current + 1, dtype=np.float64)
+    for bin_id in range(1, current + 1):
+        in_bin = x[bins == bin_id]
+        centers[bin_id] = (float(np.min(in_bin)) + float(np.max(in_bin))) / 2.0
+    return x, bins, np.full(x.size, width), weight, centers[bins]
+
+
+def _stat_bindot(table: ColumnTable, params: Mapping[str, Any], *, scales: Any) -> ColumnTable:
+    """`stat_bindot`：dot-density / histodot 两种切 bin 口径（上游 `StatBindot`）。
+
+    `binpositions = "all"` 的预扫描在整层上做一次（`compute_layer()`），
+    之后仍按 `group` 逐组汇总 —— 这是「跨组对齐 bin」的全部实现。
+    """
+    binaxis = str(params.get("binaxis") or "x")
+    if binaxis not in ("x", "y"):
+        raise BuildError(f"stat_bindot 的 binaxis 只能是 'x' 或 'y'，收到 {binaxis!r}")
+    method = str(params.get("method") or "dotdensity")
+    if method not in ("dotdensity", "histodot"):
+        raise BuildError(
+            f"stat_bindot 的 method 只能是 'dotdensity' 或 'histodot'，收到 {method!r}"
+        )
+    binpositions = str(params.get("binpositions") or "bygroup")
+    if binpositions not in ("bygroup", "all"):
+        raise BuildError(
+            f"stat_bindot 的 binpositions 只能是 'bygroup' 或 'all'，收到 {binpositions!r}"
+        )
+    binwidth = _bindot_float(params.get("binwidth"), "binwidth")
+    origin = _bindot_float(params.get("origin"), "origin")
+    right = bool(params.get("right", True))
+    drop = bool(params.get("drop", False))
+
+    work = table
+    if "weight" in work:
+        weight = np.asarray(_column_values(work.column("weight")), dtype=np.float64)
+        weight = np.where(np.isnan(weight), 0.0, weight)
+        if not np.all(weight == np.floor(weight)) or np.any(weight < 0):
+            raise BuildError("stat_bindot 的 weight 必须是非负整数")
+    else:
+        weight = np.ones(work.nrows, dtype=np.float64)
+
+    if method == "dotdensity" and binpositions == "all":
+        values = _numeric(work.column(binaxis))
+        order = np.argsort(values, kind="stable")
+        work = _slice(work, order)
+        _, bins, widths, sorted_weight, centers = _densitybin(
+            values[order], weight[order], binwidth
+        )
+        columns = [(name, column) for name, column in _items(work)]
+        columns = _put(columns, "bin", Column("int", bins))
+        columns = _put(columns, "binwidth", _float_column(widths))
+        columns = _put(columns, "weight", _float_column(sorted_weight))
+        columns = _put(columns, "bincenter", _float_column(centers))
+        work = ColumnTable(columns, nrows=work.nrows)
+        weight = sorted_weight
+
+    def group_fn(sub: ColumnTable, rows: np.ndarray) -> list[tuple[str, Column]]:
+        values = _numeric(sub.column(binaxis))
+        weights = weight[rows]
+
+        def scale_range() -> np.ndarray:
+            """`scales[[binaxis]]$dimension()`；离散位置标度退回数据范围。"""
+            try:
+                return _dimension(scales, binaxis, values)
+            except (TypeError, ValueError):
+                finite = values[np.isfinite(values)]
+                if finite.size == 0:
+                    return np.array([0.0, 1.0], dtype=np.float64)
+                return np.array([float(finite.min()), float(finite.max())], dtype=np.float64)
+
+        if method == "histodot":
+            bins = _compute_bins(
+                breaks=None,
+                binwidth=binwidth,
+                bins=30,
+                center=None,
+                boundary=origin,
+                closed="right" if right else "left",
+                x_range=scale_range(),
+            )
+            count = _bin_counts(values, weights, bins)
+            widths = np.diff(bins.breaks)
+            centers = (bins.breaks[:-1] + bins.breaks[1:]) / 2.0
+        else:
+            if binpositions == "bygroup":
+                _, _, widths_all, weights_all, centers_all = _densitybin(
+                    values,
+                    weights,
+                    binwidth,
+                    scale_range=scale_range(),
+                )
+            else:
+                centers_all = np.asarray(_column_values(sub.column("bincenter")), dtype=np.float64)
+                widths_all = np.asarray(_column_values(sub.column("binwidth")), dtype=np.float64)
+                weights_all = weights
+            # 按 bincenter 合并（R 的 `dapply(data, "bincenter", …)`）。
+            order: list[float] = []
+            positions: dict[float, int] = {}
+            for center in centers_all.tolist():
+                if center not in positions:
+                    positions[center] = len(order)
+                    order.append(center)
+            count = np.zeros(len(order), dtype=np.float64)
+            width_out = np.zeros(len(order), dtype=np.float64)
+            for center, value in zip(centers_all.tolist(), weights_all.tolist(), strict=True):
+                slot = positions[center]
+                count[slot] += value
+                width_out[slot] = widths_all[0]
+            centers = np.asarray(order, dtype=np.float64)
+            widths = width_out
+            total = float(np.sum(np.abs(count)))
+            if total != 0 and drop:
+                keep = count > 0
+                count, centers, widths = count[keep], centers[keep], widths[keep]
+
+        produced: list[tuple[str, Column]] = [
+            ("count", _float_column(count)),
+            ("binwidth", _float_column(widths)),
+        ]
+        if binaxis == "x":
+            produced.append(("x", _float_column(centers)))
+            produced.append(("width", _float_column(widths)))
+        else:
+            produced.append(("y", _float_column(centers)))
+            x_values = _numeric(sub.column("x"))
+            midline = (float(np.min(x_values)) + float(np.max(x_values))) / 2.0
+            produced.append(("x", _float_column(np.full(count.size, midline))))
+        # `bin_out()` / `densitybin()` 两条路都产出 `ncount`（`count / max(|count|)`）。
+        maximum = float(np.max(np.abs(count))) if count.size else 0.0
+        ncount = count / maximum if maximum else np.full(count.size, math.nan)
+        produced.append(("ncount", _float_column(ncount)))
+        return produced
+
+    return _compute_panel(
+        work,
+        group_fn,
+        stat="bindot",
+        dropped=frozenset({"weight", "bin", "bincenter"}),
+    )
 
 
 def _dimension(scales: Any, aesthetic: str, values: np.ndarray) -> np.ndarray:

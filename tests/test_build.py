@@ -185,11 +185,11 @@ def test_bin_stat_is_the_default_for_geom_histogram() -> None:
 
 def test_unimplemented_stat_is_rejected_not_silently_identity() -> None:
     # M1-8 / M2-6 之后 bin / boxplot / smooth / align / ecdf / contour … 都是真的；
-    # 还没排到的 stat 名（bindot 等）仍然报错并列出已实现的 stat，不静默当成 identity。
-    # 占位要选「其余 M2 PR 合入后仍未实现」的名字，否则并行 PR 合并后会假红。
-    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(stat="bindot")
+    # 没登记过的 stat 名仍然报错并列出已实现的 stat，不静默当成 identity。
+    # 用不存在的名字而不是「某个还没实现的 stat」：后者会随并行 PR 合入而假红。
+    plot = ggplot(table(), aes(x="displ", y="hwy")) + geom_point(stat="not_a_stat")
     aesthetics = compute_aesthetics(plot, plot.layers[0])
-    with pytest.raises(BuildError, match="bindot"):
+    with pytest.raises(BuildError, match="not_a_stat"):
         compute_stat(plot.layers[0], aesthetics)
 
 

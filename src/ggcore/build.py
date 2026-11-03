@@ -118,6 +118,9 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        # `StatBindot$default_aes = aes(y = after_stat(count))`：只补 y，
+        # x 是 bin 中心（stat 自己产出，不是计数）。
+        "bindot": (("y", "count"),),
         # M2-7 长尾 B：geom_count / geom_bin_2d / geom_hex / geom_density /
         # geom_qq / geom_contour_filled 的 `Stat$default_aes`（与下面 M2-6 的
         # 同名列合并成一份表；两边取值一致，`contour_filled` 用带 `order` 的版本）。
