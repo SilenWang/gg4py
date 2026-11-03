@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "size-aes", "scale-size", "guide-legend"]
+ci = true
+title = "scale：size_area（面积 ∝ 值）+ 完整图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "size = max_size * sqrt(v / max(v))；v = 0 的点半径为 0（R 也画不出来）。"

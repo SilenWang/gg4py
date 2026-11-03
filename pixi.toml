@@ -165,8 +165,10 @@ r-hms = ">=1.1,<2"
 # 坐标面板参数（M1-5）：10 个 case 的 x.range / y.range / limits / aspect()
 # 与 R 自己报的 "Removed N rows" 计数（含 log10 标度上 coord limits 的变换）。
 "refs:coord" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/coord_ref.R"
-# 标度（M1-4）：limits / expand / breaks / labels / map，外加 hue 与 gradient 色板。
-"refs:scales" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/scales_ref.R"
+# 标度（M1-4 / M2-4）：limits / expand / breaks / labels / map（54 个 case）。
+# 第二个脚本生成色板取值表 `src/ggcore/palette_data.py`（brewer 逐 n 表 + viridis
+# 8 档映射）与色板夹具 `tests/fixtures/palettes_r_reference.json`。
+"refs:scales" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/scales_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/palettes_ref.R"
 # 分面（M1-6）：layout 的 PANEL/ROW/COL、free scales 的逐面板范围、
 # ggplotGrob() 的 panel 宽高与 strip 位置。
 "refs:facet" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/facet_ref.R"

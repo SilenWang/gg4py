@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "scale-discrete", "scale-viridis", "guide-legend"]
+ci = true
+title = "scale：离散 colour 用 viridis（option D）+ 完整图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "4 个水平落到 viridis(4) = #440154FF / #21908CFF / #35B779FF / #FDE725FF（8 位十六进制带 alpha FF，与 R 一致）；图例键与散点同色。"

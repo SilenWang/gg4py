@@ -129,7 +129,8 @@ def test_scope_a_exports_are_registered() -> None:
     assert len(A_EXPORTS) == 70
     assert A_EXPORTS <= registered_scales
     # A 段新增 64 个名字（M1-4 的 15 个里 10 个属于 A、5 个属于 B）。
-    assert len(registered_scales) == 75
+    # 合并 M2-4 B 段（#53）后注册表是 A ∪ B：129 个名字，无重复、无丢失。
+    assert len(registered_scales) == 129
 
 
 def test_color_alias_matches_colour() -> None:

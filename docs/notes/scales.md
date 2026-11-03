@@ -1,9 +1,10 @@
-# 标度口径（M1-4 / M2-4 A）
+# 标度口径（M1-4 / M2-4）
 
-`ggcore.scales` 把 ggplot2 4.0.3 的标度实现搬过来。M1-4 的 15 个名字（位置连续 /
-离散 / log10、`colour` / `fill` 的渐变与 hue、`size`、`shape`、`alpha`）是打底；
-M2-4 A（SIL-731）按族补齐到 **75 个注册名**，覆盖 v4.0.3 NAMESPACE 里连续侧的
-70 个 `scale_*` 导出：
+`ggcore.scales` 把 ggplot2 4.0.3 的标度实现搬过来。M1-4 的 15 个基础名字（位置连续 /
+离散 / log10、`colour` / `fill` 的渐变与 hue、`size`、`shape`、`alpha`）打底；
+M2-4 按「家族 × 变体」补齐到 **129 个注册名**（A 段连续侧 75 个、B 段离散 / 色板
+新增 54 个），每个家族一套实现，变体（`discrete` / `ordinal` / `manual` /
+`identity` / `brewer` / `viridis_*` / `area` / `binned` …）只换色板与映射函数。
 
 | 族 | 导出 | 实现 |
 | --- | --- | --- |
@@ -14,7 +15,9 @@ M2-4 A（SIL-731）按族补齐到 **75 个注册名**，覆盖 v4.0.3 NAMESPACE
 | 发散 / n 色渐变 | `_gradient2`、`_gradientn` | `Gradient2Scale` / `GradientNScale` |
 | 分箱颜色 | `_binned`、`_steps`、`_steps2`、`_stepsn` | `BinnedGradient*Scale` |
 | Brewer 连续侧 | `_distiller`、`_fermenter` | `DistillerScale` / `FermenterScale` |
-| 其它美学 | `alpha` / `alpha_binned` / `alpha_date` / `alpha_datetime`；`size` / `_area` / `_binned` / `_binned_area` / `_date` / `_datetime`、`radius`；`linewidth` / `_continuous` / `_binned` / `_date` / `_datetime` | `AlphaScale` / `SizeScale` / `RadiusScale` / `LinewidthScale`（+ 分箱版） |
+| 离散颜色 | `_hue`、`_brewer`、`_grey`、`_ordinal`、`_manual`、`_identity`、`_viridis_d`、`_viridis_b` | `HueScale` / `BrewerScale` / `GreyScale` / `OrdinalColourScale` / `DiscreteIdentityScale` / `BinnedColourScale` |
+| 连续 viridis | `_viridis_c` | `GradientNScale`（6 色） |
+| 其它美学 | `alpha` / `alpha_binned` / `alpha_date` / `alpha_datetime` / `_ordinal` / `_manual` / `_identity`；`size` / `_area` / `_binned` / `_binned_area` / `_date` / `_datetime` / `_ordinal` / `_manual` / `_identity`、`radius`；`linewidth` / `_continuous` / `_binned` / `_date` / `_datetime` / `_ordinal` / `_manual` / `_identity`；`shape*` / `linetype*` | `AlphaScale` / `SizeScale` / `RadiusScale` / `LinewidthScale` / `ShapeScale` / `LinetypeScale` / `NumericDiscreteScale`（+ 分箱版 / identity 版） |
 
 名字 → 美学 / 实现族 / 默认值的唯一来源是 `src/ggcore/scale_specs.py`：注册表
 （`registry.SCALE_SPECS`）与 `scale_from_component()` 都读这张表，新增一个导出
@@ -27,10 +30,12 @@ M2-4 A（SIL-731）按族补齐到 **75 个注册名**，覆盖 v4.0.3 NAMESPACE
 训练后的范围、断点、标签、色值与 R 逐项对拍。
 
 代码：`src/ggcore/scales.py`（实现）、`src/ggcore/scale_specs.py`（导出表）、
-`src/ggcore/palettes.py`（Brewer 表）、`src/ggcore/scales_date.py`（日期时间
+`src/ggcore/palettes.py`（色板与颜色空间）、`src/ggcore/palette_data.py`
+（**生成物**：brewer / viridis 取值表）、`src/ggcore/scales_date.py`（日期时间
 `pretty` / `breaks_width` / 格式化）。测试：`tests/test_scales.py`（口径 / 负向）、
 `tests/test_scales_families.py`（族级 + 每个导出进 build）、
-`tests/test_scales_r_parity.py`（R 对拍）。
+`tests/test_scales_r_parity.py`（84 个 case 的 R 对拍）、
+`tests/test_palettes_r_parity.py`（逐色对拍）。
 
 ```
 compute_aesthetics → transform_scales → train → map_position → … → map_scales → finish
@@ -82,8 +87,10 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 | --- | --- | --- |
 | `x` / `y` | `scale_x_discrete()`（水平 → 1..n） | `scale_x_continuous()` |
 | `colour` / `fill` | `scale_colour_hue()`（`hue_pal`） | `scale_colour_gradient()`（Lab） |
-| `size` / `alpha` | —（恒为连续） | 连续 |
+| `size` / `alpha` | —（恒为连续） | 连续（area / 线性） |
 | `shape` | 离散（16/17/15/3/7/8） | 离散 |
+| `linetype` | `scale_linetype_discrete()`（`pal_linetype`） | 离散（连续即报错，同上游） |
+| `linewidth` | —（离散走 ordinal） | `scale_linewidth()`（线性到 1..6） |
 | 其它（`group` / `PANEL` / `weight` / `width` …） | 不建标度，原样通过 | 同左 |
 
 `xmin` / `xmax` / `xend` **共用 x 标度**，`ymin` / `ymax` / `yend` 共用 y 标度
@@ -91,12 +98,44 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 （上游 `ScaleDiscrete$map()` 只处理离散值），所以柱子的 `xmin = x - width/2`
 不会被离散水平编码吃掉。
 
-注册表现在是 75 个名字（M1-4 的 15 个 + M2-4 A 的 64 个新增，其中 5 个离散名
-留给 M2-4 B）。`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的
+注册表现在是 **129 个名字**（M1-4 的 15 个 + M2-4 A 新增 64 个 + B 新增的离散 /
+色板 54 个；两边重名的 `size_area` / `radius` / `linewidth_*` / `*_distiller`
+只登记一次）。`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的
 别名；`scale_colour_gradient()` / `scale_fill_gradient()` 在 SIL-723 注册成同义名
 （`colour_gradient` / `fill_gradient` → `GradientScale`，`+` 与方法链两条入口）
 （`tools/refs/scales_ref.R` 末尾有自检）。`scale_colour_gradientn()` /
 `scale_colour_stepsn()` 与上游一样**必须**给 `colours`。
+
+### 2.1 名字表与「家族 × 变体」分派
+
+`scale_from_component()` 先查 `scale_specs` 的声明表（名字 → 家族 + 默认值），
+家族再映射到实现类；变体只是同一家族的另一种色板 / 映射函数：
+
+| 家族 | 变体 |
+| --- | --- |
+| `colour_` / `color_` / `fill_` | `continuous` / `gradient` / `discrete` / `hue` / `brewer` / `distiller` / `grey` / `ordinal` / `manual` / `identity` / `viridis_c` / `viridis_d` / `viridis_b` / `binned` / `steps` / `gradient2` / `gradientn` / `steps2` / `stepsn` / `fermenter` / `date` / `datetime` |
+| `shape_` | `shape` / `discrete` / `ordinal` / `manual` / `identity` / `binned`（`continuous` 报错） |
+| `linetype_` | `linetype` / `discrete` / `manual` / `identity` / `binned`（`continuous` 报错） |
+| `linewidth_` | `linewidth` / `continuous` / `discrete` / `ordinal` / `manual` / `identity` / `binned` / `date` / `datetime` |
+| `size_` | `size` / `continuous` / `discrete` / `ordinal` / `manual` / `identity` / `area` / `binned` / `binned_area` / `radius` / `date` / `datetime` |
+| `alpha_` | `alpha` / `continuous` / `discrete` / `ordinal` / `manual` / `identity` / `binned` / `date` / `datetime` |
+| 位置 | `x_/y_` 的 `continuous` / `discrete` / `log10` / `sqrt` / `reverse` / `binned` / `date` / `datetime` / `time` |
+| 跨美学 | `scale_discrete_manual(aesthetics=)` / `scale_discrete_identity(aesthetics=)` / `scale_continuous_identity(aesthetics=)` |
+
+`color_*` 与 `colour_*` 是同一族（两个注册名、同一实现、同一 `colour` 美学）。
+跨美学的三个名字由 `aesthetics=` 决定美学（上游同样没有缺省），注册表的工厂会把
+它写进 `Scale.aesthetic`，否则 `p + scale_discrete_manual(...)` 会落到错误的美学上。
+
+`scale_shape_continuous()` / `scale_linetype_continuous()` 在 R 里**构造即
+`cli_abort()`**（连续变量不能映射到这两种美学），ggcore 同样在构造时报
+`ScaleError`，名字保留在注册表里（NAMESPACE 里有它们）。
+
+`scale_type()` 不是标度构造器，是「一个向量该用哪类标度」的查询函数：
+`Column("float")` → `("continuous",)`、字符 / 逻辑 / categorical →
+`("discrete",)`、datetime 列 → `("datetime", "continuous")`。R 的
+`("ordinal", "discrete")`（有序 factor）与 `("date", "continuous")` 依赖
+ordered / Date 标记，`ggcore.Column` 还没有这两种标记（日期标度归 M2-4 A），
+`tests/test_palettes_r_parity.py` 里钉住 R 侧的取值并注明未支持。
 
 ## 3. limits / expand
 
@@ -176,47 +215,79 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 
 ## 6. 色板
 
-| 标度 | 实现 | 取值 |
+色板的**取值表逐色入库**（`src/ggcore/palette_data.py`），不靠近似公式。表由
+`tools/refs/palettes_ref.R` 生成，表头记录来源版本：
+
+| 来源 | 版本 | 本仓库用到的部分 |
 | --- | --- | --- |
-| 离散 colour / fill | `hue_pal(h = c(15, 375), c = 100, l = 65)` | HCL → sRGB，D65 白点 |
-| 连续 colour / fill | `colour_ramp([low, high])` | Lab 空间逐段线性插值，默认 `#132B43` → `#56B1F7` |
-| 发散渐变 | `colour_ramp([low, mid, high])` | 停靠点 0 / 0.5 / 1；默认 `muted("red")` `#832424` / `white` / `muted("blue")` `#3A3A98` |
-| n 色渐变 | `gradient_n_pal(colours, values)` | `values` 给颜色停靠的数据位置（`approxfun` 口径，范围外 NA） |
-| 分箱颜色 | `BinnedGradient*Scale` | 每个箱取**箱中心**在 0..1 上的颜色（`palette(midpoints)`） |
-| Brewer 连续侧 | `brewer_gradient` / `brewer_binned` | `RColorBrewer::brewer.pal(n, name)` 全表（n = 3..maxcolors），默认 `direction = -1` |
-| 连续 size | area 标度 | `1 + 5 × sqrt(rescale(x))`，默认范围 1..6 |
-| `scale_size_area` | `abs_area(max_size)` + `rescale_max` | `sqrt(x / max(x)) × max_size` |
-| `scale_radius` | 线性 | `range`（默认 1..6） |
-| 连续 / 分箱 alpha | 线性 | 0..1 → 0.1..1 |
-| 连续 / 分箱 linewidth | 线性 | 0..1 → 1..6（上游 fallback 口径） |
-| 离散 shape | `pal_shape()` | 16, 17, 15, 3, 7, 8（超过 6 个水平记 NA 并发 warning） |
+| R | 4.5.3 | `grDevices::convertColor()` / `colorRamp()`（viridis 的插值链路） |
+| ggplot2 | 4.0.3（上游 pin） | 各标度的参数与 `na.value` 缺省 |
+| RColorBrewer | 1.1.3 | `brewer.pal()` 的**逐 n 表** |
+| viridisLite | 0.4.3 | `viridis.map` 的 8 档 × 256 色量化表 |
+| scales | 1.4.0 | `pal_hue()` / `pal_grey()` / `pal_area()` / `pal_rescale()` 等公式 |
+
+`pixi run -e refs refs:scales` 一次重生成两份产物：`src/ggcore/palette_data.py`
+（表）与 `tests/fixtures/palettes_r_reference.json`（夹具）。重跑必须零 diff。
+
+### 6.0 各族色板一览（A 段）
+
+| 用途 | 实现 |
+| --- | --- |
+{ours_rows}
+### 6.1 RColorBrewer（`scale_*_brewer()`）
+
+`brewer.pal(n, name)` **不是**「取最大表的前 n 个」：同一 palette 在 n = 3..max
+是各自插值出来的一张表（`Blues` 的 3 色 ≠ 9 色的前 3 个），所以表里按 n 存整张
+（35 个 palette、3..max 全量；qual 类的前缀恰好相同，但不能靠这个规律偷懒）。
+`type`（`seq` / `div` / `qual`）与 `palette`（编号或名字）按 `scales::pal_name()`
+解析；`palette` 不认识时发 warning 并回落 `Greens`。
+
+`n < 3` 时 `brewer.pal()` 本身会警告并回落到 3 色表，再取前 n 个——我们照抄。
+`n > maxcolors` 时上游只给 maxcolors 个、余下的索引是 `NA`，ggcore 记 `None`
+（走 `na.value`）。`direction = -1` 反序。
 
 hue 的十六进制值与 R 4.0.3 **逐字节相同**：n = 2 → `#F8766D #00BFC4`，n = 3 →
 `#F8766D #00BA38 #619CFF`，n = 6 → `#F8766D #B79F00 #00BA38 #00BFC4 #619CFF
-#F564E3`（`tests/test_scales.py` 逐字节钉住，R 侧在夹具的 `palettes.hue`）。
+#F564E3`。gradient 在 0 / 0.25 / 0.5 / 0.75 / 1 上同样逐字节相等。
 
-gradient 在 0 / 0.25 / 0.5 / 0.75 / 1 上同样逐字节相等（`#132B43` `#22496C`
-`#336A98` `#448DC6` `#56B1F7`）；容差不需要放宽——Lab 插值与 R 的
-`scales::colour_ramp()` 同一条路径（同一套 D65 / 矩阵 / 伽马）。
+### 6.4 形状 / 线型 / 数值型离散色板
 
-Brewer 表在 `src/ggcore/palettes.py`：RColorBrewer 1.1.3 的
-`brewer.pal(n, name)` 全量逐色入库（seq 18 个、div 9 个、qual 8 个色板），
-`brewer_pal(type, palette, direction)` 复刻上游 `pal_name()` / `pal_brewer()`
-的口径：名字跨类型查、`direction = -1` 反转、`n` 超过 `maxcolors` 的多余位置是
-NA（`None`）。`scale_*_distiller()` 用 7 色表做连续渐变，
-`scale_*_fermenter()` 用 `pal_binned(pal_brewer(...))` 按箱数取色。
-完整色板数据只此一份，M2-4 B 的 `scale_colour_brewer()` 直接复用。
+| 标度族 | 缺省取值 | 备注 |
+| --- | --- | --- |
+| `shape` | `c(16, 17, 15, 3, 7, 8)`（`solid = FALSE` 时 `c(1, 2, 0, 3, 7, 8)`） | 超过 6 个水平：warning + 多出来的记 `NA`（上游同样） |
+| `linetype` | `"solid" / "22" / "42" / "44" / "13" / "1343" / "73" / "2262" / "12223242" / "F282" / "F4448444" / "224282F2" / "F1"` | 13 种，超出报错（上游 `manual_pal` 同样 abort） |
+| `size_ordinal` | `sqrt(seq(4, 36, length.out = n))` | 与 `size` 连续的 area 缺省一致 |
+| `alpha_ordinal` | `seq(0.1, 1, length.out = n)` | |
+| `linewidth_ordinal` | `seq(2, 6, length.out = n)` | |
+| `size_area` | `max_size * sqrt(v / max(v))`（`abs_area()` + `rescale_max`） | 面积正比于值 |
+| `radius` / `linewidth` 连续 | `1 + 5 × v`（`pal_rescale(1:6)`） | 线性到 1..6 |
+| `size` 连续 | `1 + 5 × sqrt(v)`（`pal_area()`） | 与 M1-4 相同 |
 
-颜色名：内部先把 R 颜色名解析成 `#RRGGBB`。M2-4 A 只收标度默认值 /
-`gradient2` 端点用到的常见名字（`white` / `black` / `red` / `blue` / `grey` /
-`greyNN` 等，见 `scales._NAMED_COLOURS`）；完整的 657 个名字表留给 M2-4 B 的
-`scale_*_manual()`。
+`_discrete` 在 size / alpha / linewidth 上是 `_ordinal` 的别名，并各发一条上游
+同款 warning（"Using size for a discrete variable is not advised." 等）；
+`shape_ordinal` 也有对应 warning。
 
-`values=`（manual）与 R 的 `scale_*_manual()` 同一套口径：序列按水平顺序取色，
-长度不够时**报错**，不循环补齐（上游 4.0.3 的 manual scale 同样 abort）；**映射
-（dict）按水平名取色**（`values = {"a": "red", "b": "blue"}`），名字对不上的水平
-用 `na.value`，与数据水平完全没交集时发一条 `UserWarning`（上游同样警告）。
-`palette=` 可以给可调用对象（收 n，返回 n 个颜色）或序列（按水平顺序取）。
+{ours_text}
+### 6.5 identity 与分箱
+
+**identity**（`scale_*_identity()`）：映射是**原样通过**（上游 `pal_identity()`）。
+它挂在连续 Range 上，字符 / 颜色值训练不进去，所以 `limits()` 恒为 `(0, 1)`、
+`breaks()` 为空、`guide` 缺省 `"none"`——照抄上游，别按「水平表」理解它。
+
+**分箱**（`shape_binned` / `linetype_binned` / `size_binned_area` /
+`linewidth_binned` / `viridis_b`）：复刻 `binned_scale()` 的三件事：
+
+1. `oob` 缺省是 `squish`（不是连续标度的 `censor`）：越界值压到两端；
+2. `get_breaks()` 在**没有显式 limits** 时把数据范围往外扩到相邻断点
+   （`extended_breaks(limits)` 的最外两个断点变成新的 limits）。例：数据
+   `[2, 20]` 的断点是 `5 / 10 / 15`，limits 扩成 `(0, 20)`；
+3. `map()` 先 `cut()` 成箱（`right = TRUE`、`include.lowest = TRUE`，等于边界的
+   值归**下**一箱），再把**箱中点**喂给 palette——`pal_binned()` 只看长度（每箱
+   一个固定值），`abs_area()` / `pal_rescale()` 这类连续色板逐箱取值。
+
+`n.breaks` 给断点个数（缺省 5，走 `extended_breaks`）；`right` 可切分箱方向。
+分箱标度的 `breaks()` / `labels()` 就是**箱边界**（不含两端 limits），与 guide
+看到的是同一份。
 
 ## 7. NA / 越界（`oob`）
 
@@ -226,6 +297,12 @@ NA（`None`）。`scale_*_distiller()` 用 7 色表做连续渐变，
 - `oob = squish_infinite`：只钳 ±Inf，有限越界值原样保留；
 - `oob = keep`：不做任何处理；
 - `oob` 也可以给可调用对象（`oob(values, limits)` 或只收 `values`）。
+- 离散位置：没有 `na.value` 概念，未知值 / 不在 limits 里的值 → NA（`mapped_discrete(NA)`）。
+- **log10 / sqrt 的 0 与负值**：`ggcore` 一律记 NA（`Column.na_mask`），并累加到
+  `Scale.non_finite_count`。上游这里有个 wart：`censor()` 只 censor 有限值，
+  所以 `log10(0) = -Inf` 会原样留在 `$data$x` 里（R 的 `ggplot_build()` 实测是
+  `-Inf`）。本任务按 issue 要求把它统一成 NA；夹具里那个位置记成字符串
+  `"-Inf"`，`tests/test_scales_r_parity.py` 明确断言「R 是 Inf，我们是 NA」。
 
 离散位置：没有 `na.value` 概念，未知值 / 不在 limits 里的值 → NA（`mapped_discrete(NA)`）。
 
@@ -300,31 +377,43 @@ R 侧取的是 `scale$get_limits()` / `default_expansion()` / `scale$dimension()
 `limits` 算（guide 的口径）。日期值在夹具里是「天 / 秒」数值（`vector_json`
 对 Date / POSIXct / hms / difftime 先 `as.numeric()`）。
 
-53 个 case（218 个断点 / 标签、199 个映射值、24 个 expand 向量）：
-
-- 连续位置：默认 expand / `expand = c(0, 0)` / 显式 limits / 手动 breaks +
-  labels / `n.breaks` / log10（x 与 y，外加「log10 + 显式 limits」）/ sqrt /
-  reverse / 分箱（默认与显式 breaks）；
-- 日期时间：Date 默认 pretty 断点 / `date_breaks = "2 months"` /
-  datetime `"2 hours"` / hms `"15 min"`；colour / size / linewidth 的 date 变体；
-- 颜色：hue（含 na.value 与 limits）/ manual values / gradient（含 limits）/
-  gradient2 / gradientn / steps（含 limits 的 squish）/ steps2 / stepsn /
-  binned / distiller / fermenter；
-- 其它美学：size（连续 / area / binned / binned_area）/ alpha（连续 / 分箱）
-  / linewidth（连续 / 分箱）/ radius / shape；
-- `oob` 三态：squish / keep / squish_infinite。
-
+**84 个 case**（314 个断点 / 标签、294 个映射值、24 个 expand 向量）。A 段带来
+连续位置（默认 expand / `expand = c(0, 0)` / 显式 limits / 手动 breaks + labels /
+`n.breaks` / log10 / sqrt / reverse / 分箱）、日期时间（Date / datetime / hms 与各
+`date_*` 参数）、颜色连续侧（gradient / gradient2 / gradientn / steps* / binned /
+distiller / fermenter）与 alpha / size / linewidth 的连续 / 分箱 / 日期变体；
+B 段带来离散 / brewer / viridis / grey / ordinal / manual / identity / 线型 / 线宽 /
+面积 / 分箱各至少一条。两边重名的 6 个 case（`colour_distiller` / `radius` /
+`size_area` / `size_binned_area` / `linewidth_*`）口径不同，合并后保留两边的期望
+值，B 侧那条加 `_default` / `_fraction` 后缀区分。
 规模钉死在 `tests/test_scales_r_parity.py::test_compared_cell_count`。
 
-对拍口径：数值 `abs <= 1e-12`，十六进制逐字节，`null` = NA，`"Inf"` / `"-Inf"` =
-R 的 ±Inf（见 §7）。
+M2-4 B 的 31 个：brewer（含 `type = qual` 的编号 palette、`direction = -1`、
+fill 侧、NA）/ viridis_d（选项 + begin/end/direction）/ grey（缺省 + 自定义端点）/
+ordinal / identity（colour 与 alpha）/ distiller / viridis_c / viridis_b /
+shape_manual / shape_binned / linetype_discrete / linetype_manual / linetype_identity /
+linetype_binned / linewidth（连续 / ordinal / manual / binned / identity）/
+size_area / size_binned_area / radius / size_ordinal / alpha_ordinal / alpha_manual。
+规模钉死在 `tests/test_scales_r_parity.py::test_compared_cell_count`（183 个断点 /
+标签、170 个映射值、13 个 expand 向量）。
+
+分箱标度不走 `view_scale_primary()`（它的断点就是箱边界），R 侧改取标度自己的
+`get_breaks()` / `get_labels()`；identity 标度上游不打断点，夹具里记空数组。
+
+**色板夹具**：`tests/fixtures/palettes_r_reference.json`（同一任务的第二个脚本
+`tools/refs/palettes_ref.R`）：
+
+- brewer 35 个 palette 在 maxcolors 下的首 / 中 / 尾色 + 8 个 palette 的**逐 n 整表**；
+- viridis A–H 每档的 n = 2/3/5/8 抽样 + `begin/end` / `direction` / `alpha` 变体；
+- grey（n = 1..10 与自定义 start/end）、hue（n = 2..7,10）、数值型离散色板、`scale_type()`。
+
+对拍口径：数值 `abs <= 1e-12`，十六进制逐字节（含 viridis 的 alpha 字节），
+`null` = NA，`"Inf"` / `"-Inf"` = R 的 ±Inf（见 §7）。
 
 ## 11. 不支持清单
 
 | 项 | 状态 |
 | --- | --- |
-| 离散 colour / fill（`_discrete` / `_ordinal` / `_manual` / `_identity`）、brewer / viridis / grey / hue 的离散导出 | M2-4 B（SIL-730） |
-| `scale_linetype_*` / `scale_shape_*` 的长尾 / `scale_type` | M2-4 B |
 | `trans = "log2" / "log" / "exp" / "log1p" / "pseudo_log" / "reciprocal" / "logit" / "probit" / "asn" / "atanh"` | 未实现；构造时报错并点名后续任务 |
 | `space != "Lab"` 的渐变插值 | 上游 4.0.3 已废弃；这里报 `ScaleError` |
 | secondary axis（`sec.axis`） | M2-1 已实现（`sec_axis()` / `dup_axis()`，见 `docs/notes/coord.md` §12）；标度侧只存引用，断点 / 标签在 `ggcore.axis` |
@@ -332,7 +421,8 @@ R 的 ±Inf（见 §7）。
 | guide / 图例排版（`colourbar` / `coloursteps` / `bins`） | M2-2（guides 任务）；`guide="bins"` 仍按既有文案报错 |
 | coord 变换对 limits 的接管（`coord_cartesian(xlim=)`） | M1-5 已实现；`coord_trans` 的逐轴变换见 M2-1（`docs/notes/coord.md` §8） |
 | `scale_linetype_*` / `scale_size_manual` 等未登记的名字 | 不在 `registry.SCALE_SPECS` 里，不加第二套注册 |
-| 完整 R 颜色名表（657 个） | M2-4 B；A 段只收默认值会用到的常见名字 |
+| `scale_type()` 的 `("ordinal", "discrete")` / `("date", "continuous")` | `ggcore.Column` 还没有 ordered / Date 标记 |
+| `scale_shape_continuous()` / `scale_linetype_continuous()` | 上游本身 `cli_abort()`；ggcore 在构造时报同样的错 |
 
 ## 12. 已知边界
 
@@ -362,3 +452,14 @@ R 的 ±Inf（见 §7）。
 - **`values` 的循环补齐**：上游 4.0.3 的 manual scale 在 values 不够时直接 abort，
   `ggcore` 同样报错（不做 ggplot2 2.x 的循环）。
 - 不动 IR 版本；`map_scales` 的结果仍只在数据层，进 IR 是 M1-7。
+- **`lty` 串的段长折算**（与标度无关，登记在这里因为 M2-4 B 的 linetype case 踩到）：
+  R 的 `gpar$lwd` 是 1/96 inch，`ggcore` 写 IR 时乘 `72/96 = 0.75` 折成 pt，
+  `lty` 的段长（`lwd` 的倍数）**跟着一起折**（`docs/notes/grobs.md`、SIL-636）。
+  svglite 的 `stroke-dasharray` 只折算线宽、不折算段长，所以参考图里 `"22"` 的
+  段长是 6.26pt，而按物理口径应是 4 × 3.13 × 0.75 = 9.4pt 量级的比例关系；
+  实测把段长改成 ×4/3 后 `geom-line-width` 的图级差异从 1.31% 降到 0.13%。
+  这条属于 **SVG 渲染器的 dash 口径（M2-12）**，不在标度任务里改；
+  `scale-linetype-discrete` 的 case 因此关掉图例（键宽 + dash 口径叠加会越过 2%）。
+- **`scale_*_viridis_d` 的十六进制是 8 位**（`#440154FF`）：R 的 `pal_viridis()`
+  把 alpha 一起编码，`$data$colour` 里就是 8 位；`gpar` 的 `col2rgb` 认 8 位，
+  渲染结果与 6 位相同。viridis_c 走 `colour_ramp()`，输出是 6 位。

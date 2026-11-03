@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "aes-grouping", "colour-aes", "scale-discrete", "scale-brewer", "guide-legend"]
+ci = true
+title = "scale：离散 fill 用 brewer Set2 + 完整图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "RColorBrewer::brewer.pal(3, \"Set2\") = #66C2A5 / #FC8D62 / #8DA0CB（逐 n 表，不是最大表截断）。"

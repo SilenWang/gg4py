@@ -13,6 +13,7 @@ import math
 import numpy as np
 import pytest
 
+from ggcore import registry
 from ggcore.build import ScaleSet, build_plot
 from ggcore.components import Scale
 from ggcore.data import Column, ColumnTable
@@ -35,6 +36,8 @@ from ggcore.scales import (
     Expansion,
     GradientScale,
     HueScale,
+    LinetypeScale,
+    LinewidthScale,
     PositionContinuousScale,
     PositionDiscreteScale,
     ScaleError,
@@ -596,17 +599,81 @@ def _required_params(name: str) -> dict:
     return {}
 
 
+#: R 里**构造即 abort** 的标度（连续变量不能映射到 shape / linetype）。它们仍然
+#: 占着 NAMESPACE 的名字，所以留在注册表里，只是解析时抛 `ScaleError`。
+_ABORT_SCALES = frozenset({"shape_continuous", "linetype_continuous"})
+
+#: 离散标度的名字（`DiscreteScale` 族）。这份表是**规格**，不是从实现反推的：
+#: 加新名字时要么进这里、要么进连续一侧，逼着作者想清楚是哪一边。
+_DISCRETE_SCALES = frozenset(
+    {
+        "x_discrete",
+        "y_discrete",
+        "colour_discrete",
+        "fill_discrete",
+        "colour_hue",
+        "color_hue",
+        "fill_hue",
+        "colour_brewer",
+        "color_brewer",
+        "fill_brewer",
+        "colour_grey",
+        "color_grey",
+        "fill_grey",
+        "colour_ordinal",
+        "color_ordinal",
+        "fill_ordinal",
+        "colour_manual",
+        "color_manual",
+        "fill_manual",
+        "colour_identity",
+        "color_identity",
+        "fill_identity",
+        "colour_viridis_d",
+        "color_viridis_d",
+        "fill_viridis_d",
+        "shape",
+        "shape_discrete",
+        "shape_ordinal",
+        "shape_manual",
+        "linetype",
+        "linetype_discrete",
+        "linetype_manual",
+        "linetype_identity",
+        "size_discrete",
+        "size_ordinal",
+        "size_manual",
+        "alpha_discrete",
+        "alpha_ordinal",
+        "alpha_manual",
+        "linewidth_discrete",
+        "linewidth_ordinal",
+        "linewidth_manual",
+        "discrete_manual",
+        "discrete_identity",
+    }
+)
+
+
 def test_every_registered_scale_name_has_an_implementation() -> None:
-    """`registry.SCALE_SPECS` 是唯一的名字表：75 个注册名都能建成标度对象。
+    """`registry.SCALE_SPECS` 是唯一的名字表：每个注册名都能建成标度对象。
 
     回归 SIL-681：`scales.SCALE_NAMES` 曾是第二份名字表且无人使用，已删除；
-    这条断言守住「注册表 ↔ 实现」不漂移。`gradientn` / `stepsn` 在 R 里也必须
-    给 `colours`，所以这里补上这一条必填参数。
+    这条断言守住「注册表 ↔ 实现」不漂移。M2-4 A + B 合起来 129 个注册名，
+    离散 / 连续的分类单列成 `_DISCRETE_SCALES`；`gradientn` / `stepsn` 在 R 里
+    也必须给 `colours`，所以这里补上这一条必填参数。
     """
+    names = [name for name, _aesthetic, _defaults in SCALE_SPECS]
+    assert len(names) == len(set(names)), "SCALE_SPECS 里有重名"
+    assert set(names) - _DISCRETE_SCALES - _ABORT_SCALES  # 连续一侧非空
     for name, aesthetic, _defaults in SCALE_SPECS:
+        if name in _ABORT_SCALES:
+            with pytest.raises(ScaleError):
+                scale_from_component(Scale(name, aesthetic, {}))
+            continue
         scale = scale_from_component(Scale(name, aesthetic, _required_params(name)))
         assert scale.aesthetic == aesthetic
-        assert scale.discrete is (name.endswith("_discrete"))
+        assert scale.discrete is (name in _DISCRETE_SCALES), name
 
 
 def test_shape_and_size_palettes() -> None:
@@ -685,6 +752,8 @@ def test_registry_names_cover_every_scale_implementation() -> None:
     from ggcore.registry import SCALE_SPECS
 
     for name, aesthetic, defaults in SCALE_SPECS:
+        if name in _ABORT_SCALES:
+            continue
         params = {**defaults, **_required_params(name)}
         scale = scale_from_component(Scale(name, aesthetic, params))
         assert scale.aesthetic == aesthetic, name
@@ -830,3 +899,179 @@ def test_other_unimplemented_scale_messages_are_intact() -> None:
     base = ggplot(table, aes(x="x", y="y", colour="x")) + geom_point()
     with pytest.raises(Exception, match="guide_bins"):
         build_guides(build_plot(base + registry.scale_colour_continuous(guide="bins")))
+
+
+# ---------------------------------------------------------------------------
+# M2-4 B：离散 / 调色板 / manual / identity / 分箱
+# ---------------------------------------------------------------------------
+
+
+def _train(scale, values):
+    scale.train(scale.transform(column(values)))
+    return scale
+
+
+def test_brewer_palette_reaches_the_plot_data() -> None:
+    """`+ scale_colour_brewer(palette="Set1")` 走到 build 的 colour 列。"""
+    from ggcore import registry
+
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 3.0]))),
+            ("g", Column("str", np.array(["a", "b", "c"], dtype=object))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y", colour="g")) + geom_point()
+    plot = plot + registry.scale_colour_brewer(palette="Set1")
+    data = build_plot(plot).layers[0].data
+    assert data.column("colour").values.tolist() == ["#E41A1C", "#377EB8", "#4DAF4A"]
+
+
+def test_viridis_discrete_scale_colours_are_eight_digit_hex() -> None:
+    """viridis 的离散色板带 alpha 字节（上游 `rgb(..., alpha = 1)` → `#RRGGBBFF`）。"""
+    from ggcore import registry
+
+    scale = _train(
+        scale_from_component(Scale("colour_viridis_d", "colour", {"option": "D"})),
+        ["a", "b", "c"],
+    )
+    assert scale.map(column(["a", "b", "c"])).values.tolist() == [
+        "#440154FF",
+        "#21908CFF",
+        "#FDE725FF",
+    ]
+    assert registry.scale_colour_viridis_d().name == "colour_viridis_d"
+    assert registry.scale_color_viridis_d().aesthetic == "colour"
+
+
+def test_brewer_and_viridis_na_value_is_na() -> None:
+    """`na.value` 缺省按各色板函数自己的签名：brewer / viridis 是 NA，hue 是 grey50。"""
+    brewer = _train(scale_from_component(Scale("colour_brewer", "colour", {})), ["a", "b"])
+    mapped = brewer.map(column(["a", None]))
+    assert mapped.na_mask.tolist() == [False, True]
+
+    hue = _train(scale_from_component(Scale("colour_hue", "colour", {})), ["a", "b"])
+    assert hue.map(column(["a", None])).values.tolist() == ["#F8766D", "grey50"]
+
+
+def test_ordinal_scales_warn_and_map_to_their_fallback() -> None:
+    """size / alpha / linewidth 的 `_discrete` 是 `_ordinal` 的别名（带警告）。"""
+    import warnings as warnings_module
+
+    expected = {
+        "size_discrete": [2.0, 4.472135954999580, 6.0],
+        "alpha_discrete": [0.1, 0.55, 1.0],
+        "linewidth_discrete": [2.0, 4.0, 6.0],
+    }
+    for name, values in expected.items():
+        with warnings_module.catch_warnings(record=True) as caught:
+            warnings_module.simplefilter("always")
+            aesthetic = name.split("_")[0]
+            scale = _train(scale_from_component(Scale(name, aesthetic, {})), ["a", "b", "c"])
+        assert any("not advised" in str(item.message) for item in caught), name
+        assert scale.map(column(["a", "b", "c"])).values.tolist() == pytest.approx(values)
+
+
+def test_size_area_and_radius_and_linewidth_ranges() -> None:
+    area = _train(scale_from_component(Scale("size_area", "size", {})), [0.0, 4.0])
+    assert area.map(column([0.0, 1.0, 4.0])).values.tolist() == pytest.approx([0.0, 3.0, 6.0])
+
+    radius = _train(scale_from_component(Scale("radius", "size", {})), [0.0, 1.0])
+    assert radius.map(column([0.0, 0.5, 1.0])).values.tolist() == pytest.approx([1.0, 3.5, 6.0])
+
+    linewidth = _train(scale_from_component(Scale("linewidth", "linewidth", {})), [1.0, 4.0])
+    assert linewidth.map(column([1.0, 2.5, 4.0])).values.tolist() == pytest.approx([1.0, 3.5, 6.0])
+
+
+def test_identity_scales_pass_values_through() -> None:
+    colour_identity = scale_from_component(Scale("colour_identity", "colour", {}))
+    mapped = colour_identity.map(column(["#FF0000", "#00FF00"]))
+    assert mapped.values.tolist() == ["#FF0000", "#00FF00"]
+    # 上游的 identity 标度不训练范围：limits 恒为 (0, 1)、断点为空。
+    assert colour_identity.limits() == (0.0, 1.0)
+    assert colour_identity.breaks() == ()
+
+    size_identity = _train(scale_from_component(Scale("size_identity", "size", {})), [1.0, 3.0])
+    assert size_identity.map(column([1.0, 3.0])).values.tolist() == [1.0, 3.0]
+
+
+def test_binned_scales_cut_then_take_palette_per_bin() -> None:
+    """分箱：断点分箱 → 箱中点 → 每箱一个值（`cut(right = TRUE)` 的边界口径）。"""
+    binned = _train(scale_from_component(Scale("shape_binned", "shape", {})), [0.0, 1.0])
+    assert binned.breaks() == (0.25, 0.5, 0.75)
+    assert binned.map(column([0.0, 0.3, 0.8, 1.0])).values.tolist() == [16.0, 17.0, 3.0, 3.0]
+
+    sized = _train(scale_from_component(Scale("size_binned_area", "size", {})), [0.0, 1.0])
+    assert sized.map(column([0.0, 0.5, 1.0])).values.tolist() == pytest.approx(
+        [2.121320343559643, 3.674234614174767, 5.612486080160912]
+    )
+
+    linetypes = _train(scale_from_component(Scale("linetype_binned", "linetype", {})), [0.0, 1.0])
+    assert linetypes.map(column([0.0, 0.3, 0.8, 1.0])).values.tolist() == [
+        "solid",
+        "22",
+        "44",
+        "44",
+    ]
+
+
+def test_binned_scale_squishes_out_of_range_values() -> None:
+    """`binned_scale(oob = squish)`：超出 limits 的值压到两端，不是 NA。"""
+    scale = _train(scale_from_component(Scale("shape_binned", "shape", {})), [0.0, 1.0])
+    mapped = scale.map(column([-1.0, 2.0]))
+    assert mapped.na_mask.tolist() == [False, False]
+    assert mapped.values.tolist() == [16.0, 3.0]
+
+
+def test_binned_scale_expands_data_limits_to_the_outer_breaks() -> None:
+    """数据驱动的 limits 会往外扩到相邻断点（上游 `ScaleBinned$get_breaks`）。"""
+    scale = _train(scale_from_component(Scale("shape_binned", "shape", {})), [2.0, 20.0])
+    limits, breaks = scale._bin_info()
+    assert limits == (0.0, 20.0)
+    assert breaks == (5.0, 10.0, 15.0)
+
+
+def test_discrete_manual_scale_takes_an_aesthetics_argument() -> None:
+    """跨美学的 `scale_discrete_manual(aesthetics=...)`：美学由参数给。"""
+    from ggcore import registry
+
+    component = registry.scale_discrete_manual(aesthetics="linetype", values=["solid", "dashed"])
+    assert component.aesthetic == "linetype"
+    assert component.key == "linetype"
+    with pytest.raises(ValueError, match="aesthetics"):
+        registry.scale_discrete_manual(values=["solid"])
+    with pytest.raises(ValueError, match="一个美学"):
+        registry.scale_discrete_identity(aesthetics=["colour", "fill"])
+
+
+def test_continuous_shape_and_linetype_scales_abort() -> None:
+    """连续变量不能映射到 shape / linetype：上游 cli_abort，这里构造即报错。"""
+    from ggcore import registry
+
+    with pytest.raises(ScaleError, match="continuous variable cannot be mapped to the shape"):
+        registry.scale_shape_continuous()
+    with pytest.raises(ScaleError, match="continuous variable cannot be mapped to the linetype"):
+        registry.scale_linetype_continuous()
+
+
+def test_linetype_and_linewidth_defaults_come_from_the_pipeline() -> None:
+    """不写 `scale_*` 时，linetype / linewidth 也有默认标度（上游 add_missing）。"""
+    table = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0, 3.0, 4.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 1.5, 2.5]))),
+            ("g", Column("str", np.array(["a", "b", "a", "b"], dtype=object))),
+        ]
+    )
+    plot = ggplot(table, aes(x="x", y="y", linetype="g", linewidth="x")) + registry.geom_line()
+    build = build_plot(plot)
+    assert isinstance(build.scales.scale("linetype"), LinetypeScale)
+    assert isinstance(build.scales.scale("linewidth"), LinewidthScale)
+    assert build.scales.limits("linetype") == ("a", "b")
+    # `geom_line` 的 setup_data 会按 (PANEL, group, x) 排序，所以按集合比。
+    data = build.layers[0].data
+    assert sorted(set(data.column("linetype").values.tolist())) == ["22", "solid"]
+    assert sorted(data.column("linewidth").values.tolist()) == pytest.approx(
+        [1.0, 2.6666666666666665, 4.333333333333333, 6.0]
+    )

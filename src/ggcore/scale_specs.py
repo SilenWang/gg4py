@@ -104,7 +104,10 @@ def _entries() -> tuple[ScaleEntry, ...]:
             defaults: dict[str, Any] = {}
             if suffix in date_trans:
                 defaults["trans"] = date_trans[suffix]
-            colours.append(_entry(f"{prefix}_{suffix}", prefix, family, **defaults))
+            # `scale_color_*` 是 `scale_colour_*` 的别名：两者都作用在 `colour`
+            # 美学上（上游 NAMESPACE 也是同一个函数）。
+            aesthetic = "colour" if prefix in ("colour", "color") else prefix
+            colours.append(_entry(f"{prefix}_{suffix}", aesthetic, family, **defaults))
 
     # --- 其它美学的连续侧 ------------------------------------------------
     extras = (
@@ -126,7 +129,73 @@ def _entries() -> tuple[ScaleEntry, ...]:
         _entry("linewidth_datetime", "linewidth", "linewidth", trans="time"),
     )
 
-    return base + position + tuple(colours) + extras
+    # --- M2-4 B 段：离散 / 色板（与 A 段共用同一张声明表） ------------------
+    # 名字、注册顺序照 #53（SIL-730）的注册表；与 A 段重名的（`size_area` /
+    # `radius` / `linewidth_*` / `*_distiller`）只在 A 段登记一次，这里不重复。
+    b_segment: list[ScaleEntry] = []
+
+    # colour / color / fill：brewer / grey / hue / ordinal / manual / identity /
+    # viridis（A 段已有 binned / steps / gradient* / distiller / fermenter）。
+    b_colour_families = (
+        ("brewer", "brewer"),
+        ("grey", "grey"),
+        ("hue", "hue"),
+        ("ordinal", "ordinal_colour"),
+        ("manual", "manual_colour"),
+        ("identity", "identity_discrete"),
+        ("viridis_c", "viridis_c"),
+        ("viridis_d", "viridis_d"),
+        ("viridis_b", "viridis_b"),
+    )
+    for prefix in ("colour", "color", "fill"):
+        for suffix, family in b_colour_families:
+            defaults: dict[str, Any] = {}
+            if suffix == "grey":
+                defaults["na.value"] = "red"
+            if suffix == "identity":
+                defaults["guide"] = "none"
+            aesthetic = "colour" if prefix in ("colour", "color") else prefix
+            b_segment.append(_entry(f"{prefix}_{suffix}", aesthetic, family, **defaults))
+
+    b_segment.extend(
+        (
+            # --- size ----------------------------------------------------
+            _entry("size_discrete", "size", "size_discrete"),
+            _entry("size_ordinal", "size", "size_ordinal"),
+            _entry("size_manual", "size", "size_ordinal"),
+            _entry("size_identity", "size", "identity_continuous", guide="none"),
+            # --- alpha ---------------------------------------------------
+            _entry("alpha_discrete", "alpha", "alpha_discrete"),
+            _entry("alpha_ordinal", "alpha", "alpha_ordinal"),
+            _entry("alpha_manual", "alpha", "alpha_ordinal"),
+            _entry("alpha_identity", "alpha", "identity_continuous", guide="none"),
+            # --- shape ---------------------------------------------------
+            _entry("shape", "shape", "shape"),
+            _entry("shape_ordinal", "shape", "shape_ordinal"),
+            _entry("shape_manual", "shape", "shape"),
+            _entry("shape_identity", "shape", "identity_continuous", guide="none"),
+            _entry("shape_continuous", "shape", "shape"),
+            _entry("shape_binned", "shape", "shape_binned"),
+            # --- linetype ------------------------------------------------
+            _entry("linetype", "linetype", "linetype"),
+            _entry("linetype_discrete", "linetype", "linetype"),
+            _entry("linetype_manual", "linetype", "linetype"),
+            _entry("linetype_identity", "linetype", "identity_discrete", guide="none"),
+            _entry("linetype_continuous", "linetype", "linetype"),
+            _entry("linetype_binned", "linetype", "linetype_binned"),
+            # --- linewidth -----------------------------------------------
+            _entry("linewidth_discrete", "linewidth", "linewidth_discrete"),
+            _entry("linewidth_ordinal", "linewidth", "linewidth_ordinal"),
+            _entry("linewidth_manual", "linewidth", "linewidth_ordinal"),
+            _entry("linewidth_identity", "linewidth", "identity_continuous", guide="none"),
+            # --- 跨美学 ---------------------------------------------------
+            _entry("discrete_manual", "colour", "manual_generic"),
+            _entry("discrete_identity", "colour", "identity_discrete", guide="none"),
+            _entry("continuous_identity", "size", "identity_continuous", guide="none"),
+        )
+    )
+
+    return base + position + tuple(colours) + extras + tuple(b_segment)
 
 
 SCALE_ENTRIES: tuple[ScaleEntry, ...] = _entries()

@@ -1,0 +1,7 @@
+family = "scale"
+features = ["aes-mapping", "aes-grouping", "line-type", "scale-discrete", "scale-linetype"]
+ci = true
+title = "scale：离散 linetype（solid / dashed / dotted）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "pal_linetype() 的前三名是 lty 串 \"solid\" / \"22\" / \"42\"，逐条折线各自一种线型；图例关闭（linetype 图例的键宽与 svglite 的 lty 段长口径见 docs/notes/scales.md §9）。"
