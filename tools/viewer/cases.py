@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """M1-16：把案例库逐条过一遍浏览器查看器，并与 `expected.svg` 像素对拍。
 
-    pixi run viewer:cases                 # 61 条 ci = true 的 case，全量
+    pixi run viewer:cases                 # 全部 ci = true 的 case，全量
     pixi run viewer:cases --sample 12     # CI 用的代表性子集（按族轮转）
     pixi run viewer:cases --case geom-col-basic
     pixi run viewer:cases --include-skipped

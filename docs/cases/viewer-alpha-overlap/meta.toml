@@ -1,0 +1,9 @@
+family = "geom-col"
+features = ["alpha-aes"]
+ci = true
+title = "col：两层 55% 半透明柱重叠时的合成顺序"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """两层柱子各错开 0.15、宽 0.4，形成重叠带。重叠处必须是「先画的在下」
+的源覆盖合成；把 alpha 写在整页 `<g opacity>` 上（而不是每个元素的
+`fill-opacity`）会让重叠带算错。"""
