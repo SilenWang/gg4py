@@ -1408,7 +1408,7 @@ def scale_from_component(spec: Scale) -> ScaleBase:
         return PositionDiscreteScale(aesthetic, params)
     if name in ("x_log10", "y_log10"):
         return PositionContinuousScale(aesthetic, {**params, "trans": "log10"})
-    if name in ("colour_continuous", "fill_continuous"):
+    if name in ("colour_continuous", "colour_gradient", "fill_continuous", "fill_gradient"):
         return GradientScale(aesthetic, params)
     if name in ("colour_discrete", "fill_discrete"):
         return HueScale(aesthetic, params)

@@ -90,6 +90,22 @@ geom 报 `GuideError` 并点名已实现的 geom。
 圆只有 fill），其余映射美学直接省略、回落到几何默认值（mapped `size` 不参与
 colour 图例，键用 1.5mm 的默认点大小）。
 
+### 连续 colourbar 的色带（SIL-722）
+
+色带取**标度 limits 的全量程**，断点只决定刻度位置与标签：
+
+```
+GuideBuild.palette = scale.palette          # GradientScale.palette = gradient_pal(low, high)
+色条第 i 格 = palette(i / (nbin - 1))        # i = 0..nbin-1，0 = 最小值
+端点 = palette(0) / palette(1) = #132B43 / #56B1F7（scale_colour_continuous 缺省）
+```
+
+`reverse = TRUE` 把整个序列翻过来（标签跟着翻，刻度位置由 `limits` 归一化）。
+色带本身是一张 1×nbin（横向 nbin×1）的 PNG，贴成 `raster` 节点（R 的 svglite 是
+1×300 位图）——细矩形拼渐变在 `resvg` 下会与白底混合、整条偏白约 30%。
+断点的白刻度按 R 的 `GuideColourbar$build_ticks()` 画在色条**内侧**两边，
+长度 `legend.ticks.length`（缺省 `rel(0.2)` = 0.1219cm）。
+
 ## 4. 尺寸口径
 
 所有数字都来自主题（默认 `theme_grey()`，`--` 表示 R 4.0.3 的实测值，见 R 脚本）：
@@ -184,7 +200,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | `legend.position = c(x, y)`（数值坐标） | 同上 |
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |
 | `legend.frame` / 高级图例盒子主题（`legend.box.just` 等） | 只画 `legend.frame` 的描边；`legend.box.background` 只画矩形 |
-| 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12）；改成 `nbin` 个等高矩形。**不是无缝的**：细条在当前 `resvg` 下每像素覆盖率不足，整条比 R 的 1×300 位图偏白约 30%（`guide-colourbar` 实测图级 3.9%，因此标 `ci = false`，见 `docs/cases/README.md`）。修法：IR 加渐变节点，或让色条走 `raster_grob` 的位图。缺口池：**SIL-715 #3**（M2 缺口池，IR 渐变 + guide）。 |
+| 色条的 raster 渐变 | **已修（SIL-722）**：色条走 `raster_grob` 的 1×nbin 位图（IR 早就有 `raster` 节点 + blob 表，不改 schema），端点取标度 limits 的 `palette(0..1)`，刻度按 R 画在色条内侧两边（白线 0.5 lwd）。像素与 R 的 1×300 位图差 ≤1/255；`guide-colourbar` 3.9914% → 2.03%/2.06%。剩余 2.0% 是图例整体右移 1.33pt（拉丁标签度量差，见 `docs/notes/metrics-ledger.md`），不是色条。 |
 | 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 与竖向一致放在色条上方，盒高多一个标题行（约 0.56cm） |
 | `override_aes` 的高级形态（逐键不同值） | 只支持标量覆盖所有键 |
 

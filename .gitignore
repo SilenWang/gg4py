@@ -32,6 +32,9 @@ docs/spike/e1_coldstart/static/
 # `pixi run viewer:sample` 重新生成）
 web/viewer/dist/
 web/viewer/samples/
+# `pixi run viewer:cases` 的 gallery（必须在 index.html 同目录，链接才解析得到）
+web/viewer/gallery.html
+web/viewer/gallery/
 # `pixi run viewer:shot` 的截图产物
 .viewer-shot/
 # `pixi run viewer:cases` 的逐 case 产物与报告

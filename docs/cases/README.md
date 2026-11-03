@@ -256,7 +256,7 @@ M1-15 补的 40 条全部走语法层（`plot.py` 返回 `{"plot": ggplot(...) +
 | --- | --- | --- |
 | `theme-grey-basic` | `panel.grid.major/minor` 还没画（`ggcore.geom.scene` 只装 `panel.background` / `panel.border`），网格线整片缺失 | SIL-715 #1 |
 | `theme-minimal-basic` | 同上（minimal 的视觉主体就是浅灰网格线） | SIL-715 #2 |
-| `guide-colourbar` | 渐变条在 IR 里是 256 条 0.34pt 细矩形，`resvg` 光栅化后覆盖率不足、整条偏白约 30%（R/svglite 用 1×300 位图） | SIL-715 #3 |
+| `guide-colourbar` | **色条已修（SIL-722）**：端点取标度 limits、改 1×nbin 位图 + R 的内侧白刻度，色条像素差 ≤1/255（3.9914% → 2.03%/2.06%）。剩余 2.0% 是图例整体右移 1.33pt：R 用拉丁字体量标签（17.11pt），我们用 CJK 字面的拉丁字形量出 15.78pt（M0-7 已知度量差，按 R 宽度布局时 1.14%） | 待度量线（Latin 回退） |
 
 另外两条**没有落地**的覆盖点（没有 case 目录，因为 R 侧给不出参考），同样归在
 SIL-715（M2 缺口池）：

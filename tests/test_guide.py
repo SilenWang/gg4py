@@ -23,6 +23,7 @@ from ggcore import ir, registry
 from ggcore.build import build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom.scene import plot_layout, scene_from_plot
+from ggcore.grobs import RasterGrob
 from ggcore.guide import (
     AUTO,
     GuideColourbar,
@@ -39,6 +40,7 @@ from ggcore.guide import (
     legend_layout,
 )
 from ggcore.plot import aes, ggplot
+from ggcore.scales import gradient_pal
 from ggcore.theme import Theme, resolve_theme
 from ggcore.theme import theme as make_theme
 from ggcore.units import UnitContext, convert_height, convert_width, unit
@@ -55,6 +57,20 @@ class FakeMetrics:
 
 
 METRICS = FakeMetrics()
+
+
+def _bar_pixels(grob) -> np.ndarray:
+    """色条位图的像素（`RasterGrob.data` → `(H, W, 3)`）。"""
+    import io
+
+    from PIL import Image
+
+    with Image.open(io.BytesIO(grob.data)) as image:
+        return np.asarray(image.convert("RGB"), dtype=np.uint8).copy()
+
+
+def _hex(pixel: np.ndarray) -> str:
+    return "#{:02X}{:02X}{:02X}".format(*(int(channel) for channel in pixel))
 
 
 def data() -> ColumnTable:
@@ -318,6 +334,34 @@ def test_colourbar_rejects_discrete_scales() -> None:
         build_guides(build_plot(plot))
 
 
+def test_colourbar_spans_scale_limits_instead_of_break_colours() -> None:
+    """SIL-722：色带两端取 limits（`palette(0)` / `palette(1)`），断点只管刻度。
+
+    v1 把断点色当端点再插值：limits 比断点宽时，低值点的深色在图例里找不到
+    （实测只覆盖调色板 t≈0.27 → 0.97）。
+    """
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="y"))
+        + registry.geom_point()
+        + registry.scale_colour_continuous(limits=(0, 10), breaks=(3, 5, 7))
+    )
+    build, theme_value, guides, layouts = _layout(plot)
+    guide, layout = guides[0], layouts[0]
+    assert guide.limits == (0.0, 10.0)
+    assert [key.label for key in guide.keys] == ["3", "5", "7"]
+    grobs = legend_grob(guide, build, theme_value, layout, name="g")
+    bars = [grob for grob in grobs if grob.name == "g.bar"]
+    assert len(bars) == 1 and isinstance(bars[0], RasterGrob)
+    pixels = _bar_pixels(bars[0])
+    assert pixels.shape[:2] == (guide.guide.nbin, 1)
+    low, high = gradient_pal()([0.0, 1.0])
+    assert _hex(pixels[-1, 0]) == low == "#132B43"
+    assert _hex(pixels[0, 0]) == high == "#56B1F7"
+    # 首个断点（3 / 10）不在色带底端：断点只决定刻度位置，不再裁剪色带。
+    assert layout.bar is not None
+    assert layout.ticks[0][0] > layout.bar.y_cm
+
+
 # ---------------------------------------------------------------------------
 # key grob：9 个 geom 都复用 Geom.draw()
 # ---------------------------------------------------------------------------
@@ -492,8 +536,9 @@ def test_colourbar_reverse_ticks_follow_the_bar() -> None:
     assert layout.ticks[0][0] == pytest.approx(bar.y_cm)
     assert layout.ticks[-1][0] == pytest.approx(bar.y_cm + bar.height_cm)
     grobs = legend_grob(guide, build, theme_value, layout, name="g")
-    bottom = next(grob for grob in grobs if grob.name == "g.bar-0")
-    assert bottom.gp.fill == guide.keys[0].values["colour"]
+    pixels = _bar_pixels(next(grob for grob in grobs if grob.name == "g.bar"))
+    assert _hex(pixels[-1, 0]) == guide.keys[0].values["colour"]
+    assert _hex(pixels[0, 0]) == guide.keys[-1].values["colour"]
 
 
 def test_horizontal_colourbar_draws_bar_and_labels_below() -> None:
@@ -512,7 +557,8 @@ def test_horizontal_colourbar_draws_bar_and_labels_below() -> None:
     assert layout.ticks
     assert all(bar.x_cm <= x <= bar.x_cm + bar.width_cm for x, _label in layout.ticks)
     grobs = legend_grob(guide, build, theme_value, layout, name="g")
-    assert len([grob for grob in grobs if ".bar-" in grob.name]) == guide.guide.nbin
+    bar_grob = next(grob for grob in grobs if grob.name == "g.bar")
+    assert _bar_pixels(bar_grob).shape[:2] == (1, guide.guide.nbin)
     labels = [grob for grob in grobs if "colourbar-label" in grob.name]
     assert len(labels) == len(guide.keys)
     label_y = float(np.asarray(convert_height(labels[0].y, "cm", ctx=UnitContext())).sum())

@@ -67,11 +67,13 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
 （上游 `ScaleDiscrete$map()` 只处理离散值），所以柱子的 `xmin = x - width/2`
 不会被离散水平编码吃掉。
 
-注册表里的 13 个名字就是全部实现：`x/y_continuous`、`x/y_discrete`、
-`x/y_log10`、`colour/fill_continuous`（= gradient）、`colour/fill_discrete`
-（= hue）、`size_continuous`、`shape_discrete`、`alpha_continuous`。
-`*_continuous` / `*_discrete` 在 4.0.3 里就是 gradient / hue 的别名
-（`tools/refs/scales_ref.R` 末尾有自检）。
+注册表里的 15 个名字就是全部实现：`x/y_continuous`、`x/y_discrete`、
+`x/y_log10`、`colour/fill_continuous`、`colour/fill_gradient`（四者都是
+gradient）、`colour/fill_discrete`（= hue）、`size_continuous`、
+`shape_discrete`、`alpha_continuous`。`*_continuous` / `*_discrete` 在 4.0.3 里
+就是 gradient / hue 的别名（`tools/refs/scales_ref.R` 末尾有自检）；
+`scale_colour_gradient` / `scale_fill_gradient` 是上游的正名（SIL-722 补齐，
+`+`、模块级函数、`p.scale_colour_gradient()` 三条路径同一注册表）。
 
 ## 3. limits / expand
 

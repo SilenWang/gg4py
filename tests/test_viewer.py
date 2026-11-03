@@ -20,12 +20,18 @@ from __future__ import annotations
 
 import functools
 import http.server
+import importlib.util
 import re
+import shutil
 import sys
 import threading
 import time
 from collections import Counter
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.request import urlopen
 
 import cbor2
 import numpy as np
@@ -624,3 +630,105 @@ def _drop_text_size(node: dict, path: str) -> str | None:
         if found is not None:
             return found
     return None
+
+
+def _viewer_cases_module():
+    """加载 `tools/viewer/cases.py`（gallery 生成器在脚本里，不是包）。"""
+    path = REPO / "tools" / "viewer" / "cases.py"
+    spec = importlib.util.spec_from_file_location("gg4py_gallery_links", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class _CardLinks(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+        self.srcs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        del tag
+        values = dict(attrs)
+        if values.get("href"):
+            self.hrefs.append(str(values["href"]))
+        if values.get("src"):
+            self.srcs.append(str(values["src"]))
+
+
+def _http_status(url: str) -> int | str:
+    try:
+        with urlopen(url, timeout=5) as response:
+            return int(response.status)
+    except HTTPError as error:
+        return int(error.code)
+    except URLError as error:  # pragma: no cover - 夹具服务器没起来才会命中
+        return f"{type(error).__name__}: {error}"
+
+
+def test_gallery_card_links_all_return_200(tmp_path: Path) -> None:
+    """SIL-722：gallery.html 与 index.html 同目录，每张卡片的链接都必须能打开。
+
+    gallery 之前写在 `dist/` 里，`index.html?scene=...` 被解析成 `dist/index.html`
+    （404）。这里按真实目录结构（viewer 根 = index.html 所在目录）生成一张 2 卡的
+    gallery，再逐链接 GET：卡片页、scene IR、缩略图都必须是 200。
+    """
+    module = _viewer_cases_module()
+    import io
+
+    from PIL import Image
+
+    root = tmp_path / "viewer"
+    (root / "dist").mkdir(parents=True)
+    shutil.copyfile(VIEWER / "index.html", root / "index.html")
+    (root / "dist" / "main.js").write_text("// stub：本测试只验证静态路径\n", encoding="utf-8")
+
+    source = tmp_path / "source"
+    source.mkdir()
+    buffer = io.BytesIO()
+    Image.new("RGB", (4, 3), (240, 240, 240)).save(buffer, format="PNG")
+    results = []
+    for name in ("geom-col-basic", "geom-text-cjk"):
+        thumbnail = source / f"{name}.png"
+        thumbnail.write_bytes(buffer.getvalue())
+        ir_file = source / f"{name}.ggir.cbor"
+        ir_file.write_bytes(b"\xa0")
+        results.append(
+            module.Result(
+                case=name,
+                family="geom-col",
+                status=module.PASS,
+                elements=3,
+                thumbnail=str(thumbnail),
+                ir_path=str(ir_file),
+            )
+        )
+    gallery = root / "gallery.html"
+    module.write_gallery(results, gallery, tmp_path / "out", now="2026-11-02T00:00:00Z")
+
+    links = _CardLinks()
+    links.feed(gallery.read_text(encoding="utf-8"))
+    assert len(links.hrefs) == len(results)
+    assert len(links.srcs) == len(results)
+
+    handler = functools.partial(_QuietHandler, directory=str(root))
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        for href, src in zip(links.hrefs, links.srcs, strict=True):
+            card = urljoin(f"{base}/gallery.html", href)
+            assert urlsplit(card).path == "/index.html", card
+            assert _http_status(card) == 200, card
+            scene = parse_qs(urlsplit(card).query)["scene"][0]
+            scene_url = urljoin(f"{base}/index.html", scene)
+            assert _http_status(scene_url) == 200, scene_url
+            thumbnail_url = urljoin(f"{base}/gallery.html", src)
+            assert _http_status(thumbnail_url) == 200, thumbnail_url
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=5)

@@ -1,8 +1,9 @@
 """guide：连续 colourbar（渐变条 + 刻度 + 标签）。
 
-**ci = false**：渐变条在 IR 里是 256 条 0.34pt 的细矩形，resvg 光栅化后整体
-偏白约 30%（R/svglite 用 1×300 的位图）。差值集中在色条自身，属于渲染口径
-问题而不是 guide 的数据口径——参考图照常生成，待渲染侧修好后翻 ci = true。
+**ci = false**：色条本身已与 R 一致（SIL-722：端点取 palette(0..1)、1×nbin
+位图、内侧白刻度），剩余 2.03% 来自图例整体右移 1.33pt——R 的 svglite 用拉丁
+字体量标签宽（17.11pt），我们用 Noto Sans CJK SC 的拉丁字形量出 15.78pt，
+是 `docs/notes/metrics-ledger.md` 里记的 M0-7 已知度量差。修度量再翻绿。
 """
 
 from ggcore.plot import (

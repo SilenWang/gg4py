@@ -204,7 +204,8 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 ```
 
 产物在 `.viewer-cases/`（不入库）：逐 case 的 IR / SVG / PNG、`report.md` /
-`report.json`；gallery 在 `web/viewer/dist/gallery.html`，卡片链到
+`report.json`；gallery 在 `web/viewer/gallery.html`（缩略图与 IR 副本在
+`web/viewer/gallery/`，与 `index.html` 同目录 —— 相对链接才解析得到），卡片链到
 `index.html?scene=gallery/<case>.ggir.cbor`，点进去就是同一套 hover / 图例开关。
 
 2026-11-02 全量结果（61 条三文件 case）：**pass 58 / fail 0 / skip 3**。
@@ -213,7 +214,7 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 | case | 缺口 | 归到 |
 | --- | --- | --- |
 | `theme-grey-basic` / `theme-minimal-basic` | `panel.grid.major/minor` 解析了但没绘制 | M2 |
-| `guide-colourbar` | 渐变条仍是 256 条 0.34pt 细矩形，resvg 光栅化偏白 | M2 |
+| `guide-colourbar` | 色条已修（SIL-722：limits 全量程 palette + 1×nbin 位图 + 内侧白刻度，像素差 ≤1/255）。剩余 2.03%（viewer）/ 2.0624%（device）是图例整体右移 1.33pt——拉丁标签度量差（M0-7，`metrics-ledger.md`）；按 R 的标签宽布局时 1.14% | 度量线 |
 
 ### 10.1 支持矩阵
 

@@ -4,4 +4,4 @@ ci = false
 title = "guide：colourbar"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "阻塞项：guide 的渐变条由 256 条细矩形拼成，resvg 下每像素覆盖率不足 → 整条偏白（实测图级差异 3.9%）；点本身与 R 逐色一致。缺口池 SIL-715 #3（IR 渐变 + guide）。"
+notes = "SIL-722 已修色条：端点取标度 limits（palette(0)=#132B43 / palette(1)=#56B1F7）、改成 1×nbin 位图 + R 的内侧白刻度，色条像素与参考差 ≤1/255（3.9914% → 2.03%（viewer）/ 2.0624%（device））。剩余 2.0% 是图例整体右移 1.33pt：R 的 svglite 用拉丁字体量标签（\"1.00\" = 17.11pt），我们用 Noto Sans CJK SC 的拉丁字形量出 15.78pt，属于 M0-7 记账的已知度量差（docs/notes/metrics-ledger.md）。按 R 的标签宽布局时本 case 为 1.14%，因此不换字体、不放宽阈值，待度量线修 Latin 回退后翻 ci = true。"

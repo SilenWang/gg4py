@@ -22,7 +22,7 @@
     .viewer-cases/<case>/viewer.svg         # 浏览器渲染后的 DOM SVG
     .viewer-cases/<case>/viewer.png         # Chromium 截图（缩略图）
     .viewer-cases/report.md / report.json   # 汇总
-    web/viewer/dist/gallery.html + dist/gallery/  # 可点进去 hover 的 gallery
+    web/viewer/gallery.html + gallery/           # 可点进去 hover 的 gallery
 """
 
 # gallery.html 的 CSS 是内联的（单文件、零依赖），长行是有意的。
@@ -50,7 +50,9 @@ CASES = REPO / "docs" / "cases"
 VIEWER = REPO / "web" / "viewer"
 DIST = VIEWER / "dist"
 OUT_DIR = REPO / ".viewer-cases"
-GALLERY = DIST / "gallery.html"
+# gallery.html 必须和 index.html 同处 viewer 根目录：卡片链接是
+# `index.html?scene=gallery/<case>.ggir.cbor`，scene 相对 viewer 页面解析。
+GALLERY = VIEWER / "gallery.html"
 
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "tools" / "viewer"))
@@ -76,7 +78,7 @@ RED = {FAIL, ERROR}
 IMPLEMENTATION_GAPS = {
     "theme-grey-basic": "panel.grid.major/minor 解析了但没绘制（M2）",
     "theme-minimal-basic": "panel.grid.major/minor 解析了但没绘制（M2）",
-    "guide-colourbar": "渐变条仍是 256 条细矩形，resvg 光栅化偏白（M2）",
+    "guide-colourbar": "色条已与 R 一致；剩余 2.0% 是拉丁标签度量差导致图例右移 1.33pt（M0-7）",
 }
 
 
@@ -396,7 +398,7 @@ def render_report(
             "## 产物",
             "",
             "- 每条 case：`.viewer-cases/<case>/<case>.ggir.cbor`、`viewer.svg`、`viewer.png`",
-            "- Gallery：`web/viewer/dist/gallery.html`（点卡片进 viewer，可 hover / 开关图例）",
+            "- Gallery：`web/viewer/gallery.html`（点卡片进 viewer，可 hover / 开关图例）",
             "- 复现：`pixi run viewer:build && pixi run viewer:browsers && pixi run viewer:cases`",
             "",
         ]

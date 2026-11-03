@@ -30,7 +30,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import struct
+import zlib
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any
@@ -47,9 +49,10 @@ from ggcore.axis import (
 from ggcore.build import LayerBuild, PlotBuild
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import parse_aes
-from ggcore.grobs import NullGrob, ZeroGrob, rect_grob, text_grob
+from ggcore.grobs import NullGrob, ZeroGrob, raster_grob, rect_grob, text_grob
 from ggcore.theme import (
     ElementBlank,
+    ElementLine,
     ElementRect,
     ElementText,
     ResolvedTheme,
@@ -287,6 +290,8 @@ class GuideBuild:
     layers: tuple[int, ...]
     #: 连续标度的范围（色条刻度按它定位）；离散为 None。
     limits: tuple[float, float] | None = None
+    #: 连续标度的色带（`palette(0..1)`）；色条两端取它而不是断点色。
+    palette: Callable[[Sequence[float]], list[str]] | None = None
 
     @property
     def kind(self) -> str:
@@ -464,8 +469,12 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
         if reverse:
             keys = tuple(reversed(keys))
         limits = None
+        palette = None
         if not bool(getattr(scale, "discrete", False)):
             limits = tuple(float(item) for item in scale.limits())
+            colour_ramp = getattr(scale, "palette", None)
+            if callable(colour_ramp):
+                palette = colour_ramp
         candidates.append(
             GuideBuild(
                 guide=guide,
@@ -476,6 +485,7 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
                 ),
                 layers=layers,
                 limits=limits,
+                palette=palette,
             )
         )
 
@@ -534,6 +544,7 @@ def _merge(left: GuideBuild, right: GuideBuild) -> GuideBuild:
         keys=keys,
         layers=layers,
         limits=left.limits,
+        palette=left.palette,
     )
 
 
@@ -1158,49 +1169,35 @@ def _colourbar_grobs(
     *,
     name: str,
 ) -> list[Any]:
-    """渐变条：`nbin` 个 1/nbin 高的小矩形（R 用 rasterGrob；IR 里两者都是矩形）。"""
+    """渐变条：一张 `nbin` 像素的位图贴到色条矩形（对齐 R 的 `rasterGrob`）。
+
+    细矩形拼不出渐变：每块只有零点几个像素高，抗锯齿后与白底混合，整条偏白约
+    30%。R/svglite 也是 `preserveAspectRatio='none'` 的 1×nbin 位图。
+    """
     guide = guide_build.guide
     assert isinstance(guide, GuideColourbar)
     box = layout.bar
     assert box is not None
-    keys = guide_build.keys
-    values = [key.values.get("colour", key.values.get("fill")) for key in keys]
-    colours = [value if isinstance(value, str) else "#808080" for value in values]
     nbin = int(guide.nbin)
     grobs: list[Any] = []
-    steps = _gradient_stops(colours, nbin)
+    steps = _bar_steps(guide_build, nbin)
     horizontal = layout.direction == "horizontal"
-    if horizontal:
-        # 横向：从左到右铺 nbin 个竖条（左端是最小值 / reverse 后是最大值）。
-        step_w = box.width_cm / nbin
-        for index, colour in enumerate(steps):
-            grobs.append(
-                rect_grob(
-                    box.x_cm + index * step_w,
-                    box.y_cm,
-                    step_w,
-                    box.height_cm,
-                    just=("left", "bottom"),
-                    default_units="cm",
-                    gp=gpar(fill=colour, col=NA),
-                    name=f"{name}.bar-{index}",
-                )
-            )
-    else:
-        step_h = box.height_cm / nbin
-        for index, colour in enumerate(steps):
-            grobs.append(
-                rect_grob(
-                    box.x_cm,
-                    box.y_cm + index * step_h,
-                    box.width_cm,
-                    step_h,
-                    just=("left", "bottom"),
-                    default_units="cm",
-                    gp=gpar(fill=colour, col=NA),
-                    name=f"{name}.bar-{index}",
-                )
-            )
+    data, width_px, height_px = _bar_png(steps, horizontal=horizontal)
+    grobs.append(
+        raster_grob(
+            data,
+            width_px,
+            height_px,
+            x=box.x_cm,
+            y=box.y_cm,
+            width=box.width_cm,
+            height=box.height_cm,
+            just=("left", "bottom"),
+            interpolate=True,
+            default_units="cm",
+            name=f"{name}.bar",
+        )
+    )
     frame = theme.get("legend.frame")
     if isinstance(frame, ElementRect) and paint(frame.colour) is not None:
         grobs.append(
@@ -1221,40 +1218,49 @@ def _colourbar_grobs(
     tick_len = _cm_unit(theme.get("legend.ticks.length"), height=False) or 0.0
     from ggcore.grobs import segments_grob
 
-    colour = paint(getattr(tick_el, "colour", None))
+    # ggplot2 4.0.3 的 colourbar 自带缺省刻度：`default_ticks = element_line(
+    # colour = "white", linewidth = 0.5/.pt)`。theme_void 把 `line` 设成 blank，
+    # colourbar 仍然画这层白刻度（参考 SVG 里每条断点左右各一段，画在色条内侧）。
+    colour = paint(getattr(tick_el, "colour", None)) if isinstance(tick_el, ElementLine) else None
+    lwd = float(getattr(tick_el, "linewidth", None) or 0.5) if colour is not None else 0.5
+    colour = colour or "white"
     # `guide_colourbar(ticks = FALSE)` 只去掉刻度线，标签照画（与 R 4.0.3 一致）。
-    draw_ticks = (
-        bool(guide.ticks)
-        and not isinstance(tick_el, ElementText)  # 防御：类型不会走到这
-        and colour is not None
-        and tick_len > 0
-    )
+    draw_ticks = bool(guide.ticks) and tick_len > 0
     for index, (position, label) in enumerate(layout.ticks):
         if draw_ticks:
+            # R 的 `build_ticks(position = "right"/"left")` 从色条边缘向**内**画，
+            # 两侧各一段（参考 SVG 的 10 条白 polyline）。
             if horizontal:
-                grobs.append(
-                    segments_grob(
-                        [position, position],
-                        [box.y_cm, box.y_cm],
-                        [position, position],
-                        [box.y_cm - tick_len, box.y_cm - tick_len],
-                        default_units="cm",
-                        gp=gpar(col=colour, lwd=0.0),
-                        name=f"{name}.tick-{index}",
-                    )
+                segments = (
+                    (position, box.y_cm, position, box.y_cm + tick_len),
+                    (
+                        position,
+                        box.y_cm + box.height_cm,
+                        position,
+                        box.y_cm + box.height_cm - tick_len,
+                    ),
                 )
             else:
-                grobs.append(
-                    segments_grob(
-                        [box.x_cm + box.width_cm, box.x_cm + box.width_cm],
-                        [position, position],
-                        [box.x_cm + box.width_cm + tick_len, box.x_cm + box.width_cm + tick_len],
-                        [position, position],
-                        default_units="cm",
-                        gp=gpar(col=colour, lwd=0.0),
-                        name=f"{name}.tick-{index}",
-                    )
+                segments = (
+                    (box.x_cm + tick_len, position, box.x_cm, position),
+                    (
+                        box.x_cm + box.width_cm - tick_len,
+                        position,
+                        box.x_cm + box.width_cm,
+                        position,
+                    ),
                 )
+            grobs.append(
+                segments_grob(
+                    [segment[0] for segment in segments],
+                    [segment[1] for segment in segments],
+                    [segment[2] for segment in segments],
+                    [segment[3] for segment in segments],
+                    default_units="cm",
+                    gp=gpar(col=colour, lwd=lwd),
+                    name=f"{name}.tick-{index}",
+                )
+            )
         if horizontal:
             # 横向：标签居中排在色条下方（R 的 text-anchor = middle）。
             grobs.append(
@@ -1283,6 +1289,53 @@ def _colourbar_grobs(
                 )
             )
     return grobs
+
+
+def _bar_steps(guide_build: GuideBuild, nbin: int) -> list[str]:
+    """色条的 `nbin` 个颜色：两端是标度 limits（`palette(0)` / `palette(1)`），
+    断点只决定刻度位置与标签（上游 `pal(seq(0, 1, length.out = nbin))`）。
+    """
+    palette = guide_build.palette
+    if palette is not None:
+        steps = list(palette(np.linspace(0.0, 1.0, nbin)))
+        return steps[::-1] if guide_build.guide.reverse else steps
+    # 没有 palette 的连续标度（理论上只有 colour/fill 连续会走到 colourbar）：
+    # 退回按断点色插值。
+    values = [key.values.get("colour", key.values.get("fill")) for key in guide_build.keys]
+    colours = [value if isinstance(value, str) else "#808080" for value in values]
+    return _gradient_stops(colours, nbin)
+
+
+def _bar_png(colours: Sequence[str], *, horizontal: bool) -> tuple[bytes, int, int]:
+    """`colours`（左/下 → 右/上）→ `(png, width_px, height_px)`。
+
+    竖向取 1×n 位图、横向取 n×1 位图，贴图时 `preserveAspectRatio=none` 拉伸
+    （R 的 svglite 产物是 1×300）。
+    """
+    from ggcore.grobs import parse_colour
+
+    channels = [parse_colour(colour)[:3] for colour in colours]
+    if horizontal:
+        width, height = len(channels), 1
+        rows = [b"".join(bytes(rgb) for rgb in channels)]
+    else:
+        # PNG 第一行是顶边：竖向色带底部是最小值。
+        width, height = 1, len(channels)
+        rows = [bytes(rgb) for rgb in reversed(channels)]
+    raw = b"".join(b"\x00" + row for row in rows)  # 每行前 1 字节 filter=none
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        body = kind + payload
+        return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body))
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(raw, 9))
+        + chunk(b"IEND", b"")
+    )
+    return png, width, height
 
 
 def _gradient_stops(colours: Sequence[str], nbin: int) -> list[str]:
