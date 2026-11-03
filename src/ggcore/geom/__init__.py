@@ -140,8 +140,8 @@ def renderer_for(name: str) -> GeomRenderer:
     """按 geom 名取绘制实现；没有实现时点名。
 
     先查可绘制的 `GEOM_RENDERERS`，再查只有 build 级实现的
-    `BUILD_ONLY_RENDERERS`（M2-6 的 2D 族：`setup_data()` 有了，`draw()` 归
-    SIL-737（`tile`）与 SIL-735（其余 5 个））。
+    `BUILD_ONLY_RENDERERS`（M2-6 的 2D 族里剩下的 5 个：`setup_data()` 有了，
+    `draw()` 归 SIL-735。`geom_tile` 已由 SIL-737 转进 `GEOM_RENDERERS`）。
     """
     try:
         return GEOM_RENDERERS[name]

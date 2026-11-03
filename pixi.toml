@@ -208,6 +208,10 @@ r-quantreg = ">=6.1,<7"
 # guide / 主轴（M1-11）：8 个 case 的断点 / 标签 / 图例键（get_guide_data）+
 # ggplotGrob() 的 axis / ylab / xlab / title / guide-box 行列尺寸（cm）。
 "refs:guide" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_ref.R"
+# guides 长尾（M2-S2 / SIL-739）：colourbar 全量参数 / bins / coloursteps /
+# axis guide（角度、稀疏、分行、次刻度、logticks、叠放）的键与行列尺寸，
+# 外加 `scales::minor_breaks_log()` 的逐段位置与档位。
+"refs:guide-long" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/guide_long_ref.R"
 # stat（M1-8）：bin / count / boxplot / smooth(loess) / align 共 30 个 case 的
 # ggplot_build(p)$data[[1]] 逐列值 + build/draw 两段 warning。
 # loess 覆盖两种面：显式 case 用 surface = "direct" + statistics/trace.hat = "exact"

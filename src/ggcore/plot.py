@@ -30,6 +30,8 @@ from ggcore import registry
 from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
+from ggcore.annotations import LogticksAnnotation
+from ggcore.annotations import annotation_logticks as annotation_logticks
 from ggcore.arrow import arrow as arrow
 from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
@@ -64,12 +66,14 @@ class ggplot:
         facet: Facet | None = None,
         labels: Mapping[str, Any] | None = None,
         position: Position | None = None,
+        annotations: tuple[Any, ...] | list[Any] | None = None,
         **kwargs: Any,
     ) -> None:
         if kwargs:
             unknown = ", ".join(sorted(kwargs))
             known = (
-                "data, mapping, layers, scales, guides, theme, coordinates, facet, labels, position"
+                "data, mapping, layers, scales, guides, theme, coordinates, facet, labels, "
+                "position, annotations"
             )
             raise TypeError(f"ggplot() 不认识这些参数：{unknown}；可用字段：{known}")
         self.data = data
@@ -85,6 +89,8 @@ class ggplot:
         self.facet: Facet = facet if facet is not None else Facet("null")
         self.labels: dict[str, Any] = dict(frozen_mapping(labels)) if labels is not None else {}
         self.position: Position | None = position
+        #: `annotation_*()` 的集合（M2-S2）：不参与图层流水线，scene 的轴阶段绘制。
+        self.annotations: list[Any] = list(annotations or [])
 
     # -- 克隆 ---------------------------------------------------------------
 
@@ -101,6 +107,7 @@ class ggplot:
         clone.facet = self.facet
         clone.labels = dict(self.labels)
         clone.position = self.position
+        clone.annotations = list(self.annotations)
         return clone
 
     def __add__(self, component: Any) -> ggplot:
@@ -239,6 +246,13 @@ def _add_guides(component: Guides, plot: ggplot) -> ggplot:
 def _add_labels(component: Labels, plot: ggplot) -> ggplot:
     new = plot.clone()
     new.labels.update(component.values)
+    return new
+
+
+@_add_component.register(LogticksAnnotation)
+def _add_annotation(component: Any, plot: ggplot) -> ggplot:
+    new = plot.clone()
+    new.annotations.append(component)
     return new
 
 

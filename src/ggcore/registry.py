@@ -663,6 +663,10 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             ("x|width|xmin|xmax", "y|height|ymin|ymax"),
             _RECT_DEFAULTS,
         ),
+        # `geom_tile` 的绘制由 SIL-737 落地。上游 `GeomTile$default_aes` 是
+        # `fill = col_mix(ink, paper, 0.2)`（grey20）、`linewidth = 0.4 * borderwidth`
+        # （0.2），与 M2-6 的 build-only 桩（SIL-735 口径、grey92）不同：绘制实现
+        # 以本条为准，桩由它取代。
         "tile": GeomSpec(
             ("x", "y"),
             {
@@ -676,66 +680,10 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             },
             non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
         ),
-        "raster": GeomSpec(
-            ("x", "y"),
-            {"fill": "grey20", "alpha": None},
-            non_missing_aes=("fill", "xmin", "xmax", "ymin", "ymax"),
-        ),
-        "polygon": GeomSpec(("x", "y"), {**_RECT_DEFAULTS, "fill": "grey20"}),
-        "ribbon": GeomSpec(
-            ("x|y", "ymin|xmin", "ymax|xmax"),
-            {**_RECT_DEFAULTS, "fill": "grey20"},
-        ),
-        "step": GeomSpec(
-            ("x", "y"),
-            _LINE_DEFAULTS,
-            non_missing_aes=("linewidth", "colour", "linetype"),
-        ),
-        "errorbar": GeomSpec(
-            ("x|y", "ymin|xmin", "ymax|xmax"),
-            {
-                "colour": "black",
-                "linewidth": 0.5,
-                "linetype": 1,
-                "width": 0.9,
-                "alpha": None,
-            },
-        ),
-        "errorbarh": GeomSpec(
-            ("x|y", "ymin|xmin", "ymax|xmax"),
-            {
-                "colour": "black",
-                "linewidth": 0.5,
-                "linetype": 1,
-                "width": 0.9,
-                "alpha": None,
-            },
-        ),
-        "linerange": GeomSpec(("x|y", "ymin|xmin", "ymax|xmax"), _LINE_DEFAULTS),
-        "pointrange": GeomSpec(
-            ("x", "y", "ymin|xmin", "ymax|xmax"),
-            {
-                "colour": "black",
-                "size": 0.5,
-                "linewidth": 0.5,
-                "linetype": 1,
-                "shape": 19.0,
-                "fill": None,
-                "alpha": None,
-                "stroke": 1.0,
-            },
-        ),
-        "crossbar": GeomSpec(
-            ("x", "y", "ymin|xmin", "ymax|xmax"),
-            {"colour": "black", "fill": None, "linewidth": 0.5, "linetype": 1, "alpha": None},
-        ),
-        "blank": GeomSpec((), {}),
-        "rug": GeomSpec((), _LINE_DEFAULTS),
-        "map": GeomSpec(("map_id",), {**_RECT_DEFAULTS, "fill": "grey20"}),
-        # --- M2-6：2D 族 ------------------------------------------------------
-        # 这 5 个 geom 在本任务里只有 **build 级** 实现（`setup_data()` 与默认
-        # 美学照上游）；`draw()` 归 SIL-735。`tile` 的完整实现归 M2-S2（上面那条）。
-        # 见 docs/notes/geom.md。
+        # --- M2-6：2D 族的 build-only 部分 ------------------------------------
+        # 这 5 个 geom 只有 **build 级** 实现（`setup_data()` 与默认美学照上游，
+        # `ggplot_build()` 的 `$data` 与 R 逐列一致）；`draw()` 报 `GeomError` 并
+        # 点名 SIL-735。`tile` 已由 SIL-737 实现绘制（见上），不在此列。
         "hex": GeomSpec(
             ("x", "y"),
             {
@@ -795,6 +743,62 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "density_2d_filled",
             "identity",
         ),
+        "raster": GeomSpec(
+            ("x", "y"),
+            {"fill": "grey20", "alpha": None},
+            non_missing_aes=("fill", "xmin", "xmax", "ymin", "ymax"),
+        ),
+        "polygon": GeomSpec(("x", "y"), {**_RECT_DEFAULTS, "fill": "grey20"}),
+        "ribbon": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {**_RECT_DEFAULTS, "fill": "grey20"},
+        ),
+        "step": GeomSpec(
+            ("x", "y"),
+            _LINE_DEFAULTS,
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "errorbar": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "errorbarh": GeomSpec(
+            ("x|y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "width": 0.9,
+                "alpha": None,
+            },
+        ),
+        "linerange": GeomSpec(("x|y", "ymin|xmin", "ymax|xmax"), _LINE_DEFAULTS),
+        "pointrange": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {
+                "colour": "black",
+                "size": 0.5,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "shape": 19.0,
+                "fill": None,
+                "alpha": None,
+                "stroke": 1.0,
+            },
+        ),
+        "crossbar": GeomSpec(
+            ("x", "y", "ymin|xmin", "ymax|xmax"),
+            {"colour": "black", "fill": None, "linewidth": 0.5, "linetype": 1, "alpha": None},
+        ),
+        "blank": GeomSpec((), {}),
+        "rug": GeomSpec((), _LINE_DEFAULTS),
+        "map": GeomSpec(("map_id",), {**_RECT_DEFAULTS, "fill": "grey20"}),
     }
 )
 
@@ -985,7 +989,19 @@ COORD_POSITIONAL: Mapping[str, tuple[str, ...]] = MappingProxyType(
 )
 
 FACET_NAMES: tuple[str, ...] = ("null", "wrap", "grid")
-GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
+GUIDE_NAMES: tuple[str, ...] = (
+    "legend",
+    "colourbar",
+    "bins",
+    "coloursteps",
+    "colorsteps",
+    "none",
+    # 轴 guide（M2-S2）：`guides(x = guide_axis(angle = 45))` 的注册名。
+    "axis",
+    "axis_logticks",
+    "axis_stack",
+    "axis_theta",
+)
 
 
 def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:

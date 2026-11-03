@@ -231,7 +231,7 @@ def text_width_cm(
                     line,
                     fontsize=float(size_pt),
                     cex=1.0,
-                    font=str(family or LAYOUT_LATIN_FONT),
+                    font=str(family),
                 )
             )
             for line in lines

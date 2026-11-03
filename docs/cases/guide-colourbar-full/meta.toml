@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-colourbar", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "guide：colourbar 全量参数"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "colourbar 的 nbin / display / title.position / ticks.colour / frame.colour / draw.ulim 全部走到；R 侧用 theme(legend.title.position / legend.ticks / legend.frame) 表达同一组参数。"

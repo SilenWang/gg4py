@@ -851,6 +851,8 @@ class PlotBuild:
     guides: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     #: 每层合并后的原始映射（`aes()` 的原文）：图例标题与「哪些图层映射了这个美学」。
     raw_mappings: tuple[Mapping[str, Any], ...] = ()
+    #: `annotation_*()`（M2-S2）：scene 的轴阶段绘制，不进图层流水线。
+    annotations: tuple[Any, ...] = ()
     #: 文本度量（`ggcore.units.Metrics`）；`scene_from_build()` 注入，布局/图例用。
     metrics: Any = None
 
@@ -1205,6 +1207,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         theme=plot.theme,
         labels=_plot_labels(plot),
         guides=_plot_guides(plot),
+        annotations=tuple(getattr(plot, "annotations", ()) or ()),
         raw_mappings=raw_mappings,
     )
 
@@ -1364,5 +1367,6 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
         theme=plot.theme,
         labels=_plot_labels(plot),
         guides=_plot_guides(plot),
+        annotations=tuple(getattr(plot, "annotations", ()) or ()),
         raw_mappings=raw_mappings,
     )
