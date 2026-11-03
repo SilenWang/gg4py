@@ -85,6 +85,7 @@ __all__: list[str] = [
     "SCALE_SPECS",
     "STAT_GEOMS",
     "STAT_NAMES",
+    "STAT_POSITIONS",
     "THEME_NAMES",
     "GeomSpec",
     "bind_plot",
@@ -723,10 +724,33 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
     }
 )
 
-#: 6 个 stat（M1-1 只登记名字；`align` 是 4.0.3 里 area 的默认 stat）。
-STAT_NAMES: tuple[str, ...] = ("identity", "bin", "count", "boxplot", "smooth", "align")
+#: stat 导出（M1-1 的 6 个 + M2-6 的 14 个长尾；`align` 是 4.0.3 里 area 的默认 stat）。
+STAT_NAMES: tuple[str, ...] = (
+    "identity",
+    "bin",
+    "count",
+    "boxplot",
+    "smooth",
+    "align",
+    "qq",
+    "qq_line",
+    "ecdf",
+    "ellipse",
+    "quantile",
+    "summary",
+    "summary_bin",
+    "sum",
+    "unique",
+    "density",
+    "function",
+    "connect",
+    "manual",
+    "spoke",
+    "ydensity",
+)
 
-#: `stat_*()` 的默认 geom（照 ggplot2：identity→point、count/bin→bar、align→area …）。
+#: `stat_*()` 的默认 geom（照 4.0.3 的 `stat_*` 构造器；`spoke` 已 `deprecate_stop`，
+#: 不给默认 geom）。
 STAT_GEOMS: Mapping[str, str] = MappingProxyType(
     {
         "identity": "point",
@@ -735,6 +759,48 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
         "boxplot": "boxplot",
         "smooth": "smooth",
         "align": "area",
+        "qq": "point",
+        "qq_line": "abline",
+        "ecdf": "step",
+        "ellipse": "path",
+        "quantile": "quantile",
+        "summary": "pointrange",
+        "summary_bin": "pointrange",
+        "sum": "point",
+        "unique": "point",
+        "density": "area",
+        "function": "function",
+        "connect": "path",
+        "manual": "point",
+        "ydensity": "violin",
+    }
+)
+
+#: `stat_*()` 的默认 position（照 4.0.3 各构造器的形参缺省；统计层自己决定，
+#: 不跟 geom 走——例如 `stat_density(geom="line")` 仍是 stack）。
+STAT_POSITIONS: Mapping[str, str] = MappingProxyType(
+    {
+        "identity": "identity",
+        "bin": "stack",
+        "count": "stack",
+        "boxplot": "identity",
+        "smooth": "identity",
+        "align": "stack",
+        "qq": "identity",
+        "qq_line": "identity",
+        "ecdf": "identity",
+        "ellipse": "identity",
+        "quantile": "identity",
+        "summary": "identity",
+        "summary_bin": "identity",
+        "sum": "identity",
+        "unique": "identity",
+        "density": "stack",
+        "function": "identity",
+        "connect": "identity",
+        "manual": "identity",
+        "spoke": "identity",
+        "ydensity": "dodge",
     }
 )
 
@@ -945,10 +1011,34 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
 
     参数路由（M1-3 的约定）：`**params` 只进 `Stat.params`；geom 需要的参数
     （例如 `width`）不在这里，走 geom 的缺省值或 `geom=` 显式传入。
+
+    4.0.3 里有几个 stat 的默认 geom 属于 M2-7（`step` / `violin` / `pointrange` /
+    `quantile` / `function` / `abline`）。那一组落地之前，用这些默认值的
+    `stat_*()` 在**构造时**报错并点名可用的 `geom=`，不拖到构建期才炸。
     """
 
-    geom_name = STAT_GEOMS[name]
-    spec = GEOM_SPECS[geom_name]
+    geom_name = STAT_GEOMS.get(name, "point")
+
+    if name == "spoke":
+        # 4.0.3 的 `stat_spoke()` 本体是 `lifecycle::deprecate_stop()`：
+        # 注册项保留（NAMESPACE 里仍然导出），调用即报错并指向 `geom_spoke()`。
+        def deprecated(*args: Any, **params: Any) -> Layer:
+            del args, params
+            raise ValueError(
+                "stat_spoke() 在 ggplot2 4.0.3 里已弃用（lifecycle::deprecate_stop），"
+                "请改用 geom_spoke()（角度 / 半径是 geom 的参数，M2-7）"
+            )
+
+        return deprecated
+
+    def _geom_spec(target: str) -> GeomSpec:
+        spec = GEOM_SPECS.get(target)
+        if spec is None:
+            raise ValueError(
+                f"stat_{name} 的 geom {target!r} 还没实现（M2-7 的另一组）；"
+                f"先显式给 geom= 一个已注册的几何：{', '.join(GEOM_SPECS)}"
+            )
+        return spec
 
     def factory(
         mapping: Any = None,
@@ -960,17 +1050,23 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
         show_legend: bool | None = None,
         **params: Any,
     ) -> Layer:
+        if isinstance(geom, str):
+            spec = _geom_spec(geom)
+        elif geom is None:
+            spec = _geom_spec(geom_name)
+        else:
+            spec = None
         return Layer(
             geom=as_geom(
                 geom,
                 geom_name,
-                spec.required_aes,
-                spec.default_aes,
-                spec.non_missing_aes,
-                spec.optional_aes,
+                () if spec is None else spec.required_aes,
+                {} if spec is None else spec.default_aes,
+                () if spec is None else spec.non_missing_aes,
+                () if spec is None else spec.optional_aes,
             ),
             stat=Stat(name, params),
-            position=as_position(position, spec.position),
+            position=as_position(position, STAT_POSITIONS[name]),
             mapping=as_aes(mapping),
             data=data,
             inherit_aes=inherit_aes,

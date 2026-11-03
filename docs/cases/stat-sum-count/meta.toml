@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "size-aes", "scale-limits", "stat-sum"]
+ci = true
+title = "sum：按位置计数（size = after_stat(n)）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "M2-6 stat_sum 的端到端：n / prop 与 geom_count 的 size 联动；加权重计数在 refs:stat-longtail 的 sum_weight。"
