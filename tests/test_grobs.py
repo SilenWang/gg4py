@@ -655,7 +655,10 @@ def test_transparent_and_na_paint_nothing() -> None:
     "lty,expected",
     [
         (1, ()),
-        (2, (6.0, 6.0)),  # dashed (4,4) × lwd 1.5pt（R 的 lwd 2 = 2/96 in）
+        # dashed (4,4) × max(lwd, 1) × 72/96：段长是 lwd 的倍数（参考产线 svglite 的
+        # `stroke-dasharray` 口径），小于 1 的 lwd 记作 1（细线的虚线不会退化），
+        # 再折成 IR 的 pt（SIL-763）。lwd = 2 → 4 × 2 × 0.75 = 6pt。
+        (2, (6.0, 6.0)),
         ("dashed", (6.0, 6.0)),
         ("44", (6.0, 6.0)),
         ((1, 2, 3), (1.5, 3.0, 4.5)),
@@ -667,17 +670,27 @@ def test_lty_is_folded_into_pt_dashes(lty, expected) -> None:
     assert instruction.gpar.lty == expected
 
 
-def test_thin_lines_keep_the_pt_dash_length() -> None:
-    """`lwd < 1` 时段长按 1 个 R lwd 算（SIL-737）：细线虚线不会画密。
+@pytest.mark.parametrize(
+    "lwd,expected",
+    [
+        # 边界在 1：0.5 / 0.9 / 1.0 的段长同为 4 × 1 × 0.75 = 3pt，2.0 才翻倍。
+        (0.5, (3.0, 3.0)),
+        (0.9, (3.0, 3.0)),
+        (1.0, (3.0, 3.0)),
+        (2.0, (6.0, 6.0)),
+    ],
+)
+def test_dash_length_follows_max_lwd_one(lwd, expected) -> None:
+    """`lwd < 1` 的边界：段长按 `max(lwd, 1)` 算，线的粗细仍按真实 lwd 折算。
 
-    R 的 `lwd` 单位是 1/96 inch；参考产线 svglite 对 lwd < 1 仍按 1 折算段长
-    （`lty = "dashed"` 恒为 4,4 × 0.75pt）。
+    快照 `docs/cases/grob-dash-lwd` 用同一组 lwd 画四条虚线（像素兜住粗细与段长）。
     """
     tree = make_tree()
     instruction = only(
-        scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lty="dashed", lwd=0.5)), tree)
+        scene(lines_grob([0.0, 1.0], [0.0, 1.0], gp=gpar(lty="dashed", lwd=lwd)), tree)
     )
-    assert instruction.gpar.lty == (3.0, 3.0)
+    assert instruction.gpar.lty == expected
+    assert instruction.gpar.lwd == pytest.approx(lwd * 0.75)
 
 
 def test_lwd_is_converted_from_r_units_to_pt() -> None:
