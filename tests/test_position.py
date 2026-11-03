@@ -163,7 +163,7 @@ def test_compute_position_dispatches_through_the_registry() -> None:
         return PositionDodge(params=patched)
 
     try:
-        registry.register_position("dodge", narrow)
+        registry.register_position("dodge", narrow, allow_override=True)
         # 入口一：模块级构造器。
         assert registry.position_dodge().params["width"] == 0.1
         # 入口二：图层名字（流水线里按名字查注册表）。
@@ -182,7 +182,7 @@ def test_compute_position_dispatches_through_the_registry() -> None:
         # 入口三：`p.position_dodge()`（同一个注册表项）。
         assert plot.ggplot().position_dodge().position.params["width"] == 0.1
     finally:
-        registry.register_position("dodge", original)
+        registry.register_position("dodge", original, allow_override=True)
 
     assert registry.position_dodge().params["width"] is None
 
