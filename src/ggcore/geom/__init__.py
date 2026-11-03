@@ -213,8 +213,13 @@ def renderer_for(name: str) -> GeomRenderer:
 
 
 def build_only_renderers() -> tuple[str, ...]:
-    """只有 build 级实现（没有 `draw()`）的 geom 名。"""
-    return tuple(BUILD_ONLY_RENDERERS)
+    """只有 build 级实现（没有 `draw()`）的 geom 名。
+
+    `GEOM_RENDERERS` 里已经能画的名字不算——M2-S2 之后 `tile` / `hex` / `contour` /
+    `contour_filled` / `density_2d` / `density_2d_filled` 都由 geom 层接管绘制，
+    `BUILD_ONLY_RENDERERS` 只剩仍未落地绘制的名字。
+    """
+    return tuple(name for name in BUILD_ONLY_RENDERERS if name not in GEOM_RENDERERS)
 
 
 def has_renderer(name: str) -> bool:
