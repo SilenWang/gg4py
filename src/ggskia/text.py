@@ -41,7 +41,7 @@ from ggcore.metrics.faces import (
     FACE_SUFFIXES,
     canonical_family,
 )
-from ggcore.metrics.runs import is_supported, split_runs
+from ggcore.metrics.runs import split_runs
 
 __all__ = [
     "EMOJI_COLOR_FAMILY",
@@ -56,7 +56,10 @@ __all__ = [
     "resolve_stack",
 ]
 
-SANS_FAMILY = "Noto Sans CJK SC"
+#: 缺省拉丁字族 = R/svglite 参考产线解析出来的那一个（`Arimo`，见
+#: `docs/notes/metrics-ledger.md` · M2-a）。CJK 由 `rules.json` 的字体栈回退到
+#: `Noto Sans CJK SC`，不在这里另写顺序。
+SANS_FAMILY = "Arimo"
 EMOJI_COLOR_FAMILY = "Noto Color Emoji"
 EMOJI_OUTLINE_FAMILY = "Noto Emoji"
 
@@ -206,7 +209,9 @@ class TextShaper:
         self._typefaces: dict[tuple[str, int | None], skia.Typeface] = {}
         self._skia_fonts: dict[tuple[str, int | None, float], skia.Font] = {}
         self._coverage: dict[tuple[str, int | None, int], bool] = {}
-        self._shaped: dict[tuple[str, int | None, str, float], tuple[tuple[int, ...], float]] = {}
+        self._shaped: dict[
+            tuple[str, int | None, str, float], tuple[tuple[int, ...], tuple[float, ...], float]
+        ] = {}
         self._stacks: dict[str, tuple[Face, ...]] = {}
 
     # --- 字体 -------------------------------------------------------------
@@ -289,29 +294,36 @@ class TextShaper:
 
     # --- 排版 -------------------------------------------------------------
 
-    def _shape_one(self, face: Face, text: str, size_pt: float) -> tuple[tuple[int, ...], float]:
-        """单字面 shaping：字形 id + 推进，单位 pt（skia 的线性度量口径）。"""
+    def _shape_one(
+        self, face: Face, text: str, size_pt: float
+    ) -> tuple[tuple[int, ...], tuple[float, ...], float]:
+        """单字面 shaping：字形 id + 累计笔位 + 推进，单位 pt。
+
+        **一律走 HarfBuzz**（M2-S1）：`kern` 是 shaping 的一部分，skia 的
+        `measureText` / `getXPos` 只做逐字形 advance（`Total` 的 `To` 对偏宽
+        3%），而 R 的 svglite 产线是 HarfBuzz shaping（`expected.svg` 的
+        `textLength` 与带 kern 的 HB 推进差 0.13%、与不带 kern 的差 3.35%）。
+        两端都从这里取宽度，笔画位置才不会与 IR 里写下的 `text.width` 打架。
+        """
         key = (face.filename, face.variation, text, round(float(size_pt), 4))
         cached = self._shaped.get(key)
         if cached is not None:
             return cached
-        skia_font = self.font(face, size_pt)
-        if is_supported(text):
-            # 简单文字（拉丁/希腊/西里尔/CJK/emoji）：cmap 直映。与 skia 的
-            # `drawString()`、M0-7 的兜底表同一口径——可变字体里 HarfBuzz 会给
-            # 数字挑不同的字形实例（Noto CJK 的 '0' 是 63153 vs 17），两端会
-            # 画出不同的数字，所以简单文字不绕 HB。
-            gids = tuple(int(gid) for gid in skia_font.textToGlyphs(text))
-        else:
-            # 需要上下文 shaping 的书写系统（阿拉伯/印度诸语/泰文……）走 HarfBuzz：
-            # 连写、重排、合字都在这一步发生，逐码点 cmap 映射画不出来。
-            font = self._hb_font(face)
-            buffer = hb.Buffer()
-            buffer.add_str(text)
-            buffer.guess_segment_properties()
-            hb.shape(font, buffer)
-            gids = tuple(info.codepoint for info in buffer.glyph_infos)
-        shaped = (gids, float(skia_font.measureText(text)))
+        font = self._hb_font(face)
+        upem = self._faces[(face.filename, face.variation)].upem
+        buffer = hb.Buffer()
+        buffer.add_str(text)
+        buffer.guess_segment_properties()
+        hb.shape(font, buffer)
+        scale = float(size_pt) / upem
+        gids: list[int] = []
+        offsets: list[float] = []
+        pen = 0.0
+        for info, position in zip(buffer.glyph_infos, buffer.glyph_positions, strict=True):
+            gids.append(int(info.codepoint))
+            offsets.append(pen + float(position.x_offset) * scale)
+            pen += float(position.x_advance) * scale
+        shaped = (tuple(gids), tuple(offsets), pen)
         self._shaped[key] = shaped
         return shaped
 
@@ -324,10 +336,9 @@ class TextShaper:
         out: list[GlyphRun] = []
         for piece in pieces:
             face = stack[piece.font_index]
-            gids, advance = self._shape_one(face, piece.text, float(size_pt))
+            gids, offsets, advance = self._shape_one(face, piece.text, float(size_pt))
             if not gids:
                 continue
-            offsets = tuple(float(value) for value in self.font(face, size_pt).getXPos(gids))
             out.append(GlyphRun(face, piece.text, gids, offsets, advance))
         return tuple(out)
 

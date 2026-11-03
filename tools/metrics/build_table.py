@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import json
 import sys
+import unicodedata
 from pathlib import Path
 
 import numpy as np
@@ -29,7 +30,7 @@ import uharfbuzz as hb
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from ggcore.metrics.catalog import DEFAULT_FONT_STACK, FontCatalog
-from ggcore.metrics.runs import COMPLEX_SCRIPT_RANGES, GLUE_RANGES
+from ggcore.metrics.runs import COMPLEX_SCRIPT_RANGES, GLUE_RANGES, is_glue, is_supported
 from ggcore.metrics.table import (
     RUN_RULES_VERSION,
     TABLE_VERSION,
@@ -41,6 +42,76 @@ from ggshape.harfbuzz import HarfBuzzBackend
 
 REPO = Path(__file__).resolve().parents[2]
 METADATA_PATH = table_path().with_suffix(".json")
+# 字对 kerning 的覆盖范围：cmap 里 `U+0000–U+2FFF` 的单码点字对。再往上是
+# CJK / emoji 区，那里字对推进由固定宽度或合字决定，逐对枚举既慢又没用。
+KERN_MAX_CODEPOINT = 0x3000
+
+
+def _shape_advance(font: hb.Font, text: str) -> tuple[int, float]:
+    buffer = hb.Buffer()
+    buffer.add_str(text)
+    buffer.guess_segment_properties()
+    hb.shape(font, buffer)
+    total = sum(float(position.x_advance) for position in buffer.glyph_positions)
+    return len(buffer.glyph_infos), total
+
+
+def _kern_candidates(backend: HarfBuzzBackend, filename: str) -> list[int]:
+    """参与字对枚举的码点。
+
+    只要「单独 shaping 出来恰好一个字形、且推进等于它的 hmtx advance」的码点：
+    格式控制符（U+2062 之类不可见运算符）会被 HarfBuzz 整个吞掉、组合记号没有
+    推进，把它们当字对左端会算出几 em 的假 kerning。
+    """
+    font = backend.hb_font(filename)
+    codepoints, _ = backend.coverage(filename)
+    out: list[int] = []
+    for cp in codepoints:
+        if cp >= KERN_MAX_CODEPOINT or is_glue(cp) or not is_supported(chr(cp)):
+            continue
+        char = chr(cp)
+        if unicodedata.category(char)[0] in ("M", "C"):
+            continue
+        count, advance = _shape_advance(font, char)
+        if count != 1:
+            continue
+        nominal = float(font.get_glyph_h_advance(font.get_nominal_glyph(cp) or 0))
+        if abs(advance - nominal) > 1e-6:
+            continue
+        out.append(cp)
+    return out
+
+
+def kern_pairs(backend: HarfBuzzBackend, filename: str) -> tuple[np.ndarray, np.ndarray]:
+    """逐字对 shape 一遍，取「整对推进 − 两个单字推进」作为增量。
+
+    HarfBuzz 不给「查一对」的接口，而一对一次的 shaping 只要 ~1 µs：受管字体在
+    这个码点范围里最多三千个码点，全量枚举是秒级，换来的是「与渲染端同一套
+    GPOS/kern 结果」，也自动带上字对合字（`fi` 之类）的推进差。
+    """
+    font = backend.hb_font(filename)
+    candidates = _kern_candidates(backend, filename)
+    singles = {cp: _shape_advance(font, chr(cp))[1] for cp in candidates}
+    first: list[int] = []
+    second: list[int] = []
+    deltas: list[int] = []
+    for left in candidates:
+        for right in candidates:
+            _, total = _shape_advance(font, chr(left) + chr(right))
+            delta = round(total - singles[left] - singles[right])
+            if delta:
+                first.append(left)
+                second.append(right)
+                deltas.append(delta)
+    return (
+        np.column_stack(
+            [
+                np.asarray(first, dtype=np.uint32),
+                np.asarray(second, dtype=np.uint32),
+            ]
+        ),
+        np.asarray(deltas, dtype=np.int16),
+    )
 
 
 def build(catalog: FontCatalog | None = None) -> tuple[bytes, bytes]:
@@ -54,6 +125,7 @@ def build(catalog: FontCatalog | None = None) -> tuple[bytes, bytes]:
         metrics = backend.font_metrics(filename)
         notdef = backend.notdef_advance(filename)
         ligates = backend.ligates_emoji_clusters(filename)
+        kern_codepoints, kern_deltas = kern_pairs(backend, filename)
         fonts.append(
             TableFont(
                 filename=filename,
@@ -64,6 +136,8 @@ def build(catalog: FontCatalog | None = None) -> tuple[bytes, bytes]:
                 ligates_emoji=ligates,
                 codepoints=np.asarray(codepoints, dtype=np.uint32),
                 advances=np.asarray(advances, dtype=np.uint16),
+                kern_codepoints=kern_codepoints,
+                kern_deltas=kern_deltas,
             )
         )
         font_meta.append(
@@ -77,6 +151,8 @@ def build(catalog: FontCatalog | None = None) -> tuple[bytes, bytes]:
                 "notdef_advance": notdef,
                 "ligates_emoji_clusters": ligates,
                 "covered_codepoints": len(codepoints),
+                "kern_pairs": int(kern_deltas.size),
+                "kern_total_units": int(kern_deltas.astype(np.int64).sum()),
             }
         )
 
@@ -99,9 +175,11 @@ def build(catalog: FontCatalog | None = None) -> tuple[bytes, bytes]:
         "rules": {
             "glue_ranges": [list(pair) for pair in GLUE_RANGES],
             "complex_script_ranges": [list(pair) for pair in COMPLEX_SCRIPT_RANGES],
+            "kern_max_codepoint": KERN_MAX_CODEPOINT,
             "note": (
-                "表只做逐码点 advance + 粘着码点 + grapheme cluster；"
-                "不做 kerning/ligature/连写/重排（见 docs/notes/metrics-ledger.md · M0-7）"
+                "表做逐码点 advance + 字对 kerning（U+0000–U+2FFF，逐对 shape 抽取）"
+                "+ 粘着码点 + grapheme cluster；不做连写/重排/上下文替换"
+                "（见 docs/notes/metrics-ledger.md · M2-b）"
             ),
         },
     }

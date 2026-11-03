@@ -110,24 +110,19 @@ rm src/ggcore/_probe.py
 | --- | --- | --- |
 | 双端 | `MetricProvider`（HarfBuzz）vs CanvasKit `SkParagraph`（node） | 逐标签相对差 < 0.5%，run 切分布局 0 不一致 |
 | 桌面端 | skia-python 逐字形 advance vs HarfBuzz（同一 glyph id） | < 0.5% |
-| 兜底表 | `TableBackend` vs HarfBuzz | run 切分 0 不一致；**声明支持**的文字 < 5%（仅对本 200 条冻结语料成立，见下） |
+| 兜底表 | `TableBackend` vs HarfBuzz | run 切分 0 不一致；**声明支持**的文字 < 1%（M2-S1 起表建模字对 kerning，实测 0） |
 | 灵敏度 | 字体栈砍成单字族后的双端比较 | 必须判红（否则门禁失效） |
 | 表新鲜度 | `tools/metrics/build_table.py --check` | 重新生成的表与提交的表逐字节相同 |
 
 实测量级与口径推导见 `docs/notes/metrics-ledger.md` · M0-7。报告落在
 `.gate-metrics/metrics_gate.json`（不入库）。
 
-### 兜底表 5% 判据只对这份语料成立
+### 兜底表 1% 判据（M2-S1 起）
 
-2.374% 与 5% 这组数是**这份 200 条冻结语料上的测量结果**，不是兜底表的误差上界：
-
-- 最差标签 `'#️⃣ Total'` 相对差 **2.374%**，绝对差 **1.584 px @16px**（该行表偏宽）；
-- 偏差来自兜底表不建模 kerning（73 条有差行里 68 条表偏宽、5 条偏窄）：单独量 `'To'`
-  相对差 **5.84%**、`'Total'` **4.53%**，是标签前面约 38 px 的 emoji 前缀把标签级相对差
-  稀释到 2.374%；
-- 绝对差随字对与标签长度累加（这份语料 0.05–2.72 px @16px，最大是长标签 `L172`），
-  只有相对差随标签变长而变小——
-  **短 kerning 标签的相对误差比 2.374% 大得多**，换一份语料 2.374% 立刻不成立。
+M0-7 的表只做逐码点 advance，这份语料上最大差 2.374%（判据 5%）；M2-S1 给表加了
+字对 kerning（`metrics_table_v2`），同一份语料逐条与 HarfBuzz 相同，判据收到 **1%**，
+留的是一两条没枚举到的字对（`U+0000–U+2FFF` 之外）的余量。口径与推导见
+`docs/notes/metrics-ledger.md` · M2-b。
 
 结论不变：兜底表不是权威宽度，布局必须走渲染端实测（L1）；`MetricProvider.supports()`
 为 False 时换引擎。

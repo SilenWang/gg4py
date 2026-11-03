@@ -116,6 +116,8 @@ declare global {
     ggViewer?: {
       loadBytes(bytes: Uint8Array, name: string): void;
       state(): { nodes: number; leaves: number; legends: number; size: [number, number] } | null;
+      /** 叶子节点在页面坐标里的包围盒（测试用：旋转文字的盒子必须跟着转）。 */
+      leaves(): { id: string; kind: string; bbox: [number, number, number, number] }[];
     };
   }
 }
@@ -131,6 +133,19 @@ window.ggViewer = {
           legends: interaction?.legends.length ?? 0,
           size: current.scene.size,
         },
+  leaves: () =>
+    current === null
+      ? []
+      : current.result.leaves.map((leaf) => ({
+          id: leaf.id,
+          kind: leaf.kind,
+          bbox: [leaf.bbox.x0, leaf.bbox.y0, leaf.bbox.x1, leaf.bbox.y1] as [
+            number,
+            number,
+            number,
+            number,
+          ],
+        })),
 };
 
 // gallery.html 的卡片链到 `index.html?scene=gallery/<case>.ggir.cbor`：

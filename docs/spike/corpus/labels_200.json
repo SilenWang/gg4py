@@ -3,6 +3,7 @@
  "seed": 20261101,
  "count": 200,
  "font_stack": [
+  "Arimo-Italic-VF.ttf",
   "NotoSansCJKsc-VF.ttf",
   "NotoColorEmoji.ttf",
   "DejaVuSans.ttf"

@@ -8,8 +8,8 @@
 2. **桌面端**：skia-python 对同一批字形（HarfBuzz 给出的 glyph id）的 advance 与
    provider 一致（< 0.5%）——这是实际绘制的引擎，不能只在 shaping 层对上。
 3. **兜底表**：`TableBackend` 与 provider 在同一条语料上 run 切分一致，且对
-   「兜底表声明支持的文字」相对差 < 5%（表不做 kerning/上下文 shaping，见账本
-   M0-7）；不支持的书写系统只报告不判定。
+   「兜底表声明支持的文字」相对差 < 1%（表建模了字对 kerning，仍未建模连写/
+   上下文 shaping，见账本 M2-b）；不支持的书写系统只报告不判定。
 4. **灵敏度**：把字体栈砍成单字族（等于关掉 fallback）后双端必须对不上——门禁
    若在这种输入上仍然绿，说明它量的是同一侧、已经失效。
 5. **兜底表新鲜度**：`tools/metrics/build_table.py --check` 必须通过（表由同一
@@ -47,10 +47,10 @@ BUILD_TABLE = REPO / "tools" / "metrics" / "build_table.py"
 DEFAULT_SIZES = (10.0, 12.0, 16.0, 24.0)
 # 双端判据：E2 实测最差 0.241%，留一倍余量。
 GATE = 0.005
-# 兜底表判据：表不建模 kerning，这份语料上实测最大 2.374%，取 5%。
-# 2.374% 只对这份 200 条冻结语料成立：绝对差 0.05–2.72 px @16px 随字对与长度累加，
-# 短标签相对差更大（`'To'` 单对 5.84%），所以这不是误差上界——见 M0-7-d。
-TABLE_GATE = 0.05
+# 兜底表判据：M2-S1 起表带字对 kerning，这份语料上实测最大 0（逐条与 HarfBuzz
+# 相同）。判据按验收口径钉在 1%：M0-7 时是 2.374%，kerning 补上后留 1% 余量，
+# 换语料时不会因为一两个没枚举到的字对整条门禁红掉。
+TABLE_GATE = 0.01
 
 
 def rel_delta(a: float, b: float) -> float:

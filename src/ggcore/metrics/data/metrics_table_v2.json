@@ -1,7 +1,7 @@
 {
  "schema": 1,
- "table_version": 1,
- "run_rules_version": 3,
+ "table_version": 2,
+ "run_rules_version": 4,
  "format": "GGMT (magic) + zlib，布局见 src/ggcore/metrics/table.py",
  "generator": "tools/metrics/build_table.py",
  "generated_with": {
@@ -10,11 +10,25 @@
   "numpy": "2.5.4"
  },
  "font_stack": [
+  "Arimo-Italic-VF.ttf",
   "NotoSansCJKsc-VF.ttf",
   "NotoColorEmoji.ttf",
   "DejaVuSans.ttf"
  ],
  "fonts": [
+  {
+   "file": "Arimo-Italic-VF.ttf",
+   "family": "Arimo",
+   "sha256": "bfed40ed84474aa0c4a391a8b1f722fb50c4b566c2749e7790c3dc46caa87984",
+   "upem": 2048,
+   "ascent": 1854,
+   "descent": 434,
+   "notdef_advance": 1536,
+   "ligates_emoji_clusters": false,
+   "covered_codepoints": 3010,
+   "kern_pairs": 905,
+   "kern_total_units": -76224
+  },
   {
    "file": "NotoSansCJKsc-VF.ttf",
    "family": "Noto Sans CJK SC",
@@ -24,7 +38,9 @@
    "descent": 200,
    "notdef_advance": 1000,
    "ligates_emoji_clusters": false,
-   "covered_codepoints": 44810
+   "covered_codepoints": 44810,
+   "kern_pairs": 18134,
+   "kern_total_units": -262154
   },
   {
    "file": "NotoColorEmoji.ttf",
@@ -35,7 +51,9 @@
    "descent": 500,
    "notdef_advance": 2550,
    "ligates_emoji_clusters": true,
-   "covered_codepoints": 1467
+   "covered_codepoints": 1467,
+   "kern_pairs": 0,
+   "kern_total_units": 0
   },
   {
    "file": "DejaVuSans.ttf",
@@ -46,11 +64,13 @@
    "descent": 483,
    "notdef_advance": 1229,
    "ligates_emoji_clusters": false,
-   "covered_codepoints": 5918
+   "covered_codepoints": 5918,
+   "kern_pairs": 8634,
+   "kern_total_units": -2264992
   }
  ],
- "table_bytes": 79464,
- "table_sha256": "77876b5fb745f12baa215b5aec20f63290311eef9de9015f1fe51333075c55bf",
+ "table_bytes": 102052,
+ "table_sha256": "b7f7fc50172ead2053cea31a1aee77f5e5e392da3693957e2223e940293be003",
  "rules": {
   "glue_ranges": [
    [
@@ -188,6 +208,7 @@
     65279
    ]
   ],
-  "note": "表只做逐码点 advance + 粘着码点 + grapheme cluster；不做 kerning/ligature/连写/重排（见 docs/notes/metrics-ledger.md · M0-7）"
+  "kern_max_codepoint": 12288,
+  "note": "表做逐码点 advance + 字对 kerning（U+0000–U+2FFF，逐对 shape 抽取）+ 粘着码点 + grapheme cluster；不做连写/重排/上下文替换（见 docs/notes/metrics-ledger.md · M2-b）"
  }
 }

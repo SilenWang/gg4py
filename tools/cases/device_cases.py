@@ -29,26 +29,10 @@ from ggcore.grobs import lines_grob, rect_grob, scene, text_grob  # noqa: E402
 from ggcore.ir import Scene  # noqa: E402
 from ggcore.viewport import Device, ViewportTree, gpar, viewport  # noqa: E402
 from ggskia import SkiaPdfDevice, SkiaRasterDevice, SkiaSvgDevice  # noqa: E402
-from ggskia.text import TextShaper  # noqa: E402
+from ggskia.text import ShaperMetrics  # noqa: E402
 
 OUT = REPO / "docs" / "cases" / "device-smoke" / "current"
 DPI = 150.0
-
-
-class ShaperMetrics:
-    """`ggcore.units.Metrics` 的适配器：宽度就问设备自己的排版（英寸）。"""
-
-    def __init__(self) -> None:
-        self.shaper = TextShaper()
-
-    def strwidth(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
-        runs = self.shaper.runs(font, text, fontsize * cex)
-        return sum(run.advance for run in runs) / 72.0
-
-    def strheight(self, text: str, *, fontsize: float, cex: float, font: str = "sans") -> float:
-        face = self.shaper.primary_face(font)
-        metrics = self.shaper.font(face, fontsize * cex).getMetrics()
-        return float(-metrics.fAscent + metrics.fDescent) / 72.0
 
 
 def build_scene(cjk_label: str = "中文标签 · M0-8") -> Scene:
