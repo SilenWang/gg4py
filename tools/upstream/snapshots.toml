@@ -1,0 +1,240 @@
+# 上游 v4.0.3 的 311 份 SVG 快照逐条处置（SIL-745）。
+#
+# - `[snapshots."<path>"] case = "<slug>"`：已复刻成三文件 case，expected.svg 与
+#   上游快照逐字节相同（`pixi run snapshots:check` 校验 sha256）。
+# - 其余按 `[groups."<第一段目录名>"]` 归口：`issue` + 原因。原因写的是**这一类**
+#   缺什么能力，不是「还没做」；换 pin 或补上能力时改这里，不要改生成物。
+#
+# 缺口池统一是 SIL-715（M2 缺口池），M3 的空间 / 交互能力在原因里点名。
+
+[groups.aes]
+issue = "SIL-715"
+reason = "`aes()` 的 stat 侧参数（`stat_count(width=)` / `aes(alpha=)`）在我们的语法层没有逐条复刻。"
+
+[groups.annotate]
+issue = "SIL-715"
+reason = "`annotate()` 的边框与线段共形（`annotation_borders()` / `annotation_segment()`）未复刻。"
+
+[groups."coord-cartesian"]
+issue = "SIL-715"
+reason = "依赖上游测试共用的 `mtcars` 数据集夹具（32×11），本批次未内联。"
+
+[groups."coord-flip"]
+issue = "SIL-715"
+reason = "同 `coord-cartesian`：需要 `mtcars` 夹具与 sec axis 的翻转组合。"
+
+[groups."coord-map"]
+issue = "SIL-715"
+reason = "`coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。"
+
+[groups."coord-polar"]
+issue = "SIL-715"
+reason = "极坐标 × 轴 / 次轴 / racetrack（内半径切片）组合未逐条复刻；部分能力已实现但缺 atan2 轴标注的像素级对齐。"
+
+[groups."coord-transform"]
+issue = "SIL-715"
+reason = "`coord_trans()` 的 sec axis 与反向组合未逐条复刻。"
+
+[groups."coord_sf"]
+issue = "SIL-715"
+reason = "空间坐标（`coord_sf`）的 graticule / crs 归 M3-2。"
+
+[groups."draw-key"]
+issue = "SIL-715"
+reason = "图例 key 的专项形状（2cm key、boxplot/crossbar/linerange 的 key grob）未逐条复刻。"
+
+[groups."facet-"]
+issue = "SIL-715"
+reason = "省略内轴标签 / 左对齐 strip 的分面布局口径未复刻（SIL-715 #7 的组合矩阵在 M2-S3 另做）。"
+
+[groups."facet-labels"]
+issue = "SIL-715"
+reason = "`labeller` 的 plotmath 解析与 outside 对齐未复刻。"
+
+[groups."facet-layout"]
+issue = "SIL-715"
+reason = "非表格布局（`facet_grid` 缺行/列）的轴定位未复刻。"
+
+[groups."facet-strips"]
+issue = "SIL-715"
+reason = "`facet_wrap(switch=)` 的 strip 换边未复刻。"
+
+[groups."geom-boxplot"]
+issue = "SIL-715"
+reason = "箱线图自定义样式 / 异常值颜色 / staples 未逐条复刻。"
+
+[groups."geom-curve"]
+issue = "SIL-715"
+reason = "`geom_curve()` 的翻转（`coord_flip`）未复刻。"
+
+[groups."geom-dotplot"]
+issue = "SIL-715"
+reason = "`geom_dotplot()` 的 bin 对齐 / stackgroups / histodot 语义（35 条）是 SIL-715 里单列的 dotplot 缺口。"
+
+[groups."geom-hex"]
+issue = "SIL-715"
+reason = "`geom_hex()` 与极坐标 / 变换轴组合未复刻。"
+
+[groups."geom-hline-vline-abline"]
+issue = "SIL-715"
+reason = "hline/vline/abline 在极坐标与 map 坐标下的曲线化未复刻（M3-2 空间 + 极坐标裁剪）。"
+
+[groups."geom-label"]
+issue = "SIL-715"
+reason = "`geom_label()` 的线段参数（`label.size` / `label.padding` 与线段共形）未复刻。"
+
+[groups."geom-path"]
+issue = "SIL-715"
+reason = "path 的绘制顺序与 NA 线型未逐条复刻。"
+
+[groups."geom-polygon"]
+issue = "SIL-715"
+reason = "munched polygon（`coord_munch` 后的闭合多边形）未复刻。"
+
+[groups."geom-raster"]
+issue = "SIL-715"
+reason = "`geom_raster()` 的 just / limits / 离散轴组合（12 条）未逐条复刻。"
+
+[groups."geom-sf"]
+issue = "SIL-715"
+reason = "空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-column 解析。"
+
+[groups."geom-smooth"]
+issue = "SIL-715"
+reason = "`geom_smooth()` 的 ribbon 开关未逐条复刻。"
+
+[groups."geom-text"]
+issue = "SIL-715"
+reason = "plotmath 表达式标签（`expression()`）未支持。"
+
+[groups."geom-violin"]
+issue = "SIL-715"
+reason = "`geom_violin()` 的 dodge / quantile / scale=area（14 条）未逐条复刻。"
+
+[groups."guide-axis"]
+issue = "SIL-715"
+reason = "轴 guide 的角度 / 叠放 / 稀疏 / 次刻度 / logtick 定制（23 条）未逐条复刻。"
+
+[groups."guide-colorbar"]
+issue = "SIL-715"
+reason = "colourbar 自定义与双美学合图未复刻。"
+
+[groups."guide-legend"]
+issue = "SIL-715"
+reason = "图例方向 / key 间距 / key 对齐（依赖 `mtcars`）未复刻。"
+
+[groups.guides]
+issue = "SIL-715"
+reason = "本批次纳管了 8 条 facet × 图例位置；其余 guides 快照（bins/coloursteps 边界、inside 图例、旧 S3 guide）未复刻。"
+
+[groups.labels]
+issue = "SIL-715"
+reason = "`plot.tag.location`（margin / panel / plot）目前只在主题元素树里，渲染器还没消费；补齐后再纳管 6 条。"
+
+[groups."legend-draw"]
+issue = "SIL-715"
+reason = "`draw_key` 的全量 key 形状未逐条复刻。"
+
+[groups.patterns]
+issue = "SIL-715"
+reason = "pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。"
+
+[groups."position-stack"]
+issue = "SIL-715"
+reason = "`position_stack()` 的 area 堆叠未复刻。"
+
+[groups.scale_date]
+issue = "SIL-715"
+reason = "日期断点 / 标签（8 条）未逐条复刻。"
+
+[groups."scales-breaks-labels"]
+issue = "SIL-715"
+reason = "断点 / 标签函数与空图例（13 条）未逐条复刻。"
+
+[groups."sec-axis"]
+issue = "SIL-715"
+reason = "次轴变换（monotonicity / skew / datetime，7 条）未逐条复刻。"
+
+[groups."stat-align"]
+issue = "SIL-715"
+reason = "`stat_align()` 的两段面积 cliff / pos-neg 未复刻。"
+
+[groups."stat-sum"]
+issue = "SIL-715"
+reason = "`stat_sum()` 的 crossbar 汇总未复刻。"
+
+[groups.theme]
+issue = "SIL-715"
+reason = "本批次纳管 8 套主题 + 5 个 `base_size = 33` 变体（另 3 个见下方单条归口）；其余 theme 快照（spacing / margin / 元素样式 / aspect.ratio）未复刻，其中 `aspect.ratio` 主题元素尚未支持，已单列进 SIL-715。"
+
+[snapshots."theme/theme-bw.svg"]
+case = "upstream-theme-bw"
+
+[snapshots."theme/theme-classic.svg"]
+case = "upstream-theme-classic"
+
+[snapshots."theme/theme-dark.svg"]
+case = "upstream-theme-dark"
+
+[snapshots."theme/theme-dark-large.svg"]
+case = "upstream-theme-dark-large"
+
+[snapshots."theme/theme-minimal.svg"]
+case = "upstream-theme-minimal"
+
+[snapshots."theme/theme-minimal-large.svg"]
+case = "upstream-theme-minimal-large"
+
+[snapshots."theme/theme-gray.svg"]
+case = "upstream-theme-gray"
+
+[snapshots."theme/theme-gray-large.svg"]
+case = "upstream-theme-gray-large"
+
+[snapshots."theme/theme-light.svg"]
+case = "upstream-theme-light"
+
+[snapshots."theme/theme-light-large.svg"]
+case = "upstream-theme-light-large"
+
+[snapshots."theme/theme-void.svg"]
+case = "upstream-theme-void"
+
+[snapshots."theme/theme-void-large.svg"]
+case = "upstream-theme-void-large"
+
+[snapshots."theme/theme-bw-large.svg"]
+reason = "`base_size = 33` 下 geom 缺省尺寸没跟着 `theme$pointsize` 走（4.0 的 `from_theme()`）：点径与线宽仍按 11pt 画，实测图级 2.27% / 均值 0.53%。归口 SIL-715 的 `from_theme()` 条目。"
+
+[snapshots."theme/theme-classic-large.svg"]
+reason = "同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.22% / 均值 1.05%（均值也超 1% 门）。"
+
+[snapshots."theme/theme-linedraw-large.svg"]
+reason = "同 `theme-bw-large`：`from_theme(pointsize / borderwidth)` 未实现，点径 / 线宽未随 `base_size` 缩放，实测图级 2.09% / 均值 0.43%。"
+
+[snapshots."theme/theme-linedraw.svg"]
+case = "upstream-theme-linedraw"
+
+[snapshots."guides/facet-grid-legend-on-left.svg"]
+case = "upstream-guides-facet-grid-legend-left"
+
+[snapshots."guides/facet-grid-legend-on-bottom.svg"]
+case = "upstream-guides-facet-grid-legend-bottom"
+
+[snapshots."guides/facet-grid-legend-on-right.svg"]
+case = "upstream-guides-facet-grid-legend-right"
+
+[snapshots."guides/facet-grid-legend-on-top.svg"]
+case = "upstream-guides-facet-grid-legend-top"
+
+[snapshots."guides/facet-wrap-legend-on-left.svg"]
+case = "upstream-guides-facet-wrap-legend-left"
+
+[snapshots."guides/facet-wrap-legend-on-bottom.svg"]
+case = "upstream-guides-facet-wrap-legend-bottom"
+
+[snapshots."guides/facet-wrap-legend-on-right.svg"]
+case = "upstream-guides-facet-wrap-legend-right"
+
+[snapshots."guides/facet-wrap-legend-on-top.svg"]
+case = "upstream-guides-facet-wrap-legend-top"

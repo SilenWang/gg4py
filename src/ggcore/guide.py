@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import MISSING, dataclass, field, fields, replace
 from types import MappingProxyType
 from typing import Any
 
@@ -93,6 +93,7 @@ __all__ = [
     "build_guides",
     "custom_grob",
     "guide_bins",
+    "guide_colorbar",
     "guide_colourbar",
     "guide_coloursteps",
     "guide_custom",
@@ -100,6 +101,7 @@ __all__ = [
     "guide_gengrob",
     "guide_geom",
     "guide_legend",
+    "guide_merge",
     "guide_none",
     "guide_train",
     "guide_transform",
@@ -524,6 +526,10 @@ def guide_colourbar(
         reverse=bool(reverse),
         order=float(order),
     )
+
+
+#: 上游 `guide_colorbar` 与 `guide_colourbar` 是同一个函数（NAMESPACE 两个都导出）。
+guide_colorbar = guide_colourbar
 
 
 def guide_custom(
@@ -1235,6 +1241,35 @@ def guide_geom(guide: Guide, layer: LayerBuild) -> Any | None:
 def guide_train(guide: Guide, build: PlotBuild, aesthetic: str, scale: Any) -> GuideBuild | None:
     """`guide_train()`（旧 API 名）：转发到 :meth:`Guide.train`。"""
     return guide.train(build, aesthetic, scale)
+
+
+def guide_merge(guide: Guide, new_guide: Guide) -> Guide:
+    """`guide_merge(guide, new_guide)`（旧 API 名）：把新 guide 的显式参数并进旧 guide。
+
+    上游 4.0.3 里这是已废弃的 S3 泛型（`R/guide-old.R`，`guide_merge.default` 就是
+    `guide_train.default`）：`Guides$merge()` 早就不用它了，但 NAMESPACE 仍然导出。
+    口径按上游那个 default：**新 guide 显式给出的字段覆盖旧的**，其余保留旧值；
+    两者类型不同时整体取新的（旧 API 没有跨类型的合并规则）。
+    """
+    if not isinstance(guide, Guide) or not isinstance(new_guide, Guide):
+        raise GuideError(
+            "guide_merge() 需要两个 Guide 对象，收到 "
+            f"{type(guide).__name__} / {type(new_guide).__name__}"
+        )
+    if type(guide) is not type(new_guide):
+        return new_guide
+    explicit: dict[str, Any] = {}
+    for item in fields(new_guide):
+        value = getattr(new_guide, item.name)
+        if item.default is not MISSING:
+            if value != item.default:
+                explicit[item.name] = value
+        elif item.default_factory is not MISSING:  # type: ignore[misc]
+            if value != item.default_factory():  # type: ignore[misc]
+                explicit[item.name] = value
+        else:
+            explicit[item.name] = value
+    return replace(guide, **explicit)
 
 
 def guide_gengrob(

@@ -1185,6 +1185,11 @@ GUIDE_NAMES: tuple[str, ...] = (
     "axis_logticks",
     "axis_stack",
     "axis_theta",
+    # SIL-745：NAMESPACE 里还有两个构造器没登记 —— `guide_colorbar`（
+    # `guide_colourbar` 的别名）与 `guide_custom()`（任意 grob 进图例盒）。
+    # `guide_from_component()` 早就认这两个名字，只是注册表漏了。
+    "colorbar",
+    "custom",
 )
 
 

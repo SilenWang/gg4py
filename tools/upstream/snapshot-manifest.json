@@ -1,0 +1,1875 @@
+{
+  "pin": {
+    "commit": "cc1444c10edb87650fbe0cb31d56f0da1a255634",
+    "repo": "tidyverse/ggplot2",
+    "tag": "v4.0.3"
+  },
+  "snapshots": [
+    {
+      "bytes": 4982,
+      "category": "aes",
+      "path": "aes/alpha-set-in-alpha.svg",
+      "sha256": "8b8c373d5af1bd21f5be69a08345de1dd74ddb3a4da6ce1e5db5655f7d78d771"
+    },
+    {
+      "bytes": 4983,
+      "category": "aes",
+      "path": "aes/alpha-set-in-colour.svg",
+      "sha256": "b7a9354c839a6d2236c04474d8951ac252ca90811df431ccc4a6959b0146130b"
+    },
+    {
+      "bytes": 4736,
+      "category": "aes",
+      "path": "aes/stat-count-width-0-5.svg",
+      "sha256": "91467ada2ca58dfff6b48f939ead40772f676675d89507fb93c2965015f0fa28"
+    },
+    {
+      "bytes": 4723,
+      "category": "aes",
+      "path": "aes/stat-count.svg",
+      "sha256": "099c298d57c9f1c5c45a081c2648bde2427ad1dd7811941ce486a90178758dc0"
+    },
+    {
+      "bytes": 4451,
+      "category": "aes",
+      "path": "aes/stat-identity-width-0-5.svg",
+      "sha256": "f08285d92b80477c7fe87c42f64e6edfa4221b26c2d3e9e55a40a85ae60241d4"
+    },
+    {
+      "bytes": 4438,
+      "category": "aes",
+      "path": "aes/stat-identity.svg",
+      "sha256": "c57e16dcd5c3987a6b1300656440c4d4183b706f26c5769519ddf790232c1b38"
+    },
+    {
+      "bytes": 5958,
+      "category": "annotate",
+      "path": "annotate/annotation-borders-utah.svg",
+      "sha256": "f278873215dd4c1ecef740dcaae43c7171fb5db3d3321de39be0dae7b9bf49e2"
+    },
+    {
+      "bytes": 1874,
+      "category": "annotate",
+      "path": "annotate/line-matches-points.svg",
+      "sha256": "c3467b56fc015d88eddfb687770b0bffa85fd901e9e3ccf262a82ece9c8c864e"
+    },
+    {
+      "bytes": 2923,
+      "category": "coord-cartesian",
+      "path": "coord-cartesian/clip-on-by-default-only-inside-visible.svg",
+      "sha256": "e02cabbb3749ed53ef4422f4a3ec1e42932ae89e37b608fdcc15eb2d84ee8ac5"
+    },
+    {
+      "bytes": 2656,
+      "category": "coord-cartesian",
+      "path": "coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg",
+      "sha256": "412f9e926c998a66f4402b20f7e65e6d478545fdcde2296089b70e0b4af1ca5f"
+    },
+    {
+      "bytes": 7590,
+      "category": "coord-cartesian",
+      "path": "coord-cartesian/contract-range.svg",
+      "sha256": "588916f7e5e72048a06f72cafcdd0f59d3cc883dd434dcb95c3a5f146c86f4d9"
+    },
+    {
+      "bytes": 7871,
+      "category": "coord-cartesian",
+      "path": "coord-cartesian/expand-range.svg",
+      "sha256": "4e911c6f7dea38c272a52763cff3582cf1fcf006c5b65561cda067100ff5e304"
+    },
+    {
+      "bytes": 5166,
+      "category": "coord-cartesian",
+      "path": "coord-cartesian/reversed-cartesian-coords.svg",
+      "sha256": "0e27204161a6bae9607638dd0139da1e7d5d02304f9b0104d8db735c72865b25"
+    },
+    {
+      "bytes": 10770,
+      "category": "coord-flip",
+      "path": "coord-flip/turning-off-secondary-title-with-coord-flip.svg",
+      "sha256": "fbc5a797d587475f9a4790511ba2b6c2388190edac69df0a01d65dd4c36cdd9e"
+    },
+    {
+      "bytes": 106226,
+      "category": "coord-map",
+      "path": "coord-map/coord-map-switched-scale-position.svg",
+      "sha256": "f59d6154e600daaf7b9de5b2157f93b60872bd2576eeb976b5fafff7f5fbbbb7"
+    },
+    {
+      "bytes": 106379,
+      "category": "coord-map",
+      "path": "coord-map/usa-mercator.svg",
+      "sha256": "95d4e49a4841d6f5993b41f6d3e7806099288553bef11e30fe05f3f0f7ab782b"
+    },
+    {
+      "bytes": 16371,
+      "category": "coord-polar",
+      "path": "coord-polar/bottom-half-circle-with-rotated-text.svg",
+      "sha256": "fc66f5fa7640f763803a704f79e2cce76f698a67cd5852ff0a5ee4b2834aa2e2"
+    },
+    {
+      "bytes": 23319,
+      "category": "coord-polar",
+      "path": "coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg",
+      "sha256": "848806b5153b6f06f6fc07ec6d79234b271872b1a0bab5f28d93d5df57a24208"
+    },
+    {
+      "bytes": 43346,
+      "category": "coord-polar",
+      "path": "coord-polar/inner-radius-with-all-axes.svg",
+      "sha256": "e0b0538ef135eff3b1bacbef25e5d084ed575773857212adfade89a7776174ff"
+    },
+    {
+      "bytes": 21691,
+      "category": "coord-polar",
+      "path": "coord-polar/partial-with-all-axes.svg",
+      "sha256": "cdd0978be586337119f11b235ea61940bf34c56360c170ea09d89ddb9d306de0"
+    },
+    {
+      "bytes": 17025,
+      "category": "coord-polar",
+      "path": "coord-polar/racetrack-plot-closed-and-has-center-hole.svg",
+      "sha256": "ec63e1c7302247cb3f844e4e17b0261f7f84884a44f209dfa0a8bb4725af8407"
+    },
+    {
+      "bytes": 17198,
+      "category": "coord-polar",
+      "path": "coord-polar/racetrack-plot-closed-and-no-center-hole.svg",
+      "sha256": "48c204df73fb41c2d8f9b3bcb58f68f88a9f54226fbf9f0d9719db658c3af81b"
+    },
+    {
+      "bytes": 50144,
+      "category": "coord-polar",
+      "path": "coord-polar/rays-circular-arcs-and-spiral-arcs.svg",
+      "sha256": "246b17487ffdaf2dfa94232c4e58b466147efb318e1d8cd8ac2e8f39511a6c6d"
+    },
+    {
+      "bytes": 8861,
+      "category": "coord-polar",
+      "path": "coord-polar/reversed-polar-coords.svg",
+      "sha256": "e1908d31013e6303aa62195e68315d971bbfe5bc69c5b1ea839c314c0986a05e"
+    },
+    {
+      "bytes": 14436,
+      "category": "coord-polar",
+      "path": "coord-polar/rose-plot-with-has-equal-spacing.svg",
+      "sha256": "96cb752957250f6aaa737073aa3f24247dbc50dfc032624a9d4475f259742a10"
+    },
+    {
+      "bytes": 5186,
+      "category": "coord-polar",
+      "path": "coord-polar/secondary-axis-ticks-and-labels.svg",
+      "sha256": "f1e19fbace54bb3212dc233a2ad5ee0fcb828c6f793925113c0cf7428e97ff1d"
+    },
+    {
+      "bytes": 15987,
+      "category": "coord-polar",
+      "path": "coord-polar/three-concentric-circles.svg",
+      "sha256": "69377009343991d4a23d7db8bb3c0d23676f31c3da97832d21cd26842489a312"
+    },
+    {
+      "bytes": 25215,
+      "category": "coord-transform",
+      "path": "coord-transform/basic-coord-transform-plot.svg",
+      "sha256": "1de8c431472b559ad32aae20bbfdbf495cb41d880c66a8ac0871ceda39941b15"
+    },
+    {
+      "bytes": 6442,
+      "category": "coord-transform",
+      "path": "coord-transform/reversed-transformed-coords.svg",
+      "sha256": "620212a7be4877f0c4e523cda2525b4582299b81038648cdf498ccdea03cd66e"
+    },
+    {
+      "bytes": 28917,
+      "category": "coord-transform",
+      "path": "coord-transform/sec-axis-with-coord-transform.svg",
+      "sha256": "0197f3038c05e3767d5cabe954288be9a9945a27511a3280b61f6619991aad0e"
+    },
+    {
+      "bytes": 16280,
+      "category": "coord_sf",
+      "path": "coord_sf/coord-sf-with-custom-guides.svg",
+      "sha256": "c307d198678b67016bb97dd2b45a6973372b477c818caf2a52323fae37b40986"
+    },
+    {
+      "bytes": 8451,
+      "category": "coord_sf",
+      "path": "coord_sf/limits-specified-in-long-lat.svg",
+      "sha256": "9ff63b86d14c5da4c2ea27a249bd9c8d1cc1298b47919b7b477c18b897b50761"
+    },
+    {
+      "bytes": 8459,
+      "category": "coord_sf",
+      "path": "coord_sf/limits-specified-in-projected-coords.svg",
+      "sha256": "5fc818570650b5ef905b8f2e8d982f14350b2769917b922314933c6a662ab766"
+    },
+    {
+      "bytes": 2346,
+      "category": "coord_sf",
+      "path": "coord_sf/no-breaks.svg",
+      "sha256": "92d8c1ccf46814be309f25b14b28b6455a5c010c5ace0959dd63e604e97f663c"
+    },
+    {
+      "bytes": 5255,
+      "category": "coord_sf",
+      "path": "coord_sf/no-panel-grid.svg",
+      "sha256": "5eb44e0a650d44bbbe4c0005eb463e4ac9aeda5c48b56198a14384d2db0cc101"
+    },
+    {
+      "bytes": 9023,
+      "category": "coord_sf",
+      "path": "coord_sf/non-sf-geoms-using-long-lat.svg",
+      "sha256": "d9cfaf26b2b3e4e369b7b48cf1399a6e19e64346f46fbad5dc4c77ad59edf2f5"
+    },
+    {
+      "bytes": 9031,
+      "category": "coord_sf",
+      "path": "coord_sf/non-sf-geoms-using-projected-coords.svg",
+      "sha256": "2fe33ef048fbf0cf2a7c609b5a577448040be04f0a8b8ffd91237d3276af7395"
+    },
+    {
+      "bytes": 7507,
+      "category": "coord_sf",
+      "path": "coord_sf/reversed-sf-coords.svg",
+      "sha256": "0c681752f76df6a338512a61b1f749ea4bb4ddb6353d7c4223e1f4d0ed07e8e6"
+    },
+    {
+      "bytes": 9492,
+      "category": "coord_sf",
+      "path": "coord_sf/sf-polygons.svg",
+      "sha256": "1286171dc61d6469b74e90d177e6951a10933acc787e982c23f8d485d5aba9c7"
+    },
+    {
+      "bytes": 7221,
+      "category": "draw-key",
+      "path": "draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg",
+      "sha256": "0f73de7843a638c6ddb704af916b91f81b58e27d906d9ae1a7c8a02360007bcd"
+    },
+    {
+      "bytes": 9432,
+      "category": "draw-key",
+      "path": "draw-key/circle-glyphs-of-2cm-size.svg",
+      "sha256": "6c505a091cff3810e02dd94ffc101fadad35f148c3522b98248cc720037fb125"
+    },
+    {
+      "bytes": 10446,
+      "category": "draw-key",
+      "path": "draw-key/horizontal-boxplot-and-crossbar.svg",
+      "sha256": "11a107befbe23428e3afac08e59ccd265eec75bac3fef21daa2ed10b6753b592"
+    },
+    {
+      "bytes": 7709,
+      "category": "draw-key",
+      "path": "draw-key/horizontal-linerange-and-pointrange.svg",
+      "sha256": "1397a548159a0617380676bebc3f5337d972f666764678d40a94f574dc325044"
+    },
+    {
+      "bytes": 7186,
+      "category": "draw-key",
+      "path": "draw-key/rectangle-and-dotplot-key-glyphs.svg",
+      "sha256": "1aad772cca6aabd7bca4d9e2d5eadfae8cdde58fc7c7ee4620b71fe5621d7e2a"
+    },
+    {
+      "bytes": 7337,
+      "category": "draw-key",
+      "path": "draw-key/time-series-and-polygon-key-glyphs.svg",
+      "sha256": "d98a738214d960b25760a99d72c62e455822b6ea4730dae3398387ff5da5a408"
+    },
+    {
+      "bytes": 32257,
+      "category": "facet-",
+      "path": "facet-/facet-grid-with-omitted-inner-axis-labels.svg",
+      "sha256": "7662bdf4618e3ec97e0bd955b932648a3443c51293d131a30ea88984058c468f"
+    },
+    {
+      "bytes": 32928,
+      "category": "facet-",
+      "path": "facet-/facet-wrap-with-omitted-inner-axis-labels.svg",
+      "sha256": "b0847b3bdf200e89dc3953dbbab73c0de3f4ff23a59cb59acca9a97311f38266"
+    },
+    {
+      "bytes": 11695,
+      "category": "facet-",
+      "path": "facet-/left-justified-facet-labels-with-margins.svg",
+      "sha256": "cac431a7e04c8a3ee259cd4e152fc1e2f98cf4beb5f4c2f05f35a9f42a3a60c2"
+    },
+    {
+      "bytes": 11694,
+      "category": "facet-",
+      "path": "facet-/left-justified-rotated-facet-labels-with-margins.svg",
+      "sha256": "3140de768e81b4e8ee4fcd6c4fd433198a82cfc8e082130508b222b4dcc08b28"
+    },
+    {
+      "bytes": 10085,
+      "category": "facet-labels",
+      "path": "facet-labels/outside-justified-labels.svg",
+      "sha256": "829afbddd1d505ec2479c68d1479134bd2d05839360b208bcaf6ac137ff1842f"
+    },
+    {
+      "bytes": 5184,
+      "category": "facet-labels",
+      "path": "facet-labels/parsed-facet-labels.svg",
+      "sha256": "547f4dbe99cea5f9e3eaeba786813f597f7198d7dc7ea00ed53180b63a71675c"
+    },
+    {
+      "bytes": 37155,
+      "category": "facet-layout",
+      "path": "facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg",
+      "sha256": "cd228c9715d2843657dd360affa91813094ad6c35bb613d6bb0d2bcab7ad3610"
+    },
+    {
+      "bytes": 16482,
+      "category": "facet-strips",
+      "path": "facet-strips/switched-facet-strips.svg",
+      "sha256": "883d11a651e25a88d499d128d4d1b3b6d3823f987c37b4cbc7d10b6c375538da"
+    },
+    {
+      "bytes": 20826,
+      "category": "geom-boxplot",
+      "path": "geom-boxplot/customised-style.svg",
+      "sha256": "920fae063b964dba712f2d8a9ec2e3982276ff41018def5bc6d63abb78a324f9"
+    },
+    {
+      "bytes": 10178,
+      "category": "geom-boxplot",
+      "path": "geom-boxplot/outlier-colours.svg",
+      "sha256": "9ba56f5cb4345c29a50420447bd7ef87b1b2afdf6e90d3e7f0125edf66bee2a8"
+    },
+    {
+      "bytes": 10914,
+      "category": "geom-boxplot",
+      "path": "geom-boxplot/staples.svg",
+      "sha256": "01c3f26edcc542c77139237e1d6e0a902e96f19c49ed3c221120fdee6d223bff"
+    },
+    {
+      "bytes": 8481,
+      "category": "geom-curve",
+      "path": "geom-curve/flipped-geom-curve.svg",
+      "sha256": "834bfdc4376f64416237eef6c4cadc30937c09d9a8d071c3ddbbbf38f3f495d0"
+    },
+    {
+      "bytes": 8560,
+      "category": "geom-curve",
+      "path": "geom-curve/standard-geom-curve.svg",
+      "sha256": "a4475954435c357f4d1290405b6bb2eb58490c0fb83a87e2f8df3166f55ac064"
+    },
+    {
+      "bytes": 6227,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/2-na-values-bin-along-y-stack-center.svg",
+      "sha256": "f724bab00edce3f2ec49013a524f7e913201d45e3216d70d2f0bd5255db64168"
+    },
+    {
+      "bytes": 6820,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg",
+      "sha256": "9e629c1b910d511f93fc756eb711453bff0def2423492938a3fd75a232732831"
+    },
+    {
+      "bytes": 21218,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/3-stackgroups-bin-y-histodot.svg",
+      "sha256": "d12a88f673072f9a915482cfab9e740fcde972604234f08ef4eab0ea6bff981d"
+    },
+    {
+      "bytes": 21560,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/3-stackgroups-dot-density-with-aligned-bins.svg",
+      "sha256": "ab9f9b8e5679573d81b661d80299fbabe208394e5b73ed1f95cae25113e0127c"
+    },
+    {
+      "bytes": 21539,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/3-stackgroups-histodot.svg",
+      "sha256": "9ce444bef637a473d1d5a996a619ce5bdfa6133c8f1a35d96e69df9a29ce1a67"
+    },
+    {
+      "bytes": 7046,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg",
+      "sha256": "61310afd190f63cc5941bcd5fd9d1a4939d86a540ec6518c87d68b77f2ad6271"
+    },
+    {
+      "bytes": 6434,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-along-y-stack-center.svg",
+      "sha256": "d5d2bbb87bdac249d31a12f5161c5b8168c2364e74a1c2c8209499deabb1ed4f"
+    },
+    {
+      "bytes": 6449,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-along-y-stack-centerwhole-histodot.svg",
+      "sha256": "bba154808169907307b985e7499f1b1251a21433424b515317286dd2d8a6a719"
+    },
+    {
+      "bytes": 6439,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-along-y-stack-centerwhole.svg",
+      "sha256": "ae9f7c5a6bf0bf5620baaf5d972689f88f0a7de109290e319b4a4f1399b7a115"
+    },
+    {
+      "bytes": 14133,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-x-three-y-groups-stack-centerwhole.svg",
+      "sha256": "da94ca99f66fe9fabda41309bc4625c8ef8dafc65547c0de644dc96dacbf2f89"
+    },
+    {
+      "bytes": 14055,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-continous-x-axis-grouping-by-x.svg",
+      "sha256": "e33d4feb65f6ae37e66a8bd6c2192d014cf82c23e783ed2642137821d5d9921b"
+    },
+    {
+      "bytes": 14068,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-continous-x-axis-single-x-group.svg",
+      "sha256": "6f34ea26c8ce2cc7b816921c8ab89a02554a192d754fceb066e8e694aa7fc299"
+    },
+    {
+      "bytes": 17253,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-dodged-coord-flip.svg",
+      "sha256": "25532691355d2a1ef4601614daf9e6c5e008ec51fb5b2dd6a7b0363a08b608dc"
+    },
+    {
+      "bytes": 17183,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-dodged.svg",
+      "sha256": "ae359f0b3a997de966a3e2aaa6b02dbdcc3374815c55df56d566d023659243a9"
+    },
+    {
+      "bytes": 20536,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-dodging-3-stackgroups-histodot.svg",
+      "sha256": "bba3ef0f100319c705c3c117ca7d8fe3e21eb25546d8d1b5f7a9446089e4179a"
+    },
+    {
+      "bytes": 14140,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-three-x-groups-bins-aligned-across-groups.svg",
+      "sha256": "7b76177e9398b8cb7ff57956616a1e17e00c6ca41d40972ad26a6bc8948613e9"
+    },
+    {
+      "bytes": 14144,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-three-x-groups-bins-aligned-coord-flip.svg",
+      "sha256": "053979ba18afeb575332a3b0cf71540f6ac12a02e1c84cabccb8357cad235979"
+    },
+    {
+      "bytes": 17601,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-three-x-groups-fill-and-dodge.svg",
+      "sha256": "325261ad4614ee4015dbd21c5342134e54654e04ac35d602edd87b1966ada64a"
+    },
+    {
+      "bytes": 14132,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/bin-y-three-x-groups-stack-centerwhole.svg",
+      "sha256": "8d1fb640f9f58472d330d26e8b8e3851d4d7749d2e6d9d86477aa3f3db412d43"
+    },
+    {
+      "bytes": 7039,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/dots-stacked-closer-stackratio-5-fill-white.svg",
+      "sha256": "82934d7cea2b62500c56c3b2c5ed10eb20d5386cf691cab284c3709a0a472c83"
+    },
+    {
+      "bytes": 26792,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/facets-3-groups-histodot-stackgroups.svg",
+      "sha256": "5009830316ed8a29cfa6da6be451f901b4583e26c2bc29f2ea79eaae1ad78a6f"
+    },
+    {
+      "bytes": 7029,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/histodot-binning-equal-bin-spacing.svg",
+      "sha256": "852b91689d56c7b770165dbc6d98f9c98bbe90755966562c03b0177e52866698"
+    },
+    {
+      "bytes": 7029,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/larger-dots-dotsize-1-5-fill-white.svg",
+      "sha256": "1389fc31e72fa859e5f3f65f5ca4d73039c29268886f65baa6e695ed0099cdbb"
+    },
+    {
+      "bytes": 9295,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/multiple-groups-bins-aligned.svg",
+      "sha256": "e896f6749596b1f2156ad58e7759eaabbff1e17095243d8deea7a1d49455d20b"
+    },
+    {
+      "bytes": 9299,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/multiple-groups-bins-not-aligned.svg",
+      "sha256": "da3b39bf43587298643e6f1aeb081b872cb2573eef87fdaaa9c310246acca1a4"
+    },
+    {
+      "bytes": 7026,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-center-with-coord-flip.svg",
+      "sha256": "5e22a08d5b16b860561681ff54e43bdf1d4d0be6b643bae69ec43263f5332d39"
+    },
+    {
+      "bytes": 7007,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-center.svg",
+      "sha256": "9568b816248e01093df91a5355c6a59e3697c6a144daf633b01ab381d6279a2c"
+    },
+    {
+      "bytes": 7031,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-centerwhole-with-coord-flip.svg",
+      "sha256": "6b458de069b21bbb8c222b7fd0b702f6beacea143ec4b72f41ec638b1123274d"
+    },
+    {
+      "bytes": 7013,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-centerwhole.svg",
+      "sha256": "19ab87260d31657694bc62d96a0f8dd4cf16159468dce973598a94755b2627f0"
+    },
+    {
+      "bytes": 7026,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-down-with-coord-flip.svg",
+      "sha256": "222b703495e23be1fcc6892fa3e6ec289242ea5b1811240b922a13b6428c03e9"
+    },
+    {
+      "bytes": 6998,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-down.svg",
+      "sha256": "101f4d09fdeb97454a9f217274b4b95b176c74c4a0ca427b5ebee3d928cc4263"
+    },
+    {
+      "bytes": 7011,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-up-with-coord-flip.svg",
+      "sha256": "032d6821ee45073c3d0296857a605b1e874581f81a48d599d7e2b549fcc54784"
+    },
+    {
+      "bytes": 7000,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stack-up.svg",
+      "sha256": "74403100cb3d386eb512526448cd0ba2e33a20377616f9bfa5b849f730f3b209"
+    },
+    {
+      "bytes": 6232,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/stackratio-1-5.svg",
+      "sha256": "92421a300ec60b520afb2c868ba877edfa7fa0b9f41b62c83708f8018b68117f"
+    },
+    {
+      "bytes": 10975,
+      "category": "geom-dotplot",
+      "path": "geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg",
+      "sha256": "20c3d20290a4a5c42762a7a042a865e95c0bf053ca0a1260b0e12182e8ac7eb0"
+    },
+    {
+      "bytes": 29284,
+      "category": "geom-hex",
+      "path": "geom-hex/hex-bin-plot-in-polar-coordinates.svg",
+      "sha256": "73cd11aea35971043ca36de0039dfe95a4d7efd81a7e42ab37b621af672b4195"
+    },
+    {
+      "bytes": 29808,
+      "category": "geom-hex",
+      "path": "geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg",
+      "sha256": "15b347f9fc174db3e2d09d250356574eef8f6b3f96012f795fcafa3f3791b68e"
+    },
+    {
+      "bytes": 5936,
+      "category": "geom-hex",
+      "path": "geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg",
+      "sha256": "f31c8fa9788361ede3c16a3d7927bc627211dc45b650fc2953a9c4f45ad6bbcf"
+    },
+    {
+      "bytes": 6374,
+      "category": "geom-hline-vline-abline",
+      "path": "geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg",
+      "sha256": "b89087134227c11b4dd5d9ae05ceb821654302bf70c26ab3b6c8a722f81fe1f0"
+    },
+    {
+      "bytes": 6375,
+      "category": "geom-hline-vline-abline",
+      "path": "geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg",
+      "sha256": "1b0971793ee3c363221013f4cb7fc1b25399701d6009cdcb33743e0a7af78db7"
+    },
+    {
+      "bytes": 16034,
+      "category": "geom-hline-vline-abline",
+      "path": "geom-hline-vline-abline/lines-curved-in-azequalarea.svg",
+      "sha256": "c8e9ccc5297f120564db52a1ba92240e0cfb82bc975a4204ecbb77117b9cf601"
+    },
+    {
+      "bytes": 13826,
+      "category": "geom-hline-vline-abline",
+      "path": "geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg",
+      "sha256": "19d4f6befa051bd8562c1c7f896000c8cd4ea394ff07f643c1b5d1988dc10ed6"
+    },
+    {
+      "bytes": 16027,
+      "category": "geom-hline-vline-abline",
+      "path": "geom-hline-vline-abline/straight-lines-in-mercator.svg",
+      "sha256": "1b34d1c56eceef0bc95e2afe0f812f1c53a110c046febe52940aee091be1da2a"
+    },
+    {
+      "bytes": 28251,
+      "category": "geom-label",
+      "path": "geom-label/geom-label-with-line-parameters.svg",
+      "sha256": "55a48b93484b2254dcc52393352349220b4280c25e62f4db3577b00254ced2a2"
+    },
+    {
+      "bytes": 6255,
+      "category": "geom-path",
+      "path": "geom-path/lines-changed-order-should-have-same-appearance.svg",
+      "sha256": "22e4070d84628b5ec59c5de2ce68d63830adb820a48fab3f86d0c4f664e2368c"
+    },
+    {
+      "bytes": 8915,
+      "category": "geom-path",
+      "path": "geom-path/lines-colour-changed-order-should-have-same-appearance.svg",
+      "sha256": "7135a20d6d80dcc05396a80c87849daf2a14ae6e97696273f96cdc23b2c60680"
+    },
+    {
+      "bytes": 8870,
+      "category": "geom-path",
+      "path": "geom-path/lines-colour.svg",
+      "sha256": "715759cd5668ddda638f6e3a32775d769a13386de986b396a7749c73b9cfcd78"
+    },
+    {
+      "bytes": 6210,
+      "category": "geom-path",
+      "path": "geom-path/lines.svg",
+      "sha256": "430fb197a1324d9cfd099935a8f4d90b0422036957ca2cdb8b45b987633e740b"
+    },
+    {
+      "bytes": 4817,
+      "category": "geom-path",
+      "path": "geom-path/na-linetype.svg",
+      "sha256": "92dcdfc43ff394d393dd8e6605e08619e6691088997899bcd1011b2968646d3b"
+    },
+    {
+      "bytes": 4634,
+      "category": "geom-polygon",
+      "path": "geom-polygon/basic-polygon-plot.svg",
+      "sha256": "248d54460b11a3bcc32a1884b6b887ca989198cda06205882bf3cd8112110309"
+    },
+    {
+      "bytes": 8563,
+      "category": "geom-polygon",
+      "path": "geom-polygon/open-and-closed-munched-polygons.svg",
+      "sha256": "3a5341d279900b91796787099ed61c8ef316d6dac2ef23afa4f3ea0f7aacb7c1"
+    },
+    {
+      "bytes": 10435,
+      "category": "geom-raster",
+      "path": "geom-raster/1-x-3-just-0-0.svg",
+      "sha256": "81d5aff263d0b6241bde9722b56950bb6f3202d4ff5a093729415dfd741cff80"
+    },
+    {
+      "bytes": 8527,
+      "category": "geom-raster",
+      "path": "geom-raster/1-x-3-set-limits.svg",
+      "sha256": "e270ad1a4c21075902cc56d7b71eed213c9b0792d9d3a6407b543d696d532da5"
+    },
+    {
+      "bytes": 10133,
+      "category": "geom-raster",
+      "path": "geom-raster/1-x-3.svg",
+      "sha256": "dec1e486684eb6763fda507977fddc01812ccbf95ae8aaa1f1434c3e4747c45e"
+    },
+    {
+      "bytes": 10451,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-1-just-0-0.svg",
+      "sha256": "cfa85ff7e33087b91d2d26a3fe8b5fa58ca3b6f7a5b2a8ff897eb464fbe208e8"
+    },
+    {
+      "bytes": 9063,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-1-set-limits.svg",
+      "sha256": "74bde20a862b0cf574a6dc95180450251b9887cee2de06d08097a8d41129c5b9"
+    },
+    {
+      "bytes": 10153,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-1.svg",
+      "sha256": "c6b7504cb144765cb53265e2ef53d43a03bfaa2943488d21e160a545c4f68bee"
+    },
+    {
+      "bytes": 11045,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-2-just-0-0.svg",
+      "sha256": "f5696f7fe113adeffa342ebab7eb42ecacd2e034073aa842e4ba7fe2c311c914"
+    },
+    {
+      "bytes": 10646,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-2-set-limits.svg",
+      "sha256": "b834a16f78a49d9729265ff1f509faba44edd827f03fa4606c09c58b01740e6c"
+    },
+    {
+      "bytes": 10749,
+      "category": "geom-raster",
+      "path": "geom-raster/3-x-2.svg",
+      "sha256": "5da8e80011204a0e53ca6f3f83ce8057146a2a9ff3eb7d2399cdc036c6991e91"
+    },
+    {
+      "bytes": 8024,
+      "category": "geom-raster",
+      "path": "geom-raster/discrete-positions.svg",
+      "sha256": "4604ccf766fd55ce82e76d36a418e034eba20f1a9ece8908973fd12b45fd8332"
+    },
+    {
+      "bytes": 9798,
+      "category": "geom-raster",
+      "path": "geom-raster/irregular-categorical.svg",
+      "sha256": "39d859ac6e7a8867bf1f2aa3a3762e6d3063973f8bf057988c32cf6bd5fc5ed9"
+    },
+    {
+      "bytes": 13974,
+      "category": "geom-raster",
+      "path": "geom-raster/rectangle-fallback.svg",
+      "sha256": "b6ca71a627c9829234894040dd2a9c5d386e9957ba0f68270c222d5ad19017f3"
+    },
+    {
+      "bytes": 7154,
+      "category": "geom-sf",
+      "path": "geom-sf/geom-sf-line-legend.svg",
+      "sha256": "f7884b3ec66d46207dcc7f7df2d5184de211b3580804a8be62a6f87ad2597847"
+    },
+    {
+      "bytes": 6553,
+      "category": "geom-sf",
+      "path": "geom-sf/geom-sf-point-legend.svg",
+      "sha256": "41b9fa4f72654ad9dfc456aef98b1803ee10d0e829ff6a994c6baef85f41e43c"
+    },
+    {
+      "bytes": 7366,
+      "category": "geom-sf",
+      "path": "geom-sf/geom-sf-polygon-legend.svg",
+      "sha256": "2b8b3139bd6af11acf968cc24fd72e9435b639967b1115d1977e0945a15ee1fe"
+    },
+    {
+      "bytes": 4639,
+      "category": "geom-sf",
+      "path": "geom-sf/labels-for-north-carolina.svg",
+      "sha256": "5c9d2f9b5b5f39b1e9415316e3d68636e9536bec3eb9c8a787ecebc08a5f7a9e"
+    },
+    {
+      "bytes": 7888,
+      "category": "geom-sf",
+      "path": "geom-sf/mixed-geometry-types.svg",
+      "sha256": "c5b0372dd3d213c1a87f4e2179d47cd4b61b058f858caf9a51eeb0d624da3f64"
+    },
+    {
+      "bytes": 5940,
+      "category": "geom-sf",
+      "path": "geom-sf/north-carolina-county-boundaries-with-arrow.svg",
+      "sha256": "abc4a697a4667733baa2e940f99667899f947b4dd3fff234f7f7f6fb73bf9640"
+    },
+    {
+      "bytes": 6952,
+      "category": "geom-sf",
+      "path": "geom-sf/north-carolina-county-boundaries-with-more-than-one-arrow.svg",
+      "sha256": "b360c33be0a36feb3b722b91f711e37efe2fb235daa20254e13c0d2beca0da15"
+    },
+    {
+      "bytes": 9543,
+      "category": "geom-sf",
+      "path": "geom-sf/north-carolina-county-boundaries.svg",
+      "sha256": "ef5769eb4e2049540777abbb6489499339f01c7329dd136115483da98513d93b"
+    },
+    {
+      "bytes": 5554,
+      "category": "geom-sf",
+      "path": "geom-sf/spatial-points.svg",
+      "sha256": "70fd50f3d92050603d105ef014b8a46e1a470b3d72ef088ba16675aa633a7f12"
+    },
+    {
+      "bytes": 3859,
+      "category": "geom-sf",
+      "path": "geom-sf/texts-for-north-carolina.svg",
+      "sha256": "17a677e08d3ad39aee7da16e4503df7b019a7deed675e68eae94bdc98f88dd07"
+    },
+    {
+      "bytes": 6077,
+      "category": "geom-smooth",
+      "path": "geom-smooth/ribbon-turned-off-in-geom-smooth.svg",
+      "sha256": "7172871d9e4e98a1e6acd5e36802adc4c23e5258aef1ed1cd3f8e55a563af6dc"
+    },
+    {
+      "bytes": 7152,
+      "category": "geom-smooth",
+      "path": "geom-smooth/ribbon-turned-on-in-geom-smooth.svg",
+      "sha256": "af91cf795ea33ef430484507c73391970af8ddc6302fd02f0f4a4f1655ff09c0"
+    },
+    {
+      "bytes": 5762,
+      "category": "geom-text",
+      "path": "geom-text/geom-text-with-expressions.svg",
+      "sha256": "b1bc9a228fdb24b848d725ae44880637da4e2ee778bcff3828500bb14f31b436"
+    },
+    {
+      "bytes": 48263,
+      "category": "geom-violin",
+      "path": "geom-violin/basic.svg",
+      "sha256": "cbad361eab5eef47561f079b0461878e9e4280562d8d6a8be6a52f5631237117"
+    },
+    {
+      "bytes": 19197,
+      "category": "geom-violin",
+      "path": "geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg",
+      "sha256": "b2488c90c8dd5596841f5e9e1aa9f5eefc897a161993a84cceb76e5bc614fa14"
+    },
+    {
+      "bytes": 19201,
+      "category": "geom-violin",
+      "path": "geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg",
+      "sha256": "602a93ecaaa2769105067ee1ae5c58f939f5b8a7915d4b7964b0c3f48bf6a394"
+    },
+    {
+      "bytes": 47890,
+      "category": "geom-violin",
+      "path": "geom-violin/coord-flip.svg",
+      "sha256": "5eb8208c9f7dd3437fa84ff04d58f54e865c7327af729e99eeb96fced6dae29a"
+    },
+    {
+      "bytes": 48407,
+      "category": "geom-violin",
+      "path": "geom-violin/coord-polar.svg",
+      "sha256": "a76b03e8dedf83d62bea89f71b6f1427de1d570de63e4e73615becdf2edca0db"
+    },
+    {
+      "bytes": 49216,
+      "category": "geom-violin",
+      "path": "geom-violin/dodging-and-coord-flip.svg",
+      "sha256": "af1878504197cd8473bc765912d161a18b1304ecb619ec9c8bd8538bac9bfbc9"
+    },
+    {
+      "bytes": 49197,
+      "category": "geom-violin",
+      "path": "geom-violin/dodging.svg",
+      "sha256": "017a74a838a1cda24199c5e4578053720b14dfa11c7ce56b4e1b9b4527f963a7"
+    },
+    {
+      "bytes": 91735,
+      "category": "geom-violin",
+      "path": "geom-violin/grouping-on-x-and-fill-dodge-width-0-5.svg",
+      "sha256": "c25dc9a192f3a6cf5789fac9450a9a0740c3582be823536d60402c71fbf00373"
+    },
+    {
+      "bytes": 91213,
+      "category": "geom-violin",
+      "path": "geom-violin/grouping-on-x-and-fill.svg",
+      "sha256": "9a2ecaa7e54373812c9c946a3d79fa4d91ec25546e78410e8c63464d94e58a63"
+    },
+    {
+      "bytes": 48278,
+      "category": "geom-violin",
+      "path": "geom-violin/narrower-width-5.svg",
+      "sha256": "855c3ae4c7acd06010d133f637f3e26627333aa99dd71369ef37b5308ec77e37"
+    },
+    {
+      "bytes": 48299,
+      "category": "geom-violin",
+      "path": "geom-violin/scale-area-to-sample-size-c-is-smaller.svg",
+      "sha256": "37cb0d7e289c3d113bec585d1ab31a8cd10a3113b39d596b70c57c88ca64f4c9"
+    },
+    {
+      "bytes": 49606,
+      "category": "geom-violin",
+      "path": "geom-violin/styled-quantiles.svg",
+      "sha256": "fd68f3e073408b16844537316d89009155981d225247491849158ceb4d7581aa"
+    },
+    {
+      "bytes": 53690,
+      "category": "geom-violin",
+      "path": "geom-violin/with-smaller-bandwidth-and-points.svg",
+      "sha256": "b67d58361ca2c417ae652fb8a864d7583f7c8a0633e22b7e9d53035cf83d0425"
+    },
+    {
+      "bytes": 53128,
+      "category": "geom-violin",
+      "path": "geom-violin/with-tails-and-points.svg",
+      "sha256": "52f315e2c63f311574deee38705b4a75fb1e59dd2eca2c77034bdca05dfbade5"
+    },
+    {
+      "bytes": 50088,
+      "category": "guide-axis",
+      "path": "guide-axis/align-facet-labels-facets-horizontal.svg",
+      "sha256": "5e8947a649c1aec44755d94ec5bf4319bdbef2b794e1a2b441e8565600aea23d"
+    },
+    {
+      "bytes": 50994,
+      "category": "guide-axis",
+      "path": "guide-axis/align-facet-labels-facets-vertical.svg",
+      "sha256": "957f1c7aca7b592f463d23259bf4bc874643c8476ae8da6f9218c7e4bf85af45"
+    },
+    {
+      "bytes": 4594,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-basic.svg",
+      "sha256": "cf6579ad9fb91478e3e3058ed6e3d7307efd732eae868787f6bff7e0156b8ce9"
+    },
+    {
+      "bytes": 20749,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-check-overlap.svg",
+      "sha256": "86e3d8739597ddbb8857fed559beeba1fa98e0b738bf20ed306bbbe9372d07f6"
+    },
+    {
+      "bytes": 13468,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-negative-rotation.svg",
+      "sha256": "0fc330c23791d5dba8c9e2428fa19fe108e730a49af87eab8d2e02ddc73b8357"
+    },
+    {
+      "bytes": 13508,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-positive-rotation.svg",
+      "sha256": "e8a1937ddb5425294cd592f71ed36bc1b7988c818ab21dc8be3aa13821df8e62"
+    },
+    {
+      "bytes": 12988,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-text-dodged-into-rows-cols.svg",
+      "sha256": "5dca88512ff0bbb763acf8aeebb127dc07c75ac15edebd1378549165fbbee842"
+    },
+    {
+      "bytes": 13708,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-vertical-negative-rotation.svg",
+      "sha256": "b3ef9e742f50bb8419564326c65d83725e9fe859a7cfbd0e8d20f227f1fde4b9"
+    },
+    {
+      "bytes": 13748,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-vertical-rotation.svg",
+      "sha256": "2a38fdeb332d018c6c49928d94510e8aa92070607c4f1a42fd94ec6f7479772e"
+    },
+    {
+      "bytes": 10621,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-with-capped-ends.svg",
+      "sha256": "45df40e706d2e5e0609e472d225e9554fccfa2113a7b8624a43d22f3ba0b5c2c"
+    },
+    {
+      "bytes": 1216,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-zero-breaks.svg",
+      "sha256": "ed39234d520ee23734318668529bc8d19e258117430211af8db224d23754ec86"
+    },
+    {
+      "bytes": 12668,
+      "category": "guide-axis",
+      "path": "guide-axis/axis-guides-zero-rotation.svg",
+      "sha256": "7d11fb62c3a47fabd6ccb0b752be1f6608792b630fbf2be9276dde836ee65ddc"
+    },
+    {
+      "bytes": 26209,
+      "category": "guide-axis",
+      "path": "guide-axis/guide-axis-customization.svg",
+      "sha256": "e4c37a10bb1d3051b473d9e6c88968141284036926251af4c8b97e80d0fbb5d1"
+    },
+    {
+      "bytes": 12952,
+      "category": "guide-axis",
+      "path": "guide-axis/guide-axis-theta-in-cartesian-coordinates.svg",
+      "sha256": "2906ed20e9643c8bcec48ea7b8b665e476a75250431f96b6b7846453958d027a"
+    },
+    {
+      "bytes": 58873,
+      "category": "guide-axis",
+      "path": "guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg",
+      "sha256": "3b7b348fe064cce2a45354f2087f18167f208d1d9a2d41e49ab53f36451a47e4"
+    },
+    {
+      "bytes": 8140,
+      "category": "guide-axis",
+      "path": "guide-axis/guide-titles-with-coord-transform.svg",
+      "sha256": "da7368e9e1463d5b72c4ca262f4a4f677da04db7e7bb13f8c01fc59da281a414"
+    },
+    {
+      "bytes": 28072,
+      "category": "guide-axis",
+      "path": "guide-axis/guides-specified-in-guides.svg",
+      "sha256": "d67e360c3c2a0b6ed02a185ec8f73c8904051f4c8e971ad1ddefde26c3fedc9d"
+    },
+    {
+      "bytes": 14055,
+      "category": "guide-axis",
+      "path": "guide-axis/guides-with-minor-ticks.svg",
+      "sha256": "8e63ace34b8188e22dc4d9660ea1a91e914b5e94709dcff1f56b03a1e706cbce"
+    },
+    {
+      "bytes": 25944,
+      "category": "guide-axis",
+      "path": "guide-axis/logtick-axes-with-customisation.svg",
+      "sha256": "aba523955caf09df3c81c4e43d9459cb288765ae97e18ec889e7608b7e528c53"
+    },
+    {
+      "bytes": 2408,
+      "category": "guide-axis",
+      "path": "guide-axis/position-guide-titles.svg",
+      "sha256": "c8822d6b364333a1fbae5f8094aa98923fb51c10dff303fa09b45f75df428d30"
+    },
+    {
+      "bytes": 15331,
+      "category": "guide-axis",
+      "path": "guide-axis/stacked-axes.svg",
+      "sha256": "b2bf96215728092b51b26734ec3950ef929c92584bc433c2937c67f44c532419"
+    },
+    {
+      "bytes": 37183,
+      "category": "guide-axis",
+      "path": "guide-axis/stacked-radial-axes.svg",
+      "sha256": "a2db69c590ae2ba874a85d5e72abf9abd14810c5e317faba671930632fb3aa77"
+    },
+    {
+      "bytes": 7774,
+      "category": "guide-axis",
+      "path": "guide-axis/thick-axis-lines.svg",
+      "sha256": "031efdb00ba87182660747118f5fa72d2f3247c2508e6e088c77d8145a352ba1"
+    },
+    {
+      "bytes": 8501,
+      "category": "guide-colorbar",
+      "path": "guide-colorbar/combined-colour-and-fill-aesthetics.svg",
+      "sha256": "9d7026f9c102484ecfb9392e4e6d09907b80d05276724609d8f93b4f5e8a7901"
+    },
+    {
+      "bytes": 7757,
+      "category": "guide-colorbar",
+      "path": "guide-colorbar/customized-colorbar.svg",
+      "sha256": "335b626a9c9994d2135694b0a2c9bcaa85c4a6a095a56d27cf184f17e244a59f"
+    },
+    {
+      "bytes": 7638,
+      "category": "guide-colorbar",
+      "path": "guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg",
+      "sha256": "47061fab8393a40d6f47588ee683bd8c3f359589091858ae7abe2aa471388a27"
+    },
+    {
+      "bytes": 9324,
+      "category": "guide-legend",
+      "path": "guide-legend/enlarged-guides.svg",
+      "sha256": "ee622ebf60350e37d7540807acc4d606d5b01d5de3dfab2c4f35042c94998e27"
+    },
+    {
+      "bytes": 12253,
+      "category": "guide-legend",
+      "path": "guide-legend/horizontal-legend-direction.svg",
+      "sha256": "2da1ece8dc2ec846af365c5f745ace26f1d73da7f5e7f0d29ab029c17a7990a6"
+    },
+    {
+      "bytes": 11574,
+      "category": "guide-legend",
+      "path": "guide-legend/left-aligned-legend-key.svg",
+      "sha256": "c7c6b71268e5eec814d55ffe3b8788e47ebe048fb619a690b656338cc68a4217"
+    },
+    {
+      "bytes": 6656,
+      "category": "guide-legend",
+      "path": "guide-legend/legend-byrow-true.svg",
+      "sha256": "4b12b782fccbe5cfdeafc70bb79d1adc48cac47fbe52263666d42422557631ec"
+    },
+    {
+      "bytes": 13880,
+      "category": "guide-legend",
+      "path": "guide-legend/legend-key-justification.svg",
+      "sha256": "51e402cee6ba0986a4eeda21448a7e4350927a22e47dde1723c72dcbbaef462f"
+    },
+    {
+      "bytes": 10538,
+      "category": "guide-legend",
+      "path": "guide-legend/legend-with-widely-spaced-keys.svg",
+      "sha256": "5dffa036a5f9c3134be048595bfd848bcb70feae6ffc5689e1b81ee0ae8f3959"
+    },
+    {
+      "bytes": 12189,
+      "category": "guide-legend",
+      "path": "guide-legend/vertical-legend-direction.svg",
+      "sha256": "ec561e5725aeedb0e2e81ba32f254a2c5cd39157052b3a4218012c1fa403225a"
+    },
+    {
+      "bytes": 4430,
+      "category": "guides",
+      "path": "guides/facet-grid-legend-on-bottom.svg",
+      "sha256": "a41678dc81627f6354b5fe664d589f8828c580efa8beb0078beda26c207e546e"
+    },
+    {
+      "bytes": 4439,
+      "category": "guides",
+      "path": "guides/facet-grid-legend-on-left.svg",
+      "sha256": "51d9b3b25cf1642478df5f6a3374162d2095e14f9ad41cbb95ca5a8a5f43094d"
+    },
+    {
+      "bytes": 4430,
+      "category": "guides",
+      "path": "guides/facet-grid-legend-on-right.svg",
+      "sha256": "2d961caa8d771e81928f65e8b89f05e998fe3de9fc6f202ad22000c20d6e482f"
+    },
+    {
+      "bytes": 4425,
+      "category": "guides",
+      "path": "guides/facet-grid-legend-on-top.svg",
+      "sha256": "c80e2a75115ac7e5696c5f20fe1f6e0eeed8e24eb581e08a1cec8436df3e98bd"
+    },
+    {
+      "bytes": 3835,
+      "category": "guides",
+      "path": "guides/facet-wrap-legend-on-bottom.svg",
+      "sha256": "76fcaa0324cd5d2be4dd798c2dfe4b94bf5f3d7f12fdb43fbfb36561d5d33f84"
+    },
+    {
+      "bytes": 3844,
+      "category": "guides",
+      "path": "guides/facet-wrap-legend-on-left.svg",
+      "sha256": "8009ab42a99c48e1b8bacd11eccb99d78880a7d107b6fe025f3ce51353258425"
+    },
+    {
+      "bytes": 3835,
+      "category": "guides",
+      "path": "guides/facet-wrap-legend-on-right.svg",
+      "sha256": "79688f7d77aaff35dfe5dfbf5c9a9dd74abebedbd90cace7514c1787ff89cb74"
+    },
+    {
+      "bytes": 3830,
+      "category": "guides",
+      "path": "guides/facet-wrap-legend-on-top.svg",
+      "sha256": "af02508e4e27e62313cb217f0211d948f2db53ada10355012ef4e6a7e6c89a93"
+    },
+    {
+      "bytes": 6565,
+      "category": "guides",
+      "path": "guides/guide-bins-can-remove-axis.svg",
+      "sha256": "6cba329bdc99557633e4f8e55f58bdf4589d2fa7b8b6bf5d9bc906311c3e461c"
+    },
+    {
+      "bytes": 7199,
+      "category": "guides",
+      "path": "guides/guide-bins-can-show-arrows.svg",
+      "sha256": "45d9b7f3ab1a55767d756b2630f74da1de766f96644b2c32df9892c1fcafeb58"
+    },
+    {
+      "bytes": 7441,
+      "category": "guides",
+      "path": "guides/guide-bins-can-show-limits.svg",
+      "sha256": "a32a17981366b718fa77081fe7e8abb9fb2ad206800c2d5ea5a2f218fac0c17a"
+    },
+    {
+      "bytes": 6769,
+      "category": "guides",
+      "path": "guides/guide-bins-can-show-ticks-and-transparancy.svg",
+      "sha256": "85e1c10e987b2387749176ee3b440fd78d56e034606b6849d48d10e3d02c2c0d"
+    },
+    {
+      "bytes": 6972,
+      "category": "guides",
+      "path": "guides/guide-bins-looks-as-it-should.svg",
+      "sha256": "41b92b22f49031e2eacd81a7f92c529e69defcd8dbaa9d14b359309bd05b3c50"
+    },
+    {
+      "bytes": 31527,
+      "category": "guides",
+      "path": "guides/guide-bins-sets-labels-when-limits-is-in-breaks.svg",
+      "sha256": "2dd2183678e928bf77e72d736465886c3a1dd92032b660433652b4ba4befe965"
+    },
+    {
+      "bytes": 31551,
+      "category": "guides",
+      "path": "guides/guide-bins-understands-coinciding-limits-and-bins-2.svg",
+      "sha256": "354493c259269eab22530d3e3174ba0d88388d84c3a4174578051687ddee542b"
+    },
+    {
+      "bytes": 31791,
+      "category": "guides",
+      "path": "guides/guide-bins-understands-coinciding-limits-and-bins-3.svg",
+      "sha256": "33a708c53d1f11310ba657c2dc7b31dec1d8c5e3c1b9116f4b8a3505fdca4f59"
+    },
+    {
+      "bytes": 31549,
+      "category": "guides",
+      "path": "guides/guide-bins-understands-coinciding-limits-and-bins.svg",
+      "sha256": "e1c448d65b6a5060c331bbb16731fb42401710e1e0d290a91e8df13bc3972f85"
+    },
+    {
+      "bytes": 7034,
+      "category": "guides",
+      "path": "guides/guide-bins-work-horizontally.svg",
+      "sha256": "c18985218a8d60c1e8ad6efcd48bd16c9c42f7975d200e580f5b8899e413d494"
+    },
+    {
+      "bytes": 30407,
+      "category": "guides",
+      "path": "guides/guide-colorsteps-sets-labels-when-limits-is-in-breaks.svg",
+      "sha256": "a9810e9b3e739d95feaee866511a40383d3031bfff95fd3dbfd44c55a743d17b"
+    },
+    {
+      "bytes": 30431,
+      "category": "guides",
+      "path": "guides/guide-colorsteps-understands-coinciding-limits-and-bins-2.svg",
+      "sha256": "e04b643fa4e4e13a4131144a1f10de25117bbfd7541846a14657cde46d8def70"
+    },
+    {
+      "bytes": 30570,
+      "category": "guides",
+      "path": "guides/guide-colorsteps-understands-coinciding-limits-and-bins-3.svg",
+      "sha256": "e7cac7853f8081a8de30e37ecf6cc5e4d73cec4e6871d0823993f92df6336357"
+    },
+    {
+      "bytes": 30429,
+      "category": "guides",
+      "path": "guides/guide-colorsteps-understands-coinciding-limits-and-bins.svg",
+      "sha256": "9d865aefd47266b7a9aa4985961dabbe7a4855e464c5a3f7f864fa0a42c64e6c"
+    },
+    {
+      "bytes": 5990,
+      "category": "guides",
+      "path": "guides/guide-coloursteps-can-have-bins-relative-to-binsize.svg",
+      "sha256": "5e079713717c53c9ad603b7cf29e06553e33b71a8c332757420629ba0aba97e7"
+    },
+    {
+      "bytes": 6242,
+      "category": "guides",
+      "path": "guides/guide-coloursteps-can-show-limits.svg",
+      "sha256": "b1100e1fd0d8ffb72db92b4cc0daa21607996c2d93e9478d620def97f0916b3f"
+    },
+    {
+      "bytes": 5975,
+      "category": "guides",
+      "path": "guides/guide-coloursteps-looks-as-it-should.svg",
+      "sha256": "9aadeb5a649b5daaed2a79d2e07f5367740abe53f001d8d39717cd4160b5e2ae"
+    },
+    {
+      "bytes": 1587,
+      "category": "guides",
+      "path": "guides/guide-custom-with-void-theme.svg",
+      "sha256": "098af8d85b434fc3ed86d0cc1c3dbc28c902b6bdd52567df2f6c5fb8c31456a8"
+    },
+    {
+      "bytes": 9095,
+      "category": "guides",
+      "path": "guides/guide-title-and-text-positioning-and-alignment-via-themes.svg",
+      "sha256": "ee5b1628d6a2f36ce119dd1bb84258e6f276f85472b214bf1fe0836df68130c2"
+    },
+    {
+      "bytes": 8969,
+      "category": "guides",
+      "path": "guides/horizontal-gap-of-1cm-between-guide-and-guide-text.svg",
+      "sha256": "06b6310c35046ca9f27685868fb6e304d8273b029aa64fc6de38c1f90cf2decb"
+    },
+    {
+      "bytes": 8763,
+      "category": "guides",
+      "path": "guides/legend-inside-plot-bottom-left-of-legend-at-center.svg",
+      "sha256": "7f5d557259f764152b9451b955da9ddc7b863636b59150540f42cbcd4939b1c9"
+    },
+    {
+      "bytes": 8704,
+      "category": "guides",
+      "path": "guides/legend-inside-plot-bottom-left.svg",
+      "sha256": "e790da231c5513fa475ae1e587aec88b67d491e7a50f9cee981245f69372374e"
+    },
+    {
+      "bytes": 8740,
+      "category": "guides",
+      "path": "guides/legend-inside-plot-centered.svg",
+      "sha256": "fdfe8c2f4978772b3be342ed454b43f23185c145a3e96a39c0896fda27e73196"
+    },
+    {
+      "bytes": 8704,
+      "category": "guides",
+      "path": "guides/legend-inside-plot-multiple-positions.svg",
+      "sha256": "c0e4fcfa599d2d79197a9c874145feef72c24dbf86051b385f9933b841b493b6"
+    },
+    {
+      "bytes": 8723,
+      "category": "guides",
+      "path": "guides/legend-inside-plot-top-right.svg",
+      "sha256": "ae8c505b667a4b8f8d8a9bab8e42dad6157d25407674572240b8d15f02c079ec"
+    },
+    {
+      "bytes": 3277,
+      "category": "guides",
+      "path": "guides/legend-on-bottom.svg",
+      "sha256": "10502553c193cff189d2d23250a8e453112a1d6f3500871c0df5ec6fa0c42e7f"
+    },
+    {
+      "bytes": 3276,
+      "category": "guides",
+      "path": "guides/legend-on-left.svg",
+      "sha256": "f3df7d42c9f1b728245bebf6a17f7dbf39b05bd8d2adc8005122ece44ae87ab1"
+    },
+    {
+      "bytes": 3277,
+      "category": "guides",
+      "path": "guides/legend-on-right.svg",
+      "sha256": "cc83a482416cc833a9cee508ab102af8a77c8400a399db542df64a0fcf83c75e"
+    },
+    {
+      "bytes": 3272,
+      "category": "guides",
+      "path": "guides/legend-on-top.svg",
+      "sha256": "0e6ab5201337622e2d4733c7bc578d58943c1245c0a990adb627b89d264e86ad"
+    },
+    {
+      "bytes": 10155,
+      "category": "guides",
+      "path": "guides/legends-with-all-title-justifications.svg",
+      "sha256": "348746a785838aba9cec6aa862fff06a1d130a03557ff840c583eab6a6e64fa7"
+    },
+    {
+      "bytes": 9526,
+      "category": "guides",
+      "path": "guides/multi-line-guide-title-works.svg",
+      "sha256": "d48296db81e73d5ebf24f60956a6c69f461c2220a0ef0bb028039b1ff84ca924"
+    },
+    {
+      "bytes": 6355,
+      "category": "guides",
+      "path": "guides/old-s3-guide-drawing-a-circle.svg",
+      "sha256": "3aa5f2f1c21aeb45627004c27a4a9d20cd6b8c347ab8db93fac83024db9dbfe1"
+    },
+    {
+      "bytes": 8733,
+      "category": "guides",
+      "path": "guides/padding-in-legend-box.svg",
+      "sha256": "123d01bdaa4542d00c28a317496fe4ab56c3bd421a79d2b299393d0dd5ba81f3"
+    },
+    {
+      "bytes": 9309,
+      "category": "guides",
+      "path": "guides/reversed-guide-bins.svg",
+      "sha256": "84331d3fbdfc8eeabf60fe24a5b63de3257a2ac39d343dd161689c95f2a8171f"
+    },
+    {
+      "bytes": 9408,
+      "category": "guides",
+      "path": "guides/rotated-guide-titles-and-labels.svg",
+      "sha256": "78e0ce9b52617bc54cc2ef11dcb8f5a6e3ff7e6bb659b6ba095ff61334721cf3"
+    },
+    {
+      "bytes": 1879,
+      "category": "guides",
+      "path": "guides/stylised-guide-custom.svg",
+      "sha256": "fadd2181b4eaec068685041558a3c9cf6be06fc928ec0e8ac4ada83d65fea084"
+    },
+    {
+      "bytes": 8968,
+      "category": "guides",
+      "path": "guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg",
+      "sha256": "918f079a68483b0691c51ea5de65b98282758a29458c2cac80370e6bd99fdab5"
+    },
+    {
+      "bytes": 5262,
+      "category": "labels",
+      "path": "labels/defaults.svg",
+      "sha256": "cc1d11def350613a4212275ceccfa2f68f041595766d90ae474d855d195cd2cc"
+    },
+    {
+      "bytes": 7030,
+      "category": "labels",
+      "path": "labels/tag-in-margin.svg",
+      "sha256": "2312fa85efdb485a406f7bae9c9bd5416aa18a8d9428a9e70cf69b3b7194fab1"
+    },
+    {
+      "bytes": 7043,
+      "category": "labels",
+      "path": "labels/tag-in-panel-as-character.svg",
+      "sha256": "a268d7f750836e0edf405d0b9ed48cf3ce28488f13e8cd474669265af603f56f"
+    },
+    {
+      "bytes": 7042,
+      "category": "labels",
+      "path": "labels/tag-in-panel-as-numeric.svg",
+      "sha256": "7acec8b52676856a854bf3a0dc755b8d3469e006242625b1c700d70518acd3d5"
+    },
+    {
+      "bytes": 7042,
+      "category": "labels",
+      "path": "labels/tag-in-plot-as-character.svg",
+      "sha256": "486305079db822e9bed54cf123a43a82db31520104faac0651b7a88adfe1906e"
+    },
+    {
+      "bytes": 7040,
+      "category": "labels",
+      "path": "labels/tag-in-plot-as-numeric.svg",
+      "sha256": "4f12f82c58978bf143751b14a3285c7cc2de47643146781270e735b641b7888d"
+    },
+    {
+      "bytes": 7263,
+      "category": "legend-draw",
+      "path": "legend-draw/all-legend-keys.svg",
+      "sha256": "d6a1bf88c52f9315393535767c5fd01f462651089927d373a9af10de5d7646a2"
+    },
+    {
+      "bytes": 7804,
+      "category": "patterns",
+      "path": "patterns/pattern-fills-no-alpha.svg",
+      "sha256": "f703c6db76ad558ef6a28fd9621df196ea3c89a08dd2b53518cce6fa9fcacfc9"
+    },
+    {
+      "bytes": 11030,
+      "category": "patterns",
+      "path": "patterns/pattern-fills-through-scale.svg",
+      "sha256": "41a24d499f21297a783819a29bf3ae55db6c24e79939a57e01fa52483d65fabc"
+    },
+    {
+      "bytes": 8119,
+      "category": "patterns",
+      "path": "patterns/pattern-fills-with-alpha.svg",
+      "sha256": "4cf4c1526b3c50a3734fff950c49b9513a5bfb4f615398ac618eb25c41b89553"
+    },
+    {
+      "bytes": 8378,
+      "category": "patterns",
+      "path": "patterns/single-pattern-fill.svg",
+      "sha256": "91af4509374324872e8c9a23c3dd8a882b99ccf82363d9f698857b84a4ddd17f"
+    },
+    {
+      "bytes": 5410,
+      "category": "position-stack",
+      "path": "position-stack/area-stacking.svg",
+      "sha256": "0d7e0367571ef3ce1febbdf716a4a46a66150bc2afb85f114d2ae89ad64a973d"
+    },
+    {
+      "bytes": 5309,
+      "category": "scale_date",
+      "path": "scale_date/dates-along-x-default-breaks.svg",
+      "sha256": "31584561a3a2f9520b1b5b9790b29dd9ba36ffe0d7ce3dc730c73425ae4b9aec"
+    },
+    {
+      "bytes": 5316,
+      "category": "scale_date",
+      "path": "scale_date/dates-along-y-default-breaks.svg",
+      "sha256": "899045c73bc26cea98ad5a0bb27fc304ef6d6eacbabe44ce7081441f399289cd"
+    },
+    {
+      "bytes": 5642,
+      "category": "scale_date",
+      "path": "scale_date/scale-x-date-breaks-3-weeks.svg",
+      "sha256": "becd7bd35017413d84040ae4bfc4f40e75dcb13173701c932eeb9c9577b95a81"
+    },
+    {
+      "bytes": 6553,
+      "category": "scale_date",
+      "path": "scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg",
+      "sha256": "961ad9c54f5d4ac38d153e0437f4cd7ec8dc8d830110e804ef4db3565eeb42fb"
+    },
+    {
+      "bytes": 5330,
+      "category": "scale_date",
+      "path": "scale_date/scale-x-date-labels-label-date-m-d.svg",
+      "sha256": "adab59060936516b75de7cacf25e798b28666e9273d3d4e7d6ce3e1d29a093be"
+    },
+    {
+      "bytes": 5321,
+      "category": "scale_date",
+      "path": "scale_date/scale-x-date-labels-label-date-w-week.svg",
+      "sha256": "e9f7e8b29d4201a93c76b1da7078c50f448c07b89d55c368fc3053e264de502e"
+    },
+    {
+      "bytes": 5642,
+      "category": "scale_date",
+      "path": "scale_date/scale-y-date-breaks-3-weeks.svg",
+      "sha256": "78ad84f20635dd450fd4c720877589f377924bfb2bba7bff9db4f1e35e0459c4"
+    },
+    {
+      "bytes": 6532,
+      "category": "scale_date",
+      "path": "scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg",
+      "sha256": "d84f9d95bd634dec1526824879206eb786be0338da827f6338d9343fbd595437"
+    },
+    {
+      "bytes": 4871,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/character.svg",
+      "sha256": "bada94d1a4a5b5d85ca72ae304e7c0f768a3e515b7af99530c82ec10fab048ea"
+    },
+    {
+      "bytes": 7561,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/date.svg",
+      "sha256": "2b11faa39252463e9327910d8df015dc69713dc14b46f42f84041716fac1c5b3"
+    },
+    {
+      "bytes": 8885,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/functional-limits.svg",
+      "sha256": "a9adbec01ca3c1ee0c2e59d9d51d4148bdc6b5aca6138afa2b7989121d04472a"
+    },
+    {
+      "bytes": 5212,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-alpha-breaks-no-legend.svg",
+      "sha256": "300269e1015623b70158f7fed0cf2c27cf6ef0621a5559e420ba721e862a8edb"
+    },
+    {
+      "bytes": 5146,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-colour-breaks-no-legend.svg",
+      "sha256": "4d85d7ead6c1c39cc709f751af149582cf4a5462c80949cb05d5deba01282fa7"
+    },
+    {
+      "bytes": 5093,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-fill-breaks-no-legend.svg",
+      "sha256": "babefb65aed7b31cabfcd8345cdada505da487905c2f6b37dd0ea160f99bcf2d"
+    },
+    {
+      "bytes": 5093,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-size-breaks-no-legend.svg",
+      "sha256": "b79991418a4fc600fd67763c9ed9629350b0b69928568f7fe1a9b47edb1dc2c3"
+    },
+    {
+      "bytes": 3609,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-x-breaks.svg",
+      "sha256": "a86f9f8ef94ffd8b3e3b20733ae294daafc9eeaf4ac884c801043ecba964af4a"
+    },
+    {
+      "bytes": 3639,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/no-y-breaks.svg",
+      "sha256": "2f46788a2b66c15b3688d45c78b53061915954538b59e009048fb13b43931051"
+    },
+    {
+      "bytes": 6567,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/numeric-exp.svg",
+      "sha256": "2efa78c6470c185e0b988b257778a784d9141f072c0ee396b48c8cd0b85c654c"
+    },
+    {
+      "bytes": 5765,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/numeric-log.svg",
+      "sha256": "8a8ad29833ca42ba56203f182828cde336880661bc6d580e4d07943b5785d55d"
+    },
+    {
+      "bytes": 9555,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/numeric-polar.svg",
+      "sha256": "f7262315264c68c536527515997e0e9c0245ab50b1a6d4b9c2a82e493773e5e9"
+    },
+    {
+      "bytes": 4455,
+      "category": "scales-breaks-labels",
+      "path": "scales-breaks-labels/numeric.svg",
+      "sha256": "c1b6d77bed107c21407ef918da75680f068e9b3a0fa1c335ac5450db73685157"
+    },
+    {
+      "bytes": 24201,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-custom-transform.svg",
+      "sha256": "adf44ef8038d7e5431660090d0c1d6ae08cdcebf0f0a579021ae8346a1888ff1"
+    },
+    {
+      "bytes": 13843,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-datetime-scale.svg",
+      "sha256": "244b10e6497dd80ac67ab630bf57d0cb53d8d658cc894a3195d1e958328d4fe8"
+    },
+    {
+      "bytes": 7190,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-independent-transformations.svg",
+      "sha256": "f73d754b8b06655c4097189d0dcb64ffdef8e982b669adb2eb853cb265ade8df"
+    },
+    {
+      "bytes": 8846,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-monotonicity-test.svg",
+      "sha256": "a9eb192565d07774596dc71b7b0a9bcfe65c9b7daf46a69e172b78749f77c803"
+    },
+    {
+      "bytes": 8371,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-sec-power-transform.svg",
+      "sha256": "247df7654011fe1427723251d3d71b8ebaf87593159ae5e167da8dbfc214b667"
+    },
+    {
+      "bytes": 17355,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-skewed-transform.svg",
+      "sha256": "f14f41484082d039ae05d691a0b569d61941026ead096185dbd93b9d69d0daba"
+    },
+    {
+      "bytes": 27367,
+      "category": "sec-axis",
+      "path": "sec-axis/sec-axis-with-division.svg",
+      "sha256": "1c99b75b56f0becd4c99f8e79e28611918bbdf045aa3da4f0282f98e38e849f5"
+    },
+    {
+      "bytes": 6436,
+      "category": "stat-align",
+      "path": "stat-align/align-two-areas-with-cliff.svg",
+      "sha256": "5d49fac38b628114a6da61f8a8a70105f988869d76b6d412e939d37ed7d9d671"
+    },
+    {
+      "bytes": 6693,
+      "category": "stat-align",
+      "path": "stat-align/align-two-areas-with-pos-neg-y.svg",
+      "sha256": "e7c36e56e4b7268f1f5a1f4bb3dfee3b37aab454ca2b1dbd78b0d4cc79d6b022"
+    },
+    {
+      "bytes": 6422,
+      "category": "stat-align",
+      "path": "stat-align/align-two-areas.svg",
+      "sha256": "f1143cfdb80e774331daedab9dec5c5940c567fc8e2dcb47fead42cb20d8f5d3"
+    },
+    {
+      "bytes": 9876,
+      "category": "stat-sum",
+      "path": "stat-sum/summary-with-color-and-lines.svg",
+      "sha256": "4b794a564e63bc3e6c9dfb5b189833b744b354818b6579d2a6b0f5b55b9fda30"
+    },
+    {
+      "bytes": 8894,
+      "category": "stat-sum",
+      "path": "stat-sum/summary-with-crossbars-manual-grouping.svg",
+      "sha256": "60faab621cdf12727377557a69ed67580ec2c8d9fd3434a2d0ca853622469b6d"
+    },
+    {
+      "bytes": 8890,
+      "category": "stat-sum",
+      "path": "stat-sum/summary-with-crossbars-no-grouping.svg",
+      "sha256": "67b2d837392506b41f2acb352197c0c7f10f06e8bbd343280b73e3005028b6c7"
+    },
+    {
+      "bytes": 9984,
+      "category": "theme",
+      "path": "theme/axes-styling.svg",
+      "sha256": "9297bc5fbf2011e72959674135fd85c90b3cea42111e6afe18e54587213cb3b0"
+    },
+    {
+      "bytes": 18416,
+      "category": "theme",
+      "path": "theme/caption-aligned-to-entire-plot.svg",
+      "sha256": "12304c87dff98a2f6d426ad4b07ded9c9665f274568a7a67bf90a9b98189ea8e"
+    },
+    {
+      "bytes": 16499,
+      "category": "theme",
+      "path": "theme/custom-strip-elements-can-render.svg",
+      "sha256": "4fddf433720691151efdd64beeceec3525196180c2ddeb99902fd3437bea176c"
+    },
+    {
+      "bytes": 7684,
+      "category": "theme",
+      "path": "theme/height-is-3-times-width-2-column-facets.svg",
+      "sha256": "10ad5a016ded4ade0dd57e4dba11d37220412a2a701008e13977b873a6ad94e9"
+    },
+    {
+      "bytes": 7723,
+      "category": "theme",
+      "path": "theme/height-is-3-times-width-2-row-facets.svg",
+      "sha256": "b18f733c83847a20399cfeb33ec421655a8d082f23a8c4075f908cc52d095099"
+    },
+    {
+      "bytes": 7682,
+      "category": "theme",
+      "path": "theme/height-is-3-times-width-2-wrap-facets.svg",
+      "sha256": "95a40ce48a9549041c599ab3df4662b56cf3941b706cdacb1780b13345f101d1"
+    },
+    {
+      "bytes": 11011,
+      "category": "theme",
+      "path": "theme/height-is-3-times-width-2x2-facets.svg",
+      "sha256": "a70dfae448df4befd7cff93da93f8a9d6a37369177ecdc9605454e29ae117d40"
+    },
+    {
+      "bytes": 4872,
+      "category": "theme",
+      "path": "theme/height-is-3-times-width.svg",
+      "sha256": "555171ff8f007158e84405369312923ed96f4956923a3639875115f8900529d0"
+    },
+    {
+      "bytes": 9921,
+      "category": "theme",
+      "path": "theme/horizontal-legends-placed-apart.svg",
+      "sha256": "56cabf83cbe23a453b359b921e87ebe3e38309aa4647cccb961466456f19e132"
+    },
+    {
+      "bytes": 8637,
+      "category": "theme",
+      "path": "theme/large-margins.svg",
+      "sha256": "d0facb9dff94663a8dd601fde50ea69e009c1228b482147b5c6cd5c079870e43"
+    },
+    {
+      "bytes": 8636,
+      "category": "theme",
+      "path": "theme/large-spacing.svg",
+      "sha256": "a434608b9283e8b012d1a20542f8938c75ef46cddd3e8145891cbeb198aa4c31"
+    },
+    {
+      "bytes": 17987,
+      "category": "theme",
+      "path": "theme/legends-at-all-sides-with-justification.svg",
+      "sha256": "0f4b69e514f95c5431902c4ff70fea89f62fae470c2f97a6c2dc3902803e23f3"
+    },
+    {
+      "bytes": 1253,
+      "category": "theme",
+      "path": "theme/point-elements.svg",
+      "sha256": "b446757dac4d19a03da911c8b779af299b2231c0f3f2a20cd47f7c705a968417"
+    },
+    {
+      "bytes": 1090,
+      "category": "theme",
+      "path": "theme/polygon-elements.svg",
+      "sha256": "d196fcc6196a235031067fcdf3a8782759e8c0382da9eed2a1699699a83e4697"
+    },
+    {
+      "bytes": 5896,
+      "category": "theme",
+      "path": "theme/rotated-x-axis-tick-labels.svg",
+      "sha256": "d5554bcc0362aa423e55e70d769a0121ae1dd947b178c7756abfe3807bcddebd"
+    },
+    {
+      "bytes": 9190,
+      "category": "theme",
+      "path": "theme/stretched-horizontal-legends.svg",
+      "sha256": "1d957d2ecacd1ed28e6226f5d875692dc139885cb57d404a3a9f4d271a398c3f"
+    },
+    {
+      "bytes": 9148,
+      "category": "theme",
+      "path": "theme/stretched-vertical-legends.svg",
+      "sha256": "3c2443ecbb47cc1bfdc731a32f6b576e81009dc38381279c1455018bc51a1928"
+    },
+    {
+      "bytes": 19570,
+      "category": "theme",
+      "path": "theme/strip-styling.svg",
+      "sha256": "a32a5b9074b946c18be25c792a40f83d79ed0a3ac0f4e8f5e4e0d8b304561a9b"
+    },
+    {
+      "bytes": 8833,
+      "category": "theme",
+      "path": "theme/theme-bw-large.svg",
+      "sha256": "690d71427e91a6d1aa491f94d650c8cce863a3d2049c62d80507760d78795e8c"
+    },
+    {
+      "bytes": 8739,
+      "category": "theme",
+      "path": "theme/theme-bw.svg",
+      "sha256": "201569fb4f76569b52900fbc5846bed89c8001f0d04a7d523cfdd8873fda3324"
+    },
+    {
+      "bytes": 6476,
+      "category": "theme",
+      "path": "theme/theme-classic-large.svg",
+      "sha256": "39969fb4bca8214be3e3be309a5eee63d5af8c9714248a540175fb6b7608eb62"
+    },
+    {
+      "bytes": 6402,
+      "category": "theme",
+      "path": "theme/theme-classic.svg",
+      "sha256": "f55ddcc1678c0bb15729d8328c2cf215d514cd96e17afe4247f61b92355c607b"
+    },
+    {
+      "bytes": 8725,
+      "category": "theme",
+      "path": "theme/theme-dark-large.svg",
+      "sha256": "f60790eac3afd35c8fecae5f120f38a1f3decefbc657bb48b4c7eeac714018a3"
+    },
+    {
+      "bytes": 8633,
+      "category": "theme",
+      "path": "theme/theme-dark.svg",
+      "sha256": "b24f1859459d1629eb9b115c03cd1085ff28d4cf685c051070bbcc8a4157faff"
+    },
+    {
+      "bytes": 8725,
+      "category": "theme",
+      "path": "theme/theme-gray-large.svg",
+      "sha256": "a9ccce7e44ac79c6e91eb8cf28c883297ec3870f8da2e0d1c76f2385be12cd5f"
+    },
+    {
+      "bytes": 8633,
+      "category": "theme",
+      "path": "theme/theme-gray.svg",
+      "sha256": "7411ed53d2731f089d7f64f0f3c33cbc4443de283835048ed6aa03a0824697b3"
+    },
+    {
+      "bytes": 8833,
+      "category": "theme",
+      "path": "theme/theme-light-large.svg",
+      "sha256": "9eb31182cd5a0505914cdf7c6b859906612abf624c6d60e01cc78a267630694e"
+    },
+    {
+      "bytes": 8739,
+      "category": "theme",
+      "path": "theme/theme-light.svg",
+      "sha256": "784b36356828f49b85d8839206b9f364656879abd3b272a52c80ea8b04293242"
+    },
+    {
+      "bytes": 8179,
+      "category": "theme",
+      "path": "theme/theme-linedraw-large.svg",
+      "sha256": "637a54dcbeba3e13df72d5d7c4508467e78f26fc35f0d07acb73e5d30aba6599"
+    },
+    {
+      "bytes": 8093,
+      "category": "theme",
+      "path": "theme/theme-linedraw.svg",
+      "sha256": "859274252b6893616b1da44f98a47c94a89da75df669fdc1291e819d34489945"
+    },
+    {
+      "bytes": 6962,
+      "category": "theme",
+      "path": "theme/theme-minimal-large.svg",
+      "sha256": "5076451ca46cd4f4bf53f9bb82e1bf771970c3db7fe2d42dc70d39f54d7c602f"
+    },
+    {
+      "bytes": 6883,
+      "category": "theme",
+      "path": "theme/theme-minimal.svg",
+      "sha256": "059c3b6a81acd9c4c135c08c3a2de7fc1e5fad9452cd999cd1783a14bd398a7a"
+    },
+    {
+      "bytes": 2693,
+      "category": "theme",
+      "path": "theme/theme-void-large.svg",
+      "sha256": "baae1c73471082b3f3bc6aa11e0c1ca19048b57a57f33b440fd745039fc2f655"
+    },
+    {
+      "bytes": 2678,
+      "category": "theme",
+      "path": "theme/theme-void.svg",
+      "sha256": "fef2bf70ab9f03f60c8e6e9c02fe7b8f33eabcee261ae4c597ea6ce46e327dbb"
+    },
+    {
+      "bytes": 33101,
+      "category": "theme",
+      "path": "theme/theme-with-inverted-colours.svg",
+      "sha256": "f7553d387ff7e69f5ca333d1d154eb6c05037edcdd76d59de150915969e6186f"
+    },
+    {
+      "bytes": 7697,
+      "category": "theme",
+      "path": "theme/ticks-length.svg",
+      "sha256": "7732e9cd8ace03bec8dab9c13bd4623b80d77b2da1bd0434b4100db7f3338edf"
+    },
+    {
+      "bytes": 18418,
+      "category": "theme",
+      "path": "theme/titles-aligned-to-entire-plot.svg",
+      "sha256": "8bccaffb3aab9ac9ccfecfa84d24dd177177f66a685fdf47af9c53498cbab213"
+    },
+    {
+      "bytes": 9941,
+      "category": "theme",
+      "path": "theme/vertical-legends-placed-apart.svg",
+      "sha256": "d5cbd9704e372427c2cf555feb66e81c14b7dc8db97a8114786bf597d6987405"
+    },
+    {
+      "bytes": 4863,
+      "category": "theme",
+      "path": "theme/width-is-3-times-height.svg",
+      "sha256": "4e4a0d490dc59df3f9ef2ca94b9444690ebadd4acdf29822d24a4b034886aa73"
+    }
+  ]
+}

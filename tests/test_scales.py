@@ -651,6 +651,8 @@ _DISCRETE_SCALES = frozenset(
         "linewidth_manual",
         "discrete_manual",
         "discrete_identity",
+        # SIL-745：`scale_color_discrete` 是 `scale_colour_discrete` 的漏登记别名。
+        "color_discrete",
     }
 )
 
