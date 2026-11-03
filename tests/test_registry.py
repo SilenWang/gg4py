@@ -12,7 +12,16 @@ from ggcore.layer import Geom, Layer
 EXPECTED = {
     "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
     "stat": ("identity", "bin", "count", "boxplot", "smooth", "align"),
-    "position": ("identity", "stack", "fill", "dodge", "dodge2", "jitter", "nudge"),
+    "position": (
+        "identity",
+        "stack",
+        "fill",
+        "dodge",
+        "dodge2",
+        "jitter",
+        "jitterdodge",
+        "nudge",
+    ),
     "scale": (
         "x_continuous",
         "y_continuous",

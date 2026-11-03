@@ -291,7 +291,7 @@ registry.unregister("guide", "star")
 | --- | --- | --- |
 | `ggcore.layer.Geom` | `required_aes`、`default_aes`、`draw()`，可选 `setup_params()` / `setup_data()` / `handle_na()` | `register_geom()` |
 | `ggcore.layer.Stat` | `required_aes`、`non_missing_aes`、`geom`、`compute_panel()` | `register_stat()` |
-| `ggcore.layer.Position` | `compute_layer()` | `register_position()` |
+| `ggcore.layer.Position` | `compute_layer()`；面板级实现可继承 `ggcore.position.PanelPosition` 只写 `setup_params()` / `setup_data()` / `compute_panel()` | `register_position()` |
 | `ggcore.components.Scale` | `aesthetic`、`build_scale()`（返回 `ScaleBase`） | `register_scale()` |
 | `ggcore.components.Coord` | `build_coord()`（返回 `CoordBase`） | `register_coord()` |
 | `ggcore.components.Guide` | `build_guide()`（返回 `ggcore.guide.Guide`） | `register_guide()` |

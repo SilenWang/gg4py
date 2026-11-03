@@ -108,4 +108,4 @@ docs/spike/          # M-1 可行性实验与结论
 - 输入适配口径（三种输入 / dtype / 分类顺序 / 时间 / 缺失）：`docs/notes/data.md`
 - aes 表达式口径（字符串解析 / 白名单 / 长度语义 / 自动分组）：`docs/notes/aes.md`
 - 坐标口径账本（面板范围 / expand / clip / 等比例 / 根 native）：`docs/notes/coord.md`
-- 位置调整口径（identity / stack / fill / dodge / dodge2 / jitter / nudge）：`docs/notes/position.md`
+- 位置调整口径（identity / stack / fill / dodge / dodge2 / jitter / jitterdodge / nudge）：`docs/notes/position.md`

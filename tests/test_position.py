@@ -29,11 +29,13 @@ from ggcore.data import Column, ColumnTable
 from ggcore.position import (
     POSITION_FACTORIES,
     POSITION_NAMES,
+    PanelPosition,
     PositionDodge,
     PositionDodge2,
     PositionFill,
     PositionIdentity,
     PositionJitter,
+    PositionJitterdodge,
     PositionNudge,
     PositionStack,
     flipped_aes,
@@ -120,6 +122,7 @@ def test_position_names_are_registered_in_order() -> None:
         "dodge",
         "dodge2",
         "jitter",
+        "jitterdodge",
         "nudge",
     )
     assert POSITION_NAMES == registry.registered("position")
@@ -668,3 +671,354 @@ def test_compute_position_is_still_the_documented_entry_point() -> None:
     mapped = map_statistic(layer, compute_stat(layer, aesthetics), aesthetics)
     positioned = compute_position(layer, mapped)
     assert values_of(positioned, "y") == pytest.approx([1.0, 2 / 3, 1.0, 4 / 7], abs=TOLERANCE)
+
+
+# ---------------------------------------------------------------------------
+# jitterdodge（SIL-734）
+# ---------------------------------------------------------------------------
+
+
+def points_table(
+    x=(1.0, 1.0, 2.0, 2.0),
+    y=(1.0, 2.0, 3.0, 4.0),
+    group=(1, 2, 1, 2),
+    panel=None,
+) -> ColumnTable:
+    """`geom_point(setup_data)` 之后的点表：只有 x / y / group / PANEL。"""
+    x_values = np.asarray(x, dtype=np.float64)
+    panels = (
+        np.full(x_values.size, "1", dtype=object)
+        if panel is None
+        else np.asarray(panel, dtype=object)
+    )
+    return ColumnTable(
+        [
+            ("x", float_column(x_values)),
+            ("y", float_column(np.asarray(y, dtype=np.float64))),
+            ("PANEL", Column("str", panels)),
+            ("group", Column("int", np.asarray(group, dtype=np.float64))),
+        ]
+    )
+
+
+def test_jitterdodge_zero_jitter_is_a_dodge_with_its_own_width() -> None:
+    """R: jitter.width = 0 时退化成 dodge(dodge.width = 0.75) → x = 0.8125, 1.1875, …"""
+    table = points_table()
+    dodged = position("jitterdodge", jitter_width=0.0, jitter_height=0.0, seed=42).compute_layer(
+        table
+    )
+    assert isinstance(registry.position_jitterdodge(), PositionJitterdodge)
+    assert values_of(dodged, "x") == pytest.approx([0.8125, 1.1875, 1.8125, 2.1875], abs=TOLERANCE)
+    assert values_of(dodged, "xmin") == pytest.approx([0.625, 1.0, 1.625, 2.0], abs=TOLERANCE)
+    assert values_of(dodged, "xmax") == pytest.approx([1.0, 1.375, 2.0, 2.375], abs=TOLERANCE)
+    # 上游 collide() 的副作用：没有 ymax 时补一列（y 不动）。
+    assert values_of(dodged, "ymax") == pytest.approx([1.0, 2.0, 3.0, 4.0], abs=TOLERANCE)
+    # 没有 `order` 列：jitterdodge 不继承 PositionDodge$setup_data()。
+    assert "order" not in dodged
+
+    # 与 position_dodge(width = 0.75) 逐值相同（两者的 pos_dodge 相位一致）。
+    reference = position("dodge", width=0.75).compute_layer(table)
+    assert values_of(dodged, "x") == pytest.approx(values_of(reference, "x"), abs=TOLERANCE)
+    assert values_of(dodged, "xmin") == pytest.approx(values_of(reference, "xmin"), abs=TOLERANCE)
+
+
+def test_jitterdodge_dodge_width_param() -> None:
+    """R: dodge.width = 0.4 → x = 0.9 / 1.1，xmin/xmax 各 0.2 宽。"""
+    table = points_table()
+    dodged = position(
+        "jitterdodge", jitter_width=0.0, jitter_height=0.0, dodge_width=0.4, seed=42
+    ).compute_layer(table)
+    assert values_of(dodged, "x") == pytest.approx([0.9, 1.1, 1.9, 2.1], abs=TOLERANCE)
+    assert values_of(dodged, "xmin") == pytest.approx([0.8, 1.0, 1.8, 2.0], abs=TOLERANCE)
+    assert values_of(dodged, "xmax") == pytest.approx([1.0, 1.2, 2.0, 2.2], abs=TOLERANCE)
+
+
+def test_jitterdodge_reverse_does_not_change_the_positions() -> None:
+    """上游 `pos_dodge()` 只看 group 名次；`reverse` 只改行序，输出逐值相等。"""
+    table = points_table()
+    forward = position("jitterdodge", jitter_width=0.0, jitter_height=0.0, seed=42).compute_layer(
+        table
+    )
+    reverse = position(
+        "jitterdodge", jitter_width=0.0, jitter_height=0.0, seed=42, reverse=True
+    ).compute_layer(table)
+    assert values_of(forward, "x") == pytest.approx(values_of(reverse, "x"), abs=TOLERANCE)
+    assert values_of(forward, "xmin") == pytest.approx(values_of(reverse, "xmin"), abs=TOLERANCE)
+
+
+def test_jitterdodge_default_jitter_width_uses_resolution_and_ndodge() -> None:
+    """R: jitter.width = 40% resolution / (ndodge + 2)；height 缺省 0。"""
+    table = points_table()  # x 分辨率 1、每个 x 上 2 个 group → 0.4 / 4 = 0.1
+    impl = position("jitterdodge", seed=42)
+    resolved = impl.setup_params(table, dict(impl.params))
+    assert resolved["jitter_width"] == pytest.approx(0.1, abs=TOLERANCE)
+    assert resolved["jitter_height"] == 0
+    assert resolved["dodge_width"] == pytest.approx(0.75, abs=TOLERANCE)
+
+    # 3 个 group 的 x → 0.4 / 5 = 0.08。
+    three = points_table(x=(1.0, 1.0, 1.0, 2.0), y=(1.0, 2.0, 3.0, 4.0), group=(1, 2, 3, 1))
+    resolved = impl.setup_params(three, dict(impl.params))
+    assert resolved["jitter_width"] == pytest.approx(0.08, abs=TOLERANCE)
+
+
+def test_jitterdodge_seed_is_reproducible_and_per_panel() -> None:
+    table = points_table(panel=("1", "1", "2", "2"))
+    first = position("jitterdodge", seed=42).compute_layer(table)
+    second = position("jitterdodge", seed=42).compute_layer(table)
+    assert first == second
+    assert not np.allclose(
+        values_of(first, "x"),
+        values_of(position("jitterdodge", seed=43).compute_layer(table), "x"),
+    )
+    # y 只在 jitter.height > 0 时抖；缺省 0 → y 逐值不变。
+    assert values_of(first, "y") == pytest.approx(values_of(table, "y"), abs=TOLERANCE)
+
+
+def test_jitterdodge_accepts_r_dotted_parameter_names() -> None:
+    """R 的 `jitter.width` / `jitter.height` / `dodge.width` 两种写法都认。"""
+    dotted = registry.position_jitterdodge(
+        **{"jitter.width": 0.2, "jitter.height": 0.1, "dodge.width": 0.4}, seed=1
+    )
+    assert isinstance(dotted, PositionJitterdodge)
+    assert dotted.params["jitter_width"] == pytest.approx(0.2)
+    assert dotted.params["jitter_height"] == pytest.approx(0.1)
+    assert dotted.params["dodge_width"] == pytest.approx(0.4)
+    with pytest.raises(TypeError, match=r"jitter\.unknown"):
+        registry.position_jitterdodge(**{"jitter.unknown": 1})
+
+
+def test_jitterdodge_requires_x_and_y() -> None:
+    table = ColumnTable([("x", float_column([1.0, 2.0]))])
+    with pytest.raises(BuildError, match="x 与 y"):
+        position("jitterdodge").compute_layer(table)
+
+
+# ---------------------------------------------------------------------------
+# 面板语义：setup_params / setup_data 整层，compute_panel 逐面板
+# ---------------------------------------------------------------------------
+
+
+def faceted_bar_table() -> ColumnTable:
+    """两个面板的同构柱表（行按 PANEL 连续，与 R 的 dapply 输出同序）。"""
+    return bar_table(
+        x=(1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0),
+        y=(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0),
+        group=(1, 2, 1, 2, 1, 2, 1, 2),
+    )
+
+
+def with_panels(table: ColumnTable, panels) -> ColumnTable:
+    """把表的 PANEL 列换成给定值（其余列不动）。"""
+    columns = [
+        (name, column)
+        if name != "PANEL"
+        else ("PANEL", Column("str", np.asarray(panels, dtype=object)))
+        for name, column in zip(table.names, table.columns(), strict=True)
+    ]
+    return ColumnTable(columns, nrows=table.nrows)
+
+
+def test_panelwise_positions_expose_compute_panel() -> None:
+    """内置 position 的骨架：`compute_layer()` = 拆面板 + `compute_panel()`。"""
+    for name in POSITION_NAMES:
+        impl = position(name)
+        if name in {"identity", "nudge"}:
+            # 上游这两个是图层级实现（没有 compute_panel）。
+            assert not isinstance(impl, PanelPosition), name
+            continue
+        assert isinstance(impl, PanelPosition), name
+        assert callable(impl.compute_panel), name
+
+
+def test_stack_does_not_stack_across_panels() -> None:
+    """R: 面板 2 的 y = (11, 6, 15, 8)，各自从 0 累加。"""
+    table = with_panels(faceted_bar_table(), ["1", "1", "1", "1", "2", "2", "2", "2"])
+    stacked = position("stack").compute_layer(table)
+    assert values_of(stacked, "y") == pytest.approx(
+        [3.0, 2.0, 7.0, 4.0, 11.0, 6.0, 15.0, 8.0], abs=TOLERANCE
+    )
+    assert values_of(stacked, "ymin") == pytest.approx(
+        [2.0, 0.0, 4.0, 0.0, 6.0, 0.0, 8.0, 0.0], abs=TOLERANCE
+    )
+    # 行序不因拆面板改变。
+    assert stacked.column("PANEL").values.tolist() == table.column("PANEL").values.tolist()
+
+
+def test_dodge_places_each_panel_independently() -> None:
+    table = with_panels(faceted_bar_table(), ["1", "1", "1", "1", "2", "2", "2", "2"])
+    dodged = position("dodge").compute_layer(table)
+    expected = [0.775, 1.225, 1.775, 2.225]
+    assert values_of(dodged, "x") == pytest.approx(expected + expected, abs=TOLERANCE)
+    assert values_of(dodged, "order") == pytest.approx([1, 2, 1, 2, 1, 2, 1, 2], abs=TOLERANCE)
+
+
+def test_dodge2_preserve_single_takes_n_across_panels() -> None:
+    """R: 不均匀分面时 n = 全层最大组数 3；逐面板算会得到 n = 2 的另一组坐标。
+
+    A 面板（x=1 只 1 组、x=2 两组）与 B 面板（x=1 三组、x=2 一组）：
+    x = (1.0, 1.85, 2.15, 0.7, 1.0, 1.3, 2.0)。
+    """
+    table = bar_table(
+        x=(1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0),
+        y=(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0),
+        group=(1, 1, 2, 1, 2, 3, 1),
+    )
+    table = with_panels(table, ["1", "1", "1", "2", "2", "2", "2"])
+    dodged = position("dodge2", preserve="single").compute_layer(table)
+    assert values_of(dodged, "x") == pytest.approx(
+        [1.0, 1.85, 2.15, 0.7, 1.0, 1.3, 2.0], abs=TOLERANCE
+    )
+    assert values_of(dodged, "xmin") == pytest.approx(
+        [0.865, 1.715, 2.015, 0.565, 0.865, 1.165, 1.865], abs=TOLERANCE
+    )
+    assert values_of(dodged, "xmax") == pytest.approx(
+        [1.135, 1.985, 2.285, 0.835, 1.135, 1.435, 2.135], abs=TOLERANCE
+    )
+
+
+def test_jitter_repeats_the_same_offsets_in_every_panel() -> None:
+    """R 每个面板用同一个 seed 重抽 → 两面板的偏移相同（值与单一面板也相同）。"""
+    table = points_table(panel=("1", "1", "2", "2"))
+    jittered = position("jitter", seed=42, width=0.1, height=0.1).compute_layer(table)
+    shift_x = np.asarray(values_of(jittered, "x")) - np.asarray(values_of(table, "x"))
+    shift_y = np.asarray(values_of(jittered, "y")) - np.asarray(values_of(table, "y"))
+    assert shift_x[0] == pytest.approx(shift_x[2], abs=TOLERANCE)
+    assert shift_y[0] == pytest.approx(shift_y[2], abs=TOLERANCE)
+
+    single = points_table(x=(1.0,), y=(1.0,), group=(1,), panel=("1",))
+    once = position("jitter", seed=42, width=0.1, height=0.1).compute_layer(single)
+    assert values_of(once, "x")[0] == pytest.approx(1.0 + shift_x[0], abs=TOLERANCE)
+
+
+def test_nudge_is_layer_level_and_consumes_the_whole_vector() -> None:
+    """nudge 在 R 里覆写 `compute_layer()`（不拆面板）；逐行向量按全层行号对齐。"""
+    table = points_table(panel=("1", "1", "2", "2"))
+    nudged = position("nudge", x=[0.1, 0.2, 0.3, 0.4]).compute_layer(table)
+    assert values_of(nudged, "x") == pytest.approx([1.1, 1.2, 2.3, 2.4], abs=TOLERANCE)
+
+
+# ---------------------------------------------------------------------------
+# nudge：长度 1 的向量 / 图层参数（nudge_x / nudge_y）
+# ---------------------------------------------------------------------------
+
+
+def test_nudge_accepts_a_length_one_vector() -> None:
+    """R 的 `position_nudge(x = c(0.2))` 与 `x = 0.2` 等价。"""
+    assert position("nudge", x=[0.2], y=(1.0,)).compute_layer(bar_table()) == position(
+        "nudge", x=0.2, y=1.0
+    ).compute_layer(bar_table())
+
+
+def test_nudge_rejects_a_vector_that_matches_neither_1_nor_nrow() -> None:
+    with pytest.raises(BuildError, match="长度"):
+        position("nudge", x=[0.1, 0.2, 0.3]).compute_layer(bar_table())
+
+
+def test_nudge_layer_parameter_becomes_a_column() -> None:
+    """R：`geom_col(nudge_x = 0.2, position = "nudge")` → x = 1.2 / 2.2。"""
+    data = ColumnTable(
+        [
+            ("x", float_column([1.0, 2.0])),
+            ("y", float_column([1.0, 2.0])),
+        ]
+    )
+    built = build_plot(
+        plot.ggplot(data, plot.aes(x="x", y="y")) + plot.geom_col(nudge_x=0.2, position="nudge")
+    ).layers[0]
+    assert values_of(built.data, "x") == pytest.approx([1.2, 2.2], abs=TOLERANCE)
+    assert values_of(built.data, "xmin") == pytest.approx([0.75, 1.75], abs=TOLERANCE)
+    assert "nudge_x" in built.data
+    assert values_of(built.data, "nudge_x") == pytest.approx([0.2, 0.2], abs=TOLERANCE)
+
+
+def test_pipeline_adds_the_nudge_default_aes_columns() -> None:
+    """R：`geom_point(position = "nudge")` 的 `$data` 带 nudge_x = nudge_y = 0。"""
+    data = ColumnTable(
+        [
+            ("x", float_column([1.0, 2.0])),
+            ("y", float_column([1.0, 2.0])),
+        ]
+    )
+    built = build_plot(
+        plot.ggplot(data, plot.aes(x="x", y="y")) + plot.geom_point(position="nudge")
+    ).layers[0]
+    assert values_of(built.data, "nudge_x") == pytest.approx([0.0, 0.0], abs=TOLERANCE)
+    assert values_of(built.data, "nudge_y") == pytest.approx([0.0, 0.0], abs=TOLERANCE)
+    assert values_of(built.data, "x") == pytest.approx([1.0, 2.0], abs=TOLERANCE)
+
+
+# ---------------------------------------------------------------------------
+# dodge2 × geom_boxplot：varwidth 的 position 规则
+# ---------------------------------------------------------------------------
+
+
+def test_boxplot_varwidth_switches_to_dodge2_preserve_single() -> None:
+    """R `geom_boxplot()`：`varwidth = TRUE` 时 position 换成 dodge2(preserve="single")。"""
+    layer = plot.geom_boxplot(varwidth=True)
+    assert layer.position.name == "dodge2"
+    assert layer.position.params["preserve"] == "single"
+    # 没写 varwidth 时仍是普通的 dodge2（preserve = "total"）。
+    plain = plot.geom_boxplot()
+    assert plain.position.name == "dodge2"
+    assert plain.position.params.get("preserve", "total") == "total"
+
+
+def test_boxplot_varwidth_warns_and_flips_an_explicit_preserve_total() -> None:
+    layer = plot.position_dodge2(preserve="total")
+    with pytest.warns(RuntimeWarning, match="varwidth"):
+        built = plot.geom_boxplot(varwidth=True, position=layer)
+    assert built.position.params["preserve"] == "single"
+    # 显式给 preserve="single" 时不报警。
+    explicit = plot.position_dodge2(preserve="single")
+    assert (
+        plot.geom_boxplot(varwidth=True, position=explicit).position.params["preserve"] == "single"
+    )
+
+
+def test_stack_with_mixed_panels_keeps_one_column_set() -> None:
+    """A 面板 x 唯一、B 面板 x 重复：整层仍有 xmin/xmax，A 面板的值原样保留。"""
+    table = bar_table(
+        x=(1.0, 2.0, 1.0, 1.0),
+        y=(1.0, 2.0, 3.0, 4.0),
+        group=(1, 1, 1, 2),
+    )
+    table = with_panels(table, ["1", "1", "2", "2"])
+    stacked = position("stack").compute_layer(table)
+    # 两个面板都得有 xmin/xmax（上游 collide_setup() 对每个面板各补一次）。
+    assert "xmin" in stacked and "xmax" in stacked
+    assert values_of(stacked, "y") == pytest.approx([1.0, 2.0, 7.0, 4.0], abs=TOLERANCE)
+    assert values_of(stacked, "ymin") == pytest.approx([0.0, 0.0, 4.0, 0.0], abs=TOLERANCE)
+    assert values_of(stacked, "ymax") == pytest.approx([1.0, 2.0, 7.0, 4.0], abs=TOLERANCE)
+
+
+def test_nudge_vector_stays_layer_level_in_the_pipeline() -> None:
+    """nudge 是图层级实现：分面时逐行向量仍按全层行号对齐（R 同）。"""
+    data = ColumnTable(
+        [
+            ("x", float_column([1.0, 2.0, 1.0, 2.0])),
+            ("y", float_column([1.0, 2.0, 3.0, 4.0])),
+            ("f", Column("str", np.array(["a", "a", "b", "b"], dtype=object))),
+        ]
+    )
+    p = (
+        plot.ggplot(data, plot.aes(x="x", y="y"))
+        + plot.geom_point(position=plot.position_nudge(x=[0.1, 0.2, 0.3, 0.4]))
+        + plot.facet_wrap(("f",))
+    )
+    built = build_plot(p).layers[0]
+    assert values_of(built.data, "x") == pytest.approx([1.1, 2.2, 1.3, 2.4], abs=TOLERANCE)
+    assert "nudge_x" in built.data
+
+
+def test_dodge_orientation_y_accepts_a_table_without_x() -> None:
+    """`orientation = "y"` 的必需美学校验看的是**翻转前**的 y 轴（上游同序）。"""
+    table = ColumnTable(
+        [
+            ("y", float_column([1.0, 1.0, 2.0, 2.0])),
+            ("PANEL", Column("str", np.full(4, "1", dtype=object))),
+            ("group", Column("int", np.array([1.0, 2.0, 1.0, 2.0]))),
+        ]
+    )
+    dodged = position("dodge", orientation="y").compute_layer(table)
+    assert dodged.nrows == 4
+    assert "order" in dodged

@@ -516,7 +516,46 @@ def compute_position(
     _check_required_aes(layer, mapped, index)
     table = ColumnTable(_geom_setup(layer, mapped, raw), nrows=mapped.nrows)
     position = _resolve_position(layer.position)
+    table = _position_use_defaults(position, table, layer.params)
     return position.compute_layer(table)
+
+
+def _position_use_defaults(
+    position: Any, table: ColumnTable, params: Mapping[str, Any]
+) -> ColumnTable:
+    """上游 `Position$use_defaults(data, aes_params)`：补位置调整自己的美学列。
+
+    只有 `nudge` 用得上：`geom_text(nudge_x = 0.2)` 这类图层参数在
+    `position$aesthetics()` 里，上游把它落成 `nudge_x` 列再交给
+    `setup_params()`；`PositionNudge$default_aes` 的 `nudge_x = 0` /
+    `nudge_y = 0` 则保证这两列总在。列追加在末尾（与 R 的 `data[names(new)] <-`
+    一致）。
+    """
+    aesthetics = position.aesthetics()
+    if not aesthetics:
+        return table
+    given = {
+        name: value for name, value in params.items() if name in aesthetics and name not in table
+    }
+    defaults = {
+        name: value
+        for name, value in position.default_aes.items()
+        if name not in given and name not in table
+    }
+    if not given and not defaults:
+        return table
+    columns = list(zip(table.names, table.columns(), strict=True))
+    for name, value in {**defaults, **given}.items():
+        values = np.asarray(value, dtype=np.float64).reshape(-1)
+        if values.size == 1:
+            values = np.full(table.nrows, float(values[0]))
+        elif values.size != table.nrows:
+            raise BuildError(
+                f"position_{position.name} 的 {name} 长度必须是 1 或 {table.nrows}，"
+                f"得到 {values.size}"
+            )
+        columns.append((name, Column("float", values)))
+    return ColumnTable(columns, nrows=table.nrows)
 
 
 def _resolve_position(position: Position) -> Any:
@@ -1022,7 +1061,9 @@ def _compute_panel_stages(
             ]
         )
     mapped = map_statistic(layer, statistic, aesthetics)
-    if layer.position.name == "identity":
+    if layer.position.name in ("identity", "nudge"):
+        # 上游这两个是**图层级**实现（不拆面板）；nudge 的逐行向量因此按全层行号
+        # 对齐，`use_defaults()` 也只在整层上跑一次。
         positioned = compute_position(layer, mapped, index, raw)
     else:
         panel_ids = _panel_ids_of(mapped)

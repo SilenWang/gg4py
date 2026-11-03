@@ -2870,6 +2870,26 @@
             false,
             false
           ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
         }
       ],
       "output": [
@@ -2962,6 +2982,26 @@
             false,
             false
           ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
         }
       ],
       "output_names": [
@@ -2977,6 +3017,3794 @@
         "xmax",
         "nudge_x",
         "nudge_y",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_preserve_total_uneven",
+      "title": "dodge2(preserve = 'total')：不均匀分组时 n 取每个重叠组的行数",
+      "code": "ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2())",
+      "position": "dodge2",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": null,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            2,
+            2,
+            3,
+            3
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            1.55,
+            1.55,
+            1.55,
+            2.5499999999999998,
+            2.5499999999999998
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            2.4500000000000002,
+            3.4500000000000002,
+            3.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1.6999999999999997,
+            2,
+            2.2999999999999998,
+            2.7749999999999999,
+            3.2250000000000001
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.59499999999999997,
+            1.5649999999999997,
+            1.865,
+            2.1649999999999996,
+            2.5724999999999998,
+            3.0225
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.405,
+            1.8349999999999997,
+            2.1350000000000002,
+            2.4350000000000001,
+            2.9775,
+            3.4275000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_preserve_single_uneven",
+      "title": "dodge2(preserve = 'single', padding = 0.2)：n 取全层最大组数 3",
+      "code": "ggplot(uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2(preserve = 'single', padding = 0.2))",
+      "position": "dodge2",
+      "position_params": {
+        "preserve": "single",
+        "padding": 0.20000000000000001
+      },
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": 3,
+        "padding": 0.20000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            2,
+            2,
+            3,
+            3
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            1.55,
+            1.55,
+            1.55,
+            2.5499999999999998,
+            2.5499999999999998
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            2.4500000000000002,
+            3.4500000000000002,
+            3.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1.6999999999999997,
+            2,
+            2.2999999999999998,
+            2.8499999999999996,
+            3.1499999999999999
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.88,
+            1.5799999999999996,
+            1.8799999999999999,
+            2.1799999999999997,
+            2.7299999999999995,
+            3.0299999999999998
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.1200000000000001,
+            1.8199999999999998,
+            2.1200000000000001,
+            2.4199999999999999,
+            2.9699999999999998,
+            3.27
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            3,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_boxplot",
+      "title": "geom_boxplot 的默认 position_dodge2：箱宽 0.75，两组并排后叠 padding",
+      "code": "ggplot(box_data, aes(factor(x), y, fill = g)) + geom_boxplot()",
+      "position": "dodge2",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": null,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.625,
+            0.625,
+            1.625,
+            1.625
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.375,
+            1.375,
+            2.375,
+            2.375
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            1,
+            4,
+            2,
+            4
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            3,
+            5,
+            3,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.8125,
+            1.1875,
+            1.8125,
+            2.1875
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.64375000000000004,
+            1.01875,
+            1.64375,
+            2.0187499999999998
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            0.98124999999999996,
+            1.35625,
+            1.98125,
+            2.3562500000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            1,
+            4,
+            2,
+            4
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            3,
+            5,
+            3,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "ymin",
+        "lower",
+        "middle",
+        "upper",
+        "ymax",
+        "outliers",
+        "notchupper",
+        "notchlower",
+        "x",
+        "flipped_aes",
+        "fill",
+        "PANEL",
+        "group",
+        "ymin_final",
+        "ymax_final",
+        "xmin",
+        "xmax",
+        "order",
+        "weight",
+        "colour",
+        "size",
+        "alpha",
+        "shape",
+        "linetype",
+        "linewidth",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_boxplot_varwidth",
+      "title": "geom_boxplot(varwidth = TRUE)：箱宽 ∝ sqrt(n)，position 自动换成 preserve = 'single'",
+      "code": "ggplot(box_data, aes(factor(x), y, fill = g)) + geom_boxplot(varwidth = TRUE)",
+      "position": "dodge2",
+      "position_params": {
+        "preserve": "single"
+      },
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": 2,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.625,
+            0.69381378215210265,
+            1.6938137821521027,
+            1.625
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.375,
+            1.3061862178478973,
+            2.3061862178478973,
+            2.375
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            1,
+            4,
+            2,
+            4
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            3,
+            5,
+            3,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.84690689107605133,
+            1.1875,
+            1.8125,
+            2.1530931089239487
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.67815689107605137,
+            1.0497162019684463,
+            1.6747162019684463,
+            1.9843431089239487
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.0156568910760513,
+            1.3252837980315537,
+            1.9502837980315537,
+            2.3218431089239489
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            1,
+            4,
+            2,
+            4
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            3,
+            5,
+            3,
+            6
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "ymin",
+        "lower",
+        "middle",
+        "upper",
+        "ymax",
+        "outliers",
+        "notchupper",
+        "notchlower",
+        "x",
+        "flipped_aes",
+        "fill",
+        "PANEL",
+        "group",
+        "ymin_final",
+        "ymax_final",
+        "xmin",
+        "xmax",
+        "order",
+        "weight",
+        "colour",
+        "size",
+        "alpha",
+        "shape",
+        "linetype",
+        "linewidth",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_horizontal",
+      "title": "横向 dodge2（flipped_aes = TRUE）：并排作用在 y 族，长度轴 x 不动",
+      "code": "ggplot(horizontal, aes(x = val, y = cat, fill = g)) + geom_col(orientation = 'y', position = position_dodge2())",
+      "position": "dodge2",
+      "position_params": {},
+      "flipped": true,
+      "params": {
+        "width": null,
+        "n": null,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": true
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            0.77500000000000002,
+            1.2250000000000001,
+            1.7749999999999999,
+            2.2250000000000001
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0.57250000000000001,
+            1.0225000000000002,
+            1.5724999999999998,
+            2.0225
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            0.97750000000000004,
+            1.4275,
+            1.9775,
+            2.4275000000000002
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            true,
+            true,
+            true,
+            true
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "jitterdodge_zero_jitter",
+      "title": "jitterdodge(jitter.width = 0)：零抖动退化成 dodge（dodge.width = 0.75）",
+      "code": "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42))",
+      "position": "jitterdodge",
+      "position_params": {
+        "jitter_width": 0,
+        "jitter_height": 0,
+        "seed": 42
+      },
+      "flipped": false,
+      "params": {
+        "dodge.width": 0.75,
+        "jitter.height": 0,
+        "jitter.width": 0,
+        "seed": 42,
+        "flipped_aes": false,
+        "reverse": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.8125,
+            1.1875,
+            1.8125,
+            2.1875
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.625,
+            1,
+            1.625,
+            2
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            1.375,
+            2,
+            2.375
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "group",
+        "PANEL",
+        "xmin",
+        "xmax",
+        "ymax",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "jitterdodge_dodge_width",
+      "title": "jitterdodge(dodge.width = 0.4)：dodge 相位用 0.4，jitter.width = 0",
+      "code": "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, dodge.width = 0.4, seed = 42))",
+      "position": "jitterdodge",
+      "position_params": {
+        "jitter_width": 0,
+        "jitter_height": 0,
+        "dodge_width": 0.40000000000000002,
+        "seed": 42
+      },
+      "flipped": false,
+      "params": {
+        "dodge.width": 0.40000000000000002,
+        "jitter.height": 0,
+        "jitter.width": 0,
+        "seed": 42,
+        "flipped_aes": false,
+        "reverse": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.90000000000000002,
+            1.1000000000000001,
+            1.8999999999999999,
+            2.1000000000000001
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.80000000000000004,
+            1,
+            1.7999999999999998,
+            2
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            1.2000000000000002,
+            2,
+            2.2000000000000002
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "group",
+        "PANEL",
+        "xmin",
+        "xmax",
+        "ymax",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "jitterdodge_zero_jitter_reverse",
+      "title": "jitterdodge(reverse = TRUE)：pos_dodge() 不看 reverse，输出与正向逐值相等",
+      "code": "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0, seed = 42, reverse = TRUE))",
+      "position": "jitterdodge",
+      "position_params": {
+        "jitter_width": 0,
+        "jitter_height": 0,
+        "seed": 42,
+        "reverse": true
+      },
+      "flipped": false,
+      "params": {
+        "dodge.width": 0.75,
+        "jitter.height": 0,
+        "jitter.width": 0,
+        "seed": 42,
+        "flipped_aes": false,
+        "reverse": true
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.8125,
+            1.1875,
+            1.8125,
+            2.1875
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.625,
+            1,
+            1.625,
+            2
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            1.375,
+            2,
+            2.375
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "group",
+        "PANEL",
+        "xmin",
+        "xmax",
+        "ymax",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "jitterdodge_defaults",
+      "title": "jitterdodge()：jitter.width 缺省 = 40% resolution / (ndodge + 2) = 0.1，只抖 x",
+      "code": "ggplot(two_groups, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(seed = 42))",
+      "position": "jitterdodge",
+      "position_params": {
+        "seed": 42
+      },
+      "flipped": false,
+      "params": {
+        "dodge.width": 0.75,
+        "jitter.height": 0,
+        "jitter.width": 0.10000000000000001,
+        "seed": 42,
+        "flipped_aes": false,
+        "reverse": false
+      },
+      "envelope": {
+        "width": 0.10000000000000001,
+        "height": 0
+      },
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.89546120869927104,
+            1.2749150826595723,
+            1.7697279069572687,
+            2.253589525213465
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.70796120869927104,
+            1.0874150826595723,
+            1.5822279069572687,
+            2.066089525213465
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.082961208699271,
+            1.4624150826595723,
+            1.9572279069572687,
+            2.441089525213465
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "group",
+        "PANEL",
+        "xmin",
+        "xmax",
+        "ymax",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "jitterdodge_two_panels",
+      "title": "jitterdodge 分面：每面板各自并排（jitter.width = 0，seed 无关）",
+      "code": "ggplot(faceted, aes(x, y, group = g)) + geom_point(position = position_jitterdodge(jitter.width = 0, jitter.height = 0)) + facet_wrap(~f)",
+      "position": "jitterdodge",
+      "position_params": {
+        "jitter_width": 0,
+        "jitter_height": 0,
+        "seed": 7
+      },
+      "flipped": false,
+      "params": {
+        "dodge.width": 0.75,
+        "jitter.height": 0,
+        "jitter.width": 0,
+        "seed": 7,
+        "flipped_aes": false,
+        "reverse": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.8125,
+            1.1875,
+            1.8125,
+            2.1875,
+            0.8125,
+            1.1875,
+            1.8125,
+            2.1875
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.625,
+            1,
+            1.625,
+            2,
+            0.625,
+            1,
+            1.625,
+            2
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            1.375,
+            2,
+            2.375,
+            1,
+            1.375,
+            2,
+            2.375
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "group",
+        "PANEL",
+        "xmin",
+        "xmax",
+        "ymax",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "nudge_text_default",
+      "title": "geom_text 的默认 position 是 nudge；没有 nudge_x / nudge_y 时两列补 0",
+      "code": "ggplot(text_data, aes(x, y, label = lab)) + geom_text()",
+      "position": "nudge",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "x": [
+          0,
+          0
+        ],
+        "y": [
+          0,
+          0
+        ]
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "label",
+        "PANEL",
+        "group",
+        "nudge_x",
+        "nudge_y",
+        "colour",
+        "family",
+        "size",
+        "angle",
+        "hjust",
+        "vjust",
+        "alpha",
+        "fontface",
+        "lineheight"
+      ]
+    },
+    {
+      "id": "nudge_text_params",
+      "title": "geom_text(nudge_x = 0.2, nudge_y = -0.1)：图层参数经 use_defaults 落成 nudge 列",
+      "code": "ggplot(text_data, aes(x, y, label = lab)) + geom_text(nudge_x = 0.2, nudge_y = -0.1)",
+      "position": "nudge",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "x": [
+          0.20000000000000001,
+          0.20000000000000001
+        ],
+        "y": [
+          -0.10000000000000001,
+          -0.10000000000000001
+        ]
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0.20000000000000001,
+            0.20000000000000001
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            -0.10000000000000001,
+            -0.10000000000000001
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1.2,
+            2.2000000000000002
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            0.90000000000000002,
+            1.8999999999999999
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0.20000000000000001,
+            0.20000000000000001
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            -0.10000000000000001,
+            -0.10000000000000001
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "label",
+        "PANEL",
+        "group",
+        "nudge_x",
+        "nudge_y",
+        "colour",
+        "family",
+        "size",
+        "angle",
+        "hjust",
+        "vjust",
+        "alpha",
+        "fontface",
+        "lineheight"
+      ]
+    },
+    {
+      "id": "nudge_text_vector",
+      "title": "geom_text(aes(nudge_y = c(-0.1, 0.1)))：逐行的 nudge 列",
+      "code": "ggplot(text_data, aes(x, y, label = lab)) + geom_text(aes(nudge_y = c(-0.1, 0.1)))",
+      "position": "nudge",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "x": [
+          0,
+          0
+        ],
+        "y": [
+          -0.10000000000000001,
+          0.10000000000000001
+        ]
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            -0.10000000000000001,
+            0.10000000000000001
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            0.90000000000000002,
+            2.1000000000000001
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            -0.10000000000000001,
+            0.10000000000000001
+          ]
+        }
+      ],
+      "output_names": [
+        "nudge_y",
+        "x",
+        "y",
+        "label",
+        "PANEL",
+        "group",
+        "nudge_x",
+        "colour",
+        "family",
+        "size",
+        "angle",
+        "hjust",
+        "vjust",
+        "alpha",
+        "fontface",
+        "lineheight"
+      ]
+    },
+    {
+      "id": "nudge_vector_param",
+      "title": "position_nudge(x = c(0.1, 0.2))：逐行向量（长度 = 行数）",
+      "code": "ggplot(text_data, aes(x, y, label = lab)) + geom_text(position = position_nudge(x = c(0.1, 0.2)))",
+      "position": "nudge",
+      "position_params": {
+        "x": [
+          0.10000000000000001,
+          0.20000000000000001
+        ]
+      },
+      "flipped": false,
+      "params": {
+        "x": [
+          0.10000000000000001,
+          0.20000000000000001
+        ],
+        "y": [
+          0,
+          0
+        ]
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1.1000000000000001,
+            2.2000000000000002
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1
+          ]
+        },
+        {
+          "name": "nudge_x",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        },
+        {
+          "name": "nudge_y",
+          "kind": "float",
+          "values": [
+            0,
+            0
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "label",
+        "PANEL",
+        "group",
+        "nudge_x",
+        "nudge_y",
+        "colour",
+        "family",
+        "size",
+        "angle",
+        "hjust",
+        "vjust",
+        "alpha",
+        "fontface",
+        "lineheight"
+      ]
+    },
+    {
+      "id": "stack_two_panels",
+      "title": "stack × facet_wrap：每个面板各自从 0 累加（不跨面板叠）",
+      "code": "ggplot(faceted, aes(x, y, fill = g)) + geom_col() + facet_wrap(~f)",
+      "position": "stack",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "var": "ymax",
+        "fill": false,
+        "vjust": 1,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55,
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            3,
+            2,
+            7,
+            4,
+            11,
+            6,
+            15,
+            8
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55,
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            2,
+            0,
+            4,
+            0,
+            6,
+            0,
+            8,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            3,
+            2,
+            7,
+            4,
+            11,
+            6,
+            15,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge_two_panels",
+      "title": "dodge × facet_wrap：每面板各自并排，order 仍按 (x, PANEL) 取名次",
+      "code": "ggplot(faceted, aes(x, y, fill = g)) + geom_col(position = 'dodge') + facet_wrap(~f)",
+      "position": "dodge",
+      "position_params": {},
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": null,
+        "flipped_aes": false,
+        "reverse": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55,
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            0.77500000000000002,
+            1.2250000000000001,
+            1.7749999999999999,
+            2.2250000000000001,
+            0.77500000000000002,
+            1.2250000000000001,
+            1.7749999999999999,
+            2.2250000000000001
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            1,
+            1.5499999999999998,
+            2,
+            0.55000000000000004,
+            1,
+            1.5499999999999998,
+            2
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1,
+            1.4500000000000002,
+            2,
+            2.4500000000000002,
+            1,
+            1.4500000000000002,
+            2,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2,
+            1,
+            2,
+            1,
+            2
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "dodge2_preserve_single_two_panels",
+      "title": "dodge2(preserve = 'single') × facet_wrap：n = 全层最大值 3（不是逐面板 2）",
+      "code": "ggplot(faceted_uneven, aes(x, y, fill = g)) + geom_col(position = position_dodge2(preserve = 'single')) + facet_wrap(~f)",
+      "position": "dodge2",
+      "position_params": {
+        "preserve": "single"
+      },
+      "flipped": false,
+      "params": {
+        "width": null,
+        "n": 3,
+        "padding": 0.10000000000000001,
+        "reverse": false,
+        "flipped_aes": false
+      },
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            2,
+            1,
+            1,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            1.55,
+            1.55,
+            0.55000000000000004,
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002,
+            1.45,
+            1.45,
+            1.45,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            1,
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1.8500000000000001,
+            2.1499999999999999,
+            0.70000000000000007,
+            1,
+            1.2999999999999998,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.86499999999999999,
+            1.7150000000000001,
+            2.0149999999999997,
+            0.56500000000000006,
+            0.86499999999999999,
+            1.1649999999999998,
+            1.865
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.135,
+            1.9850000000000001,
+            2.2850000000000001,
+            0.83500000000000008,
+            1.135,
+            1.4349999999999998,
+            2.1350000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            1,
+            2,
+            3,
+            1
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        {
+          "name": "order",
+          "kind": "int",
+          "values": [
+            1,
+            1,
+            2,
+            1,
+            2,
+            3,
+            1
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
+        "order",
+        "colour",
+        "linewidth",
+        "linetype",
+        "alpha",
+        "width"
+      ]
+    },
+    {
+      "id": "jitter_seed_two_panels",
+      "title": "jitter × facet_wrap：seed 每面板重置，两个面板的偏移相同（值依赖 R 的 RNG）",
+      "code": "ggplot(faceted, aes(x, y)) + geom_point(position = position_jitter(seed = 42)) + facet_wrap(~f)",
+      "position": "jitter",
+      "position_params": {
+        "seed": 42
+      },
+      "flipped": false,
+      "params": {
+        "width": null,
+        "height": null,
+        "seed": 42
+      },
+      "envelope": {
+        "width": 0.40000000000000002,
+        "height": 0.40000000000000002
+      },
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2,
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1.3318448347970844,
+            1.3496603306382895,
+            1.8289116278290749,
+            2.2643581008538605,
+            1.3318448347970844,
+            1.3496603306382895,
+            1.8289116278290749,
+            2.2643581008538605
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1.1133964151144027,
+            2.0152767593041063,
+            3.1892706517130138,
+            3.7077332777902483,
+            5.1133964151144031,
+            6.0152767593041059,
+            7.1892706517130138,
+            7.7077332777902487
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "2",
+            "2",
+            "2",
+            "2"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1,
+            -1
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "PANEL",
+        "group",
+        "shape",
+        "colour",
+        "fill",
+        "size",
+        "alpha",
+        "stroke"
+      ]
+    },
+    {
+      "id": "identity_noop",
+      "title": "identity：位置列原样返回（geom_col 的 position 不改任何列）",
+      "code": "ggplot(two_groups, aes(x, y, fill = g)) + geom_col(position = 'identity')",
+      "position": "identity",
+      "position_params": {},
+      "flipped": false,
+      "params": [],
+      "envelope": null,
+      "input": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output": [
+        {
+          "name": "x",
+          "kind": "float",
+          "values": [
+            1,
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "name": "y",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "xmin",
+          "kind": "float",
+          "values": [
+            0.55000000000000004,
+            0.55000000000000004,
+            1.55,
+            1.55
+          ]
+        },
+        {
+          "name": "xmax",
+          "kind": "float",
+          "values": [
+            1.45,
+            1.45,
+            2.4500000000000002,
+            2.4500000000000002
+          ]
+        },
+        {
+          "name": "ymin",
+          "kind": "float",
+          "values": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "ymax",
+          "kind": "float",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "name": "PANEL",
+          "kind": "str",
+          "values": [
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        },
+        {
+          "name": "group",
+          "kind": "int",
+          "values": [
+            1,
+            2,
+            1,
+            2
+          ]
+        },
+        {
+          "name": "flipped_aes",
+          "kind": "bool",
+          "values": [
+            false,
+            false,
+            false,
+            false
+          ]
+        }
+      ],
+      "output_names": [
+        "x",
+        "y",
+        "fill",
+        "PANEL",
+        "group",
+        "flipped_aes",
+        "ymin",
+        "ymax",
+        "xmin",
+        "xmax",
         "colour",
         "linewidth",
         "linetype",
