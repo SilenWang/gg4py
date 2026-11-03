@@ -1,36 +1,47 @@
-"""图例（guide，M1-11）：`GuideLegend` / `GuideColourbar` / `GuideNone`。
+"""图例（guide，M1-11 / M2-2）：`GuideLegend` / `GuideColourbar` / `GuideCustom`。
 
-对齐 ggplot2 4.0.3 的 guide 体系（`R/guide-legend.R`、`R/guide-colourbar.R`）：
+对齐 ggplot2 4.0.3 的 guide 体系（`R/guide-legend.R`、`R/guides-.R`、
+`R/guide-custom.R`）：
 
 - **一个美学只有一个 guide**：同一美学在 `plot.guides` 里最多一个条目，
   后加的替换先加的（`plot.guides` 是 dict，与 `plot.scales` 同一口径）；
-- **合并规则**：`Guide$merge()` 的判据是 `hashables = (title, key$.label, name)`——
-  title、按键标签、guide 类型都相同时合成一个 guide；`params$key <- cbind(key)`
-  把两个美学的键值并到同一行，图标的绘制按图层顺序叠加；
+  `guides(...)`（`ggcore.plot`）是批量入口，值可以是字符串 / 注册表组件 /
+  `Guide` 实现；
+- **合并规则**：`Guides$merge()` 按 `order` + `hashables = (title, key$.label, name)`
+  分组，组内 `Reduce(Guide$merge)`；`params$key <- cbind(key)` 把两个美学的键值
+  并到同一行，`override.aes` 先到先得，绘制按图层顺序叠加；
 - `show_legend=False`（图层参数）或 `guide="none"` → 不出现；
 - 连续 colour / fill 默认 `GuideColourbar`，其余默认 `GuideLegend`；
-- key 的图形**复用 `Geom.draw()`**：每个几何一个 key grob，不另写形状代码
-  （`docs/notes/guide.md` 的「key 数据模板」）。
+- 方位：`position`（right / left / top / bottom / inside）逐 guide 可覆盖
+  `legend.position`；inside 用 `legend.position.inside` + `legend.justification.inside`；
+- 扩展点：运行期 `Guide.train()` / `transform()` / `geom()` / `gengrob()` /
+  `draw_keys()`；注册入口是 M2-9 的 `registry.register_guide()` +
+  `components.Guide.build_guide()`（见 `docs/notes/extension.md`）。
+
+key 的图形**复用 `Geom.draw()`**：每个几何一个 key grob，不另写形状代码
+（`docs/notes/guide.md` 的「key 数据模板」）。
 
 几何尺寸照 R 的 `guide_gengrob.legend` / `measure_grobs`：
 
 ```
 竖向（legend.position = right / left）
-  [legend.margin] [key 宽] [legend.key.spacing.x] [标签宽] [legend.margin]
-  行：标题（文字行高 + legend.key.spacing） / 每个 key 一行（key 高；竖向没有行间距）
-
+  [legend.margin] [标题行（top）] [key 宽] [间距+标签宽] [legend.margin]
+  行：每个 key 一行（key 高；竖向没有行间距）
 横向（top / bottom）
-  每个 key 一格：[key 宽] [spacing.x] [标签宽]，格与格之间 spacing.x
+  [legend.margin] [标题列（left）] [key 宽] [间距+标签宽] (间距 [key][标签])… [legend.margin]
   行：标题 / key 行
 ```
 
-未实现（明确报错、点名）：`guide_bins`、`legend.position="inside"`（secondary axis 由
-M2-1 的 `ggcore.axis.secondary_ticks()` 实现，不在本模块）
-（轴在 `ggcore.axis` 报）、`legend.frame` 以外的高级图例盒子主题。
+`LegendLayout.col_widths_cm` / `row_heights_cm` 是逐列 / 逐行的分解（与 R 的
+`guide$widths` / `heights` 对拍），`LegendBoxLayout` 把同一方位的图例排成
+`gtable_col` / `gtable_row`。
+
+未实现（明确报错、点名）：`guide_bins` / `guide_coloursteps`（M2-2 A 组）。
 """
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
@@ -64,17 +75,26 @@ __all__ = [
     "Guide",
     "GuideBuild",
     "GuideColourbar",
+    "GuideCustom",
     "GuideError",
     "GuideKey",
     "GuideLegend",
     "GuideNone",
+    "LegendBoxLayout",
     "LegendKeyCell",
     "LegendLayout",
     "build_guides",
+    "custom_grob",
     "guide_colourbar",
+    "guide_custom",
     "guide_from_component",
+    "guide_gengrob",
+    "guide_geom",
     "guide_legend",
     "guide_none",
+    "guide_train",
+    "guide_transform",
+    "legend_box_layout",
     "legend_grob",
     "legend_layout",
 ]
@@ -104,9 +124,52 @@ class GuideError(ValueError):
 
 
 class Guide:
-    """所有 guide 的基类（`kind` 是 `"legend"` / `"colourbar"` / `"none"`）。"""
+    """所有 guide 的基类（`kind` 是 `"legend"` / `"colourbar"` / `"custom"` / `"none"`）。
+
+    扩展点（M2-2，接口与 M2-9 的注册表扩展 API 对齐）：
+
+    - :meth:`train` —— `guide$train()` 的对等物：从一个标度训练出
+      :class:`GuideBuild`（键 + 标题 + 参与绘制的图层）；返回 ``None`` 表示
+      这个 guide 不出图例；
+    - :meth:`transform` —— `guide$transform()` 的键变换钩子（默认恒等）；
+    - :meth:`geom` —— `guide$geom()` 的键几何钩子（默认用图层自己的
+      ``Geom.draw()``，返回 ``None``）；
+    - :meth:`gengrob` —— `guide$draw()` / `guide_gengrob()` 的对等物：把
+      :class:`LegendLayout` 画成 grob 列表，返回空列表表示不画；
+    - ``draw_keys(guide_build, theme, layout, *, metrics, name)`` —— M2-9 的
+      key 区钩子：实现它时 `legend_grob()` 只画标题 / 背景，key 由它负责。
+
+    自定义 guide 的注册方式是 `registry.register_guide(name, ComponentSubclass)`
+    + 组件子类的 `build_guide()`（返回本类的实例）；运行期再覆盖需要的钩子。
+    """
 
     kind: str = "legend"
+    #: 该 guide 能作用的美学；`"any"` = 任意非位置美学（R 的 `available_aes`）。
+    available_aes: tuple[str, ...] = ("any",)
+
+    def position_of(self) -> str | None:
+        return getattr(self, "position", None)
+
+    def train(self, build: PlotBuild, aesthetic: str, scale: Any) -> GuideBuild | None:
+        return _train_scale_guide(self, build, aesthetic, scale)
+
+    def transform(self, keys: tuple[GuideKey, ...]) -> tuple[GuideKey, ...]:
+        return keys
+
+    def geom(self, layer: LayerBuild) -> Any | None:
+        return None
+
+    def gengrob(
+        self,
+        guide_build: GuideBuild,
+        build: PlotBuild,
+        theme: ResolvedTheme,
+        layout: LegendLayout,
+        *,
+        metrics: Any = None,
+        name: str = "guide",
+    ) -> list[Any]:
+        return legend_grob(guide_build, build, theme, layout, metrics=metrics, name=name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,14 +178,25 @@ class GuideLegend(Guide):
 
     title: Any = AUTO
     direction: str | None = None
+    position: str | None = None
     nrow: int | None = None
     ncol: int | None = None
-    byrow: bool = False
+    byrow: bool | None = None
     override_aes: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     keywidth: Any = None
     keyheight: Any = None
     reverse: bool = False
     order: float = 0.0
+    #: `legend.title.position` 的逐 guide 覆盖（top / bottom / left / right）。
+    title_position: str | None = None
+    title_hjust: float | None = None
+    title_vjust: float | None = None
+    #: 标题下方的一行说明文字（gg4py 扩展；R 4.0.3 的 guide_legend 只有 title）。
+    subtitle: str | None = None
+    #: `legend.text.position` 的逐 guide 覆盖（top / bottom / left / right）。
+    label_position: str | None = None
+    label_hjust: float | None = None
+    label_vjust: float | None = None
     kind: str = "legend"
 
     def __post_init__(self) -> None:
@@ -135,6 +209,19 @@ class GuideLegend(Guide):
             value = getattr(self, name)
             if value is not None and (not isinstance(value, int) or value < 1):
                 raise GuideError(f"guide_legend({name}=) 必须是正整数，收到 {value!r}")
+        if self.nrow is not None and self.ncol is not None and self.nrow * self.ncol < 1:
+            raise GuideError("guide_legend(nrow=, ncol=) 至少要有 1 个格位")
+        for name in ("position", "title_position", "label_position"):
+            value = getattr(self, name)
+            if value not in (None, "top", "bottom", "left", "right", "inside"):
+                raise GuideError(
+                    f"guide_legend({name}=) 只能是 top / bottom / left / right / inside，"
+                    f"收到 {value!r}"
+                )
+        for name in ("title_hjust", "title_vjust", "label_hjust", "label_vjust"):
+            value = getattr(self, name)
+            if value is not None and not (0.0 <= float(value) <= 1.0):
+                raise GuideError(f"guide_legend({name}=) 必须在 0..1，收到 {value!r}")
         object.__setattr__(self, "override_aes", MappingProxyType(dict(self.override_aes)))
 
 
@@ -144,6 +231,7 @@ class GuideColourbar(Guide):
 
     title: Any = AUTO
     direction: str | None = None
+    position: str | None = None
     barwidth: Any = None
     barheight: Any = None
     nbin: int = 256
@@ -158,8 +246,62 @@ class GuideColourbar(Guide):
                 f"guide_colourbar(direction=) 只能是 'vertical' / 'horizontal'，"
                 f"收到 {self.direction!r}"
             )
+        if self.position not in (None, "top", "bottom", "left", "right", "inside"):
+            raise GuideError(
+                f"guide_colourbar(position=) 只能是 top / bottom / left / right / inside，"
+                f"收到 {self.position!r}"
+            )
         if not isinstance(self.nbin, int) or self.nbin < 2:
             raise GuideError(f"guide_colourbar(nbin=) 必须 ≥ 2，收到 {self.nbin!r}")
+
+
+@dataclass(frozen=True, slots=True)
+class GuideCustom(Guide):
+    """`guide_custom()`：把任意 grob 放进图例盒，不绑定任何标度。
+
+    `grob` 可以是 :mod:`ggcore.grobs` 的 grob，也可以是
+    ``callable(width_cm, height_cm) -> grob | Sequence[grob]``（需要按格子尺寸
+    现算时用后者）。尺寸缺省为 `legend.key.width/height`（1.2 lines），显式给
+    `width` / `height` 时按 unit 换算。
+    """
+
+    grob: Any = None
+    width: Any = None
+    height: Any = None
+    title: str | None = None
+    position: str | None = None
+    order: float = 0.0
+    kind: str = "custom"
+    available_aes: tuple[str, ...] = ("any",)
+
+    def __post_init__(self) -> None:
+        if self.grob is None or not (
+            callable(self.grob) or hasattr(self.grob, "name") or hasattr(self.grob, "gps")
+        ):
+            raise GuideError(
+                "guide_custom(grob=) 需要 grob 对象或 (width_cm, height_cm) 可调用对象"
+            )
+        if self.position not in (None, "top", "bottom", "left", "right", "inside"):
+            raise GuideError(
+                f"guide_custom(position=) 只能是 top / bottom / left / right / inside，"
+                f"收到 {self.position!r}"
+            )
+
+    def train(self, build: PlotBuild, aesthetic: str, scale: Any) -> GuideBuild | None:
+        # 自定义 guide 不绑定标度：由 `build_guides()` 单独收集。
+        return None
+
+    def gengrob(
+        self,
+        guide_build: GuideBuild,
+        build: PlotBuild,
+        theme: ResolvedTheme,
+        layout: LegendLayout,
+        *,
+        metrics: Any = None,
+        name: str = "guide",
+    ) -> list[Any]:
+        return custom_grob(guide_build, theme, layout, metrics=metrics, name=name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,30 +310,49 @@ class GuideNone(Guide):
 
     kind: str = "none"
 
+    def train(self, build: PlotBuild, aesthetic: str, scale: Any) -> GuideBuild | None:
+        return None
+
 
 def guide_legend(
     title: Any = AUTO,
     direction: str | None = None,
     nrow: int | None = None,
     ncol: int | None = None,
-    byrow: bool = False,
+    byrow: bool | None = None,
     override_aes: Mapping[str, Any] | None = None,
     keywidth: Any = None,
     keyheight: Any = None,
     reverse: bool = False,
     order: float = 0.0,
+    position: str | None = None,
+    title_position: str | None = None,
+    title_hjust: float | None = None,
+    title_vjust: float | None = None,
+    subtitle: str | None = None,
+    label_position: str | None = None,
+    label_hjust: float | None = None,
+    label_vjust: float | None = None,
 ) -> GuideLegend:
     return GuideLegend(
         title=title,
         direction=direction,
+        position=position,
         nrow=nrow,
         ncol=ncol,
-        byrow=bool(byrow),
+        byrow=None if byrow is None else bool(byrow),
         override_aes=dict(override_aes or {}),
         keywidth=keywidth,
         keyheight=keyheight,
         reverse=bool(reverse),
         order=float(order),
+        title_position=title_position,
+        title_hjust=title_hjust,
+        title_vjust=title_vjust,
+        subtitle=subtitle,
+        label_position=label_position,
+        label_hjust=label_hjust,
+        label_vjust=label_vjust,
     )
 
 
@@ -204,15 +365,35 @@ def guide_colourbar(
     ticks: bool = True,
     reverse: bool = False,
     order: float = 0.0,
+    position: str | None = None,
 ) -> GuideColourbar:
     return GuideColourbar(
         title=title,
         direction=direction,
+        position=position,
         barwidth=barwidth,
         barheight=barheight,
         nbin=int(nbin),
         ticks=bool(ticks),
         reverse=bool(reverse),
+        order=float(order),
+    )
+
+
+def guide_custom(
+    grob: Any,
+    width: Any = None,
+    height: Any = None,
+    title: str | None = None,
+    position: str | None = None,
+    order: float = 0.0,
+) -> GuideCustom:
+    return GuideCustom(
+        grob=grob,
+        width=width,
+        height=height,
+        title=title,
+        position=position,
         order=float(order),
     )
 
@@ -225,39 +406,77 @@ _LEGEND_PARAMS = frozenset(
     {
         "title",
         "direction",
+        "position",
         "nrow",
         "ncol",
         "byrow",
         "override_aes",
-        "override.aes",
         "keywidth",
         "keyheight",
         "reverse",
         "order",
+        "title_position",
+        "title_hjust",
+        "title_vjust",
+        "subtitle",
+        "label_position",
+        "label_hjust",
+        "label_vjust",
     }
 )
 _COLOURBAR_PARAMS = frozenset(
-    {"title", "direction", "barwidth", "barheight", "nbin", "ticks", "reverse", "order"}
+    {
+        "title",
+        "direction",
+        "position",
+        "barwidth",
+        "barheight",
+        "nbin",
+        "ticks",
+        "reverse",
+        "order",
+    }
 )
+_CUSTOM_PARAMS = frozenset({"grob", "width", "height", "title", "position", "order"})
+
+#: R 4.0.3 的旧参数名（带点）→ gg4py 的字段名。新旧写法等价。
+_PARAM_ALIASES = {
+    "override.aes": "override_aes",
+    "title.position": "title_position",
+    "title.hjust": "title_hjust",
+    "title.vjust": "title_vjust",
+    "label.position": "label_position",
+    "label.hjust": "label_hjust",
+    "label.vjust": "label_vjust",
+}
 
 
 def _clean(params: Mapping[str, Any], allowed: frozenset[str]) -> dict[str, Any]:
-    out = {name: value for name, value in params.items() if name in allowed}
-    if "override.aes" in out and "override_aes" not in out:
-        out["override_aes"] = out.pop("override.aes")
-    return out
+    out: dict[str, Any] = {}
+    for name, value in params.items():
+        out[_PARAM_ALIASES.get(name, name)] = value
+    return {name: value for name, value in out.items() if name in allowed}
 
 
 def guide_from_component(component: Any) -> Guide:
-    """`components.Guide`（注册名 + 参数）→ :mod:`ggcore.guide` 的实现。"""
+    """`components.Guide`（注册名 + 参数）→ :mod:`ggcore.guide` 的实现。
+
+    内置名字走自己的分支；其余名字认 M2-9 的扩展点：组件子类覆写
+    ``build_guide()`` 并返回 :class:`Guide` 实现（`registry.register_guide()`）。
+    """
     name = getattr(component, "name", None)
     params = dict(getattr(component, "params", {}) or {})
     if name == "none":
         return GuideNone()
     if name == "legend":
         return guide_legend(**{k: v for k, v in _clean(params, _LEGEND_PARAMS).items()})
-    if name == "colourbar":
+    if name in ("colourbar", "colorbar"):
         return guide_colourbar(**{k: v for k, v in _clean(params, _COLOURBAR_PARAMS).items()})
+    if name == "custom":
+        cleaned = _clean(params, _CUSTOM_PARAMS)
+        if "grob" not in cleaned:
+            raise GuideError("guide_custom() 需要 grob 参数（见 docs/notes/guide.md）")
+        return guide_custom(**cleaned)
     from ggcore.components import Guide as GuideComponent
 
     builder = getattr(component, "build_guide", None)
@@ -272,8 +491,9 @@ def guide_from_component(component: Any) -> Guide:
             )
         return built
     raise GuideError(
-        f"未知的 guide {name!r}；已实现：legend / colourbar / none"
-        "（guide_bins 未实现，见 docs/notes/guide.md）"
+        f"未知的 guide {name!r}；已实现：legend / colourbar / none / custom"
+        "，其余用 registry.register_guide() + build_guide() 扩展"
+        "（guide_bins / guide_coloursteps 见 M2-2 A 组，本组不实现）"
     )
 
 
@@ -309,10 +529,16 @@ class GuideBuild:
     #: 标度自己的连续调色板（`positions in 0..1 → colour`）。色条按**全量程**
     #: 取色时用它，与数据映射同一个插值（连续 colour 是 Lab）。
     palette: Callable[[Sequence[float]], Sequence[str]] | None = None
+    #: `plot.guides` 里登记的名字（自定义 guide 用；普通 guide 为空）。
+    name: str = ""
 
     @property
     def kind(self) -> str:
         return self.guide.kind
+
+    @property
+    def position(self) -> str | None:
+        return self.guide.position_of()
 
 
 def _layer_mapping(build: PlotBuild, index: int) -> Mapping[str, Any]:
@@ -332,14 +558,38 @@ def _default_title(build: PlotBuild, aesthetic: str) -> str | None:
     return aesthetic
 
 
+def _resolve_guide_value(value: Any) -> Guide | None:
+    """`plot.guides` / `scale_*(guide=)` 里的一个值 → 实现（`None` = 未设置）。"""
+    if value is None:
+        return None
+    if isinstance(value, Guide):
+        return value
+    if isinstance(value, str):
+        return _guide_from_value(value)
+    if getattr(value, "name", None) is not None:
+        return guide_from_component(value)
+    if hasattr(value, "params") and getattr(value, "aesthetic", None) is not None:
+        return guide_from_component(value)
+    raise GuideError(
+        f"无法把 {value!r} 当作 guide；用字符串（'none' / 'legend' / 'colourbar'）、"
+        "guide_legend() / guide_colourbar() / guide_custom() 或注册表组件"
+    )
+
+
 def _guide_component(build: PlotBuild, aesthetic: str) -> Guide | None:
+    """`plot.guides` 里作用于该美学的条目（后加的已在 `+` 时替换先加的）。"""
     guides = getattr(build, "guides", None) or {}
     for key, component in guides.items():
-        if getattr(component, "aesthetic", None) == aesthetic:
-            return guide_from_component(component)
-        if key == aesthetic and getattr(component, "aesthetic", None) in (None, aesthetic):
-            return guide_from_component(component)
+        component_aesthetic = getattr(component, "aesthetic", None)
+        if component_aesthetic == aesthetic:
+            return _resolve_guide_value(component)
+        if component_aesthetic is None and _rename_key(key) == aesthetic:
+            return _resolve_guide_value(component)
     return None
+
+
+def _rename_key(name: Any) -> Any:
+    return "colour" if name == "color" else name
 
 
 def _guide_from_value(value: Any) -> Guide | None:
@@ -347,7 +597,9 @@ def _guide_from_value(value: Any) -> Guide | None:
 
     R 的 `scale_*_*(guide = )` 接受三种写法，这里一一对等：
 
-    - 字符串：`"none"` → :class:`GuideNone`；`"legend"` / `"colourbar"` 走注册表；
+    - 字符串：`"none"` → :class:`GuideNone`；`"legend"` / `"colourbar"` 走内置；
+      通过 `registry.register_guide()` 登记的名字也认（组件子类覆写
+      ``build_guide()``）；
     - `components.Guide`（`registry.guide_legend(...)`）→ :func:`guide_from_component`；
     - `Guide` 实现本身（`ggcore.guide.guide_legend(...)`）原样返回。
     """
@@ -360,17 +612,22 @@ def _guide_from_value(value: Any) -> Guide | None:
             return guide_none()
         if value == "legend":
             return guide_legend()
-        if value == "colourbar":
+        if value in ("colourbar", "colorbar"):
             return guide_colourbar()
+        from ggcore import registry as _registry
+
+        if value in _registry.registered("guide"):
+            return guide_from_component(_registry.construct("guide", value))
         raise GuideError(
-            f"未知的 guide {value!r}；已实现：legend / colourbar / none"
-            "（guide_bins 未实现，见 docs/notes/guide.md）"
+            f"未知的 guide {value!r}；已实现：legend / colourbar / none / custom"
+            "，其余用 registry.register_guide() + build_guide() 扩展"
+            "（guide_bins / guide_coloursteps 见 M2-2 A 组，本组不实现）"
         )
     if getattr(value, "name", None) is not None:
         return guide_from_component(value)
     raise GuideError(
         f"无法把 {value!r} 当作 guide；用字符串（'none' / 'legend' / 'colourbar'）"
-        "或 guide_legend() / guide_colourbar() / guide_none()"
+        "或 guide_legend() / guide_colourbar() / guide_custom() / guide_none()"
     )
 
 
@@ -443,8 +700,91 @@ def _list_of(mapped: Any) -> list[Any]:
     return [None if missing else float(item) for item, missing in pairs]
 
 
+def _train_scale_guide(
+    guide: Guide, build: PlotBuild, aesthetic: str, scale: Any
+) -> GuideBuild | None:
+    """`Guide$train()` 的对等物：一个标度 → 一张（未合并的）guide。
+
+    子类可以覆盖 :meth:`Guide.train` 来换掉整套键提取逻辑；默认路径就是
+    ggplot2 的 `extract_key()`：`breaks` 映射后配上 `get_labels()`。
+    """
+    keys = _key_values(scale)
+    if not keys:
+        return None
+    title_value = getattr(guide, "title", AUTO)
+    if title_value is AUTO:
+        title = _default_title(build, aesthetic)
+        explicit = _scale_name(scale)
+        if explicit is not None:
+            title = str(explicit)
+    else:
+        title = None if title_value is None else str(title_value)
+    if bool(getattr(guide, "reverse", False)):
+        keys = tuple(reversed(keys))
+    layers = tuple(
+        index for index in range(len(build.layers)) if _is_mapped(build, index, aesthetic)
+    )
+    limits = None
+    if not bool(getattr(scale, "discrete", False)):
+        limits = tuple(float(item) for item in scale.limits())
+    palette = getattr(scale, "palette", None)
+    built = GuideBuild(
+        guide=guide,
+        aesthetics=(aesthetic,),
+        title=title,
+        keys=tuple(GuideKey(label, {aesthetic: item}, value) for label, value, item in keys),
+        layers=layers,
+        limits=limits,
+        palette=palette if callable(palette) else None,
+    )
+    return replace(built, keys=guide.transform(built.keys))
+
+
+def _custom_builds(build: PlotBuild) -> list[GuideBuild]:
+    """`plot.guides` 里的 `guide_custom()` / 无标度 guide → 自己的 GuideBuild。"""
+    out: list[GuideBuild] = []
+    seen: dict[Any, int] = {}
+    for key, raw in (getattr(build, "guides", None) or {}).items():
+        component = _resolve_guide_value(raw)
+        if not isinstance(component, GuideCustom):
+            continue
+        title = None if component.title is None else str(component.title)
+        hashable = (
+            title,
+            id(component.grob),
+            _cm_unit(component.width, height=False) if component.width is not None else None,
+            _cm_unit(component.height, height=True) if component.height is not None else None,
+            component.order,
+            component.position,
+        )
+        if hashable in seen:
+            # R 的 `Guides$get_custom()` 会按 hash 合并相同配置的 custom guide。
+            continue
+        seen[hashable] = len(out)
+        out.append(
+            GuideBuild(
+                guide=component,
+                aesthetics=(),
+                title=title,
+                keys=(),
+                layers=(),
+                name=str(key),
+            )
+        )
+    return out
+
+
 def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
-    """`PlotBuild` → 要画的 guide 列表（已按合并规则折叠、按 order 排序）。"""
+    """`PlotBuild` → 要画的 guide 列表（已按上游的 hash / order 折叠排序）。
+
+    步骤照 ggplot2 4.0.3 的 `Guides$build()`：
+
+    1. 每个「被映射的美学 × 标度」训练一个 guide（`Guides$setup()` / `train()`）；
+    2. 按 `order` + `hash`（`hashables = (title, key$.label, name)`）分组，组内
+       `Reduce(merge)`（`Guides$merge()`）；
+    3. 自定义 guide（`guide_custom()`）不绑标度，单独收集、按同样的 hash 去重，
+       再与普通 guide 一起按 order 排序（`get_custom()`）。
+    """
     scales = build.scales
     candidates: list[GuideBuild] = []
     for aesthetic in GUIDE_AESTHETICS:
@@ -470,51 +810,93 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
                 f"guide_colourbar 只能用于连续标度；{aesthetic!r} 是离散标度"
                 "（用 guide_legend() 或默认 guide）"
             )
-        keys = _key_values(scale)
-        if not keys:
-            continue
-        title_value = guide.title
-        if title_value is AUTO:
-            title = _default_title(build, aesthetic)
-        else:
-            title = None if title_value is None else str(title_value)
-        if title_value is AUTO:
-            explicit = _scale_name(scale)
-            if explicit is not None:
-                title = str(explicit)
-        reverse = bool(getattr(guide, "reverse", False))
-        if reverse:
-            keys = tuple(reversed(keys))
-        limits = None
-        if not bool(getattr(scale, "discrete", False)):
-            limits = tuple(float(item) for item in scale.limits())
-        palette = getattr(scale, "palette", None)
-        candidates.append(
-            GuideBuild(
-                guide=guide,
-                aesthetics=(aesthetic,),
-                title=title,
-                keys=tuple(
-                    GuideKey(label, {aesthetic: item}, value) for label, value, item in keys
-                ),
-                layers=layers,
-                limits=limits,
-                palette=palette if callable(palette) else None,
+        if not _guide_supports(guide, aesthetic):
+            raise GuideError(
+                f"{type(guide).__name__} 不能用于 {aesthetic!r} 美学；"
+                f"它支持 {', '.join(guide.available_aes)}"
             )
-        )
+        trained = guide.train(build, aesthetic, scale)
+        if trained is None:
+            continue
+        candidates.append(trained)
 
+    merged = _merge_guides(candidates)
+    custom = _custom_builds(build)
+    return tuple(sorted((*merged, *custom), key=_sort_key))
+
+
+def guide_transform(guide: Guide, keys: tuple[GuideKey, ...]) -> tuple[GuideKey, ...]:
+    """`guide_transform()`（旧 API 名）：键变换钩子，转发到 :meth:`Guide.transform`。"""
+    return guide.transform(keys)
+
+
+def guide_geom(guide: Guide, layer: LayerBuild) -> Any | None:
+    """`guide_geom()`（旧 API 名）：键几何钩子，转发到 :meth:`Guide.geom`。"""
+    return guide.geom(layer)
+
+
+def guide_train(guide: Guide, build: PlotBuild, aesthetic: str, scale: Any) -> GuideBuild | None:
+    """`guide_train()`（旧 API 名）：转发到 :meth:`Guide.train`。"""
+    return guide.train(build, aesthetic, scale)
+
+
+def guide_gengrob(
+    guide_build: GuideBuild,
+    build: PlotBuild,
+    theme: ResolvedTheme,
+    layout: LegendLayout,
+    *,
+    metrics: Any = None,
+    name: str = "guide",
+) -> list[Any]:
+    """`guide_gengrob()`（旧 API 名）：转发到 :meth:`Guide.gengrob`。"""
+    return guide_build.guide.gengrob(guide_build, build, theme, layout, metrics=metrics, name=name)
+
+
+def _guide_supports(guide: Guide, aesthetic: str) -> bool:
+    available = getattr(guide, "available_aes", ("any",))
+    return "any" in available or aesthetic in available
+
+
+def _sort_key(guide_build: GuideBuild) -> tuple[float, int, str]:
+    order = float(getattr(guide_build.guide, "order", 0.0))
+    # R：`orders[orders == 0] <- 99`，即没写 order 的排在显式 order 之后。
+    normalised = 99.0 if order == 0.0 else order
+    return (normalised, _order_of(guide_build), guide_build.name or "")
+
+
+def _merge_hash(guide_build: GuideBuild) -> tuple[Any, ...]:
+    """R 的 `hashables = exprs(title, key$.label, name)`（再加上 `order`）。"""
+    order = float(getattr(guide_build.guide, "order", 0.0))
+    order = 99.0 if order == 0.0 else order
+    return (
+        order,
+        guide_build.kind,
+        guide_build.title,
+        tuple(key.label for key in guide_build.keys),
+    )
+
+
+def _merge_guides(candidates: list[GuideBuild]) -> list[GuideBuild]:
+    """按 hash 分组、组内依次合并（`Reduce(Guide$merge)`）。"""
+    groups: dict[tuple[Any, ...], int] = {}
     merged: list[GuideBuild] = []
     for candidate in candidates:
-        for position, existing in enumerate(merged):
-            if not _can_merge(existing, candidate):
-                continue
-            merged[position] = _merge(existing, candidate)
-            break
-        else:
+        if candidate.kind == "custom":
             merged.append(candidate)
-    return tuple(
-        sorted(merged, key=lambda item: (float(getattr(item.guide, "order", 0.0)), _order_of(item)))
-    )
+            continue
+        key = _merge_hash(candidate)
+        position = groups.get(key)
+        if position is None:
+            groups[key] = len(merged)
+            merged.append(candidate)
+            continue
+        existing = merged[position]
+        if set(existing.aesthetics) & set(candidate.aesthetics):
+            # 同一美学只会有一张 guide（`plot.guides` 已按美学去重）。
+            continue
+        merged[position] = _merge(existing, candidate)
+    return merged
 
 
 def _scale_name(scale: Any) -> Any:
@@ -534,32 +916,43 @@ def _order_of(guide: GuideBuild) -> int:
     return GUIDE_AESTHETICS.index(guide.aesthetics[0])
 
 
-def _can_merge(left: GuideBuild, right: GuideBuild) -> bool:
-    if left.kind != right.kind or left.kind == "none":
-        return False
-    if left.title != right.title:
-        return False
-    if tuple(key.label for key in left.keys) != tuple(key.label for key in right.keys):
-        return False
-    return not (set(left.aesthetics) & set(right.aesthetics))
-
-
 def _merge(left: GuideBuild, right: GuideBuild) -> GuideBuild:
+    """`GuideLegend$merge()`：键按列拼、`override.aes` 先到先得。"""
     keys = tuple(
         GuideKey(first.label, {**first.values, **second.values}, first.value)
         for first, second in zip(left.keys, right.keys, strict=True)
     )
     layers = tuple(dict.fromkeys((*left.layers, *right.layers)))
-    overrides = {**dict(_override(left.guide)), **dict(_override(right.guide))}
+    overrides = _merge_overrides(_override(left.guide), _override(right.guide))
     return GuideBuild(
         guide=replace(left.guide, override_aes=overrides),
         aesthetics=tuple(dict.fromkeys((*left.aesthetics, *right.aesthetics))),
         title=left.title,
         keys=keys,
         layers=layers,
-        limits=left.limits,
+        limits=left.limits if left.limits is not None else right.limits,
         palette=left.palette if left.palette is not None else right.palette,
+        name=left.name,
     )
+
+
+def _merge_overrides(*items: Mapping[str, Any]) -> dict[str, Any]:
+    """R：`c(params$override.aes, new_params$override.aes)`，重名保留第一个并告警。"""
+    out: dict[str, Any] = {}
+    duplicates: list[str] = []
+    for item in items:
+        for name, value in item.items():
+            if name in out:
+                duplicates.append(name)
+                continue
+            out[name] = value
+    if duplicates:
+        warnings.warn(
+            "override.aes 里重复的键被忽略：" + ", ".join(dict.fromkeys(duplicates)),
+            UserWarning,
+            stacklevel=3,
+        )
+    return out
 
 
 def _override(guide: Guide) -> Mapping[str, Any]:
@@ -715,7 +1108,8 @@ def _key_grob(
 ) -> Any | None:
     layer = build.layers[layer_index]
     geom = _geom_of(layer)
-    resolved = {**dict(override or {}), **dict(values)}
+    # R：键值先写，`override.aes` 最后 `modify_list()` —— 覆盖值赢。
+    resolved = {**dict(values), **dict(override or {})}
     table = key_table(
         layer,
         resolved,
@@ -776,6 +1170,14 @@ class _Box:
     width_cm: float
     height_cm: float
 
+    @property
+    def top(self) -> float:
+        return self.y_cm + self.height_cm
+
+    @property
+    def right(self) -> float:
+        return self.x_cm + self.width_cm
+
 
 def _cm_unit(value: Any, *, height: bool) -> float:
     if value is None:
@@ -817,12 +1219,48 @@ def legend_direction(guide: Guide, position: str | None) -> str:
     return "horizontal" if position in ("top", "bottom") else "vertical"
 
 
+def legend_text_position(guide: Guide, theme: ResolvedTheme) -> str:
+    """标签相对 key 的位置：逐 guide 覆盖 > `legend.text.position` > "right"。"""
+    explicit = getattr(guide, "label_position", None)
+    if explicit is None:
+        explicit = theme.get("legend.text.position")
+    if explicit is None:
+        return "right"
+    if explicit not in ("top", "bottom", "left", "right"):
+        raise GuideError(
+            f"legend.text.position 只能是 top / bottom / left / right，收到 {explicit!r}"
+        )
+    return str(explicit)
+
+
+def legend_title_position(guide: Guide, theme: ResolvedTheme, direction: str) -> str:
+    """标题位置：逐 guide 覆盖 > `legend.title.position` > 竖排 top / 横排 left。"""
+    explicit = getattr(guide, "title_position", None)
+    if explicit is None:
+        explicit = theme.get("legend.title.position")
+    if explicit is None:
+        return "top" if direction == "vertical" else "left"
+    if explicit not in ("top", "bottom", "left", "right"):
+        raise GuideError(
+            f"legend.title.position 只能是 top / bottom / left / right，收到 {explicit!r}"
+        )
+    return str(explicit)
+
+
 def _grid_shape(guide: Guide, n: int, direction: str) -> tuple[int, int, bool]:
+    """键的 nrow × ncol 网格（R `GuideLegend$setup_params()` 的默认值）。
+
+    R 4.0.3 在未给 nrow / ncol 时：横排最多 5 列（`nrow = ceil(n / 5)`），竖排
+    最多 20 行（`ncol = ceil(n / 20)`）；`byrow` 取 `legend.byrow`（默认 FALSE）。
+    """
     nrow = getattr(guide, "nrow", None)
     ncol = getattr(guide, "ncol", None)
     byrow = bool(getattr(guide, "byrow", False))
     if nrow is None and ncol is None:
-        return (n, 1, False) if direction == "vertical" else (1, n, True)
+        if direction == "horizontal":
+            nrow = max(1, int(np.ceil(n / 5)))
+        else:
+            ncol = max(1, int(np.ceil(n / 20)))
     if nrow is None:
         assert ncol is not None
         nrow = max(1, int(np.ceil(n / ncol)))
@@ -838,15 +1276,29 @@ def _grid_shape(guide: Guide, n: int, direction: str) -> tuple[int, int, bool]:
 
 @dataclass(frozen=True, slots=True)
 class LegendLayout:
-    """一张图例的布局：外框尺寸 + 每个 key / 标签 / 标题的位置（局部 cm，y 向上）。"""
+    """一张图例的布局：外框尺寸 + 每个 key / 标签 / 标题的位置（局部 cm，y 向上）。
+
+    `col_widths_cm` / `row_heights_cm` 是**照 R 的 gtable 分解**给出的列宽 / 行高
+    （含 padding 与标题占位；标签侧的 `legend.key.spacing` 折进标签列/行，
+    与 R 的 `measure_grobs()` 一致）。两者之和就是 `width_cm` / `height_cm`。
+    """
 
     width_cm: float
     height_cm: float
     direction: str
     title_box: _Box | None = None
+    subtitle_box: _Box | None = None
     keys: tuple[LegendKeyCell, ...] = ()
     bar: _Box | None = None
     ticks: tuple[tuple[float, str], ...] = ()
+    col_widths_cm: tuple[float, ...] = ()
+    row_heights_cm: tuple[float, ...] = ()
+    label_position: str = "right"
+    title_position: str | None = None
+    title_hjust: float = 0.0
+    title_vjust: float = 0.5
+    #: `guide_custom()` 的内容矩形（其它 guide 为 None）。
+    content_box: _Box | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -854,6 +1306,155 @@ class LegendKeyCell:
     key: GuideKey
     box: _Box
     label_box: _Box
+
+
+@dataclass(frozen=True, slots=True)
+class LegendBoxLayout:
+    """图例盒（`guide-box`）的布局：一个方位上的所有图例怎么排成行列。
+
+    对齐 R 4.0.3 的 `Guides$package_box()`：
+
+    - `legend.box`（默认：竖排 / 横排随方位）决定 `gtable_col` 还是 `gtable_row`；
+    - `legend.box.just`（竖排默认 `left`，横排默认 `center`）决定每个图例在
+      盒内的横向对齐；`legend.spacing.x/y` 是图例之间的间隔；
+    - `legend.box.margin` 是盒的内边距。
+
+    `boxes` 是每张图例在盒内的局部矩形（cm，y 向上），顺序同传进来的 layouts。
+    """
+
+    position: str
+    direction: str
+    width_cm: float
+    height_cm: float
+    col_widths_cm: tuple[float, ...]
+    row_heights_cm: tuple[float, ...]
+    boxes: tuple[_Box, ...]
+
+
+def _justification(theme: ResolvedTheme, position: str) -> tuple[float, float]:
+    """`legend.justification.<position>`（缺省继承 `legend.justification`）。"""
+    value = theme.get(f"legend.justification.{position}")
+    if value is None:
+        value = theme.get("legend.justification")
+    return _valid_just(value, default=(0.5, 0.5))
+
+
+def _valid_just(value: Any, *, default: tuple[float, float]) -> tuple[float, float]:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        mapping = {
+            "left": (0.0, 0.5),
+            "right": (1.0, 0.5),
+            "top": (0.5, 1.0),
+            "bottom": (0.5, 0.0),
+            "center": (0.5, 0.5),
+            "centre": (0.5, 0.5),
+            "topleft": (0.0, 1.0),
+            "topright": (1.0, 1.0),
+            "bottomleft": (0.0, 0.0),
+            "bottomright": (1.0, 0.0),
+        }
+        return mapping.get(value.lower(), default)
+    try:
+        items = list(value)
+    except TypeError:
+        return default
+    if len(items) == 1:
+        return (float(items[0]), float(items[0]))
+    if len(items) >= 2:
+        return (float(items[0]), float(items[1]))
+    return default
+
+
+def _box_just(theme: ResolvedTheme, direction: str) -> tuple[float, float]:
+    """`legend.box.just`：竖排默认 `(left, top)`，横排默认 `(center, top)`。"""
+    value = theme.get("legend.box.just")
+    if value is not None:
+        return _valid_just(value, default=(0.0, 1.0))
+    if direction == "horizontal":
+        return (0.5, 1.0)
+    return (0.0, 1.0)
+
+
+def legend_box_direction(theme: ResolvedTheme, position: str) -> str:
+    explicit = theme.get("legend.box")
+    if explicit in ("vertical", "horizontal"):
+        return str(explicit)
+    return "horizontal" if position in ("top", "bottom") else "vertical"
+
+
+def legend_box_layout(
+    layouts: Sequence[LegendLayout],
+    position: str,
+    theme: ResolvedTheme,
+) -> LegendBoxLayout:
+    """把同一方位的图例排成一个 `guide-box`（R `Guides$package_box()`）。"""
+    direction = legend_box_direction(theme, position)
+    mt, mr, mb, ml = margin_sides_cm(theme.get("legend.box.margin"))
+    gap = _cm_unit(theme.get("legend.spacing"), height=True) or _cm_unit(
+        theme.get("legend.spacing.y"), height=True
+    )
+    gap_x = _cm_unit(theme.get("legend.spacing.x"), height=False) or gap
+    gap_y = _cm_unit(theme.get("legend.spacing.y"), height=True) or gap
+    box_xjust, box_yjust = _box_just(theme, direction)
+    sizes = list(layouts)
+    if direction == "horizontal":
+        total_h = max((item.height_cm for item in sizes), default=0.0)
+        height = total_h + mt + mb
+        col_widths = [ml]
+        for index, item in enumerate(sizes):
+            if index:
+                col_widths.append(gap_x)
+            col_widths.append(item.width_cm)
+        col_widths.append(mr)
+        row_heights = [mt, total_h, mb]
+        boxes: list[_Box] = []
+        x = ml
+        for index, item in enumerate(sizes):
+            if index:
+                x += gap_x
+            boxes.append(
+                _Box(
+                    x,
+                    mt + (total_h - item.height_cm) * box_yjust,
+                    item.width_cm,
+                    item.height_cm,
+                )
+            )
+            x += item.width_cm
+    else:
+        total_w = max((item.width_cm for item in sizes), default=0.0)
+        height = sum(item.height_cm for item in sizes) + gap_y * max(0, len(sizes) - 1) + mt + mb
+        row_heights = [mt]
+        for index, item in enumerate(sizes):
+            if index:
+                row_heights.append(gap_y)
+            row_heights.append(item.height_cm)
+        row_heights.append(mb)
+        col_widths = [ml, total_w, mr]
+        boxes = []
+        top = height - mt
+        for item in sizes:
+            y = top - item.height_cm
+            boxes.append(
+                _Box(
+                    ml + (total_w - item.width_cm) * box_xjust,
+                    y,
+                    item.width_cm,
+                    item.height_cm,
+                )
+            )
+            top = y - gap_y
+    return LegendBoxLayout(
+        position=position,
+        direction=direction,
+        width_cm=float(sum(col_widths)),
+        height_cm=float(sum(row_heights)),
+        col_widths_cm=tuple(col_widths),
+        row_heights_cm=tuple(row_heights),
+        boxes=tuple(boxes),
+    )
 
 
 def legend_layout(
@@ -872,24 +1473,35 @@ def legend_layout(
     text_el = _text_element(theme, "legend.text")
     title_size = float(title_el.size or 0.0)
     text_size = float(text_el.size or 0.0)
-    gap = _cm_unit(theme.get("legend.key.spacing"), height=True) or _cm_unit(
-        theme.get("legend.key.spacing.y"), height=True
-    )
-    spacing_x = _cm_unit(theme.get("legend.key.spacing.x"), height=False)
+    gap = _cm_unit(theme.get("legend.key.spacing"), height=True)
+    if gap == 0.0:
+        gap = _cm_unit(theme.get("legend.key.spacing.y"), height=True)
+    spacing_x = _cm_unit(theme.get("legend.key.spacing.x"), height=False) or gap
     spacing_y = (
         0.0
         if direction == "vertical"
         else (_cm_unit(theme.get("legend.key.spacing.y"), height=True))
     )
-    title_line = text_line_cm(title_size) if guide_build.title else 0.0
-    title_h = title_line + gap if guide_build.title else 0.0
-    title_w = (
-        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
-        if guide_build.title
-        else 0.0
-    )
+
+    if isinstance(guide, GuideCustom):
+        return _custom_layout(
+            guide_build,
+            theme,
+            direction=direction,
+            padding=padding,
+            gap=gap,
+            title_el=title_el,
+            metrics=metrics,
+        )
 
     if isinstance(guide, GuideColourbar):
+        title_line = text_line_cm(title_size) if guide_build.title else 0.0
+        title_h = title_line + gap if guide_build.title else 0.0
+        title_w = (
+            text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
+            if guide_build.title
+            else 0.0
+        )
         return _colourbar_layout(
             guide_build,
             theme,
@@ -903,14 +1515,62 @@ def legend_layout(
             metrics=metrics,
         )
 
+    text_position = legend_text_position(guide, theme)
+    title_position = legend_title_position(guide, theme, direction)
     key_w, key_h = _key_size(theme, guide)
     n = len(guide_build.keys)
     nrow, ncol, byrow = _grid_shape(guide, n, direction)
-    label_w: list[float] = [
+
+    # --- 标签 / 标题的文字盒（R：legend.text / legend.title 的 margin + gap）---
+    mt, mr, mb, ml = margin_sides_cm(text_el.margin)
+    label_text_w = [
         text_width_cm(key.label, text_size, metrics, text_el.family or "")
         for key in guide_build.keys
     ]
-    # 每个 key 的格位：byrow 按行铺，否则按列铺（R arrange_layout 同）。
+    label_text_h = text_line_cm(text_size)
+    if text_position == "right":
+        label_w = [ml + value + mr + gap for value in label_text_w]
+        label_h = mt + label_text_h + mb
+        label_pad_x = gap
+    elif text_position == "left":
+        label_w = [ml + value + mr + gap for value in label_text_w]
+        label_h = mt + label_text_h + mb
+        label_pad_x = 0.0
+    else:
+        label_w = [ml + value + mr for value in label_text_w]
+        label_h = mt + label_text_h + mb + gap
+        label_pad_x = 0.0
+
+    tmt, tmr, tmb, tml = margin_sides_cm(title_el.margin)
+    title_text_w = (
+        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
+        if guide_build.title
+        else 0.0
+    )
+    title_text_h = text_line_cm(title_size) if guide_build.title else 0.0
+    if title_position == "top":
+        title_w = tml + title_text_w + tmr
+        title_h = tmt + title_text_h + tmb + gap
+    elif title_position == "bottom":
+        title_w = tml + title_text_w + tmr
+        title_h = tmt + gap + title_text_h + tmb
+    elif title_position == "left":
+        title_w = tml + title_text_w + tmr + gap
+        title_h = tmt + title_text_h + tmb
+    else:
+        title_w = tml + gap + title_text_w + tmr
+        title_h = tmt + title_text_h + tmb
+    if not guide_build.title:
+        title_w = 0.0
+        title_h = 0.0
+
+    subtitle_text = getattr(guide, "subtitle", None)
+    subtitle_h = 0.0
+    if guide_build.title and subtitle_text:
+        smt, _smr, smb, _sml = margin_sides_cm(text_el.margin)
+        subtitle_h = smt + text_line_cm(text_size) + smb
+
+    # --- 键网格：列宽 / 行高（R `measure_grobs()` 的 interleave 口径）---
     cells: list[tuple[int, int, int]] = []
     for index in range(n):
         if byrow:
@@ -920,41 +1580,283 @@ def legend_layout(
             row = index % nrow
             col = index // nrow
         cells.append((row, col, index))
-    col_widths = [0.0] * ncol
-    for _row, col, index in cells:
-        col_widths[col] = max(col_widths[col], key_w + spacing_x + label_w[index])
-    row_heights = [key_h] * nrow
-    content_w = sum(col_widths) + spacing_x * (ncol - 1)
-    content_h = sum(row_heights) + spacing_y * (nrow - 1)
-    width = max(content_w, title_w) + pad_l + pad_r
-    height = title_h + content_h + pad_t + pad_b
+
+    col_label = [0.0] * ncol
+    row_label = [0.0] * nrow
+    for row, col, index in cells:
+        col_label[col] = max(col_label[col], label_w[index])
+        if text_position in ("top", "bottom"):
+            row_label[row] = max(row_label[row], label_h)
+
+    grid_cols: list[float] = []
+    key_col_index: list[int] = []
+    label_col_index: list[int] = []
+    if text_position == "right":
+        for col in range(ncol):
+            if col > 0:
+                grid_cols.append(spacing_x)  # 组间 gap（标签自身的 gap 折在标签列里）
+            key_col_index.append(len(grid_cols))
+            grid_cols.append(key_w)
+            label_col_index.append(len(grid_cols))
+            grid_cols.append(col_label[col])
+    elif text_position == "left":
+        for col in range(ncol):
+            if col > 0:
+                grid_cols.append(spacing_x)
+            label_col_index.append(len(grid_cols))
+            grid_cols.append(col_label[col])
+            key_col_index.append(len(grid_cols))
+            grid_cols.append(key_w)
+    else:
+        for col in range(ncol):
+            if col > 0:
+                grid_cols.append(spacing_x)
+            key_col_index.append(len(grid_cols))
+            grid_cols.append(max(key_w, col_label[col]))
+
+    grid_rows: list[float] = []
+    key_row_index: list[int] = []
+    label_row_index: list[int] = []
+    if text_position in ("top", "bottom"):
+        for row in range(nrow):
+            if row > 0:
+                grid_rows.append(spacing_y)
+            if text_position == "top":
+                label_row_index.append(len(grid_rows))
+                grid_rows.append(row_label[row])
+                key_row_index.append(len(grid_rows))
+                grid_rows.append(key_h)
+            else:
+                key_row_index.append(len(grid_rows))
+                grid_rows.append(key_h)
+                label_row_index.append(len(grid_rows))
+                grid_rows.append(row_label[row])
+    else:
+        for row in range(nrow):
+            if row > 0:
+                grid_rows.append(spacing_y)
+            key_row_index.append(len(grid_rows))
+            grid_rows.append(max(key_h, row_label[row]))
+
+    # --- 标题占位 + 额外宽度 / 高度（R `add_title()`）---
+    left_cols: list[float] = []
+    right_cols: list[float] = []
+    top_rows: list[float] = []
+    bottom_rows: list[float] = []
+    if guide_build.title:
+        if title_position == "top":
+            top_rows.append(title_h)
+            if subtitle_h > 0:
+                top_rows.append(subtitle_h)
+        elif title_position == "bottom":
+            if subtitle_h > 0:
+                bottom_rows.append(subtitle_h)
+            bottom_rows.append(title_h)
+        elif title_position == "left":
+            left_cols.append(title_w)
+        else:
+            right_cols.append(title_w)
+    if guide_build.title and title_position in ("top", "bottom"):
+        content_w = sum(left_cols) + sum(grid_cols) + sum(right_cols)
+        if title_w > content_w + 1e-12:
+            extra = title_w - content_w
+            hjust = _title_hjust(guide, title_el)
+            left_cols.insert(0, (1.0 - hjust) * extra)
+            right_cols.append(hjust * extra)
+    if guide_build.title and title_position in ("left", "right"):
+        content_h = sum(top_rows) + sum(grid_rows) + sum(bottom_rows)
+        if title_h > content_h + 1e-12:
+            extra = title_h - content_h
+            vjust = _title_vjust(guide, title_el)
+            top_rows.insert(0, (1.0 - vjust) * extra)
+            bottom_rows.append(vjust * extra)
+
+    col_widths = [pad_l, *left_cols, *grid_cols, *right_cols, pad_r]
+    row_heights = [pad_t, *top_rows, *grid_rows, *bottom_rows, pad_b]
+    width = float(sum(col_widths))
+    height = float(sum(row_heights))
+
+    col_x = [0.0]
+    for value in col_widths[:-1]:
+        col_x.append(col_x[-1] + value)
+    row_y_top = [height]
+    for value in row_heights[:-1]:
+        row_y_top.append(row_y_top[-1] - value)
+
+    grid_col_offset = 1 + len(left_cols)
+    grid_row_offset = 1 + len(top_rows)
+
+    def col_left(index: int) -> float:
+        return col_x[grid_col_offset + index]
+
+    def row_top(index: int) -> float:
+        return row_y_top[grid_row_offset + index]
+
+    key_cells: list[LegendKeyCell] = []
+    for row, col, index in cells:
+        cell_top = row_top(key_row_index[row])
+        key_box = _Box(col_left(key_col_index[col]), cell_top - key_h, key_w, key_h)
+        if text_position == "right":
+            label_box = _Box(
+                col_left(label_col_index[col]) + label_pad_x,
+                cell_top - key_h,
+                label_text_w[index],
+                key_h,
+            )
+        elif text_position == "left":
+            label_box = _Box(
+                col_left(label_col_index[col]) + label_pad_x,
+                cell_top - key_h,
+                label_text_w[index],
+                key_h,
+            )
+        elif text_position == "top":
+            label_box = _Box(
+                key_box.x_cm + (key_w - label_text_w[index]) / 2.0,
+                row_top(label_row_index[row]) - label_h,
+                label_text_w[index],
+                label_h,
+            )
+        else:
+            label_box = _Box(
+                key_box.x_cm + (key_w - label_text_w[index]) / 2.0,
+                row_top(label_row_index[row]) - label_h,
+                label_text_w[index],
+                label_h,
+            )
+        key_cells.append(LegendKeyCell(guide_build.keys[index], key_box, label_box))
 
     title_box = None
     if guide_build.title:
-        title_box = _Box(pad_l, height - pad_t - title_line, title_w, title_line)
-    key_cells: list[LegendKeyCell] = []
-    top = height - pad_t - title_h
-    x_starts = [pad_l]
-    for col in range(1, ncol):
-        x_starts.append(x_starts[-1] + col_widths[col - 1] + spacing_x)
-    y_starts = [top]
-    for row in range(1, nrow):
-        y_starts.append(y_starts[-1] - row_heights[row - 1] - spacing_y)
-    for row, col, index in cells:
-        key_box = _Box(x_starts[col], y_starts[row] - key_h, key_w, key_h)
-        label_box = _Box(
-            x_starts[col] + key_w + spacing_x,
-            y_starts[row] - key_h,
-            label_w[index],
-            key_h,
-        )
-        key_cells.append(LegendKeyCell(guide_build.keys[index], key_box, label_box))
+        if title_position == "top":
+            title_box = _Box(pad_l, height - pad_t - title_h, width - pad_l - pad_r, title_h)
+        elif title_position == "bottom":
+            title_box = _Box(pad_l, pad_b, width - pad_l - pad_r, title_h)
+        elif title_position == "left":
+            title_box = _Box(pad_l, pad_b, title_w, height - pad_t - pad_b)
+        else:
+            title_box = _Box(width - pad_r - title_w, pad_b, title_w, height - pad_t - pad_b)
+    subtitle_box = None
+    if subtitle_h > 0:
+        if title_position == "top":
+            subtitle_box = _Box(
+                pad_l,
+                height - pad_t - title_h - subtitle_h,
+                width - pad_l - pad_r,
+                subtitle_h,
+            )
+        elif title_position == "bottom":
+            subtitle_box = _Box(pad_l, pad_b + title_h, width - pad_l - pad_r, subtitle_h)
     return LegendLayout(
         width_cm=width,
         height_cm=height,
         direction=direction,
         title_box=title_box,
+        subtitle_box=subtitle_box,
         keys=tuple(key_cells),
+        col_widths_cm=tuple(col_widths),
+        row_heights_cm=tuple(row_heights),
+        label_position=text_position,
+        title_position=title_position if guide_build.title else None,
+        title_hjust=_title_hjust(guide, title_el),
+        title_vjust=_title_vjust(guide, title_el),
+    )
+
+
+def _title_hjust(guide: Guide, element: ElementText) -> float:
+    explicit = getattr(guide, "title_hjust", None)
+    if explicit is not None:
+        return float(explicit)
+    return float(element.hjust if element.hjust is not None else 0.0)
+
+
+def _title_vjust(guide: Guide, element: ElementText) -> float:
+    explicit = getattr(guide, "title_vjust", None)
+    if explicit is not None:
+        return float(explicit)
+    return float(element.vjust if element.vjust is not None else 0.5)
+
+
+def _custom_layout(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    *,
+    direction: str,
+    padding: tuple[float, float, float, float],
+    gap: float,
+    title_el: ElementText,
+    metrics: Any,
+) -> LegendLayout:
+    """`guide_custom()` 的盒子：内容尺寸 + 标题（位置同 legend）。"""
+    guide = guide_build.guide
+    assert isinstance(guide, GuideCustom)
+    pad_t, pad_r, pad_b, pad_l = padding
+    content_w = _cm_unit(guide.width, height=False) if guide.width is not None else 0.0
+    content_h = _cm_unit(guide.height, height=True) if guide.height is not None else 0.0
+    if content_w <= 0 or content_h <= 0:
+        key_w, key_h = _key_size(theme, guide)
+        content_w = content_w or key_w
+        content_h = content_h or key_h
+    title_size = float(title_el.size or 0.0)
+    title_text_w = (
+        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
+        if guide_build.title
+        else 0.0
+    )
+    title_position = legend_title_position(guide, theme, direction)
+    title_h = 0.0
+    title_w = 0.0
+    if guide_build.title:
+        if title_position in ("top", "bottom"):
+            title_h = text_line_cm(title_size) + gap
+            title_w = title_text_w
+        else:
+            title_w = title_text_w + gap
+            title_h = text_line_cm(title_size)
+    width = max(content_w, title_w) + pad_l + pad_r
+    height = content_h + title_h + pad_t + pad_b
+    title_box = None
+    if guide_build.title:
+        if title_position == "top":
+            title_box = _Box(pad_l, height - pad_t - title_h, width - pad_l - pad_r, title_h)
+        elif title_position == "bottom":
+            title_box = _Box(pad_l, pad_b, width - pad_l - pad_r, title_h)
+        elif title_position == "left":
+            title_box = _Box(pad_l, pad_b, title_w, height - pad_t - pad_b)
+        else:
+            title_box = _Box(width - pad_r - title_w, pad_b, title_w, height - pad_t - pad_b)
+    content_y = pad_b + (title_h if title_position == "bottom" else 0.0)
+    if title_position == "top":
+        content_y = pad_b
+    col_widths = [pad_l, content_w, pad_r]
+    if guide_build.title and title_position == "top":
+        row_heights = [pad_t, title_h, content_h, pad_b]
+    elif guide_build.title and title_position == "bottom":
+        row_heights = [pad_t, content_h, title_h, pad_b]
+    elif guide_build.title and title_position == "left":
+        row_heights = [pad_t, content_h, pad_b]
+        col_widths = [pad_l, title_w, content_w, pad_r]
+    elif guide_build.title:
+        row_heights = [pad_t, content_h, pad_b]
+        col_widths = [pad_l, content_w, title_w, pad_r]
+    else:
+        row_heights = [pad_t, content_h, pad_b]
+    return LegendLayout(
+        width_cm=width,
+        height_cm=height,
+        direction=direction,
+        title_box=title_box,
+        col_widths_cm=tuple(col_widths),
+        row_heights_cm=tuple(row_heights),
+        title_position=title_position if guide_build.title else None,
+        title_hjust=_title_hjust(guide, title_el),
+        title_vjust=_title_vjust(guide, title_el),
+        content_box=_Box(
+            pad_l + (title_w if title_position == "left" else 0.0),
+            content_y,
+            content_w,
+            content_h,
+        ),
     )
 
 
@@ -1076,6 +1978,101 @@ def _text_gp(element: ElementText) -> dict[str, Any]:
     }
 
 
+def _draw_title(
+    guide_build: GuideBuild,
+    layout: LegendLayout,
+    theme: ResolvedTheme,
+    *,
+    name: str,
+) -> list[Any]:
+    grobs: list[Any] = []
+    title_el = _text_element(theme, "legend.title")
+    if not guide_build.title or layout.title_box is None:
+        return grobs
+    box = layout.title_box
+    position = layout.title_position or "top"
+    hjust = layout.title_hjust
+    vjust = layout.title_vjust
+    if position == "top":
+        x, y, h, v = box.x_cm + hjust * box.width_cm, box.y_cm + box.height_cm / 2.0, hjust, 0.5
+    elif position == "bottom":
+        x, y, h, v = box.x_cm + hjust * box.width_cm, box.y_cm + box.height_cm / 2.0, hjust, 0.5
+    elif position == "left":
+        x, y, h, v = box.x_cm + box.width_cm, box.y_cm + (1.0 - vjust) * box.height_cm, 1.0, vjust
+    else:
+        x, y, h, v = box.x_cm, box.y_cm + (1.0 - vjust) * box.height_cm, 0.0, vjust
+    grobs.append(
+        text_grob(
+            guide_build.title,
+            x,
+            y,
+            hjust=h,
+            vjust=v,
+            default_units="cm",
+            gp=gpar(**_text_gp(title_el)),
+            name=f"{name}.title",
+        )
+    )
+    return grobs
+
+
+def _draw_subtitle(
+    guide_build: GuideBuild,
+    layout: LegendLayout,
+    theme: ResolvedTheme,
+    *,
+    name: str,
+) -> list[Any]:
+    subtitle = getattr(guide_build.guide, "subtitle", None)
+    if not subtitle or layout.subtitle_box is None:
+        return []
+    box = layout.subtitle_box
+    text_el = _text_element(theme, "legend.text")
+    return [
+        text_grob(
+            str(subtitle),
+            box.x_cm,
+            box.y_cm + box.height_cm / 2.0,
+            hjust=0.0,
+            vjust=0.5,
+            default_units="cm",
+            gp=gpar(**_text_gp(text_el)),
+            name=f"{name}.subtitle",
+        )
+    ]
+
+
+def _override_for_key(guide: Guide, index: int, count: int) -> dict[str, Any]:
+    """`override.aes` 的逐键展开：标量原样复用，序列按键序取（R 的循环规则）。"""
+    override = dict(_override(guide))
+    if not override:
+        return {}
+    out: dict[str, Any] = {}
+    for name, value in override.items():
+        if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+            out[name] = value
+            continue
+        values = list(value)
+        if not values:
+            continue
+        out[name] = values[index % len(values)]
+    del count
+    return out
+
+
+def _label_anchor(layout: LegendLayout, cell: LegendKeyCell) -> tuple[float, float, float, float]:
+    """标签文字锚点 `(x, y, hjust, vjust)`（从标签盒按 label.position 推）。"""
+    box = cell.label_box
+    position = layout.label_position
+    if position == "left":
+        return (box.x_cm + box.width_cm, box.y_cm + box.height_cm / 2.0, 1.0, 0.5)
+    if position == "top":
+        return (box.x_cm, box.y_cm, 0.0, 0.0)
+    if position == "bottom":
+        return (box.x_cm, box.y_cm + box.height_cm, 0.0, 1.0)
+    return (box.x_cm, box.y_cm + box.height_cm / 2.0, 0.0, 0.5)
+
+
 def legend_grob(
     guide_build: GuideBuild,
     build: PlotBuild,
@@ -1086,6 +2083,8 @@ def legend_grob(
     name: str = "guide",
 ) -> list[Any]:
     """一张图例的 grob 列表（局部 cm 坐标；调用方给外框视口）。"""
+    if isinstance(guide_build.guide, GuideCustom):
+        return custom_grob(guide_build, theme, layout, metrics=metrics, name=name)
     width = layout.width_cm
     height = layout.height_cm
     grobs: list[Any] = []
@@ -1105,21 +2104,10 @@ def legend_grob(
                     name=f"{name}.background",
                 )
             )
-    title_el = _text_element(theme, "legend.title")
-    if guide_build.title and layout.title_box is not None:
-        box = layout.title_box
-        grobs.append(
-            text_grob(
-                guide_build.title,
-                box.x_cm,
-                box.y_cm + box.height_cm / 2.0,
-                hjust=0.0,
-                vjust=0.5,
-                default_units="cm",
-                gp=gpar(**_text_gp(title_el)),
-                name=f"{name}.title",
-            )
-        )
+    grobs.extend(_draw_title(guide_build, layout, theme, name=name))
+    grobs.extend(_draw_subtitle(guide_build, layout, theme, name=name))
+    # M2-9 扩展点：运行时 guide 实现 `draw_keys()` 时，key 区交给它画；
+    # 标题 / 背景 / 布局仍由这里负责（docs/notes/extension.md）。
     draw_keys = getattr(guide_build.guide, "draw_keys", None)
     if callable(draw_keys):
         grobs.extend(draw_keys(guide_build, theme, layout, metrics=metrics, name=name))
@@ -1129,6 +2117,10 @@ def legend_grob(
         return grobs
     text_el = _text_element(theme, "legend.text")
     key_el = theme.get("legend.key")
+    guide = guide_build.guide
+    count = len(layout.keys)
+    label_hjust = getattr(guide, "label_hjust", None)
+    label_vjust = getattr(guide, "label_vjust", None)
     for index, cell in enumerate(layout.keys):
         key_box = cell.box
         if isinstance(key_el, ElementRect) and paint(key_el.fill) is not None:
@@ -1159,6 +2151,7 @@ def legend_grob(
             yscale=(0.0, 1.0),
             clip="on",
         )
+        override = _override_for_key(guide, index, count)
         for layer_index in guide_build.layers:
             if not _layer_maps_any(build, layer_index, guide_build.aesthetics):
                 continue
@@ -1166,24 +2159,89 @@ def legend_grob(
                 build,
                 layer_index,
                 cell.key.values,
-                override=_override(guide_build.guide),
+                override=override,
             )
             if decor is None:
                 continue
             grobs.append(replace(decor, vp=vp) if getattr(decor, "vp", None) is None else decor)
-        label_box = cell.label_box
+        x, y, hjust, vjust = _label_anchor(layout, cell)
+        if label_hjust is not None:
+            hjust = float(label_hjust)
+            if layout.label_position == "right":
+                x = cell.label_box.x_cm
+            elif layout.label_position == "left":
+                x = cell.label_box.x_cm
+        if label_vjust is not None:
+            vjust = float(label_vjust)
+            y = cell.label_box.y_cm + (1.0 - vjust) * cell.label_box.height_cm
         grobs.append(
             text_grob(
                 cell.key.label,
-                label_box.x_cm,
-                label_box.y_cm + label_box.height_cm / 2.0,
-                hjust=0.0,
-                vjust=0.5,
+                x,
+                y,
+                hjust=hjust,
+                vjust=vjust,
                 default_units="cm",
                 gp=gpar(**_text_gp(text_el)),
                 name=f"{name}.label-{index}",
             )
         )
+    return grobs
+
+
+def custom_grob(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    layout: LegendLayout,
+    *,
+    metrics: Any = None,
+    name: str = "guide",
+) -> list[Any]:
+    """`guide_custom(grob)` 的绘制：内容 grob + 标题 + 背景。"""
+    guide = guide_build.guide
+    assert isinstance(guide, GuideCustom)
+    grobs: list[Any] = []
+    background = theme.get("legend.background")
+    if isinstance(background, ElementRect):
+        fill = paint(background.fill)
+        if fill is not None:
+            grobs.append(
+                rect_grob(
+                    0.0,
+                    0.0,
+                    layout.width_cm,
+                    layout.height_cm,
+                    just=("left", "bottom"),
+                    default_units="cm",
+                    gp=gpar(fill=fill, col=NA),
+                    name=f"{name}.background",
+                )
+            )
+    grobs.extend(_draw_title(guide_build, layout, theme, name=name))
+    box = layout.content_box
+    if box is None:
+        return grobs
+    content: Any
+    if callable(guide.grob):
+        content = guide.grob(box.width_cm, box.height_cm)
+    else:
+        content = guide.grob
+    items = list(content) if isinstance(content, (list, tuple)) else [content]
+    vp = viewport(
+        f"{name}-content",
+        x=unit(box.x_cm + box.width_cm / 2.0, "cm"),
+        y=unit(box.y_cm + box.height_cm / 2.0, "cm"),
+        width=unit(box.width_cm, "cm"),
+        height=unit(box.height_cm, "cm"),
+        just="centre",
+        xscale=(0.0, 1.0),
+        yscale=(0.0, 1.0),
+        clip="off",
+    )
+    for item in items:
+        if item is None:
+            continue
+        grobs.append(replace(item, vp=vp) if getattr(item, "vp", None) is None else item)
     return grobs
 
 

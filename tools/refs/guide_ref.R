@@ -86,30 +86,82 @@ measure_axes <- function(g) {
   )
 }
 
+grob_label <- function(grob) {
+  if (!is.null(grob$label)) {
+    return(paste(as.character(grob$label), collapse = " "))
+  }
+  if (!is.null(grob$children)) {
+    return(paste(
+      vapply(grob$children, grob_label, character(1)),
+      collapse = ""
+    ))
+  }
+  ""
+}
+
 measure_legends <- function(g) {
-  row <- g$layout[g$layout$name == "guide-box-right", , drop = FALSE]
-  if (nrow(row) == 0) {
-    return(list(present = FALSE))
-  }
-  wrapper <- g$grobs[[which(g$layout$name == "guide-box-right")]]
-  # 没有图例时 guide-box-right 这一行仍然存在，但挂的是 zeroGrob。
-  if (!inherits(wrapper, "gtable")) {
-    return(list(present = FALSE))
-  }
-  downViewport("layout")
-  downViewport(paste0("guide-box-right.", row$t, "-", row$r, "-", row$b, "-", row$l))
-  width <- convertWidth(unit(1, "npc"), "cm", valueOnly = TRUE)
-  height <- convertHeight(unit(1, "npc"), "cm", valueOnly = TRUE)
-  downViewport(wrapper$name)
-  guides <- Filter(function(item) inherits(item, "gtable"), wrapper$grobs)
-  sizes <- lapply(guides, function(item) {
-    list(
-      width = convertWidth(grobWidth(item), "cm", valueOnly = TRUE),
-      height = convertHeight(grobHeight(item), "cm", valueOnly = TRUE)
+  # 4.0.3 的 gtable 对每个方位都留了 guide-box-* 槽；没图例的挂 zeroGrob。
+  for (position in c("top", "right", "bottom", "left", "inside")) {
+    name <- paste0("guide-box-", position)
+    hit <- which(g$layout$name == name)
+    if (length(hit) == 0) {
+      next
+    }
+    wrapper <- g$grobs[[hit[1]]]
+    if (!inherits(wrapper, "gtable")) {
+      next
+    }
+    row <- g$layout[hit[1], , drop = FALSE]
+    downViewport("layout")
+    downViewport(paste0(name, ".", row$t, "-", row$r, "-", row$b, "-", row$l))
+    cell_width <- convertWidth(unit(1, "npc"), "cm", valueOnly = TRUE)
+    cell_height <- convertHeight(unit(1, "npc"), "cm", valueOnly = TRUE)
+    downViewport(wrapper$name)
+    widths <- convertWidth(wrapper$widths, "cm", valueOnly = TRUE)
+    heights <- convertHeight(wrapper$heights, "cm", valueOnly = TRUE)
+    guides <- Filter(function(item) inherits(item, "gtable"), wrapper$grobs)
+    sizes <- lapply(guides, function(item) {
+      item_widths <- convertWidth(item$widths, "cm", valueOnly = TRUE)
+      item_heights <- convertHeight(item$heights, "cm", valueOnly = TRUE)
+      title_idx <- which(item$layout$name == "title")
+      title <- if (length(title_idx)) {
+        grob_label(item$grobs[[title_idx[1]]])
+      } else {
+        NULL
+      }
+      label_idx <- grep("^label", item$layout$name)
+      labels <- unname(unlist(lapply(
+        label_idx,
+        function(index) grob_label(item$grobs[[index]])
+      )))
+      list(
+        title = title,
+        labels = unname(labels),
+        width = sum(item_widths),
+        height = sum(item_heights),
+        widths = num(item_widths),
+        heights = num(item_heights)
+      )
+    })
+    vp <- wrapper$vp
+    out <- list(
+      present = TRUE,
+      position = position,
+      width = sum(widths),
+      height = sum(heights),
+      widths = num(widths),
+      heights = num(heights),
+      cell_width = cell_width,
+      cell_height = cell_height,
+      x_npc = as.numeric(vp$x),
+      y_npc = as.numeric(vp$y),
+      just = num(vp$just),
+      guides = sizes
     )
-  })
-  upViewport(0)
-  list(present = TRUE, width = width, height = height, guides = sizes)
+    upViewport(0)
+    return(out)
+  }
+  list(present = FALSE)
 }
 
 guide_data <- function(plot, aesthetics) {
@@ -190,6 +242,53 @@ cases <- list(
       labs(title = "T", x = "X", y = "Y") +
       theme_void(),
     c("colour")
+  ),
+  # --- M2-2（SIL-738）：合并 / 多美学 / override / 布局 ----------------------
+  measure_case(
+    "legend_colour_fill_same",
+    base(aes(x, y, colour = cyl, fill = cyl)) + geom_point(shape = 21, size = 2.5),
+    c("colour", "fill")
+  ),
+  measure_case(
+    "legend_override",
+    base(aes(x, y, colour = cyl)) +
+      guides(colour = guide_legend(override.aes = list(alpha = 1, colour = "black"))),
+    c("colour")
+  ),
+  measure_case(
+    "legend_nrow2",
+    base(aes(x, y, colour = cyl)) + guides(colour = guide_legend(nrow = 2)),
+    c("colour")
+  ),
+  measure_case(
+    "legend_label_left",
+    base(aes(x, y, colour = cyl)) + guides(colour = guide_legend(label.position = "left")),
+    c("colour")
+  ),
+  measure_case(
+    "legend_top",
+    base(aes(x, y, colour = cyl)) + theme(legend.position = "top"),
+    c("colour")
+  ),
+  measure_case(
+    "legend_inside",
+    base(aes(x, y, colour = cyl)) +
+      theme(legend.position = "inside", legend.position.inside = c(0.3, 0.7)),
+    c("colour")
+  ),
+  measure_case(
+    "legend_order",
+    base(aes(x, y, colour = cyl, fill = gear)) +
+      geom_point(shape = 21, size = 2.5) +
+      guides(colour = guide_legend(order = 2), fill = guide_legend(order = 1)),
+    c("colour", "fill")
+  ),
+  measure_case(
+    "legend_two_bottom",
+    base(aes(x, y, colour = cyl, fill = gear)) +
+      geom_point(shape = 21, size = 2.5) +
+      theme(legend.position = "bottom"),
+    c("colour", "fill")
   )
 )
 
