@@ -24,6 +24,9 @@ docs/spike/e1_coldstart/static/
 .gate-metrics/
 # `pixi run cases:matrix` 的运行时报告（红绿 + 差多少），每次重跑覆盖，不入库
 .cases-matrix/
+# `pixi run snapshots:fetch` 按 pin 拉下来的 ggplot2 源码包与解压目录（清单入库，
+# SVG 本体按需拉取；处置见 tools/upstream/snapshots.toml）
+.upstream-gg/
 # `pixi run gate:pyodide` 的两侧产物（IR 字节 + 元数据），每次重跑覆盖，不入库
 .gate-pyodide/
 # `pixi run metrics:advance` 的 hinted/linear 推进报告（每次重跑覆盖，不入库）

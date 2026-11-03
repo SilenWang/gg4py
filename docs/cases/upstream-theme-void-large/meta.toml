@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "facet-wrap", "legend-right", "theme-theme_void_large"]
+ci = true
+title = "上游快照：theme_void_large"
+source = "upstream:tests/testthat/_snaps/theme/theme-void-large.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-745：vdiffr 快照原样纳入；标题是 doppelganger 名。"

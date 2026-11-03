@@ -417,6 +417,38 @@ def _percent(value: Any) -> str:
     return f"{float(value):.2%}" if isinstance(value, (int, float)) else "—"
 
 
+def upstream_snapshot_summary(verdicts: Sequence[Verdict]) -> dict[str, Any] | None:
+    """上游 v4.0.3 快照的「总数 / 已纳管 / 通过 / 已知缺口」（SIL-745）。
+
+    处置清单是 `tools/upstream/snapshots.toml`，清单是
+    `tools/upstream/snapshot-manifest.json`。这里只做 join：不联网、不重新渲染。
+    没 commit 清单时返回 ``None``（老分支 / 精简检出）。
+    """
+    manifest = REPO / "tools" / "upstream" / "snapshot-manifest.json"
+    dispositions = REPO / "tools" / "upstream" / "snapshots.toml"
+    if not manifest.is_file() or not dispositions.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location(
+        "gg_upstream_snapshots", REPO / "tools" / "upstream" / "snapshots.py"
+    )
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    rows = module.resolve(module.load_manifest(), module.load_dispositions())
+    imported = [row for row in rows if row["case"]]
+    status = {verdict.case.name: verdict.status for verdict in verdicts}
+    passed = [row for row in imported if status.get(row["case"]) == PASS]
+    red = [row["case"] for row in imported if status.get(row["case"]) not in (None, PASS)]
+    return {
+        "total": len(rows),
+        "imported": len(imported),
+        "passed": len(passed),
+        "red": red,
+        "gaps": len(rows) - len(imported),
+    }
+
+
 class TaskBackend:
     """通过 `pixi run render` / `pixi run diff` 调用渲染与比对。
 
@@ -941,6 +973,27 @@ def render_report(
         "- 任务：`pixi run cases:matrix`",
         "",
     ]
+    snapshots = upstream_snapshot_summary(verdicts)
+    if snapshots is not None:
+        lines.extend(
+            [
+                "## 上游快照（v4.0.3）",
+                "",
+                "| 快照总数 | 已纳管 | 通过 | 已知缺口 |",
+                "| ---: | ---: | ---: | ---: |",
+                f"| {snapshots['total']} | {snapshots['imported']} | {snapshots['passed']} "
+                f"| {snapshots['gaps']} |",
+                "",
+                "处置逐条见 `docs/notes/snapshot-inventory.md`（缺口按分类归口到 SIL-715）；"
+                "已纳管的 case 就是本报告里的 `upstream-*`。",
+                "",
+            ]
+        )
+        if snapshots["red"]:
+            lines.append(
+                "红的上游快照 case：" + ", ".join(f"`{name}`" for name in snapshots["red"])
+            )
+            lines.append("")
     if red:
         lines.extend(["## 需要修的 case", ""])
         for verdict in red:
@@ -1127,6 +1180,7 @@ def report_payload(
         "strict": strict,
         "red": red,
         "pending": pending,
+        "upstream_snapshots": upstream_snapshot_summary(verdicts),
         "axes": {"families": families, "features": features},
         "gaps": [
             [family, feature]

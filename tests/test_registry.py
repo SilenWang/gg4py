@@ -239,6 +239,8 @@ EXPECTED = {
         "discrete_manual",
         "discrete_identity",
         "continuous_identity",
+        # SIL-745：NAMESPACE 里 `scale_color_discrete` 一直漏登记（其它 color_* 都有）。
+        "color_discrete",
     ),
     "coord": (
         "cartesian",
@@ -265,6 +267,9 @@ EXPECTED = {
         "axis_logticks",
         "axis_stack",
         "axis_theta",
+        # SIL-745：api:coverage 对 NAMESPACE 时补的两个构造器别名。
+        "colorbar",
+        "custom",
     ),
     "theme": (
         "grey",
