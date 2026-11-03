@@ -67,7 +67,44 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 `flipped_aes`（横向 bar / boxplot）照 R 的 `flip_data()`：先把 x/y 族列名对换，
 在纵向语义下算完再对换回来。`Geom.setup_params()` 只对 R 里真的调用
 `has_flipped_aes()` 的 geom 做检测（bar / col / histogram / area / boxplot /
-smooth）；point / line / path 不猜朝向。
+smooth / density / violin）；point / line / path 不猜朝向。
+
+### 3.1 M2-7 长尾 B：文本 / 点 / 分布 / 2D 族（SIL-735）
+
+代码：`src/ggcore/geom/text.py`（`text` / `label`）与
+`src/ggcore/geom/dist.py`（其余 18 个导出）。这一段的**统计量**归
+M2-6 的 stat 任务；geom 只消费 stat 输出的列。stat 落地前，case 用
+`stat = "identity"` 喂同形状的列，与 M1-7 对 boxplot / smooth 的口径一致。
+
+| geom | 绘制口径（对 R 4.0.3） |
+| --- | --- |
+| `text` | `textGrob`：`compute_just()` 的 `left/centre/right/bottom/middle/top` 与 `inward/outward`；`size`（mm）× `size.unit`；`angle` / `hjust` / `vjust` 在 IR 里是单值，按 `(hjust, vjust, angle)` 分组画多个 text grob；`nudge_x` / `nudge_y` 折进数据坐标；`check_overlap` 用面板尺寸 + 真实度量算旋转后 bbox，按行序删重叠 |
+| `label` | `labelGrob()`：`padding[1]=max(padding, descent)`、`padding[3]=max(padding-descent,0)`；背景宽 = 文字宽 + 左右内边距 + rotated descent，高同理；IR 无 roundrect，背景用方角矩形（`label.r` 默认 0.15 lines ≈ 2pt） |
+| `jitter` | 绘制同 `geom_point`；`width` / `height` → `position_jitter(width=, height=)`（两者与 `position=` 同时给是上游的显式错误） |
+| `count` | 绘制同 `geom_point`；`size` 来自 `stat_sum` 的 `n`（`_STAT_DEFAULT_AES` 的 `sum → size`） |
+| `bin2d` / `bin_2d` | `x/y/width/height → xmin/xmax/ymin/ymax`（`GeomTile`），画矩形；非线性坐标按 `coord_munch` 细分 |
+| `hex` | `hexbin::hexcoords(dx = width/2, dy = height/√3/2)` 的 6 个顶点；按 `(colour, fill, alpha, linewidth, linetype)` 分组，每组一个 `polygonGrob`（矢量 gp 表达不了） |
+| `density` | 同 `geom_area` 的多边形 + `outline.type = "upper"`（只描上沿） |
+| `density_2d` / `density2d` | 同 `geom_path`：每个 `group` 一条折线，默认 `accent` 色 |
+| `density_2d_filled` / `density2d_filled` | 同 `geom_contour_filled` |
+| `contour` | 同 `geom_path`（默认 `accent` 色） |
+| `contour_filled` | 每个 band（`group`）一条 `pathGrob`：洞用 `subgroup` 拆子路径、`rule = "evenodd"` 填充 |
+| `dotplot` | `setup_data()` 按 `count` 展开成点、按 bin（`binaxis`）+ group 求 `stackpos`；圆半径 = `dotsize × binwidth / 非堆叠轴范围 / 2`，堆叠偏移是**绝对长度**（按面板宽高比换轴）；`lwd` 照 `gg_par(lwd = stroke/.pt)` 的 `.pt` 往返 = `stroke` |
+| `violin` | `xminv/xmaxv = x ∓ violinwidth × (x ∓ xmin)`；沿 y 排序、右沿反向、首尾闭合；`quantile.linetype != 0` 时再画分位线 |
+| `qq` / `qq_line` | 绘制同 `geom_point` / `geom_path`（`x/y` 来自 `stat_qq` / `stat_qq_line`） |
+| `quantile` | 绘制同 `geom_path`（`stat_quantile` 给多组分位线，默认 `accent` 色） |
+| `function` | 绘制同 `geom_path`；多个绘制组时发 R 同文案的警告 |
+
+**文本度量的来源**：`build.metrics`（M2-S1 的字体对齐结果，Arimo +
+HarfBuzz kerning），geom 不各自测量；`geom_label` 的 descent 在
+`ggskia.text.ShaperMetrics.descent()`，兜底实现按 0.22 em 估。
+文本 case 的残余差异见 `docs/notes/metrics-ledger.md` M2-b（默认字面与参考
+产线一致后的读数）。
+
+**2D 等值带的填充语义**：`fill` 来自 `stat_contour_filled` 的 `level`
+（factor），每个 band 一个 `group`，band 内的洞是同一 group 里的多条
+`subgroup` 子路径；图例 key 复用同一个 `draw()`（`_GEOM_KEYS` 的
+`contour_filled` 模板是一个 4 点多边形）。
 
 ## 4. 场景装配
 
@@ -101,11 +138,17 @@ page viewport（整页）
 | `geom_boxplot(notch = TRUE)` | 无 IR 表达（缺口多边形）→ `GeomError` | 后续 |
 | `geom_boxplot(staplewidth != 0)` | 无 IR 表达（须帽）→ `GeomError` | 后续 |
 | 逐点 `size` / 逐点 `pch` | IR 的 `points.size` / `pch` 是标量；绘制层按 `(pch,size)` 分组画多个节点 | 视觉等价，节点数更多 |
+| 逐行 `angle` / `hjust` / `vjust`（text） | IR 的 text 参数是单值；按 `(hjust, vjust, angle)` 分组画多个 text grob | 视觉等价，节点数更多 |
+| `geom_label` 的圆角（`label.r`） | IR 没有 roundrect 节点 → 方角矩形（默认 0.15 lines ≈ 2pt） | 后续 IR schema 扩展 |
+| `geom_hex` 的矢量 gp | 一个 path 节点只有一份 gpar；按 `(colour, fill, alpha, linewidth, linetype)` 分组 | 视觉等价，节点数更多 |
+| 未映射的 data 列 | 我们的 `compute_aesthetics` 只留 mapped 列（R 保留整个 data.frame）；`stat = "identity"` 要喂 `width` / `height` / `subgroup` 这类列时必须 `aes()` 映射 | 与 M1-3 的列口径一致；stat 落地后由 stat 输出携带 |
+| `geom_dotplot(binaxis = "y")` | 支持；`binaxis` 非 `x` 时圆半径按 y 轴换算（`CircleGrob.r_axis`） | — |
 | 一条线内部变化的 `linetype` | gpar 的 `lty` 不支持向量 → 取首值（R 会拆 `segmentsGrob`） | 后续 |
 | 渐变填充（`fill` 沿 ribbon 变化） | 不支持；R 在非网格设备上同样 abort | 后续 |
 | 直线坐标以外的 coord | 未注册（M1-5 的范围） | 后续 coord 任务 |
 | 轴标签的 `check.overlap`（重叠时删标签） | 不删 | 后续（`axis.text` 的 `check.overlap`） |
 | boxplot 的 `outliers` 列表列 | `ColumnTable` 没有 list kind；`stat_boxplot` 产 `str` 文本（`c(20)` / `c()`），绘制层解析它 | 加 list kind 时再改（见 `stat.md` §4） |
+| 2D / 分布族的 stat | `stat_density` / `stat_ydensity` / `stat_bindot` / `stat_bin_2d` / `stat_bin_hex` / `stat_contour(_filled)` / `stat_density_2d(_filled)` / `stat_qq(_line)` / `stat_quantile` / `stat_function` / `stat_sum` 归 M2-6；geom 的默认 stat 名已按上游登记，stat 未实现时 `compute_stat()` 点名报错 | M2-6 |
 
 主题色（`fill = "grey35"` 等语义名）在 `build.data` 里仍是语义名，绘制期的
 `fill_alpha()` 会按 `col2rgb()` 折算 RGB；与 R 的 `#595959FF` 在像素上一致。
@@ -113,17 +156,23 @@ page viewport（整页）
 ## 6. 对拍与验收
 
 ```bash
-pixi run -e refs refs:geom          # 夹具 + 9 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
-pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py -q
-pixi run cases:matrix               # 9 个 geom 用例逐张 render + diff
+pixi run -e refs refs:geom          # 夹具 + 31 张 expected.svg（R 4.5.3 / ggplot2 4.0.3）
+pixi run pytest tests/test_geom_draw.py tests/test_geom_r_parity.py tests/test_geom_long_tail_b.py -q
+pixi run cases:matrix               # 92 个三文件 case 逐张 render + diff（100 个 case 含快照）
 pixi run check                      # 全量门禁
 ```
 
-夹具：`tests/fixtures/geom_r_reference.json`，14 个 case，记录
+夹具：`tests/fixtures/geom_r_reference.json`，37 个 case，记录
 `ggplot_build(p)$data[[1]]` 的列名 / 列序 / kind / 逐值、`panel_params` 的
 `continuous_range`，以及 `ggplotGrob()` 期间的 warning（`handle_na` 的
-"Removed N rows"）。stat 已实现的 7 个 case 在 Python 侧重放整条流水线逐列对拍；
-stat 未实现的 4 个（histogram / boxplot / smooth）把 R 的 `$data` 当绘制输入。
+"Removed N rows"）。stat 已实现的 case 在 Python 侧重放整条流水线逐列对拍；
+stat 未实现的部分（M1 的 histogram / boxplot / smooth，M2-7 的 2D / 分布族）
+把 R 的 `$data`（或 stat 形状的列）当绘制输入。
+
+M2-7 的 22 条新 case（`docs/cases/geom-*`）走 `stat = "identity"` + stat 形状
+的列，实测全部在图级 < 2% / 均值 < 1% 的阈值内（`pixi run cases:matrix` 100/100
+pass）；文本三条（对齐 / 旋转 / 换行）与 label 一条也在阈值内，残余差异来自
+字体度量的亚像素，见 `docs/notes/metrics-ledger.md` M2-b。
 
 九张用例图对 R 参考的实测差异（`pixi run diff`）：
 
@@ -146,3 +195,4 @@ stat 未实现的 4 个（histogram / boxplot / smooth）把 R 的 `$data` 当�
 | 日期 | 任务 | 改动 | 原因 |
 | --- | --- | --- | --- |
 | 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |
+| 2026-11-03 | SIL-735 | 新增 20 个 geom 注册名（18 个导出 + `bin_2d` / `density2d` / `density2d_filled` 别名）与两套绘制实现：`geom/text.py`（text / label）、`geom/dist.py`（density / violin / dotplot / hex / bin2d / contour(_filled) / density_2d(_filled) / qq(_line) / quantile / function / count / jitter）。`AreaRenderer` 支持 `outline.type`；`CircleGrob` 支持 `r_axis`；`compute_position()` 保留 `setup_data()` 改变后的行数（dotplot 按 count 展开）；`PanelParams` 增加面板尺寸（text 的 `check_overlap` / label 的内边距换算）。 | M2-7 长尾 B：文本 / 点 / 分布 / 2D 族补齐；22 条新 case（文本 3 + label 1 + 其余每族 1–2 条）走 `stat = "identity"` + stat 形状的列，`cases:matrix` 100/100 通过。 |

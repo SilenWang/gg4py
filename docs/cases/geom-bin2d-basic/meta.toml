@@ -1,0 +1,7 @@
+family = "geom-bin2d"
+features = ["aes-mapping", "fill-aes", "scale-gradient", "scale-limits", "stat-identity"]
+ci = true
+title = "bin2d：stat_bin_2d 形状的矩形"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "x/y/width/height 由 stat_bin_2d 给；绘制按 GeomTile 的 x ± width/2 展开成矩形。"

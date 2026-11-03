@@ -8,7 +8,39 @@ from ggcore import plot, registry
 from ggcore.layer import Geom, Layer
 
 EXPECTED = {
-    "geom": ("point", "line", "path", "bar", "col", "area", "histogram", "boxplot", "smooth"),
+    "geom": (
+        # M1-7 的 9 个
+        "point",
+        "line",
+        "path",
+        "bar",
+        "col",
+        "area",
+        "histogram",
+        "boxplot",
+        "smooth",
+        # M2-7 长尾 B（SIL-735）
+        "text",
+        "label",
+        "jitter",
+        "count",
+        "bin2d",
+        "bin_2d",
+        "hex",
+        "density",
+        "density_2d",
+        "density2d",
+        "density_2d_filled",
+        "density2d_filled",
+        "contour",
+        "contour_filled",
+        "dotplot",
+        "violin",
+        "qq",
+        "qq_line",
+        "quantile",
+        "function",
+    ),
     "stat": ("identity", "bin", "count", "boxplot", "smooth", "align"),
     "position": ("identity", "stack", "fill", "dodge", "dodge2", "jitter", "nudge"),
     "scale": (

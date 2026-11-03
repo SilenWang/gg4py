@@ -1,0 +1,7 @@
+family = "geom-qq"
+features = ["aes-mapping", "stat-identity", "scale-limits"]
+ci = true
+title = "qq_line：两端点折线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "geom_qq_line = StatQqLine + GeomPath；R 侧走真实 stat_qq_line，这里喂它的两端点。"

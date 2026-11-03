@@ -117,6 +117,15 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
+        # M2-7 长尾 B：geom_count / geom_bin_2d / geom_hex / geom_density /
+        # geom_qq / geom_contour_filled 的 `Stat$default_aes`。
+        "sum": (("size", "n"),),
+        "bin2d": (("fill", "count"),),
+        "binhex": (("fill", "count"),),
+        "density": (("x", "density"), ("y", "density")),
+        "contour_filled": (("fill", "level"),),
+        "density_2d_filled": (("fill", "level"),),
+        "qq": (("x", "theoretical"), ("y", "sample")),
     }
 )
 
@@ -514,7 +523,11 @@ def compute_position(
     if mapped.nrows == 0:
         return _EMPTY
     _check_required_aes(layer, mapped, index)
-    table = ColumnTable(_geom_setup(layer, mapped, raw), nrows=mapped.nrows)
+    columns = _geom_setup(layer, mapped, raw)
+    # `setup_data()` 可以改变行数（`geom_dotplot` 按 `count` 展开成点），所以行数
+    # 取 setup 之后的结果，不是 `mapped.nrows`。
+    nrows = int(columns[0][1].size) if columns else 0
+    table = ColumnTable(columns, nrows=nrows)
     position = _resolve_position(layer.position)
     return position.compute_layer(table)
 

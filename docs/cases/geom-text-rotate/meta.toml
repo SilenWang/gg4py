@@ -1,0 +1,7 @@
+family = "geom-text"
+features = ["aes-mapping", "rotation", "scale-limits"]
+ci = true
+title = "text：逐行 angle（0 / 45 / 90）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "旋转的 bbox 与锚点按 M2-S1 的规则；逐角度分组写 IR（text.angle 是单值）。"

@@ -1,0 +1,7 @@
+family = "geom-density2d"
+features = ["aes-mapping", "aes-grouping", "fill-aes", "scale-discrete", "contour-band", "scale-limits"]
+ci = true
+title = "density2d_filled：分段色带（含洞）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "band = 一个 group；洞用 subgroup 拆子路径、按 rule = evenodd 填充（GeomPolygon$draw_panel）。"

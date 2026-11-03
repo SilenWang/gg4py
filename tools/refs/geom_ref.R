@@ -413,6 +413,293 @@ cases$smooth_identity <- record_case("smooth_identity", plot_smooth, "smooth：i
 svg_cases$`geom-smooth-se` <- plot_smooth
 
 # ---------------------------------------------------------------------------
+# M2-7 长尾 B：文本 / 点 / 分布 / 2D 族（SIL-735）
+#
+# 统计量侧（stat_density / stat_ydensity / stat_bindot / stat_bin_2d /
+# stat_bin_hex / stat_contour / stat_density_2d / stat_qq / stat_quantile /
+# stat_function / stat_sum）归兄弟任务；这一段的 case 全部用
+# `stat = "identity"` + **stat 形状的列**喂给绘制层，R 与 Python 两侧同一份
+# 数字、同一组 limits / 标度 / 主题，比的是绘制口径本身。
+# ---------------------------------------------------------------------------
+
+# 15. text：hjust 三态（左 / 中 / 右）
+df_text_align <- data.frame(
+  x = c(0.5, 0.5, 0.5),
+  y = c(0.2, 0.5, 0.8),
+  label = c("left", "centre", "right"),
+  hj = c(0, 0.5, 1)
+)
+plot_text_align <- ggplot(df_text_align, aes(x, y, label = label, hjust = hj)) +
+  geom_text(size = 5) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$text_align <- record_case("text_align", plot_text_align, "text：hjust 0 / 0.5 / 1")
+svg_cases$`geom-text-align` <- plot_text_align
+
+# 16. text：逐行旋转角（0 / 45 / 90）
+df_text_rotate <- data.frame(
+  x = c(0.3, 0.5, 0.7),
+  y = c(0.35, 0.6, 0.65),
+  label = c("a", "b", "c"),
+  ang = c(0, 45, 90)
+)
+plot_text_rotate <- ggplot(df_text_rotate, aes(x, y, label = label, angle = ang)) +
+  geom_text(size = 5) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$text_rotate <- record_case("text_rotate", plot_text_rotate, "text：逐行 angle（0/45/90）")
+svg_cases$`geom-text-rotate` <- plot_text_rotate
+
+# 17. text：多行（`\n`）与 lineheight
+df_text_wrap <- data.frame(
+  x = c(0.3, 0.7),
+  y = c(0.5, 0.5),
+  label = c("first\nsecond", "alpha\nbeta\ngamma")
+)
+plot_text_wrap <- ggplot(df_text_wrap, aes(x, y, label = label)) +
+  geom_text(size = 4.5, lineheight = 1.2) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$text_wrap <- record_case("text_wrap", plot_text_wrap, "text：多行标签（\\n）")
+svg_cases$`geom-text-wrap` <- plot_text_wrap
+
+# 18. label：圆角矩形背景 + 内边距
+df_label <- data.frame(x = c(0.3, 0.7), y = c(0.5, 0.5), label = c("A", "BB"))
+plot_label <- ggplot(df_label, aes(x, y, label = label)) +
+  geom_label(size = 5, colour = "white", fill = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$label_basic <- record_case("label_basic", plot_label, "label：背景框 + 内边距")
+svg_cases$`geom-label-basic` <- plot_label
+
+# 19. jitter：抖动后的坐标（抖动在 position 阶段，这里用预抖动数据）
+df_jitter <- data.frame(
+  x = c(0.2, 0.25, 0.3, 0.6, 0.65, 0.9),
+  y = c(0.3, 0.35, 0.28, 0.7, 0.75, 0.6)
+)
+plot_jitter <- ggplot(df_jitter, aes(x, y)) +
+  geom_jitter(stat = "identity", position = "identity", size = 3, colour = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$jitter_basic <- record_case("jitter_basic", plot_jitter, "jitter：点绘制（抖动在 position）")
+svg_cases$`geom-jitter-basic` <- plot_jitter
+
+# 20. count：stat_sum 的 n → size（面积标度）
+df_count <- data.frame(
+  x = c(0.2, 0.2, 0.5, 0.8, 0.8, 0.8),
+  y = c(0.3, 0.3, 0.5, 0.7, 0.7, 0.7),
+  n = c(2, 2, 1, 3, 3, 3)
+)
+plot_count <- ggplot(df_count, aes(x, y, size = n)) +
+  geom_count(stat = "identity", colour = "#4C78A8") +
+  scale_size_area(max_size = 7) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$count_basic <- record_case("count_basic", plot_count, "count：n → size（面积标度）")
+svg_cases$`geom-count-basic` <- plot_count
+
+# 21. bin2d：stat_bin_2d 形状（x/y/width/height/count）
+df_bin2d <- data.frame(
+  x = c(0.166667, 0.5, 0.833333, 0.166667, 0.5, 0.833333),
+  y = c(0.25, 0.25, 0.25, 0.75, 0.75, 0.75),
+  width = 0.333333,
+  height = 0.5,
+  count = c(1, 4, 2, 3, 5, 2)
+)
+plot_bin2d <- ggplot(df_bin2d, aes(x, y, fill = count, width = width, height = height)) +
+  geom_bin2d(stat = "identity") +
+  scale_fill_gradient(low = "#EBEDF0", high = "#2C7FB8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$bin2d_basic <- record_case("bin2d_basic", plot_bin2d, "bin2d：stat_bin_2d 形状的矩形")
+svg_cases$`geom-bin2d-basic` <- plot_bin2d
+
+# 22. bin_2d 别名：同一形状、固定填充
+plot_bin_2d <- ggplot(df_bin2d, aes(x, y, width = width, height = height)) +
+  geom_bin_2d(stat = "identity", fill = "#4C78A8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$bin_2d_alias <- record_case("bin_2d_alias", plot_bin_2d, "bin_2d 别名")
+svg_cases$`geom-bin-2d-alias` <- plot_bin_2d
+
+# 23. hex：stat_bin_hex 形状（x/y/width/height/count）
+df_hex <- data.frame(
+  x = c(0.25, 0.55, 0.8),
+  y = c(0.35, 0.6, 0.35),
+  width = 0.3,
+  height = 0.26,
+  count = c(2, 5, 3)
+)
+plot_hex <- ggplot(df_hex, aes(x, y, fill = count, width = width, height = height)) +
+  geom_hex(stat = "identity") +
+  scale_fill_gradient(low = "#EBEDF0", high = "#2C7FB8") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$hex_basic <- record_case("hex_basic", plot_hex, "hex：六边形 bin")
+svg_cases$`geom-hex-basic` <- plot_hex
+
+# 24. density：stat_density 形状（x / y=density），只描上沿
+df_density <- data.frame(
+  x = c(0.05, 0.14, 0.23, 0.32, 0.41, 0.5, 0.59, 0.68, 0.77, 0.86, 0.95),
+  y = c(0.05, 0.12, 0.3, 0.55, 0.78, 0.9, 0.85, 0.65, 0.38, 0.15, 0.04)
+)
+plot_density <- ggplot(df_density, aes(x, y)) +
+  geom_density(stat = "identity", fill = "grey35", colour = "black") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$density_basic <- record_case("density_basic", plot_density, "density：密度多边形 + 上沿")
+svg_cases$`geom-density-basic` <- plot_density
+
+# 25/26. density_2d：两条等值线（stat_density_2d 形状的 level / x / y / group）
+df_density2d <- data.frame(
+  x = c(
+    0.85, 0.747487, 0.5, 0.252513, 0.15, 0.252513, 0.5, 0.747487, 0.85,
+    0.68, 0.627279, 0.5, 0.372721, 0.32, 0.372721, 0.5, 0.627279, 0.68
+  ),
+  y = c(
+    0.5, 0.747487, 0.85, 0.747487, 0.5, 0.252513, 0.15, 0.252513, 0.5,
+    0.5, 0.627279, 0.68, 0.627279, 0.5, 0.372721, 0.32, 0.372721, 0.5
+  ),
+  level = c(rep(0.2, 9), rep(0.4, 9)),
+  grp = c(rep("c1", 9), rep("c2", 9)),
+  stringsAsFactors = FALSE
+)
+plot_density2d <- ggplot(df_density2d, aes(x, y, group = grp)) +
+  geom_density2d(stat = "identity", colour = "#3366FF") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$density2d_basic <- record_case("density2d_basic", plot_density2d, "density2d：两条等值线")
+svg_cases$`geom-density2d-basic` <- plot_density2d
+
+plot_density_2d <- ggplot(df_density2d, aes(x, y, group = grp)) +
+  geom_density_2d(stat = "identity", colour = "#E45756") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$density_2d_alias <- record_case("density_2d_alias", plot_density_2d, "density_2d 别名")
+svg_cases$`geom-density-2d-alias` <- plot_density_2d
+
+# 27/28. density_2d_filled：分段色带（外带带洞 + 内带）
+df_bands <- data.frame(
+  x = c(
+    0.15, 0.85, 0.85, 0.15, 0.15,
+    0.35, 0.65, 0.65, 0.35, 0.35,
+    0.35, 0.65, 0.65, 0.35, 0.35
+  ),
+  y = c(
+    0.15, 0.15, 0.85, 0.85, 0.15,
+    0.35, 0.35, 0.65, 0.65, 0.35,
+    0.35, 0.35, 0.65, 0.65, 0.35
+  ),
+  level = c(rep("(0.2, 0.4]", 10), rep("(0.4, 0.6]", 5)),
+  grp = c(rep("b1", 10), rep("b2", 5)),
+  subgroup = c(rep("s1", 5), rep("s2", 5), rep("s1", 5)),
+  stringsAsFactors = FALSE
+)
+band_fills <- c("(0.2, 0.4]" = "#A6CEE3", "(0.4, 0.6]" = "#1F78B4")
+plot_density2d_filled <- ggplot(df_bands, aes(x, y, fill = level, group = grp, subgroup = subgroup)) +
+  geom_density2d_filled(stat = "identity") +
+  scale_fill_manual(values = band_fills) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$density2d_filled <- record_case(
+  "density2d_filled", plot_density2d_filled, "density2d_filled：分段色带（含洞）"
+)
+svg_cases$`geom-density2d-filled` <- plot_density2d_filled
+
+plot_density_2d_filled <- ggplot(
+  df_bands, aes(x, y, fill = level, group = grp, subgroup = subgroup)
+) +
+  geom_density_2d_filled(stat = "identity") +
+  scale_fill_manual(values = band_fills) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$density_2d_filled_alias <- record_case(
+  "density_2d_filled_alias", plot_density_2d_filled, "density_2d_filled 别名"
+)
+svg_cases$`geom-density-2d-filled-alias` <- plot_density_2d_filled
+
+# 29. contour：两条等值线（stat_contour 形状的 level / x / y / piece / group）
+df_contour <- data.frame(
+  x = c(0.1, 0.3, 0.5, 0.7, 0.9, 0.1, 0.3, 0.5, 0.7, 0.9),
+  y = c(0.2, 0.6, 0.75, 0.6, 0.2, 0.35, 0.7, 0.85, 0.7, 0.35),
+  level = c(rep(0.5, 5), rep(1.5, 5)),
+  grp = c(rep("g1", 5), rep("g2", 5)),
+  stringsAsFactors = FALSE
+)
+plot_contour <- ggplot(df_contour, aes(x, y, group = grp)) +
+  geom_contour(stat = "identity", colour = "#3366FF") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$contour_basic <- record_case("contour_basic", plot_contour, "contour：两条等值线")
+svg_cases$`geom-contour-basic` <- plot_contour
+
+# 30. contour_filled：分段色带（同一份 band 数据）
+plot_contour_filled <- ggplot(df_bands, aes(x, y, fill = level, group = grp, subgroup = subgroup)) +
+  geom_contour_filled(stat = "identity") +
+  scale_fill_manual(values = band_fills) +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$contour_filled <- record_case("contour_filled", plot_contour_filled, "contour_filled：分段色带")
+svg_cases$`geom-contour-filled` <- plot_contour_filled
+
+# 31. dotplot：真实 stat_bindot（geom_dotplot 的构造器不接受 stat=，R 侧走
+# 真实统计；Python 侧把 stat 输出当绘制输入，stat="identity"）。
+df_dotplot_raw <- data.frame(x = c(0.15, 0.35, 0.6, 0.6, 0.6, 0.8, 0.8))
+plot_dotplot <- ggplot(df_dotplot_raw, aes(x)) +
+  geom_dotplot(binwidth = 0.1, fill = "#4C78A8", colour = "black", dotsize = 1) +
+  scale_x_continuous(limits = c(0.0625, 0.8875), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-0.05, 1.05), expand = c(0, 0)) +
+  theme_case()
+cases$dotplot_stat <- record_case("dotplot_stat", plot_dotplot, "dotplot：stat_bindot 输出", "bindot")
+svg_cases$`geom-dotplot-basic` <- plot_dotplot
+
+# 32. violin：stat_ydensity 形状（violinwidth 收窄边界）
+violin_y <- c(0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
+df_violin <- data.frame(
+  x = c(rep(1, 7), rep(2, 7)),
+  y = c(violin_y, violin_y + 0.05),
+  violinwidth = c(0, 0.35, 0.7, 1, 0.7, 0.35, 0, 0, 0.3, 0.65, 0.9, 0.65, 0.3, 0),
+  grp = c(rep("a", 7), rep("b", 7)),
+  stringsAsFactors = FALSE
+)
+plot_violin <- ggplot(df_violin, aes(x, y, violinwidth = violinwidth, group = grp)) +
+  geom_violin(stat = "identity", width = 0.6, fill = "#4C78A8", colour = "black") +
+  scale_x_continuous(limits = c(0.3, 2.7), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+  theme_case()
+cases$violin_basic <- record_case("violin_basic", plot_violin, "violin：violinwidth 收窄的闭合多边形")
+svg_cases$`geom-violin-basic` <- plot_violin
+
+# 33. qq：真实 stat_qq（geom_qq 的构造器不接受 stat=，R 侧走真实统计）
+df_qq_raw <- data.frame(sample = c(0.12, 0.3, 0.42, 0.55, 0.68, 0.88))
+plot_qq <- ggplot(df_qq_raw, aes(sample = sample)) +
+  geom_qq(size = 3, colour = "#4C78A8") +
+  scale_x_continuous(limits = c(-1.409707, 1.409707), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.082, 0.918), expand = c(0, 0)) +
+  theme_case()
+cases$qq_stat <- record_case("qq_stat", plot_qq, "qq：stat_qq 输出（theoretical / sample）", "qq")
+svg_cases$`geom-qq-basic` <- plot_qq
+
+# 34. qq_line：真实 stat_qq_line（两端点）
+plot_qq_line <- ggplot(df_qq_raw, aes(sample = sample)) +
+  geom_qq_line(colour = "#3366FF") +
+  scale_x_continuous(limits = c(-1.409707, 1.409707), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0.1569571, 0.8205429), expand = c(0, 0)) +
+  theme_case()
+cases$qq_line_stat <- record_case(
+  "qq_line_stat", plot_qq_line, "qq_line：stat_qq_line 输出（两端点）", "qq_line"
+)
+svg_cases$`geom-qq-line-basic` <- plot_qq_line
+
+# 35. quantile：stat_quantile 形状的三条分位线
+df_quantile <- data.frame(
+  x = c(0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9),
+  y = c(0.15, 0.3, 0.4, 0.3, 0.5, 0.65, 0.45, 0.7, 0.9),
+  grp = c(rep("q1", 3), rep("q2", 3), rep("q3", 3)),
+  stringsAsFactors = FALSE
+)
+plot_quantile <- ggplot(df_quantile, aes(x, y, group = grp)) +
+  geom_quantile(stat = "identity", colour = "#3366FF") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$quantile_basic <- record_case("quantile_basic", plot_quantile, "quantile：三条分位线")
+svg_cases$`geom-quantile-basic` <- plot_quantile
+
+# 36. function：stat_function 形状的 x / y 网格
+df_function <- data.frame(
+  x = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1),
+  y = c(0.1, 0.22, 0.35, 0.48, 0.6, 0.68, 0.72, 0.68, 0.58, 0.45, 0.3)
+)
+plot_function <- ggplot(df_function, aes(x, y)) +
+  geom_function(stat = "identity", colour = "black") +
+  fixed_x(c(0, 1)) + fixed_y(c(0, 1)) + theme_case()
+cases$function_basic <- record_case("function_basic", plot_function, "function：x / y 网格折线")
+svg_cases$`geom-function-basic` <- plot_function
+
+# ---------------------------------------------------------------------------
 # 写盘
 # ---------------------------------------------------------------------------
 

@@ -395,6 +395,256 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "identity",
             optional_aes=("ymin", "ymax"),
         ),
+        # -- M2-7 长尾 B：文本 / 点 / 分布 / 2D 族 ---------------------------------
+        # 默认美学照 4.0.3 的 `from_theme(...)`：`theme_grey()$geom` 解析后
+        # ink = black、paper = white、accent = #3366FF、fontsize = 3.87mm；
+        # `col_mix(ink, paper, 0.2 / 0.35 / 0.5)` = grey20 / grey35 / #808080。
+        "text": GeomSpec(
+            ("x", "y", "label"),
+            {
+                "colour": "black",
+                "family": "",
+                "size": 3.87,
+                "angle": 0.0,
+                "hjust": 0.5,
+                "vjust": 0.5,
+                "alpha": None,
+                "fontface": 1,
+                "lineheight": 1.2,
+            },
+            "identity",
+            "nudge",
+            non_missing_aes=("angle",),
+        ),
+        "label": GeomSpec(
+            ("x", "y", "label"),
+            {
+                "colour": "black",
+                "fill": "white",
+                "family": "",
+                "size": 3.87,
+                "angle": 0.0,
+                "hjust": 0.5,
+                "vjust": 0.5,
+                "alpha": None,
+                "fontface": 1,
+                "lineheight": 1.2,
+                "linewidth": 0.25,
+                "linetype": 1,
+            },
+            "identity",
+            "nudge",
+        ),
+        "jitter": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "identity",
+            "jitter",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "count": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "sum",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "bin2d": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "#333333",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            "bin2d",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "bin_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "#333333",
+                "colour": None,
+                "linewidth": 0.2,
+                "linetype": 1,
+                "alpha": None,
+                "width": 1.0,
+                "height": 1.0,
+            },
+            "bin2d",
+            non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        "hex": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#808080",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "binhex",
+        ),
+        "density": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "black",
+                "fill": None,
+                "weight": 1.0,
+                "alpha": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+            },
+            "density",
+        ),
+        "density_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "density2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "density_2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+        ),
+        "density2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+        ),
+        "contour": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "contour_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "#333333",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour_filled",
+        ),
+        "dotplot": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "black",
+                "fill": "black",
+                "alpha": None,
+                "stroke": 1.0,
+                "linetype": 1,
+                "weight": 1.0,
+                "width": 0.9,
+            },
+            "bindot",
+            non_missing_aes=("size", "shape"),
+        ),
+        "violin": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#333333",
+                "fill": "white",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+                "width": 0.9,
+            },
+            "ydensity",
+            "dodge",
+        ),
+        "qq": GeomSpec(
+            ("x", "y"),
+            {
+                "shape": 19.0,
+                "colour": "black",
+                "fill": None,
+                "size": 1.5,
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "qq",
+            non_missing_aes=("size", "shape", "colour"),
+        ),
+        "qq_line": GeomSpec(
+            ("x", "y"),
+            {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None},
+            "qq_line",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "quantile": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "quantile",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
+        "function": GeomSpec(
+            ("x", "y"),
+            {"colour": "black", "linewidth": 0.5, "linetype": 1, "alpha": None},
+            "function",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
     }
 )
 
@@ -502,6 +752,16 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
         show_legend: bool | None = None,
         **params: Any,
     ) -> Layer:
+        if name == "jitter" and ("width" in params or "height" in params):
+            # `geom_jitter(width=, height=)` 是 `position_jitter(width=, height=)`
+            # 的简写；两者同时给是上游的显式错误。
+            if position is not None:
+                raise ValueError(
+                    "geom_jitter() 的 position 与 width/height 不能同时给：选一种方式指定抖动"
+                )
+            position = POSITION_FACTORIES["jitter"](
+                width=params.pop("width", None), height=params.pop("height", None)
+            )
         return Layer(
             geom=Geom(
                 name=name,

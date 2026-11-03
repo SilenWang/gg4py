@@ -137,6 +137,9 @@ r-gtable = "0.3.*"
 r-ggplot2 = "==4.0.3"
 r-svglite = ">=2.2,<3"
 r-hms = ">=1.1,<2"
+# `geom_hex` / `stat_bin_hex` 的参考产线需要 hexbin（GeomHex 的六边形顶点来自
+# `hexbin::hexcoords()`）；只进 refs 环境。
+r-hexbin = ">=1.28,<2"
 
 [feature.refs.tasks]
 "refs:units" = "Rscript tools/refs/units_ref.R"

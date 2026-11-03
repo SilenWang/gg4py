@@ -1,0 +1,7 @@
+family = "geom-quantile"
+features = ["aes-mapping", "aes-grouping", "stat-identity", "scale-limits"]
+ci = true
+title = "quantile：三条分位线"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "stat_quantile 每个分位输出一组 (x, y, quantile)；绘制同 geom_path，默认 accent 色。"

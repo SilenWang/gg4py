@@ -1,0 +1,7 @@
+family = "geom-jitter"
+features = ["aes-mapping", "position-jitter", "scale-limits"]
+ci = true
+title = "jitter：点绘制（抖动后的坐标）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "geom_jitter 的绘制同 geom_point；`width` / `height` 转 position_jitter，随机数不参与像素对比。"
