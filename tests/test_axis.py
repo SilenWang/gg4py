@@ -203,7 +203,10 @@ def test_axis_title_grob_anchor() -> None:
 
 
 def test_axis_ticks_reject_bad_arguments() -> None:
+    # M2-1 起 top / right 是次轴的正式位置，不再报错。
+    assert AxisTicks("top", (0.5,), ("a",)).side == "top"
+    assert AxisTicks("right", (0.5,), ("a",)).side == "right"
     with pytest.raises(AxisError):
-        AxisTicks("top", (), ())
+        AxisTicks("middle", (), ())
     with pytest.raises(AxisError, match="必须等长"):
         AxisTicks("bottom", (0.1, 0.2), ("a",))

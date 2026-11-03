@@ -214,12 +214,12 @@ R 的 ±Inf（见 §7）。
 | `date` / `datetime` / `time` 标度（`scale_x_date`） | 不做（后续标度任务） |
 | binned 标度（`scale_x_binned` / `scale_colour_steps`） | 不做 |
 | `scale_colour_viridis_*` / `gradient2` / `gradientn` | 不做（只有两端 gradient） |
-| secondary axis（`sec.axis`） | 不做 |
+| secondary axis（`sec.axis`） | M2-1 已实现（`sec_axis()` / `dup_axis()`，见 `docs/notes/coord.md` §12）；标度侧只存引用，断点 / 标签在 `ggcore.axis` |
 | `oob = squish` | 不做（只有 censor） |
 | `trans = reverse` / `sqrt` / `log2` / `exp` / `pseudo_log` | 不做；构造时报错并点名后续任务 |
 | 位置标度以外的 expand / 面板范围 | 不做（只有 x / y 有 `expanded_limits()`） |
 | guide / 图例排版 | 不做（M1-11） |
-| coord 变换对 limits 的接管（`coord_cartesian(xlim=)`） | 不做（M1-5） |
+| coord 变换对 limits 的接管（`coord_cartesian(xlim=)`） | M1-5 已实现；`coord_trans` 的逐轴变换见 M2-1（`docs/notes/coord.md` §8） |
 | `scale_linetype_*` / `scale_size_manual` 等未登记的名字 | 不在 `registry.SCALE_SPECS` 里，不加第二套注册 |
 
 ## 10. 已知边界

@@ -433,7 +433,69 @@ SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("alpha_continuous", "alpha", {"type": "continuous"}),
 )
 
-COORD_NAMES: tuple[str, ...] = ("cartesian", "fixed")
+#: M2-1：覆盖 4.0.3 NAMESPACE 的全部 coord_* 导出。`trans` 与 `transform` 是
+#: 同一实现的两个入口（`coord_trans()` 在 4.0.3 被 `coord_transform()` 取代，
+#: 仍然导出）；参数语义在 `ggcore.coord`。
+COORD_NAMES: tuple[str, ...] = (
+    "cartesian",
+    "fixed",
+    "equal",
+    "flip",
+    "trans",
+    "transform",
+    "polar",
+    "radial",
+    "sf",
+    "map",
+    "quickmap",
+)
+
+#: 每个 coord 的**位置参数**顺序（照 ggplot2 4.0.3 的函数签名）。
+#: 构造器统一收 `*args, **params`，所以 `coord_polar("y")` 与
+#: `coord_polar(theta="y")` 落到同一个 `Coord` 组件上。
+COORD_POSITIONAL: Mapping[str, tuple[str, ...]] = MappingProxyType(
+    {
+        "cartesian": ("xlim", "ylim", "expand", "default", "clip", "reverse", "ratio"),
+        "fixed": ("ratio",),
+        "equal": ("ratio",),
+        "flip": ("xlim", "ylim", "expand", "default", "clip", "reverse", "ratio"),
+        "trans": ("x", "y", "xlim", "ylim", "expand", "reverse", "clip"),
+        "transform": ("x", "y", "xlim", "ylim", "expand", "reverse", "clip"),
+        "polar": ("theta", "start", "direction", "clip"),
+        "radial": (
+            "theta",
+            "start",
+            "end",
+            "thetalim",
+            "rlim",
+            "expand",
+            "direction",
+            "clip",
+            "r.axis.inside",
+            "rotate.angle",
+            "inner.radius",
+            "reverse",
+        ),
+        "sf": (
+            "xlim",
+            "ylim",
+            "expand",
+            "crs",
+            "default_crs",
+            "datum",
+            "label_graticule",
+            "label_axes",
+            "lims_method",
+            "ndiscr",
+            "default",
+            "clip",
+            "reverse",
+        ),
+        "map": ("projection",),
+        "quickmap": ("xlim", "ylim", "expand", "clip"),
+    }
+)
+
 FACET_NAMES: tuple[str, ...] = ("null", "wrap", "grid")
 GUIDE_NAMES: tuple[str, ...] = ("legend", "colourbar", "none")
 
@@ -528,8 +590,27 @@ def _scale_factory(name: str, aesthetic: str, defaults: Mapping[str, Any]) -> Ca
 
 
 def _coord_factory(name: str, defaults: Mapping[str, Any] | None = None) -> Callable[..., Coord]:
-    def factory(**params: Any) -> Coord:
-        return Coord(name=name, params={**(defaults or {}), **params})
+    """`coord_<name>(...)` → `Coord` 组件（只收集参数，语义在 `ggcore.coord`）。
+
+    位置参数按 :data:`COORD_POSITIONAL` 的名字落位（`coord_polar("y")`、
+    `coord_fixed(2)`、`coord_transform("log10")` 都能用），其余走 `**params`；
+    参数名是否认识由 `ggcore.coord.coord_from_component()` 在构建期统一校验。
+    """
+    positional = COORD_POSITIONAL.get(name, ())
+
+    def factory(*args: Any, **params: Any) -> Coord:
+        if len(args) > len(positional):
+            raise TypeError(
+                f"coord_{name}() 最多接受 {len(positional)} 个位置参数"
+                f"（{', '.join(positional)}），收到 {len(args)} 个"
+            )
+        bound = dict(zip(positional, args, strict=False))
+        overlap = set(bound) & set(params)
+        if overlap:
+            raise TypeError(
+                f"coord_{name}() 的参数重复给了位置与关键字：{', '.join(sorted(overlap))}"
+            )
+        return Coord(name=name, params={**(defaults or {}), **bound, **params})
 
     return factory
 

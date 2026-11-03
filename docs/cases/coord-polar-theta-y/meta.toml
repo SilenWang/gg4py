@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "aes-mapping"]
+ci = true
+title = "coord_polar(theta = \"y\")：y 是角度"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "theta 轴是连续的 y（不 expand），离散的 x 是 r 轴（`1..n`，不 expand）——R 夹具 polar_y 钉住这两条范围。"

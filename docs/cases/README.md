@@ -261,13 +261,27 @@ SIL-723 在 M1 内结掉了 SIL-715 的 #1/#2/#3：这三条从 `ci = false` 翻
 SIL-715（M2 缺口池）：
 
 - **横向 `geom_area`**：ggplot2 4.0.3 的 `stat_align` 在 y 离散时输出 0 行，
-  R 侧只能用 `coord_flip()` 表达同一张图，而 `coord_flip` 不在 gg4py 的
-  coord 注册表（只有 `cartesian` / `fixed`）。缺的能力是「无 explicit
+  R 侧只能用 `coord_flip()` 表达同一张图。`coord_flip` 在 M2-1 已落地
+  （`docs/notes/coord.md` §7，`coord-flip-*` 三条 case），但 R 侧的数据仍是
+  「y 离散、stat_align 输出 0 行」，所以这条覆盖点要等的是「无 explicit
   `orientation` 时按列类型推断方向」，对应 **SIL-715 #4**。见
   `tools/refs/cases_battery_ref.R` 的注释。
 - `geom_boxplot()` 的横向**自动探测**在 gg4py 侧还没接上（stat_boxplot 产出的
   `flipped_aes` 恒为 False）；`geom-boxplot-horizontal` 显式写了
   `orientation = "y"`，两边同值。对应 **SIL-715 #5**。
+
+### M2-1：coord 族（11 条）
+
+参考图由 `tools/refs/coord_cases_ref.R` 生成（并入 `pixi run -e refs refs:cases`），
+口径见 `docs/notes/coord.md`。全部 `ci = true`，几何（面板范围 / 角度 / 半径 /
+次轴断点）另有 `tests/fixtures/coord_r_reference.json` 的逐值对拍。
+
+| 族 | case |
+| --- | --- |
+| `coord` | `flip-points` / `flip-bar` / `trans-log10` / `trans-sqrt` / `equal` |
+| `coord`（极坐标） | `polar-bar`（玫瑰图、munch 弧边）/ `polar-facet`（两块正圆面板）/ `polar-theta-y` |
+| `coord`（径向） | `radial-partial`（半圆）/ `radial-inner`（内半径 0.3） |
+| `coord`（次轴 / 近似投影） | `sec-axis`（右侧 `sec_axis(~ . * 2)`）/ `quickmap`（经纬度等距圆柱） |
 
 历史快照（不计入 geom 矩阵）：
 

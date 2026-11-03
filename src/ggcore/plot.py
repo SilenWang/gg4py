@@ -30,7 +30,10 @@ from ggcore import registry
 from ggcore.aes import Aes, as_aes, frozen_mapping
 from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
+from ggcore.axis import dup_axis as dup_axis
+from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
+from ggcore.coord import coord_munch as coord_munch
 from ggcore.layer import Layer, Position
 from ggcore.theme import merge_theme, theme_grey
 
@@ -241,7 +244,9 @@ registry.bind_plot(ggplot)
 # 模块级函数与 registry 里的**同一个函数对象**（两个入口，一条注册表）。
 # label 的入口叫 `labs`，没有前缀，其余形如 `geom_point` / `scale_x_log10`。
 def _export_registry_entries() -> list[str]:
-    names = ["aes", "after_stat", "ggplot", "gg_add"]
+    # `sec_axis` / `dup_axis` 不是注册表项（没有 coord_/scale_ 前缀），
+    # 但用户从 `ggcore.plot` 取它们最顺手，与 ggplot2 的用法一致（M2-1）。
+    names = ["aes", "after_stat", "ggplot", "gg_add", "coord_munch", "sec_axis", "dup_axis"]
     for kind in registry.KINDS:
         for name in registry.registered(kind):
             entry = registry.entry_name(kind, name)

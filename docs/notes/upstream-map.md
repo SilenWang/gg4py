@@ -48,6 +48,14 @@ Python 模块，反之亦然。
 | `ggcore.scale.continuous` | `R/scale-.R:106` | `continuous_scale()` | 未实现 |
 | `ggcore.coord`（`CartesianCoord`） | `R/coord-cartesian-.R:78` | `coord_cartesian()` | 已实现（M1-5：范围 / expand / clip / 越界计数，见 `docs/notes/coord.md`） |
 | `ggcore.coord`（`FixedCoord`） | `R/coord-fixed.R` | `coord_fixed()` | 已实现（M1-5：`aspect = ratio × yrange/xrange` + `panel_sizes()`） |
+| `ggcore.coord`（`EqualCoord` / `CartesianCoord.ratio`） | `R/coord-cartesian-.R:78` | `coord_equal()` | 已实现（M2-1：4.0.3 里就是 `coord_cartesian(ratio = 1)`） |
+| `ggcore.coord`（`FlipCoord`） | `R/coord-flip.R` | `coord_flip()` | 已实现（M2-1：`flip_axis_labels` + 面板范围对调 + 标度槽对调，geom 无 coord 名判断） |
+| `ggcore.coord`（`TransCoord`） | `R/coord-transform.R` | `coord_trans()` / `coord_transform()` | 已实现（M2-1：逐轴变换、变换后空间 expand、断点位置；见 coord.md §8） |
+| `ggcore.coord`（`PolarCoord`） | `R/coord-polar.R` | `coord_polar()` | 已实现（M2-1：theta / r 范围、`theta_rescale` / `r_rescale`、辐条 + 同心圆背景、theta 标签） |
+| `ggcore.coord`（`RadialCoord`） | `R/coord-radial.R` | `coord_radial()` | 已实现（M2-1：partial arc、`inner.radius`、`reverse`、bbox、`r.axis.inside` 的轴槽） |
+| `ggcore.coord`（`SfCoord` / `MapCoord` / `QuickmapCoord`） | `R/coord-sf.R` / `R/coord-map.R` | `coord_sf()` / `coord_map()` / `coord_quickmap()` | 最小可用（M2-1：identity 投影 + quickmap 的纬度因子；真实投影报错点名 M3-2） |
+| `ggcore.coord`（`coord_munch`） | `R/coord-munch.R` | `coord_munch()` | 已实现（M2-1：非线性坐标的逐边细分，geom 侧只判断 `panel.is_linear`） |
+| `ggcore.axis`（`SecondaryAxis` / `secondary_ticks`） | `R/axis-secondary.R` | `sec_axis()` / `dup_axis()` | 已实现（M2-1：断点 / 标签 / 位置 + top/right 槽；极坐标次轴报错） |
 | `ggcore.facet.base` | `R/facet-.R:66` | `Facet` | 已实现（M1-6：布局 / 面板标度 / map_data，见 `docs/notes/facet.md`） |
 | `ggcore.facet`（`FacetNull`） | `R/facet-null.R` | `facet_null()` | 已实现（M1-6：1×1 面板，输出与 M1-5 逐字节相同） |
 | `ggcore.facet`（`FacetWrap`） | `R/facet-wrap.R` | `facet_wrap()` | 已实现（M1-6：ncol/nrow/dir/as.table/drop/labeller/scales；space 只支持 fixed，其余报错） |

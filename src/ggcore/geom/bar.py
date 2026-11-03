@@ -33,6 +33,7 @@ from ggcore.geom.base import (
     default_size,
     flip_data,
     lty_value,
+    munch_xy,
     npc_values,
     row_slice,
     table_numeric,
@@ -120,6 +121,21 @@ class BarRenderer(GeomRenderer):
         linetype = _values(data, "linetype", 1)
         linejoin = str(build.params.get("linejoin", "mitre"))
         lineend = str(build.params.get("lineend", "butt"))
+        if not getattr(panel, "is_linear", True):
+            # 极坐标 / 非线性变换：矩形要按 `coord_munch()` 逐边细分，否则上下边
+            # 是弦而不是弧（R 的 `GeomRect$draw_panel()` 走 `GeomPolygon` 同一条路）。
+            return _munch_rects(
+                data,
+                panel,
+                fills=fills,
+                colours=colours,
+                alpha=alpha,
+                linewidth=linewidth,
+                linetype=linetype,
+                linejoin=linejoin,
+                lineend=lineend,
+                name=f"geom_{self.name}",
+            )
         return rect_grob(
             x=((xmin + xmax) / 2.0).tolist(),
             y=((ymin + ymax) / 2.0).tolist(),
@@ -139,6 +155,57 @@ class BarRenderer(GeomRenderer):
                 "lineend": lineend,
             },
         )
+
+
+def _munch_rects(
+    data: Any,
+    panel: Any,
+    *,
+    fills: list[Any],
+    colours: list[Any],
+    alpha: np.ndarray,
+    linewidth: np.ndarray,
+    linetype: list[Any],
+    linejoin: str,
+    lineend: str,
+    name: str,
+) -> Any:
+    """每根柱按四个角细分出的多边形（极坐标的楔形由 `coord_munch` 的采样表达）。"""
+    xmin = table_numeric(data, "xmin")
+    xmax = table_numeric(data, "xmax")
+    ymin = table_numeric(data, "ymin")
+    ymax = table_numeric(data, "ymax")
+    polygons: list[Any] = []
+    for index in range(data.nrows):
+        if not all(
+            math.isfinite(value) for value in (xmin[index], xmax[index], ymin[index], ymax[index])
+        ):
+            continue
+        xs = [xmin[index], xmin[index], xmax[index], xmax[index]]
+        ys = [ymin[index], ymax[index], ymax[index], ymin[index]]
+        px, py, ids = munch_xy(panel, xs, ys, [0, 0, 0, 0], closed=True)
+        polygons.append(
+            polygon_grob(
+                px.tolist(),
+                py.tolist(),
+                id=ids,
+                default_units="native",
+                name=name,
+                gp=gpar(
+                    fill=alpha_colour(fills[index], alpha[index]),
+                    col=colours[index],
+                    lwd=float(linewidth[index]) * POINT_PER_MM,
+                    lty=lty_value(linetype[index]),
+                    linejoin=linejoin,
+                    lineend=lineend,
+                ),
+            )
+        )
+    if not polygons:
+        return null_grob(name=name)
+    if len(polygons) == 1:
+        return polygons[0]
+    return g_tree(*polygons, name=name)
 
 
 class HistogramRenderer(BarRenderer):
@@ -250,6 +317,19 @@ class AreaRenderer(GeomRenderer):
             if ("flipped_aes" in data)
             else False
         )
+        if not getattr(panel, "is_linear", True) and not flip:
+            # 非线性坐标（极坐标 / coord_trans）：上沿 + 下沿的多边形逐边细分。
+            return _munch_area(
+                data,
+                panel,
+                fills=_values(data, "fill", "grey20"),
+                colours=_values(data, "colour", None),
+                alpha=table_numeric(data, "alpha", default=math.nan),
+                linewidth=table_numeric(data, "linewidth", default=0.5),
+                linetype=_values(data, "linetype", 1),
+                lineend=str(build.params.get("lineend", "butt")),
+                linejoin=str(build.params.get("linejoin", "round")),
+            )
         if flip:
             # 横向面积：先按纵向语义（along = 类别轴、low/high = 长度轴）拼多边形，
             # 再照 R 的 `flip_data(positions)` 把 x / y 对调 —— 最终多边形沿长度
@@ -330,6 +410,83 @@ class AreaRenderer(GeomRenderer):
         if len(grobs) == 1:
             return grobs[0]
         return g_tree(*grobs, name="geom_area")
+
+
+def _munch_area(
+    data: Any,
+    panel: Any,
+    *,
+    fills: list[Any],
+    colours: list[Any],
+    alpha: np.ndarray,
+    linewidth: np.ndarray,
+    linetype: list[Any],
+    lineend: str,
+    linejoin: str,
+) -> Any:
+    """`geom_area` 在非线性坐标下的多边形：上沿正向 + 下沿反向，逐边细分。"""
+    x = table_numeric(data, "x")
+    low = table_numeric(data, "ymin")
+    high = table_numeric(data, "ymax")
+    groups = (
+        np.asarray(data.column("group").values, dtype=np.float64)
+        if "group" in data
+        else np.zeros(data.nrows)
+    )
+    grobs: list[Any] = []
+    for key in _keys(groups):
+        rows = np.flatnonzero(groups == key)
+        if rows.size == 0:
+            continue
+        keep = np.isfinite(x[rows]) & np.isfinite(low[rows]) & np.isfinite(high[rows])
+        rows = rows[keep]
+        if rows.size == 0:
+            continue
+        xs = np.concatenate([x[rows], x[rows][::-1]])
+        ys = np.concatenate([high[rows], low[rows][::-1]])
+        px, py, ids = munch_xy(panel, xs, ys, [0] * xs.size, closed=True)
+        first = int(rows[0])
+        grobs.append(
+            polygon_grob(
+                px.tolist(),
+                py.tolist(),
+                id=ids,
+                default_units="native",
+                name="geom_area",
+                gp=gpar(
+                    fill=alpha_colour(fills[first], alpha[first]),
+                    col=NA,
+                    lwd=0.0,
+                ),
+            )
+        )
+        if colours[first] is not None and colours[first] is not NA:
+            for xs_edge, ys_edge in (
+                (xs[: rows.size], ys[: rows.size]),
+                (xs[rows.size :][::-1], ys[rows.size :][::-1]),
+            ):
+                ex, ey, eid = munch_xy(panel, xs_edge, ys_edge, [0] * xs_edge.size)
+                grobs.append(
+                    polyline_grob(
+                        ex.tolist(),
+                        ey.tolist(),
+                        id=eid,
+                        default_units="native",
+                        name="geom_area",
+                        gp=gpar(
+                            col=alpha_colour(colours[first], alpha[first]),
+                            lwd=float(linewidth[first]) * POINT_PER_MM,
+                            lty=lty_value(linetype[first]),
+                            lineend=lineend,
+                            linejoin=linejoin,
+                        ),
+                    )
+                )
+    if not grobs:
+        return null_grob(name="geom_area")
+    if len(grobs) == 1:
+        return grobs[0]
+    return g_tree(*grobs, name="geom_area")
 
 
 def _segment_ids(*arrays: np.ndarray) -> list[int]:
