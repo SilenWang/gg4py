@@ -27,7 +27,7 @@ from __future__ import annotations
 import math
 import re
 import warnings
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
@@ -246,6 +246,7 @@ class _SkiaDevice(Device):
             )
         if shader is None:  # pragma: no cover - 参数非法时 skia 才返回空
             raise DeviceError(f"skia 造不出渐变 shader：{fill!r}")
+        self._note_gradient_fill(fill)
         paint = skia.Paint(AntiAlias=True)
         paint.setShader(shader)
         paint.setAlphaf(float(alpha))
@@ -253,6 +254,13 @@ class _SkiaDevice(Device):
         return paint
 
     # -- 图案 ---------------------------------------------------------------
+
+    def _note_gradient_fill(self, fill: Any) -> None:
+        """后端钩子：渐变笔刷落到画布之前记一笔（缺省什么都不做）。
+
+        SVG 后端要用它修正 skia 序列化器的两处偏差（`spreadMethod` 不写、
+        two-point conical 的 `cx/r` 与 `fx/fr` 互换），见 `_rewrite_svg_gradients`。
+        """
 
     def _tile_path(self, path: skia.Path, fill: TilePattern, alpha: float) -> None:
         """把图案铺进一条路径：逐 tile 裁剪 + 平移画内容（矢量，不落位图）。
@@ -734,6 +742,148 @@ def _stable_svg_ids(svg: bytes) -> bytes:
     return text.encode("utf-8")
 
 
+#: skia 的 SVG 序列化器写出的渐变开标签。属性是唯一能对上 IR 的线索：它对
+#: two-point conical 按「start 圆 → cx/cy/r、end 圆 → fx/fy/fr」写（与 SVG 规范
+#: 相反），而且**完全不写** `spreadMethod`。这两处只能在序列化之后按 fill 更正
+#: （SIL-767 §2/§3）——注意 skia 把视口变换写成元素上的 `transform="matrix(…)"`，
+#: 渐变坐标仍是节点局部坐标，所以这里拿到的是写方的原值。
+_SVG_GRADIENT_TAG = re.compile(r"<(linearGradient|radialGradient)\b([^>]*)>")
+_SVG_ATTRIBUTE = re.compile(r'([A-Za-z_:][-\w:.]*)="([^"]*)"')
+
+#: 这些属性由 `_gradient_tag` 重写；其余（`gradientTransform` 之类）原样保留。
+_SVG_GRADIENT_OWN_ATTRS = frozenset(
+    {
+        "id",
+        "gradientUnits",
+        "spreadMethod",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "cx",
+        "cy",
+        "r",
+        "fx",
+        "fy",
+        "fr",
+    }
+)
+
+
+def _svg_number(value: float) -> str:
+    """数值写法与 skia 对齐：整数不带小数点，其余去掉尾随零。"""
+    rounded = round(float(value), 6)
+    if rounded == int(rounded):
+        return str(int(rounded))
+    return f"{rounded:.6f}".rstrip("0").rstrip(".")
+
+
+def _gradient_key(fill: Any) -> tuple[Any, ...] | None:
+    """把 IR 的 fill 折成「skia 会写成什么」的对照键。"""
+    if isinstance(fill, LinearGradient):
+        return ("linearGradient", *(float(value) for value in (*fill.start, *fill.end)))
+    if fill.focal is None:
+        return ("radialGradient", *(float(value) for value in (*fill.center, fill.radius)))
+    # skia 对两圆锥渐变：`fx/fy/fr` = end 圆（IR 的 center/radius），
+    # `cx/cy/r` = start 圆（IR 的 focal）。按这个顺序对齐再比。
+    return (
+        "radialFocal",
+        *(float(value) for value in (*fill.center, fill.radius, *fill.focal)),
+    )
+
+
+def _element_key(tag: str, attrs: Mapping[str, str]) -> tuple[Any, ...] | None:
+    """把 skia 写出来的渐变标签折成同一套对照键。"""
+
+    def number(name: str) -> float | None:
+        raw = attrs.get(name)
+        if raw is None:
+            return None
+        try:
+            return float(raw)
+        except ValueError:
+            return None
+
+    if tag == "linearGradient":
+        values = [number(name) for name in ("x1", "y1", "x2", "y2")]
+        return ("linearGradient", *(0.0 if value is None else value for value in values))
+    if "fx" in attrs or "fr" in attrs:
+        # start 圆（cx/cy/r）在前、end 圆（fx/fy/fr）在后 → 与 IR 对照键同序。
+        values = [number(name) for name in ("fx", "fy", "fr", "cx", "cy", "r")]
+        if any(value is None for value in values):
+            return None
+        return ("radialFocal", *values)
+    values = [number(name) for name in ("cx", "cy", "r")]
+    if any(value is None for value in values):
+        return None
+    return ("radialGradient", *values)
+
+
+def _same_gradient_key(left: tuple[Any, ...], right: tuple[Any, ...] | None) -> bool:
+    if right is None or len(left) != len(right) or left[0] != right[0]:
+        return False
+    return all(
+        math.isclose(float(a), float(b), abs_tol=1e-3) for a, b in zip(left[1:], right[1:])
+    )
+
+
+def _gradient_tag(tag: str, attrs: Mapping[str, str], fill: LinearGradient | RadialGradient) -> str:
+    """按 SVG 规范重写一个渐变标签：几何口径 + `spreadMethod`。"""
+    parts: list[str] = []
+    if "id" in attrs:
+        parts.append(f'id="{attrs["id"]}"')
+    parts.append('gradientUnits="userSpaceOnUse"')
+    if isinstance(fill, LinearGradient):
+        parts.append(f'x1="{_svg_number(fill.start[0])}"')
+        parts.append(f'y1="{_svg_number(fill.start[1])}"')
+        parts.append(f'x2="{_svg_number(fill.end[0])}"')
+        parts.append(f'y2="{_svg_number(fill.end[1])}"')
+    else:
+        parts.append(f'cx="{_svg_number(fill.center[0])}"')
+        parts.append(f'cy="{_svg_number(fill.center[1])}"')
+        parts.append(f'r="{_svg_number(fill.radius)}"')
+        if fill.focal is not None:
+            parts.append(f'fx="{_svg_number(fill.focal[0])}"')
+            parts.append(f'fy="{_svg_number(fill.focal[1])}"')
+            parts.append(f'fr="{_svg_number(fill.focal[2])}"')
+    if fill.extend is not Extend.PAD:
+        # pad 是 SVG 的缺省值，不写；repeat / reflect 必须写出来，否则 SVG 退化成 pad。
+        parts.append(f'spreadMethod="{fill.extend.value}"')
+    for name, value in attrs.items():
+        if name not in _SVG_GRADIENT_OWN_ATTRS:
+            parts.append(f'{name}="{value}"')
+    return f"<{tag} {' '.join(parts)}>"
+
+
+def _rewrite_svg_gradients(svg: bytes, fills: Sequence[Any]) -> bytes:
+    """按画到画布上的 fill 更正 skia 写出的渐变标签。
+
+    对不上的标签**报错**，不猜：静默留着一个 `fr > r` 或没有 `spreadMethod` 的
+    渐变，比不写渐变更糟（渲出来就是错图，还查不到）。
+    """
+    if not fills:
+        return svg
+    text = svg.decode("utf-8")
+    pending = list(fills)
+
+    def replace(match: re.Match[str]) -> str:
+        tag, raw_attrs = match.group(1), match.group(2)
+        attrs = dict(_SVG_ATTRIBUTE.findall(raw_attrs))
+        key = _element_key(tag, attrs)
+        for index, fill in enumerate(pending):
+            expected = _gradient_key(fill)
+            if expected is not None and _same_gradient_key(expected, key):
+                del pending[index]
+                return _gradient_tag(tag, attrs, fill)
+        raise DeviceError(
+            f"SVG 渐变序列化与 IR 对不上：<{tag} {raw_attrs.strip()}> 找不到对应的 fill"
+            "（skia 改了序列化口径？见 _rewrite_svg_gradients）"
+        )
+
+    return _SVG_GRADIENT_TAG.sub(replace, text).encode("utf-8")
+
+
+
 class SkiaSvgDevice(_SkiaDevice):
     """SVG 后端：字形全部走轮廓，产物里没有 `<text>` / `@font-face`。"""
 
@@ -745,6 +895,12 @@ class SkiaSvgDevice(_SkiaDevice):
         bounds = skia.Rect.MakeWH(float(self.width_pt), float(self.height_pt))
         self.canvas = skia.SVGCanvas.Make(bounds, self._stream, skia.SVGCanvas.kNoPrettyXML_Flag)
         self.canvas.clear(skia.ColorWHITE)
+        # 画到画布上的渐变 fill，按笔刷创建顺序记一份：序列化之后靠它把 skia 写反的
+        # 几何和丢掉的 `spreadMethod` 更正回来（`_rewrite_svg_gradients`）。
+        self._svg_fills: list[Any] = []
+
+    def _note_gradient_fill(self, fill: Any) -> None:
+        self._svg_fills.append(fill)
 
     def _emit_glyphs(
         self,
@@ -768,12 +924,14 @@ class SkiaSvgDevice(_SkiaDevice):
         self.canvas = None
         data = self._stream.detachAsData()
         self._stream = None
-        return _stable_svg_ids(bytes(data.bytes()))
+        svg = _stable_svg_ids(bytes(data.bytes()))
+        return _rewrite_svg_gradients(svg, self._svg_fills)
 
     def _abort(self) -> None:
         # 画布析构时会把半成品写进 stream；这里先放开画布再放手 stream。
         self.canvas = None
         self._stream = None
+        self._svg_fills = []
 
 
 class SkiaPdfDevice(_SkiaDevice):

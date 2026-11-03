@@ -42,7 +42,7 @@ CBOR（`cbor2`），canonical 编码。Pyodide 里没有 `cbor2`（没有 wasm �
 ```
 {
   "magic": "ggir",
-  "ir_version": [0, 2],
+  "ir_version": [0, 4],
   "scene": {
     "size": [w, h],                       # pt
     "dpi": 72.0,
@@ -69,7 +69,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
 ## 3. 版本
 
-- 常量：`IR_VERSION = (0, 2)`、`IR_VERSION_STR = "0.2"`，编码时写进 `ir_version`。
+- 常量：`IR_VERSION = (0, 4)`、`IR_VERSION_STR = "0.4"`，编码时写进 `ir_version`。
+  版本号只有这一处来源（`src/ggcore/ir/codec.py`），文档、测试、查看器都从它派生。
 - 解码只认 **major**：`major != IR_VERSION[0]`（现在是 0）抛 `IRVersionError`
   （`IRDecodeError` 的子类），不尝试“猜一个相近版本”。
 - 同一 major 内的规则只分两档，**每一层映射都走同一份判断**：
@@ -125,14 +126,27 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
   故按资格 A 判 minor。若 v0.1 已有渲染端按子坐标读它、或仓库外有实现/发布物按
   语义读过它，这次就是 major。
-- **0.2 → 0.3 记账（判 minor，只加字段）**：新增 `gpar.fill` 的三种非纯色分支
+- **0.2 → 0.3 记账（PR #61，判 minor，只加字段）**：`segments` / `polyline` / `curve`
+  各加四个带缺省值的 `arrow*` 参数（`arrow` / `arrow_length` / `arrow_angle` /
+  `arrow_type`）。缺省值按「只写非缺省」省略，所以不带箭头的场景**节点 / bulk 字节
+  不变，只有 `ir_version` 标记变了**。口径见 #61 的文档改动，本 PR 不改它。
+- **0.3 → 0.4 记账（判 minor，只加字段）**：新增 `gpar.fill` 的三种非纯色分支
   （`linear` / `radial` / `pattern`，§6.1）。纯色的线格式**一个字节没动**（仍是
   不带 `kind` 的 `[r, g, b, a]`），`GPAR_FIELDS` 的字段集合也没变——`fill` 只是从
   「四元组或 null」扩成「四元组 / 三类带 `kind` 的映射 / null」的联合类型。旧
-  v0.2（与更早的 v0.1）文件里 `fill` 只可能是四元组，新读方照原样读，所以
+  v0.3（与更早的 v0.2 / v0.1）文件里 `fill` 只可能是四元组，新读方照原样读，所以
   `tests/test_ir_fill.py::test_v0_2_file_still_reads` / `::test_v0_2_file_without_fill_still_reads`
-  两个方向都钉住。反方向（新文件给旧读方）不承诺：旧读方遇到带 `kind` 的映射会
-  按「必须是四元组」报错——这正是「minor 只向前兼容」的边界。
+  / `::test_v0_3_arrow_file_still_reads` 都钉住。
+- **为什么渐变不能占 0.3**（SIL-767 §1）：#61 的箭头 IR 与这份渐变 IR 曾各自都写
+  `(0, 3)`，而「minor ≤ 本实现」是严格模式，于是两份 0.3 文件交叉解码双向失败
+  （箭头文件报 `segments 有未知参数`、渐变文件报 `gpar.fill 必须是四元组`）。
+  同 minor 只能有**一种**语义，所以渐变改占 0.4。
+- **新文件给旧读方**：不承诺向前兼容，但必须**明确报版本错误**、不能静默降级。
+  两类各有一条路：读方是 0.3（不认识 `kind`）时，文件里的 `fill` 映射按「必须是
+  四元组」报错；读方用 `decode(..., reader_version=(0, 3))` 时，`_FILL_MINOR`
+  直接报 `IRVersionError`（渐变 / 图案 fill 引入于 0.4，跳过未知键等于画成不填充）。
+  两条都由 `tests/test_ir_fill.py::test_v0_4_gradient_file_is_rejected_by_a_v0_3_reader`
+  与 `::test_v0_3_reader_cannot_read_v0_4_gradient_file` 覆盖。
 
 ## 4. 节点类型表
 
@@ -234,7 +248,7 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   “gpar 全是缺省值”。解码保持这个区别。
 - 只有非缺省字段上线（canonical + 体积）。
 
-### 6.1 `fill` 的渐变与图案（v0.3）
+### 6.1 `fill` 的渐变与图案（v0.4）
 
 纯色还是 `[r, g, b, a]`；其余三种是带 `kind` 的映射。**色标写成一条 f4 `(n, 5)`
 缓冲**（`offset + r, g, b, a`），不是逐档的小映射——线格式与 `bufs` 里的缓冲对象
@@ -270,13 +284,17 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - `pattern.content` 只收 `rect` / `circle` / `polygon` / `path` / `polyline` /
   `lines` / `segments`，`gpar.fill` 只能是纯色——不允许在图案里再嵌渐变 / 图案。
 
-消费端缺口（**已知差异**，两条腿对拍的 case 只用 `extend = pad` 的普通渐变）：
+消费端状态（三条渲染腿：skia PNG / SVG / PDF + 查看器 DOM SVG）：
 
-| 缺口 | 现状 | 影响 |
+| 项 | 现状 | 守护用例 |
 | --- | --- | --- |
-| skia 的 SVG 序列化不写 `spreadMethod` | PNG / PDF 的 `extend` 正确；SVG 退化成 pad | `viewer:parity` 的渐变 case 只用 `pad`；`tests/test_skia_fill.py::test_gradient_extend_pad_and_repeat_differ_in_raster` 钉住栅格侧正确 |
-| skia 的 SVG 把 focal 渐变的 `fr` / `r` 写反 | `fr = endRadius`、`r = startRadius`，与 SVG 规范相反（规范要求 `fr < r`） | 含 `focal` 的 SVG 输出不可用；PNG / PDF 正确。`tests/test_skia_fill.py::test_radial_gradient_with_focal_point` 记录现状 |
-| 图案只支持 `extend = repeat` | `pad` / `reflect` 在 skia 侧显式 `DeviceError`，浏览器侧 `<pattern>` 本身只有平铺语义 | 写方 API 的缺省就是 `repeat` |
+| SVG `spreadMethod` | **已修**（SIL-767 §3）：skia 的序列化器不写它，设备在序列化之后按 IR 的 `extend` 补写；`pad` 是 SVG 缺省值、不写 | `tests/test_skia_fill.py::test_gradient_extend_is_written_to_svg_as_spread_method` |
+| SVG focal 渐变 | **已修**（SIL-767 §2）：skia 把两圆锥渐变的 `cx/cy/r`（start 圆）与 `fx/fy/fr`（end 圆）写反，设备按 IR 重写成规范形式（`cx/cy/r` = `center`/`radius`，`fx/fy/fr` = `focal`） | `::test_radial_gradient_with_focal_point`、`::test_focal_gradient_svg_rasterizes_the_way_png_renders`（resvg 像素对照） |
+| 图案只支持 `extend = repeat` | `pad` / `reflect` 在 skia 侧显式 `DeviceError`，浏览器侧 `<pattern>` 本身只有平铺语义 | `::test_pattern_rejects_non_repeat_extend` |
+
+SVG 侧的两处修法都落在 `ggskia.skia` 的序列化**之后**（`_rewrite_svg_gradients`）：
+skia 把视口变换写成元素上的 `transform="matrix(…)"`，渐变坐标仍是节点局部坐标，
+所以标签里的几何可以逐值对照 IR 的 fill；对不上的标签直接 `DeviceError`，不猜。
 
 ## 7. text：只带最终宽度与锚点
 
@@ -375,20 +393,31 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 - 所以“禁止逐元素 JSON”这条门禁（X1）站得住：不是为了 10× 的营销数字，而是 5× 起步、
   且是**唯一**能保住逐位精度的表示。314 份快照的规模下这个差值是几百 MB 的量级。
 
-### 10.1 渐变 / 图案的账（v0.3）
+### 10.1 渐变 / 图案的账（v0.4）
 
 色标是「一个小结构」而不是 bulk 数据，但仍然按缓冲写（一条 f4 `(n, 5)`，20 B/档），
-所以档数线性增长、没有逐档的映射开销。实测（`/tmp` 里的一次性脚本，同一条 fill 的
-CBOR 段 vs 逐档 JSON 文本；JSON 用 `{"offset":…,"colour":[…,…,…,…]}`）：
+所以档数线性增长、没有逐档的映射开销。数字由 `pixi run ir:size` 打印
+（`tools/ir_size_report.py::fill_sizes`，量法写在函数 docstring 里，可复跑）：
 
-| fill | CBOR 字节 | 逐档 JSON 字节 | 说明 |
-| --- | ---: | ---: | --- |
-| 纯色 `[r, g, b, a]` | 9 | — | 与 v0.2 完全一致（不含键名，键名由 gpar 映射承担） |
-| 2 档线性渐变 | 120 | 190 | 每多一档 +20 B |
-| 3 档线性渐变 | 140 | 237 | |
-| 10 档线性渐变 | 280 | 700+ | |
-| 3 档径向渐变 | 152 | 232 | 多一个 `radius` / 可选 `focal` |
-| 图案（1 个内容矩形） | 170 | — | 图案的体积由**内容节点**决定，不含位图 |
+| fill | fill 值 CBOR | 承载它的 `gpar` 段 | 逐档 JSON | 说明 |
+| --- | ---: | ---: | ---: | --- |
+| 纯色 `[r, g, b, a]` | 9 | 21 | — | 与 v0.2 完全一致（不含键名，键名由 gpar 映射承担） |
+| 2 档线性渐变 | 120 | 132 | 159 | 每多一档 +20 B |
+| 3 档线性渐变 | 140 | 152 | 200 | |
+| 10 档线性渐变 | 280 | 292 | 517 | |
+| 3 档径向渐变 | 140 | 152 | 197 | 多一个 `radius` / 可选 `focal` |
+| 图案（1 个内容矩形） | 146 | 158 | — | 图案的体积由**内容节点**决定，不含位图 |
+
+三列口径（同一份 wire，三种外层装法）：
+
+- **fill 值 CBOR**：`gpar.fill` 这个**值本身**的 canonical CBOR，**含** `kind` 与
+  `extend`（缺省也显式写，读方不用猜），不含承载它的 `fill` 键名。上一版表的
+  120 / 140 / 280 就是这个口径，但表里既没说清、又把 `3 档径向` 误写成 152
+  （152 是下一列的数）、`图案` 误写成 170（实测 146）——SIL-767 §4 的错数来自这里。
+- **承载它的 `gpar` 段**：真实节点里新增的 `"gpar": {"fill": …}` 总字节
+  （映射头 + 两个键名），也就是「加一条渐变填充」在图里实际贵多少。
+- **逐档 JSON**：同一条 fill 写成 JSON 文本（`{"kind":…,"stops":[{"offset":…,
+  "colour":[r,g,b,a]}, …]}`）的字节数，用来说明「20 B/档」不是营销数字。
 
 结论：渐变不是体积风险，档数再多也只是 20 B/档；图案内容是普通 IR 节点（缓冲仍然是
 float32），不引入第二套坐标系，也不往 blob 表里塞位图。

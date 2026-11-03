@@ -9,12 +9,15 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from ggcore import ir
 from ggcore.device import DeviceError
 from ggcore.fills import pattern_rect
+from ggdiff.raster import rasterize_svg
 from ggskia.skia import SkiaPdfDevice, SkiaRasterDevice, SkiaSvgDevice
 
 WIDTH = 300.0
@@ -79,11 +82,11 @@ def test_radial_gradient_becomes_an_svg_radial_gradient() -> None:
 
 
 def test_radial_gradient_with_focal_point() -> None:
-    """focal 渐变的 PNG 路径可用；SVG 侧 skia 把 `fr` / `r` 映射反了（已知缺口）。
+    """focal 渐变：SVG 必须按规范写 `cx/cy/r` = 主圆、`fx/fy/fr` = 焦点圆。
 
-    skia 的 SVG 序列化器对两圆锥渐变写 `fr = endRadius`、`r = startRadius`，
-    正好与 SVG 规范相反（规范要求 `fr < r`）。所以含 focal 的 SVG 输出不可信，
-    对拍 case 只用普通径向渐变；缺口记在 `docs/notes/ir.md` §6.1。
+    skia 的 SVG 序列化器把两圆锥渐变的 `fr` / `r` 写反（`fr = endRadius`、
+    `r = startRadius`），所以设备在序列化之后按 IR 的 fill 重写标签（SIL-767 §2）。
+    这里正着断言：`fr < r`、主圆是 `center` / `radius`、焦点圆是 `focal`。
     """
     focal = ir.RadialGradient(
         stops=[(0.0, (255, 255, 255, 255)), (1.0, (0, 0, 0, 255))],
@@ -92,17 +95,51 @@ def test_radial_gradient_with_focal_point() -> None:
         focal=(90.0, 110.0, 5.0),
     )
     scene = _scene(_rect(40.0, 70.0, 160.0, 150.0, focal))
-    svg = _svg(scene)
-    assert "<radialGradient" in svg
+    tag = re.search(r"<radialGradient[^>]*>", _svg(scene))
+    assert tag is not None
+    attributes = dict(re.findall(r'([A-Za-z]+)="([^"]*)"', tag.group(0)))
+    assert float(attributes["cx"]) == 100.0 and float(attributes["cy"]) == 110.0
+    assert float(attributes["r"]) == 40.0
+    assert float(attributes["fx"]) == 90.0 and float(attributes["fy"]) == 110.0
+    assert float(attributes["fr"]) == 5.0
+    # 规范要求 fr < r；skia 原来写出来的正好相反，这条是那个 bug 的回归断言。
+    assert float(attributes["fr"]) < float(attributes["r"])
     assert SkiaRasterDevice(WIDTH, HEIGHT).render(scene)[:4] == b"\x89PNG"
 
 
-def test_gradient_extend_pad_and_repeat_differ_in_raster() -> None:
-    """`extend` 在栅格路径（PNG / PDF）里是真的生效的。
+def test_focal_gradient_svg_rasterizes_the_way_png_renders(tmp_path: Path) -> None:
+    """focal 的 SVG 交给 resvg 光栅化后，和「普通径向渐变」确实不是一张图。
 
-    skia 的 SVG 序列化器**不写** `spreadMethod`，所以 SVG 侧的 repeat / reflect
-    退化成 pad——这是设备缺口，记在 `docs/notes/ir.md` §6.1；对拍 case 只用 pad。
+    只比属性不够——属性对、语义错（比如 `fr` 被 resvg 忽略）也会通过。这里取焦点
+    圆中心与主圆中心两个采样点：焦点版在焦点处是首档色，普通版不是。
     """
+    focal = ir.RadialGradient(
+        stops=[(0.0, (255, 0, 0, 255)), (1.0, (0, 0, 255, 255))],
+        center=(100.0, 110.0),
+        radius=40.0,
+        focal=(90.0, 110.0, 5.0),
+    )
+    plain = ir.RadialGradient(
+        stops=[(0.0, (255, 0, 0, 255)), (1.0, (0, 0, 255, 255))],
+        center=(110.0, 110.0),
+        radius=40.0,
+    )
+
+    def pixels(fill: ir.RadialGradient, name: str) -> tuple[tuple[int, ...], ...]:
+        path = tmp_path / f"{name}.svg"
+        path.write_text(_svg(_scene(_rect(40.0, 70.0, 160.0, 150.0, fill))), encoding="utf-8")
+        png = rasterize_svg(path, tmp_path / f"{name}.png")
+        image = Image.open(png).convert("RGB")
+        return (image.getpixel((int(fill.center[0]), 110)),)
+
+    focal_pixel = pixels(focal, "focal")[0]
+    plain_pixel = pixels(plain, "plain")[0]
+    assert focal_pixel != plain_pixel
+    assert focal_pixel[0] > focal_pixel[2]  # 焦点在主圆左侧 → 该点更靠近首档（红）
+
+
+def test_gradient_extend_pad_and_repeat_differ_in_raster() -> None:
+    """`extend` 在栅格路径（PNG / PDF）里是真的生效的。"""
 
     def raster(extend: str) -> bytes:
         fill = ir.LinearGradient(
@@ -114,7 +151,30 @@ def test_gradient_extend_pad_and_repeat_differ_in_raster() -> None:
         return SkiaRasterDevice(WIDTH, HEIGHT).render(_scene(_rect(10.0, 10.0, 190.0, 90.0, fill)))
 
     assert raster("pad") != raster("repeat")
-    assert "spreadMethod" not in _svg(_scene(_rect(10.0, 10.0, 190.0, 90.0, LINEAR)))
+
+
+def test_gradient_extend_is_written_to_svg_as_spread_method() -> None:
+    """repeat / reflect 必须在 SVG 里写 `spreadMethod`（SIL-767 §3）。
+
+    skia 的序列化器不写这个属性，三条 `extend` 的 SVG 输出原本一模一样（都退化成
+    pad）。设备现在按 IR 的 `extend` 补上：pad 是 SVG 缺省值、不写，其余照写，
+    且三份 SVG 互不相同。
+    """
+
+    def svg(extend: str) -> str:
+        fill = ir.LinearGradient(
+            stops=[(0.0, (228, 87, 86, 255)), (1.0, (76, 120, 168, 255))],
+            start=(10.0, 10.0),
+            end=(80.0, 10.0),
+            extend=extend,
+        )
+        return _svg(_scene(_rect(10.0, 10.0, 190.0, 90.0, fill)))
+
+    pad, repeat, reflect = svg("pad"), svg("repeat"), svg("reflect")
+    assert "spreadMethod" not in pad
+    assert 'spreadMethod="repeat"' in repeat
+    assert 'spreadMethod="reflect"' in reflect
+    assert len({pad, repeat, reflect}) == 3
 
 
 def test_pattern_is_drawn_as_vectors_not_a_bitmap() -> None:
