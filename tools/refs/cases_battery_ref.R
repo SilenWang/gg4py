@@ -405,6 +405,73 @@ save_case("scale-limits-drop", local({
     fx(0.2, 0.9) + fy(0.2, 0.9) + theme_case()
 }))
 
+# --- scale（M2-4 B：调色板 / manual / identity / 线型 / 面积）-----------------
+
+# viridis 离散色板 + 完整图例（4 个水平）。颜色逐点由 viridis() 给，不是手写表。
+save_case("scale-colour-viridis-d", local({
+  df <- data.frame(
+    x = c(0.12, 0.30, 0.52, 0.74, 0.22, 0.44, 0.66, 0.88, 0.18, 0.40, 0.60, 0.82),
+    y = c(0.22, 0.48, 0.32, 0.66, 0.78, 0.56, 0.84, 0.42, 0.60, 0.28, 0.74, 0.50),
+    g = c("a", "a", "a", "b", "b", "b", "c", "c", "c", "d", "d", "d")
+  )
+  ggplot(df, aes(x, y, colour = g)) +
+    geom_point(shape = 19, size = 3.0) +
+    scale_colour_viridis_d(option = "D") +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))
+
+# brewer 填充 + 完整图例（3 个水平，Set2 逐 n 表的 3 色）。
+save_case("scale-fill-brewer", local({
+  df <- data.frame(
+    cls = c("a", "b", "c", "a", "b", "c"),
+    y = c(1.2, 2.1, 1.6, 0.9, 1.5, 2.3),
+    grp = c("p", "p", "p", "q", "q", "q")
+  )
+  ggplot(df, aes(cls, y, fill = grp)) +
+    geom_col(width = 0.7, position = position_dodge()) +
+    scale_fill_brewer(palette = "Set2") +
+    fy(0, 3.2) + theme_void()
+}))
+
+# 离散 linetype + 完整图例：默认 pal_linetype（solid / 22 / 42）。
+save_case("scale-linetype-discrete", local({
+  df <- data.frame(
+    x = c(0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65),
+    y = c(0.2, 0.5, 0.3, 0.6, 0.4, 0.7, 0.35, 0.65, 0.45, 0.75, 0.5, 0.8),
+    g = rep(c("a", "b", "c"), each = 4)
+  )
+  ggplot(df, aes(x, y, linetype = g)) +
+    geom_line(linewidth = 1.1) +
+    fx(0, 0.7) + fy(0, 1) + theme_void() +
+    theme(legend.position = "none")
+}))
+
+# size_area：面积正比于值（散点）+ 完整图例。
+save_case("scale-size-area", local({
+  df <- data.frame(
+    x = c(0.12, 0.30, 0.52, 0.74, 0.22, 0.44, 0.66, 0.88),
+    y = c(0.22, 0.48, 0.32, 0.66, 0.78, 0.56, 0.84, 0.42),
+    v = c(0.0, 1.0, 2.0, 3.0, 4.0, 1.5, 2.5, 3.5)
+  )
+  ggplot(df, aes(x, y, size = v)) +
+    geom_point(shape = 19, colour = "#4C78A8") +
+    scale_size_area(max_size = 6) +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))
+
+# identity：数据里已经是颜色值，映射原样通过（不产生图例）。
+save_case("scale-colour-identity", local({
+  df <- data.frame(
+    x = c(0.12, 0.30, 0.52, 0.74, 0.22, 0.44, 0.66, 0.88, 0.18, 0.40),
+    y = c(0.22, 0.48, 0.32, 0.66, 0.78, 0.56, 0.84, 0.42, 0.60, 0.28),
+    col = rep(c("#4C78A8", "#F58518", "#54A24B", "#E45756", "#72B7B2"), each = 2)
+  )
+  ggplot(df, aes(x, y, colour = col)) +
+    geom_point(shape = 19, size = 3.2) +
+    scale_colour_identity() +
+    fx(0, 1) + fy(0, 1) + theme_void()
+}))
+
 # --- facet -----------------------------------------------------------------
 
 save_case("facet-wrap-2x2", local({

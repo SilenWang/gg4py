@@ -1181,6 +1181,1275 @@
         17,
         15
       ]
+    },
+    {
+      "id": "colour_brewer_set1",
+      "title": "离散 colour：brewer Set1（5 个水平，逐 n 表）",
+      "scale": "colour_brewer",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "palette": "Set1"
+      },
+      "train": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "map": [
+        "a",
+        "c",
+        "e"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "mapped": [
+        "#E41A1C",
+        "#4DAF4A",
+        "#FF7F00"
+      ]
+    },
+    {
+      "id": "colour_brewer_qual_dark2",
+      "title": "离散 colour：brewer type = qual, palette = 2（Dark2）",
+      "scale": "colour_brewer",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "type": "qual",
+        "palette": 2
+      },
+      "train": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "map": [
+        "A",
+        "C",
+        "F"
+      ],
+      "limits": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "mapped": [
+        "#1B9E77",
+        "#7570B3",
+        "#E6AB02"
+      ]
+    },
+    {
+      "id": "colour_brewer_direction",
+      "title": "离散 colour：brewer direction = -1（Blues 反序）",
+      "scale": "colour_brewer",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "palette": "Blues",
+        "direction": -1
+      },
+      "train": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "map": [
+        "a",
+        "d"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "mapped": [
+        "#2171B5",
+        "#EFF3FF"
+      ]
+    },
+    {
+      "id": "fill_brewer_set2",
+      "title": "离散 fill：brewer Set2（3 个水平）",
+      "scale": "fill_brewer",
+      "aesthetic": "fill",
+      "trans": "identity",
+      "params": {
+        "palette": "Set2"
+      },
+      "train": [
+        "p",
+        "q",
+        "r"
+      ],
+      "map": [
+        "p",
+        "r",
+        null
+      ],
+      "limits": [
+        "p",
+        "q",
+        "r"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "p",
+        "q",
+        "r"
+      ],
+      "labels": [
+        "p",
+        "q",
+        "r"
+      ],
+      "mapped": [
+        "#66C2A5",
+        "#8DA0CB",
+        null
+      ]
+    },
+    {
+      "id": "colour_viridis_d",
+      "title": "离散 colour：viridis option C",
+      "scale": "colour_viridis_d",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "option": "C"
+      },
+      "train": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c",
+        "d",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "mapped": [
+        "#0D0887FF",
+        "#9C179EFF",
+        "#ED7953FF",
+        "#F0F921FF",
+        null
+      ]
+    },
+    {
+      "id": "colour_viridis_d_begin_end",
+      "title": "离散 colour：viridis begin / end / direction",
+      "scale": "colour_viridis_d",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "option": "E",
+        "begin": 0.20000000000000001,
+        "end": 0.80000000000000004,
+        "direction": -1
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "#CBBA69FF",
+        "#7C7B78FF",
+        "#31446BFF"
+      ]
+    },
+    {
+      "id": "colour_grey",
+      "title": "离散 colour：grey 色板（start / end）",
+      "scale": "colour_grey",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "map": [
+        "a",
+        "d",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "mapped": [
+        "#333333",
+        "#CCCCCC",
+        "red"
+      ]
+    },
+    {
+      "id": "colour_grey_custom",
+      "title": "离散 colour：grey start = 0.1, end = 0.9",
+      "scale": "colour_grey",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "start": 0.10000000000000001,
+        "end": 0.90000000000000002
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "#191919",
+        "#A8A8A8",
+        "#E6E6E6"
+      ]
+    },
+    {
+      "id": "colour_ordinal",
+      "title": "离散 colour：ordinal（4.0.3 缺省走 viridis_d）",
+      "scale": "colour_ordinal",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "c"
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "#440154FF",
+        "#FDE725FF"
+      ]
+    },
+    {
+      "id": "colour_identity",
+      "title": "colour identity：值原样通过（数据里已经是颜色）",
+      "scale": "colour_identity",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "#FF0000",
+        "#00FF00"
+      ],
+      "map": [
+        "#FF0000",
+        "#00FF00",
+        null
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [],
+      "labels": [],
+      "mapped": [
+        "#FF0000",
+        "#00FF00",
+        null
+      ]
+    },
+    {
+      "id": "colour_distiller",
+      "title": "连续 colour：distiller（brewer 7 色 + Lab 插值）",
+      "scale": "colour_distiller",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.25,
+        0.5,
+        1,
+        null
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        "#084594",
+        "#3381BE",
+        "#6BAED6",
+        "#EFF3FF",
+        "grey50"
+      ]
+    },
+    {
+      "id": "colour_viridis_c",
+      "title": "连续 colour：viridis option A（6 色 + Lab 插值）",
+      "scale": "colour_viridis_c",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": {
+        "option": "A"
+      },
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        "#000004",
+        "#B63875",
+        "#FCFDBF"
+      ]
+    },
+    {
+      "id": "colour_viridis_b",
+      "title": "分箱 colour：viridis_b（每箱一个色）",
+      "scale": "colour_viridis_b",
+      "aesthetic": "colour",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.29999999999999999,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        "#440154FF",
+        "#31688EFF",
+        "#FDE725FF",
+        "#FDE725FF"
+      ]
+    },
+    {
+      "id": "shape_manual",
+      "title": "shape manual：values 按水平顺序",
+      "scale": "shape_manual",
+      "aesthetic": "shape",
+      "trans": "identity",
+      "params": {
+        "values": [
+          19,
+          15,
+          17
+        ]
+      },
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        19,
+        15,
+        17,
+        null
+      ]
+    },
+    {
+      "id": "shape_binned",
+      "title": "分箱 shape：数值 → 箱 → 形状码",
+      "scale": "shape_binned",
+      "aesthetic": "shape",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.29999999999999999,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        16,
+        17,
+        3,
+        3
+      ]
+    },
+    {
+      "id": "linetype_discrete",
+      "title": "离散 linetype：pal_linetype 的 13 种线型",
+      "scale": "linetype_discrete",
+      "aesthetic": "linetype",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "b",
+        "c",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        "solid",
+        "22",
+        "42",
+        null
+      ]
+    },
+    {
+      "id": "linetype_manual",
+      "title": "linetype manual：values 按水平顺序",
+      "scale": "linetype_manual",
+      "aesthetic": "linetype",
+      "trans": "identity",
+      "params": {
+        "values": [
+          "solid",
+          "dashed"
+        ]
+      },
+      "train": [
+        "a",
+        "b"
+      ],
+      "map": [
+        "a",
+        "b"
+      ],
+      "limits": [
+        "a",
+        "b"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b"
+      ],
+      "labels": [
+        "a",
+        "b"
+      ],
+      "mapped": [
+        "solid",
+        "dashed"
+      ]
+    },
+    {
+      "id": "linetype_identity",
+      "title": "linetype identity：值原样通过",
+      "scale": "linetype_identity",
+      "aesthetic": "linetype",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "solid",
+        "22"
+      ],
+      "map": [
+        "solid",
+        "22"
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [],
+      "labels": [],
+      "mapped": [
+        "solid",
+        "22"
+      ]
+    },
+    {
+      "id": "linetype_binned",
+      "title": "分箱 linetype",
+      "scale": "linetype_binned",
+      "aesthetic": "linetype",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.29999999999999999,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        "solid",
+        "22",
+        "44",
+        "44"
+      ]
+    },
+    {
+      "id": "linewidth_continuous",
+      "title": "连续 linewidth：range 1..6",
+      "scale": "linewidth",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        1,
+        4
+      ],
+      "map": [
+        1,
+        2.5,
+        4
+      ],
+      "limits": [
+        1,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        1,
+        3.5,
+        6
+      ]
+    },
+    {
+      "id": "linewidth_ordinal",
+      "title": "离散 linewidth：seq(2, 6, length.out = n)",
+      "scale": "linewidth_ordinal",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "c",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        2,
+        6,
+        null
+      ]
+    },
+    {
+      "id": "linewidth_manual",
+      "title": "linewidth manual：values 按水平顺序",
+      "scale": "linewidth_manual",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": {
+        "values": [
+          0.5,
+          1.5
+        ]
+      },
+      "train": [
+        "a",
+        "b"
+      ],
+      "map": [
+        "a",
+        "b"
+      ],
+      "limits": [
+        "a",
+        "b"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b"
+      ],
+      "labels": [
+        "a",
+        "b"
+      ],
+      "mapped": [
+        0.5,
+        1.5
+      ]
+    },
+    {
+      "id": "linewidth_binned",
+      "title": "分箱 linewidth",
+      "scale": "linewidth_binned",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.29999999999999999,
+        0.80000000000000004,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        1.625,
+        2.875,
+        5.375,
+        5.375
+      ]
+    },
+    {
+      "id": "linewidth_identity",
+      "title": "linewidth identity：值原样通过",
+      "scale": "linewidth_identity",
+      "aesthetic": "linewidth",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0.5,
+        2
+      ],
+      "map": [
+        0.5,
+        2
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [],
+      "labels": [],
+      "mapped": [
+        0.5,
+        2
+      ]
+    },
+    {
+      "id": "size_area",
+      "title": "连续 size：area（面积正比于值）",
+      "scale": "size_area",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        4
+      ],
+      "map": [
+        0,
+        1,
+        4
+      ],
+      "limits": [
+        0,
+        4
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "labels": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "mapped": [
+        0,
+        3,
+        6
+      ]
+    },
+    {
+      "id": "size_binned_area",
+      "title": "分箱 size：binned + area",
+      "scale": "size_binned_area",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0.25,
+        0.5,
+        0.75
+      ],
+      "labels": [
+        "0.25",
+        "0.50",
+        "0.75"
+      ],
+      "mapped": [
+        2.1213203435596428,
+        3.6742346141747668,
+        5.6124860801609122
+      ]
+    },
+    {
+      "id": "radius",
+      "title": "连续 size：radius（规模线性到 1..6）",
+      "scale": "radius",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0,
+        1
+      ],
+      "map": [
+        0,
+        0.5,
+        1
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        0,
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "labels": [
+        "0.00",
+        "0.25",
+        "0.50",
+        "0.75",
+        "1.00"
+      ],
+      "mapped": [
+        1,
+        3.5,
+        6
+      ]
+    },
+    {
+      "id": "size_ordinal",
+      "title": "离散 size：sqrt(seq(4, 36))",
+      "scale": "size_ordinal",
+      "aesthetic": "size",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "map": [
+        "a",
+        "d",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "mapped": [
+        2,
+        6,
+        null
+      ]
+    },
+    {
+      "id": "alpha_ordinal",
+      "title": "离散 alpha：seq(0.1, 1)",
+      "scale": "alpha_ordinal",
+      "aesthetic": "alpha",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        "a",
+        "b",
+        "c"
+      ],
+      "map": [
+        "a",
+        "c",
+        null
+      ],
+      "limits": [
+        "a",
+        "b",
+        "c"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b",
+        "c"
+      ],
+      "labels": [
+        "a",
+        "b",
+        "c"
+      ],
+      "mapped": [
+        0.10000000000000001,
+        1,
+        null
+      ]
+    },
+    {
+      "id": "alpha_manual",
+      "title": "alpha manual：values 按水平顺序",
+      "scale": "alpha_manual",
+      "aesthetic": "alpha",
+      "trans": "identity",
+      "params": {
+        "values": [
+          0.20000000000000001,
+          0.80000000000000004
+        ]
+      },
+      "train": [
+        "a",
+        "b"
+      ],
+      "map": [
+        "a",
+        "b"
+      ],
+      "limits": [
+        "a",
+        "b"
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [
+        "a",
+        "b"
+      ],
+      "labels": [
+        "a",
+        "b"
+      ],
+      "mapped": [
+        0.20000000000000001,
+        0.80000000000000004
+      ]
+    },
+    {
+      "id": "alpha_identity",
+      "title": "alpha identity：值原样通过",
+      "scale": "alpha_identity",
+      "aesthetic": "alpha",
+      "trans": "identity",
+      "params": [],
+      "train": [
+        0.20000000000000001,
+        0.80000000000000004
+      ],
+      "map": [
+        0.20000000000000001,
+        0.80000000000000004
+      ],
+      "limits": [
+        0,
+        1
+      ],
+      "expand": null,
+      "expanded_limits": null,
+      "breaks": [],
+      "labels": [],
+      "mapped": [
+        0.20000000000000001,
+        0.80000000000000004
+      ]
     }
   ]
 }

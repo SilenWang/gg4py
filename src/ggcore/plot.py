@@ -32,6 +32,7 @@ from ggcore.aes import aes as aes
 from ggcore.aes import after_stat as after_stat
 from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
 from ggcore.layer import Layer, Position
+from ggcore.scales import scale_type as scale_type
 from ggcore.theme import merge_theme, theme_grey
 
 __all__: list[str] = []

@@ -410,17 +410,82 @@ SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = (
     ("y_discrete", "y", {"type": "discrete"}),
     ("x_log10", "x", {"trans": "log10"}),
     ("y_log10", "y", {"trans": "log10"}),
-    ("colour_continuous", "colour", {"type": "continuous"}),
     # ggplot2 的 `scale_colour_gradient()` / `scale_fill_gradient()` 与
     # `scale_*_continuous()` 同一实现（Lab 插值、low/high 默认值相同）。
+    ("colour_continuous", "colour", {"type": "continuous"}),
     ("colour_gradient", "colour", {"type": "continuous"}),
     ("colour_discrete", "colour", {"type": "discrete"}),
     ("fill_continuous", "fill", {"type": "continuous"}),
     ("fill_gradient", "fill", {"type": "continuous"}),
     ("fill_discrete", "fill", {"type": "discrete"}),
+    ("colour_brewer", "colour", {}),
+    ("colour_distiller", "colour", {"direction": -1}),
+    ("colour_grey", "colour", {"na.value": "red"}),
+    ("colour_hue", "colour", {}),
+    ("colour_ordinal", "colour", {}),
+    ("colour_manual", "colour", {}),
+    ("colour_identity", "colour", {"guide": "none"}),
+    ("colour_viridis_c", "colour", {}),
+    ("colour_viridis_d", "colour", {}),
+    ("colour_viridis_b", "colour", {}),
+    ("color_brewer", "colour", {}),
+    ("color_distiller", "colour", {"direction": -1}),
+    ("color_grey", "colour", {"na.value": "red"}),
+    ("color_hue", "colour", {}),
+    ("color_ordinal", "colour", {}),
+    ("color_manual", "colour", {}),
+    ("color_identity", "colour", {"guide": "none"}),
+    ("color_viridis_c", "colour", {}),
+    ("color_viridis_d", "colour", {}),
+    ("color_viridis_b", "colour", {}),
+    ("fill_brewer", "fill", {}),
+    ("fill_distiller", "fill", {"direction": -1}),
+    ("fill_grey", "fill", {"na.value": "red"}),
+    ("fill_hue", "fill", {}),
+    ("fill_ordinal", "fill", {}),
+    ("fill_manual", "fill", {}),
+    ("fill_identity", "fill", {"guide": "none"}),
+    ("fill_viridis_c", "fill", {}),
+    ("fill_viridis_d", "fill", {}),
+    ("fill_viridis_b", "fill", {}),
     ("size_continuous", "size", {"type": "continuous"}),
     ("shape_discrete", "shape", {"type": "discrete"}),
     ("alpha_continuous", "alpha", {"type": "continuous"}),
+    ("size", "size", {}),
+    ("size_discrete", "size", {}),
+    ("size_ordinal", "size", {}),
+    ("size_manual", "size", {}),
+    ("size_identity", "size", {"guide": "none"}),
+    ("size_area", "size", {}),
+    ("size_binned_area", "size", {}),
+    ("radius", "size", {}),
+    ("alpha", "alpha", {}),
+    ("alpha_discrete", "alpha", {}),
+    ("alpha_ordinal", "alpha", {}),
+    ("alpha_manual", "alpha", {}),
+    ("alpha_identity", "alpha", {"guide": "none"}),
+    ("shape", "shape", {}),
+    ("shape_ordinal", "shape", {}),
+    ("shape_manual", "shape", {}),
+    ("shape_identity", "shape", {"guide": "none"}),
+    ("shape_continuous", "shape", {}),
+    ("shape_binned", "shape", {}),
+    ("linetype", "linetype", {}),
+    ("linetype_discrete", "linetype", {}),
+    ("linetype_manual", "linetype", {}),
+    ("linetype_identity", "linetype", {"guide": "none"}),
+    ("linetype_continuous", "linetype", {}),
+    ("linetype_binned", "linetype", {}),
+    ("linewidth", "linewidth", {}),
+    ("linewidth_continuous", "linewidth", {}),
+    ("linewidth_discrete", "linewidth", {}),
+    ("linewidth_ordinal", "linewidth", {}),
+    ("linewidth_manual", "linewidth", {}),
+    ("linewidth_identity", "linewidth", {"guide": "none"}),
+    ("linewidth_binned", "linewidth", {}),
+    ("discrete_manual", "colour", {}),
+    ("discrete_identity", "colour", {"guide": "none"}),
+    ("continuous_identity", "size", {"guide": "none"}),
 )
 
 THEME_NAMES: tuple[str, ...] = ("grey", "minimal", "void")
@@ -505,15 +570,37 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
     return factory
 
 
+#: `scale_discrete_manual()` / `scale_discrete_identity()` / `scale_continuous_identity()`
+#: 是**跨美学**的通用标度：美学由调用方的 `aesthetics =` 给（上游也没有缺省）。
+_GENERIC_SCALE_NAMES = frozenset({"discrete_manual", "discrete_identity", "continuous_identity"})
+
+
 def _scale_factory(name: str, aesthetic: str, defaults: Mapping[str, Any]) -> Callable[..., Scale]:
     def factory(**params: Any) -> Scale:
-        # 未实现的标度参数在**构造时**就点名报错：`p + scale_x_continuous(sec.axis=…)`
-        # 与 `p.scale_x_continuous(sec.axis=…)` 走的是同一个工厂，两条路径一致。
-        from ggcore.scales import reject_unimplemented_scale_params
+        # 未实现的标度参数 / R 里直接 abort 的名字在**构造时**就点名报错：
+        # `p + scale_x_continuous(sec.axis=…)` 与 `p.scale_x_continuous(sec.axis=…)`
+        # 走的是同一个工厂，两条路径一致。
+        from ggcore.scales import (
+            reject_unimplemented_scale_params,
+            reject_unsupported_scale,
+        )
 
         merged = {**defaults, **params}
         reject_unimplemented_scale_params(name, merged)
-        return Scale(name=name, aesthetic=aesthetic, params=merged)
+        reject_unsupported_scale(name)
+        chosen: Any = aesthetic
+        if name in _GENERIC_SCALE_NAMES:
+            if "aesthetics" not in merged:
+                raise ValueError(f"scale_{name}() 必须给 aesthetics = ...（上游同样没有缺省）")
+            chosen = merged["aesthetics"]
+        if isinstance(chosen, (list, tuple, set, frozenset)):
+            items = list(chosen)
+            if len(items) != 1:
+                raise ValueError(
+                    f"scale_{name}(aesthetics = ...) 一次只支持一个美学，收到 {chosen!r}"
+                )
+            chosen = items[0]
+        return Scale(name=name, aesthetic=str(chosen), params=merged)
 
     return factory
 

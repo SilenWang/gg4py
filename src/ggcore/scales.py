@@ -40,14 +40,63 @@ import numpy as np
 
 from ggcore.components import Scale
 from ggcore.data import Column, ColumnTable
+from ggcore.palettes import (
+    SHAPE_CODES_SOLID,
+    abs_area_pal,
+    alpha_ordinal_pal,
+    brewer_pal,
+    colour_ramp,
+    gradient_n_pal,
+    gradient_pal,
+    grey_pal,
+    hex_to_lab,
+    hue_pal,
+    lab_to_hex,
+    linetype_pal,
+    linewidth_ordinal_pal,
+    rescale_pal,
+    shape_pal,
+    size_ordinal_pal,
+    viridis_pal,
+)
 
 __all__ = [
     "CONTINUOUS_AESTHETICS",
     "DISCRETE_AESTHETICS",
     "POSITION_AESTHETICS",
+    "AlphaOrdinalScale",
+    "AlphaScale",
+    "BinnedAreaScale",
+    "BinnedColourScale",
+    "BinnedLinetypeScale",
+    "BinnedRescaleScale",
+    "BinnedScale",
+    "BinnedShapeScale",
+    "BrewerScale",
+    "ContinuousIdentityScale",
+    "ContinuousScale",
+    "DiscreteIdentityScale",
+    "DiscreteScale",
     "Expansion",
+    "GradientNScale",
+    "GradientScale",
+    "GreyScale",
+    "HueScale",
+    "LinetypeScale",
+    "LinewidthOrdinalScale",
+    "NumericDiscreteScale",
+    "OrdinalColourScale",
+    "PositionContinuousScale",
+    "PositionDiscreteScale",
+    "RescaleScale",
+    "ScaleBase",
     "ScaleError",
     "ScaleSet",
+    "ShapeScale",
+    "SizeAreaScale",
+    "SizeOrdinalScale",
+    "SizeScale",
+    "ViridisScale",
     "expand_range",
     "extended_breaks",
     "gradient_pal",
@@ -55,6 +104,7 @@ __all__ = [
     "hue_pal",
     "lab_to_hex",
     "scale_from_component",
+    "scale_type",
 ]
 
 #: 位置美学：x 与 y 两条通道。`xmin/xmax/xend` 共用 x 标度，`ymin/ymax/yend` 共用
@@ -62,10 +112,10 @@ __all__ = [
 POSITION_AESTHETICS = frozenset({"x", "y", "xmin", "xmax", "xend", "ymin", "ymax", "yend"})
 
 #: 连续标度覆盖的美学（默认解析里位置按列类型二选一）。
-CONTINUOUS_AESTHETICS = frozenset({"size", "alpha", "colour", "fill"})
+CONTINUOUS_AESTHETICS = frozenset({"size", "alpha", "colour", "fill", "linewidth"})
 
 #: 离散标度覆盖的美学。
-DISCRETE_AESTHETICS = frozenset({"shape", "colour", "fill"})
+DISCRETE_AESTHETICS = frozenset({"shape", "colour", "fill", "linetype"})
 
 _X_ALIASES = frozenset({"xmin", "xmax", "xend"})
 _Y_ALIASES = frozenset({"ymin", "ymax", "yend"})
@@ -352,193 +402,15 @@ def format_numbers(values: Sequence[float | None]) -> list[str | None]:
 
 
 # ---------------------------------------------------------------------------
-# 颜色空间：HCL / Lab ↔ sRGB
+# 色板
 #
-# 与 R 的 farver::encode_colour()/decode_colour() 同一套常量：D65 白点、
-# Lindbloom 的 XYZ↔sRGB 矩阵、sRGB 伽马。hue_pal() 的十六进制值逐字节对齐
-# （n = 2/3/6 在 tests/test_scales.py 里钉死），gradient 的 Lab 插值同样逐字节。
+# 颜色空间与色板本身在 `ggcore.palettes`（M2-4 从本模块搬出去的）：`hex_to_lab` /
+# `lab_to_hex` / `hue_pal` / `gradient_pal` 仍然从这里再导出，老调用方不用改。
+# 本模块只负责「标度怎么用色板」。
 # ---------------------------------------------------------------------------
 
-_WHITE = (0.95047, 1.0, 1.08883)
-_XYZ_TO_RGB = (
-    3.2404542,
-    -1.5371385,
-    -0.4985314,
-    -0.9692660,
-    1.8760108,
-    0.0415560,
-    0.0556434,
-    -0.2040259,
-    1.0572252,
-)
-_RGB_TO_XYZ = (
-    0.4124564,
-    0.3575761,
-    0.1804375,
-    0.2126729,
-    0.7151522,
-    0.0721750,
-    0.0193339,
-    0.1191920,
-    0.9503041,
-)
-
-
-def _gamma(value: float) -> float:
-    return 12.92 * value if value <= 0.0031308 else 1.055 * value ** (1 / 2.4) - 0.055
-
-
-def _ungamma(value: float) -> float:
-    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
-
-
-def _channel(value: float) -> int:
-    return min(255, max(0, math.floor(_gamma(value) * 255 + 0.5)))
-
-
-def _rgb_to_xyz(rgb: Sequence[float]) -> tuple[float, float, float]:
-    r, g, b = (_ungamma(channel) for channel in rgb)
-    matrix = _RGB_TO_XYZ
-    return (
-        matrix[0] * r + matrix[1] * g + matrix[2] * b,
-        matrix[3] * r + matrix[4] * g + matrix[5] * b,
-        matrix[6] * r + matrix[7] * g + matrix[8] * b,
-    )
-
-
-def _xyz_to_rgb(xyz: Sequence[float]) -> tuple[float, float, float]:
-    x, y, z = xyz
-    matrix = _XYZ_TO_RGB
-    return (
-        matrix[0] * x + matrix[1] * y + matrix[2] * z,
-        matrix[3] * x + matrix[4] * y + matrix[5] * z,
-        matrix[6] * x + matrix[7] * y + matrix[8] * z,
-    )
-
-
-def _xyz_to_lab(xyz: Sequence[float]) -> tuple[float, float, float]:
-    white_x, white_y, white_z = _WHITE
-
-    def pivot(value: float) -> float:
-        if value > (6 / 29) ** 3:
-            return value ** (1 / 3)
-        return value / (3 * (6 / 29) ** 2) + 4 / 29
-
-    fx = pivot(xyz[0] / white_x)
-    fy = pivot(xyz[1] / white_y)
-    fz = pivot(xyz[2] / white_z)
-    return (116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz))
-
-
-def _lab_to_xyz(lab: Sequence[float]) -> tuple[float, float, float]:
-    white_x, white_y, white_z = _WHITE
-    fy = (lab[0] + 16) / 116
-    fx = fy + lab[1] / 500
-    fz = fy - lab[2] / 200
-
-    def unpivot(value: float) -> float:
-        if value > 6 / 29:
-            return value**3
-        return 3 * (6 / 29) ** 2 * (value - 4 / 29)
-
-    return (unpivot(fx) * white_x, unpivot(fy) * white_y, unpivot(fz) * white_z)
-
-
-def _hex_to_rgb(text: str) -> tuple[float, float, float]:
-    value = text.strip().lstrip("#")
-    if len(value) == 3:
-        value = "".join(channel * 2 for channel in value)
-    if len(value) == 8:
-        value = value[:6]
-    if len(value) != 6:
-        raise ScaleError(f"不是合法的十六进制颜色：{text!r}")
-    try:
-        return tuple(int(value[index : index + 2], 16) / 255 for index in (0, 2, 4))  # type: ignore[return-value]
-    except ValueError as exc:
-        raise ScaleError(f"不是合法的十六进制颜色：{text!r}") from exc
-
-
-def _rgb_to_hex(rgb: Sequence[float]) -> str:
-    return "#{:02X}{:02X}{:02X}".format(*(_channel(channel) for channel in rgb))
-
-
-def hex_to_lab(text: str) -> tuple[float, float, float]:
-    """`#RRGGBB` → CIELAB（D65）。"""
-    return _xyz_to_lab(_rgb_to_xyz(_hex_to_rgb(text)))
-
-
-def lab_to_hex(lab: Sequence[float]) -> str:
-    """CIELAB（D65）→ `#RRGGBB`（越界通道钳到 0..255）。"""
-    return _rgb_to_hex(_xyz_to_rgb(_lab_to_xyz(lab)))
-
-
-def _hcl_to_hex(hue: float, chroma: float, luminance: float) -> str:
-    """polar-LUV（R 的 `hcl()` / farver 的 `from = "hcl"`）→ `#RRGGBB`。"""
-    white_x, white_y, white_z = _WHITE
-    denominator = white_x + 15 * white_y + 3 * white_z
-    u_white = 4 * white_x / denominator
-    v_white = 9 * white_y / denominator
-    if luminance <= 0:
-        return "#000000"
-    if luminance <= 8:
-        y = white_y * luminance / 903.3
-    else:
-        y = white_y * ((luminance + 16) / 116) ** 3
-    u = chroma * math.cos(math.radians(hue))
-    v = chroma * math.sin(math.radians(hue))
-    u_prime = u / (13 * luminance) + u_white
-    v_prime = v / (13 * luminance) + v_white
-    x = 9 * y * u_prime / (4 * v_prime)
-    z = y * (12 - 3 * u_prime - 20 * v_prime) / (4 * v_prime)
-    return _rgb_to_hex(_xyz_to_rgb((x, y, z)))
-
-
-def hue_pal(
-    h: Sequence[float] = (15.0, 375.0),
-    chroma: float = 100.0,
-    luminance: float = 65.0,
-    h_start: float = 0.0,
-    direction: float = 1.0,
-) -> Callable[[int], list[str]]:
-    """上游 `hue_pal()`：等距 HCL 色板，十六进制值与 R 逐字节相同。"""
-    start, end = float(h[0]), float(h[1])
-
-    def palette(n: int) -> list[str]:
-        if n <= 0:
-            raise ScaleError("hue 色板至少要一个颜色")
-        upper = end
-        if (upper - start) % 360 < 1:
-            upper = upper - 360 / n
-        if n == 1:
-            hues = [start]
-        else:
-            hues = [start + index * (upper - start) / (n - 1) for index in range(n)]
-        colours = [_hcl_to_hex((value + h_start) % 360, chroma, luminance) for value in hues]
-        return colours[::-1] if direction == -1 else colours
-
-    return palette
-
-
-def gradient_pal(
-    low: str = "#132B43", high: str = "#56B1F7"
-) -> Callable[[Sequence[float]], list[str]]:
-    """上游 `pal_seq_gradient(low, high, space = "Lab")`：Lab 空间线性插值。"""
-    lab_low = hex_to_lab(low)
-    lab_high = hex_to_lab(high)
-
-    def palette(positions: Sequence[float]) -> list[str]:
-        out: list[str] = []
-        for position in positions:
-            ratio = float(position)
-            lab = tuple(a + (b - a) * ratio for a, b in zip(lab_low, lab_high, strict=True))
-            out.append(lab_to_hex(lab))
-        return out
-
-    return palette
-
-
-#: `scale_shape_discrete()` 的默认实心形状（上游 `pal_shape(solid = TRUE)`）。
-_SHAPE_CODES = (16.0, 17.0, 15.0, 3.0, 7.0, 8.0)
+#: `pal_shape(solid = TRUE)` 的形状码（上游只给 6 个）。
+_SHAPE_CODES = SHAPE_CODES_SOLID
 
 
 def _rescale(
@@ -873,13 +745,16 @@ class ContinuousScale(ScaleBase):
     discrete = False
     default_expansion = CONTINUOUS_EXPANSION
     default_na_value: Any = float("nan")
+    #: 允许的 `oob`：连续标度只有 censor；分箱标度默认 squish（上游 `binned_scale`）。
+    allowed_oob = frozenset({"censor"})
 
     def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
         super().__init__(aesthetic, params)
-        if self._param("oob", "censor") not in ("censor", None):
+        oob = self._param("oob", "censor")
+        if oob not in self.allowed_oob:
             raise ScaleError(
-                f"oob = {self._param('oob')!r} 尚未实现；M1-4 只有 censor"
-                "（oob = squish 留给后续标度任务）"
+                f"oob = {oob!r} 尚未实现；连续标度只有 censor"
+                "（分箱标度另有 squish，见 docs/notes/scales.md §7）"
             )
         self.transform_ = _trans_for(self._param("trans", "identity"))
         self._range: tuple[float, float] | None = None
@@ -1080,32 +955,6 @@ class PositionContinuousScale(ContinuousScale):
     is_position = True
 
 
-class GradientScale(ContinuousScale):
-    """连续 colour / fill：Lab 插值的两端渐变（上游 `scale_colour_gradient`）。"""
-
-    default_na_value = "grey50"
-
-    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
-        super().__init__(aesthetic, params)
-        space = self._param("space", "Lab")
-        if str(space).lower() != "lab":
-            raise ScaleError(f"渐变插值空间 {space!r} 尚未实现（上游 4.0.3 只支持 Lab）")
-        self._palette = gradient_pal(
-            str(self._param("low", "#132B43")), str(self._param("high", "#56B1F7"))
-        )
-
-    def palette(self, positions: Sequence[float]) -> list[str]:
-        return self._palette(positions)
-
-    def map(self, column: Column) -> Column:
-        rescaled, missing = self._rescaled(column)
-        na_value = self._na_value(self.default_na_value)
-        out: list[str | None] = []
-        for value, is_missing in zip(rescaled.tolist(), missing.tolist(), strict=True):
-            out.append(na_value if is_missing else self._palette([value])[0])
-        return _str_column(out)
-
-
 class SizeScale(ContinuousScale):
     """连续 size：面积标度（`rescale(sqrt(x), 1..6, 0..1)`）。"""
 
@@ -1261,6 +1110,114 @@ class PositionDiscreteScale(DiscreteScale):
         return _float_column(self.codes(column))
 
 
+# ---------------------------------------------------------------------------
+# 连续 colour / fill
+# ---------------------------------------------------------------------------
+
+
+class GradientNScale(ContinuousScale):
+    """连续 colour / fill：n 色 Lab 渐变（上游 `pal_gradient_n()`）。
+
+    `scale_colour_gradient()` 是 n = 2 的特例；`distiller`（brewer 7 色）与
+    `viridis_c`（viridis 6 色）都是同一实现的实例——上游也是把离散色板取 7 / 6
+    色再插值，不是另写一套连续公式。
+    """
+
+    default_na_value = "grey50"
+
+    def __init__(
+        self,
+        aesthetic: str,
+        params: Mapping[str, Any] | None = None,
+        colours: Sequence[str] | None = None,
+    ) -> None:
+        super().__init__(aesthetic, params)
+        space = self._param("space", "Lab")
+        if str(space).lower() != "lab":
+            raise ScaleError(f"渐变插值空间 {space!r} 尚未实现（上游 4.0.3 只支持 Lab）")
+        if colours is None:
+            colours = (self._param("low", "#132B43"), self._param("high", "#56B1F7"))
+        self.colours = tuple(str(colour) for colour in colours)
+        # `viridis_c` 的 alpha 会进色带（上游 pal_viridis(alpha) 的 8 位十六进制），
+        # `colour_ramp()` 只插值 RGB，所以这里补回固定的 alpha 字节。
+        self.alpha = float(self._param("alpha", 1.0))
+        self._palette = gradient_n_pal(self.colours, self._param("values"))
+
+    def palette(self, positions: Sequence[float]) -> list[str]:
+        return self._palette(positions)
+
+    def map(self, column: Column) -> Column:
+        rescaled, missing = self._rescaled(column)
+        na_value = self._na_value(self.default_na_value)
+        out: list[str | None] = []
+        for value, is_missing in zip(rescaled.tolist(), missing.tolist(), strict=True):
+            out.append(na_value if is_missing else self._with_alpha(self._palette([value])[0]))
+        return _str_column(out)
+
+    def _with_alpha(self, colour: str) -> str:
+        if self.alpha >= 1.0 or len(colour) != 7:
+            return colour
+        return colour + f"{min(255, max(0, round(self.alpha * 255))):02X}"
+
+
+class GradientScale(GradientNScale):
+    """`scale_colour_gradient()` / `scale_*_continuous()`：两端 Lab 渐变。"""
+
+
+# ---------------------------------------------------------------------------
+# 连续 size / linewidth
+# ---------------------------------------------------------------------------
+
+
+class SizeAreaScale(ContinuousScale):
+    """`scale_size_area()`：面积正比于值（`abs_area(max_size)` + `rescale_max`）。
+
+    上游：`continuous_scale(palette = abs_area(max_size), rescaler = rescale_max)`。
+    `rescale_max` 把数据归一化到最大值 → 1，所以 size = `max_size * sqrt(x / max)`。
+    """
+
+    default_na_value = float("nan")
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        self.max_size = float(self._param("max_size", self._param("max.size", 6.0)))
+        self._palette = abs_area_pal(self.max_size)
+
+    def map(self, column: Column) -> Column:
+        rescaled, _ = self._rescaled(column)
+        values = np.array([self._palette(value) for value in rescaled.tolist()], dtype=float)
+        values = np.where(np.isnan(rescaled), float("nan"), values)
+        return _float_column(self._na_fill(values, float("nan")))
+
+
+class RescaleScale(ContinuousScale):
+    """`scale_radius()` / `scale_linewidth()`：线性映射到 `range`（缺省 1..6）。
+
+    上游：`continuous_scale(palette = pal_rescale(range))`；`range = NULL` 时由主题
+    回落 `pal_rescale(c(1, 6))`，所以这里的缺省也是 1..6（不是 `pal_rescale()` 的
+    0.1..1，那只是色板函数自己的缺省）。
+    """
+
+    default_na_value = float("nan")
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        value = self._param("range")
+        self.range = (1.0, 6.0) if value is None else _pair(value)
+        self._palette = rescale_pal(self.range)
+
+    def map(self, column: Column) -> Column:
+        rescaled, _ = self._rescaled(column)
+        values = np.array([self._palette(value) for value in rescaled.tolist()], dtype=float)
+        values = np.where(np.isnan(rescaled), float("nan"), values)
+        return _float_column(self._na_fill(values, float("nan")))
+
+
+# ---------------------------------------------------------------------------
+# 离散 colour / fill（hue / brewer / viridis / grey / ordinal / manual）
+# ---------------------------------------------------------------------------
+
+
 class HueScale(DiscreteScale):
     """离散 colour / fill：`hue_pal()`（上游 `scale_colour_hue`）。
 
@@ -1270,8 +1227,8 @@ class HueScale(DiscreteScale):
     - 映射（dict）→ 按**水平名**取色（`values = {"a": "red", "b": "blue"}`），
       没有对应名字的水平用 `na.value`（上游的 named manual palette）。
 
-    不认识的形态（例如把 dict 当成颜色列表迭代）会静默产出错误颜色，所以这里
-    显式区分，映射按名字查。
+    子类只替换 :meth:`_default_palette`（brewer / viridis / grey / ordinal），
+    手动值与映射的处理完全共用。
     """
 
     default_na_value = "grey50"
@@ -1280,7 +1237,7 @@ class HueScale(DiscreteScale):
         super().__init__(aesthetic, params)
         self._values: list[str] | None = None
         self._value_map: Mapping[str, str] | None = None
-        self._palette: Callable[[int], Sequence[str]] | None = None
+        self._palette: Callable[[int], Sequence[str | None]] | None = None
         explicit = self._param("values")
         if explicit is not None:
             if isinstance(explicit, Mapping):
@@ -1293,16 +1250,21 @@ class HueScale(DiscreteScale):
             custom = self._param("palette")
             if callable(custom):
                 self._palette = custom
-            elif custom is not None:
+            elif isinstance(custom, Sequence) and not isinstance(custom, (str, bytes)):
                 self._values = [str(value) for value in custom]
             else:
-                self._palette = hue_pal(
-                    h=self._param("h", (15.0, 375.0)),
-                    chroma=float(self._param("c", 100.0)),
-                    luminance=float(self._param("l", 65.0)),
-                    h_start=float(self._param("h.start", 0.0)),
-                    direction=float(self._param("direction", 1.0)),
-                )
+                # `palette` 也可能是 brewer 的名字（"Set1"）或编号（2），那是
+                # 家族自己的参数，交给 `_default_palette()` 解释。
+                self._palette = self._default_palette()
+
+    def _default_palette(self) -> Callable[[int], Sequence[str | None]]:
+        return hue_pal(
+            h=self._param("h", (15.0, 375.0)),
+            chroma=float(self._param("c", 100.0)),
+            luminance=float(self._param("l", 65.0)),
+            h_start=float(self._param("h.start", 0.0)),
+            direction=float(self._param("direction", 1.0)),
+        )
 
     def colours(self, levels: Sequence[str]) -> list[str | None]:
         """按水平名给颜色；`None` = 该水平没有颜色（调用方落 `na.value`）。"""
@@ -1350,13 +1312,193 @@ class HueScale(DiscreteScale):
         out: list[str | None] = []
         for code in codes.tolist():
             colour: str | None = None
-            if not math.isnan(code):
+            if not math.isnan(code) and int(code) - 1 < len(colours):
                 colour = colours[int(code) - 1]
             out.append(str(na_value) if colour is None and na_value is not None else colour)
         return _str_column(out)
 
 
-class ShapeScale(DiscreteScale):
+class BrewerScale(HueScale):
+    """`scale_*_brewer()`：RColorBrewer 的逐 n 表（`pal_brewer()`）。
+
+    `na.value` 缺省是 `NA`（hue 是 `"grey50"`，grey 是 `"red"`）——上游三个
+    色板函数的签名不同，别统一成同一个缺省。
+    """
+
+    default_na_value = None
+
+    def _default_palette(self) -> Callable[[int], Sequence[str | None]]:
+        return brewer_pal(
+            type=str(self._param("type", "seq")),
+            palette=self._param("palette", 1),
+            direction=float(self._param("direction", 1.0)),
+        )
+
+
+class ViridisScale(HueScale):
+    """`scale_*_viridis_d()`：viridis 的离散色板（`pal_viridis()`），`na.value = NA`。"""
+
+    default_na_value = None
+
+    def _default_palette(self) -> Callable[[int], Sequence[str | None]]:
+        return viridis_pal(
+            alpha=float(self._param("alpha", 1.0)),
+            begin=float(self._param("begin", 0.0)),
+            end=float(self._param("end", 1.0)),
+            direction=float(self._param("direction", 1.0)),
+            option=str(self._param("option", "D")),
+        )
+
+
+class OrdinalColourScale(ViridisScale):
+    """`scale_*_ordinal()`：缺省是 viridis 离散色板（4.0.3 的新口径）。
+
+    `type =` 给一串颜色时走上游的 `pal_ordinal()`（`colour_ramp()` 在 0..1 上
+    等距取样）；给函数/其它形态不在 gg4py 的表达范围内，构造时报错。
+    """
+
+    def _default_palette(self) -> Callable[[int], Sequence[str | None]]:
+        custom = self._param("type")
+        if custom is None:
+            return super()._default_palette()
+        if isinstance(custom, str) or callable(custom):
+            raise ScaleError(
+                f"scale_*_ordinal(type = {custom!r}) 未实现：需要一串颜色"
+                "（或省略 type 用 viridis 缺省）"
+            )
+        ramp = colour_ramp([str(colour) for colour in custom])
+        return lambda n: ramp(list(np.linspace(0.0, 1.0, num=n)) if n > 1 else [0.0])
+
+
+class GreyScale(HueScale):
+    """`scale_*_grey()`：`pal_grey(start, end)`；`na.value` 缺省是 `"red"`。"""
+
+    default_na_value = "red"
+
+    def _default_palette(self) -> Callable[[int], Sequence[str | None]]:
+        return grey_pal(start=float(self._param("start", 0.2)), end=float(self._param("end", 0.8)))
+
+
+# ---------------------------------------------------------------------------
+# 离散 size / alpha / linewidth / linetype / shape
+# ---------------------------------------------------------------------------
+
+
+class NumericDiscreteScale(DiscreteScale):
+    """离散水平 → 数值（size / alpha / linewidth 的 ordinal / manual）。
+
+    与 :class:`HueScale` 共用 `values=` 的三种口径（序列 / 映射 / 缺省色板），
+    区别只是产物是数值列而不是颜色列。默认 `na.value = NA`。
+    """
+
+    default_na_value: Any = float("nan")
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        self._values: list[Any] | None = None
+        self._value_map: Mapping[str, Any] | None = None
+        self._palette: Callable[[int], Sequence[Any]] | None = None
+        explicit = self._param("values")
+        if explicit is not None:
+            if isinstance(explicit, Mapping):
+                self._value_map = MappingProxyType(
+                    {str(name): value for name, value in explicit.items()}
+                )
+            else:
+                self._values = list(explicit)
+        else:
+            self._palette = self._default_palette()
+
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        raise NotImplementedError
+
+    def values_for(self, levels: Sequence[str]) -> list[Any]:
+        if self._value_map is not None:
+            values = [self._value_map.get(level) for level in levels]
+            if levels and all(value is None for value in values):
+                warnings.warn(
+                    "values 的名字与数据里的水平没有交集，整列都会用 na.value",
+                    UserWarning,
+                    stacklevel=3,
+                )
+            return values
+        if self._values is not None:
+            if len(self._values) < len(levels):
+                raise ScaleError(
+                    f"values 里有 {len(self._values)} 个值，但需要 {len(levels)} 个"
+                    "（上游 manual scale 不允许循环补齐）"
+                )
+            return list(self._values[: len(levels)])
+        assert self._palette is not None
+        return list(self._palette(len(levels)))
+
+    def _make_column(self, values: Sequence[Any]) -> Column:
+        na_value = self._na_value(self.default_na_value)
+        out = np.full(len(values), np.nan)
+        for index, value in enumerate(values):
+            if value is None:
+                out[index] = float(na_value) if na_value is not None else np.nan
+            else:
+                out[index] = float(value)
+        return _float_column(out)
+
+    def map(self, column: Column) -> Column:
+        levels = [level for level in self.limits() if level is not None]
+        values = self.values_for(levels)
+        codes = self.codes(column, na_as_level=False)
+        out: list[Any] = []
+        for code in codes.tolist():
+            value: Any = None
+            if not math.isnan(code) and int(code) - 1 < len(values):
+                value = values[int(code) - 1]
+            out.append(value)
+        return self._make_column(out)
+
+
+class SizeOrdinalScale(NumericDiscreteScale):
+    """`scale_size_ordinal()`：`sqrt(seq(4, 36, length.out = n))`。"""
+
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        return size_ordinal_pal(self._param("range"))
+
+
+class AlphaOrdinalScale(NumericDiscreteScale):
+    """`scale_alpha_ordinal()`：`seq(0.1, 1, length.out = n)`。"""
+
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        return alpha_ordinal_pal(self._param("range"))
+
+
+class LinewidthOrdinalScale(NumericDiscreteScale):
+    """`scale_linewidth_ordinal()`：`seq(2, 6, length.out = n)`。"""
+
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        return linewidth_ordinal_pal(self._param("range"))
+
+
+class LinetypeScale(NumericDiscreteScale):
+    """离散 linetype：`pal_linetype()` 的 13 种线型串（manual 值照收）。
+
+    映射结果是 R 的 lty 串（`"solid"` / `"22"` / `"42"` …）；手动值可以是数字
+    （1..6），两种都原样进列——渲染期 `gpar(lty=)` 两种都认。
+    """
+
+    default_na_value = None
+
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        return linetype_pal
+
+    def _make_column(self, values: Sequence[Any]) -> Column:
+        if all(value is None or isinstance(value, str) for value in values):
+            return _str_column([None if value is None else str(value) for value in values])
+        out = np.full(len(values), np.nan)
+        for index, value in enumerate(values):
+            if value is not None:
+                out[index] = float(value)
+        return _float_column(out)
+
+
+class ShapeScale(NumericDiscreteScale):
     """离散 shape：默认实心形状 16/17/15/3/7/8（上游 `pal_shape()`）。
 
     超过 6 个水平时上游发 warning 并把多出来的水平映射成 NA；这里同样落成 NA
@@ -1365,27 +1507,304 @@ class ShapeScale(DiscreteScale):
 
     default_na_value = float("nan")
 
-    def map(self, column: Column) -> Column:
-        codes = self.codes(column, na_as_level=False)
-        na_value = self._na_value(self.default_na_value)
-        out = np.full(column.size, np.nan)
-        overflow = False
-        for index, code in enumerate(codes.tolist()):
-            if math.isnan(code):
-                out[index] = float(na_value) if na_value is not None else np.nan
-            elif int(code) > len(_SHAPE_CODES):
-                overflow = True
-                out[index] = np.nan
-            else:
-                out[index] = _SHAPE_CODES[int(code) - 1]
-        if overflow:
-            warnings.warn(
-                "shape 标度最多 6 个离散水平（上游同样只给 6 个），多出来的水平记 NA；"
-                "需要更多形状请显式传 values",
-                UserWarning,
-                stacklevel=3,
-            )
+    def _default_palette(self) -> Callable[[int], Sequence[Any]]:
+        return shape_pal(bool(self._param("solid", True)))
+
+
+# ---------------------------------------------------------------------------
+# 分箱标度（shape / linetype / size_area / linewidth / viridis_b）
+# ---------------------------------------------------------------------------
+
+
+class BinnedScale(ContinuousScale):
+    """分箱标度（上游 `ScaleBinned`）：先分箱，再按**箱**取色板。
+
+    复刻 `binned_scale()` 的三件事：
+
+    1. `oob` 默认 `squish`（不是连续标度的 `censor`）；
+    2. `get_breaks()` 在显式 limits 缺省时会把**数据范围往外扩**到相邻断点
+       （`extended_breaks(limits)` 的最外两个断点会变成新的 limits）；
+    3. `map()` 先 `cut()` 成箱，再把**箱中点**喂给 palette——`pal_binned()` 只看
+       长度（每箱一个固定值），`abs_area()` 这类连续色板则逐箱取值。
+    """
+
+    default_na_value: Any = float("nan")
+    allowed_oob = frozenset({"squish", "censor"})
+    #: `rescaler`：`rescale`（0..1 线性，缺省）或 `rescale_max`（除以最大值）。
+    rescale_max = False
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        raise NotImplementedError
+
+    def _make_column(self, values: Sequence[Any]) -> Column:
+        out = np.full(len(values), np.nan)
+        for index, value in enumerate(values):
+            if value is not None:
+                out[index] = float(value)
         return _float_column(out)
+
+    def _rescale_values(self, values: np.ndarray, limits: tuple[float, float]) -> np.ndarray:
+        if self.rescale_max:
+            top = float(limits[1])
+            return values / top if top else values
+        return _rescale(values, (0.0, 1.0), limits)
+
+    def _bin_info(self) -> tuple[tuple[float, float], tuple[float, ...]]:
+        """`(limits, breaks)`：复刻 `ScaleBinned$get_breaks()` 的 limits 扩张。"""
+        low, high = (float(value) for value in self.limits())
+        if not (math.isfinite(low) and math.isfinite(high)):
+            return (low, high), ()
+        if _zero_range(low, high):
+            low, high = low - 0.05, high + 0.05
+        n_breaks = self._n_breaks() or 5
+        data_low, data_high = self.transform_.inverse(np.array([low, high])).tolist()
+        raw = self.transform_.breaks(data_low, data_high, n_breaks)
+        transformed, _ = self.transform_.transform(np.asarray(raw, dtype=float))
+        breaks = [float(value) for value in transformed if math.isfinite(float(value))]
+        breaks = [value for value in breaks if low <= value <= high]
+        if self._limits_param() is None:
+            breaks = [
+                value
+                for value in breaks
+                if not _zero_range(value, low) and not _zero_range(value, high)
+            ]
+            if len(breaks) >= 2:
+                new_low = breaks[0] + (breaks[0] - breaks[1])
+                new_high = breaks[-1] + (breaks[-1] - breaks[-2])
+                if breaks[-1] > high:
+                    new_high = breaks[-1]
+                    breaks = breaks[:-1]
+                if breaks and breaks[0] < low:
+                    new_low = breaks[0]
+                    breaks = breaks[1:]
+                low, high = new_low, new_high
+            elif len(breaks) == 1:
+                centre = breaks[0]
+                size = max(centre - low, high - centre)
+                low, high = centre - size, centre + size
+            else:
+                breaks = [low, high]
+        return (low, high), tuple(breaks)
+
+    def breaks(self) -> tuple[float, ...]:
+        """分箱标度的断点 = `get_breaks()` 的箱边界（不含两端 limits）。"""
+        _limits, breaks = self._bin_info()
+        return tuple(breaks)
+
+    def labels(self) -> tuple[str | None, ...]:
+        requested = self._param("labels")
+        breaks = self.breaks()
+        if requested is not None:
+            return _apply_labels(requested, breaks, inverse=self.transform_.inverse)
+        data_values = [
+            None if value is None else float(self.transform_.inverse(np.array([value]))[0])
+            for value in breaks
+        ]
+        return tuple(format_numbers(data_values))
+
+    def map(self, column: Column) -> Column:
+        values = _numeric_values(column)
+        (low, high), breaks = self._bin_info()
+        scaled = self._rescale_values(values, (low, high))
+        if str(self._param("oob", "squish")) == "squish":
+            scaled = np.clip(scaled, 0.0, 1.0)
+        else:
+            scaled = np.where((scaled < 0.0) | (scaled > 1.0), np.nan, scaled)
+        edges = sorted(set([low, *breaks, high]))
+        scaled_edges = self._rescale_values(np.asarray(edges, dtype=float), (low, high))
+        midpoints = [
+            float(first + (second - first) / 2)
+            for first, second in itertools.pairwise(scaled_edges)
+        ]
+        palette_values = self._palette_at(midpoints)
+        na_value = self._na_value(self.default_na_value)
+        out: list[Any] = []
+        for value in scaled.tolist():
+            if not math.isfinite(value) or not palette_values:
+                out.append(None)
+                continue
+            # R 的 `cut(..., right = TRUE, include.lowest = TRUE)`：x 落在
+            # (b_i, b_{i+1}] 里，等于边界时归**下**一箱；right = FALSE 时相反。
+            side = "left" if bool(self._param("right", True)) else "right"
+            index = int(np.searchsorted(scaled_edges, value, side=side)) - 1
+            index = max(0, min(index, len(palette_values) - 1))
+            out.append(palette_values[index])
+        filled = [(na_value if value is None else value) for value in out]
+        return self._make_column(filled)
+
+
+class BinnedColourScale(BinnedScale):
+    """`scale_colour_viridis_b()`：分箱 viridis（`pal_binned(pal_viridis())`）。"""
+
+    default_na_value = "grey50"
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        self._discrete_palette = viridis_pal(
+            alpha=float(self._param("alpha", 1.0)),
+            begin=float(self._param("begin", 0.0)),
+            end=float(self._param("end", 1.0)),
+            direction=float(self._param("direction", 1.0)),
+            option=str(self._param("option", "D")),
+        )
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        return list(self._discrete_palette(len(midpoints)))
+
+    def _make_column(self, values: Sequence[Any]) -> Column:
+        return _str_column([None if value is None else str(value) for value in values])
+
+
+class BinnedShapeScale(BinnedScale):
+    """`scale_shape_binned()`：分箱形状。"""
+
+    default_na_value = float("nan")
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        self._discrete_palette = shape_pal(bool(self._param("solid", True)))
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        return list(self._discrete_palette(len(midpoints)))
+
+
+class BinnedLinetypeScale(BinnedScale):
+    """`scale_linetype_binned()`：分箱线型。"""
+
+    default_na_value = None
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        return list(linetype_pal(len(midpoints)))
+
+    def _make_column(self, values: Sequence[Any]) -> Column:
+        if all(value is None or isinstance(value, str) for value in values):
+            return _str_column([None if value is None else str(value) for value in values])
+        return super()._make_column(values)
+
+
+class BinnedAreaScale(BinnedScale):
+    """`scale_size_binned_area()`：分箱 + 面积标度（`abs_area()` + `rescale_max`）。"""
+
+    default_na_value = float("nan")
+    rescale_max = True
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        self._area = abs_area_pal(float(self._param("max_size", self._param("max.size", 6.0))))
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        return [self._area(value) for value in midpoints]
+
+
+class BinnedRescaleScale(BinnedScale):
+    """`scale_linewidth_binned()`：分箱 + 线性映射到 `range`（缺省 1..6）。"""
+
+    default_na_value = float("nan")
+
+    def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
+        super().__init__(aesthetic, params)
+        value = self._param("range")
+        self.range = (1.0, 6.0) if value is None else _pair(value)
+        self._linear = rescale_pal(self.range)
+
+    def _palette_at(self, midpoints: Sequence[float]) -> list[Any]:
+        return [self._linear(value) for value in midpoints]
+
+
+# ---------------------------------------------------------------------------
+# identity 标度
+# ---------------------------------------------------------------------------
+
+
+class DiscreteIdentityScale(DiscreteScale):
+    """`scale_*_identity()`（离散）：映射**原样通过**（上游 `pal_identity()`）。
+
+    上游的 identity 标度挂在**连续** Range 上，字符 / 颜色值训练不进去，所以
+    `get_limits()` 恒为 `(0, 1)`、`get_breaks()` 为空——图例也默认关闭
+    （`guide = "none"`）。`ggcore` 照抄这个口径：`limits()` / `breaks()` 不反映
+    数据，`map()` 才是唯一有意义的出口。
+    """
+
+    default_na_value = None
+
+    def train(self, column: Column) -> None:
+        self._trained = True
+
+    @property
+    def levels(self) -> tuple[str, ...]:
+        return ()
+
+    def limits(self) -> tuple[float, float]:
+        return (0.0, 1.0)
+
+    def breaks(self) -> tuple[Any, ...]:
+        return ()
+
+    def labels(self) -> tuple[Any, ...]:
+        return ()
+
+    def map(self, column: Column) -> Column:
+        return column
+
+
+class ContinuousIdentityScale(ScaleBase):
+    """`scale_*_identity()`（连续）：值原样通过（上游 `ScaleContinuousIdentity`）。"""
+
+    default_na_value = float("nan")
+
+    def train(self, column: Column) -> None:
+        # 与离散 identity 同口径：上游的 identity 标度不训练范围（`get_limits()`
+        # 恒为 `(0, 1)`、断点为空），map() 原样返回。
+        self._trained = True
+
+    def limits(self) -> tuple[float, float]:
+        explicit = self._limits_param()
+        return (0.0, 1.0) if explicit is None else _pair(explicit)
+
+    def expanded_limits(self) -> tuple[float, float] | None:
+        return None
+
+    def breaks(self) -> tuple[float, ...]:
+        return ()
+
+    def labels(self) -> tuple[str, ...]:
+        return ()
+
+    def map(self, column: Column) -> Column:
+        return column
+
+
+def scale_type(value: Any) -> tuple[str, ...]:
+    """上游 `scale_type()`：一个向量该用哪类标度（R 返回字符向量，这里是元组）。
+
+    `ordered` factor → `("ordinal", "discrete")`；`Date` → `("date", "continuous")`；
+    `POSIXct` → `("datetime", "continuous")`；其余数值 → `("continuous",)`，
+    字符 / 逻辑 / 普通 factor → `("discrete",)`。
+    """
+    if isinstance(value, Column):
+        kind = value.kind
+        if kind in ("int", "float"):
+            return ("continuous",)
+        if kind == "datetime":
+            return ("datetime", "continuous")
+        if kind == "timedelta":
+            return ("continuous",)
+        return ("discrete",)
+    if isinstance(value, (str, bytes)) or isinstance(value, Mapping):
+        return ("discrete",)
+    if isinstance(value, bool):
+        return ("discrete",)
+    if isinstance(value, (int, float)):
+        return ("continuous",)
+    items = list(value) if not isinstance(value, (int, float)) else []
+    if items and all(isinstance(item, str) for item in items):
+        return ("discrete",)
+    if items and all(isinstance(item, bool) for item in items):
+        return ("discrete",)
+    numbers = all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in items)
+    if items and numbers:
+        return ("continuous",)
+    return ("continuous",)
 
 
 def _apply_labels(
@@ -1450,30 +1869,261 @@ def reject_unimplemented_scale_params(name: str, params: Mapping[str, Any]) -> N
             )
 
 
+#: R 里直接 abort 的标度名：连续变量不能映射到 shape / linetype。上游是
+#: `cli_abort()`，这里在构造与解析两条路径上都报错（消息照抄上游英文）。
+_UNSUPPORTED_SCALE_NAMES: Mapping[str, str] = MappingProxyType(
+    {
+        "shape_continuous": (
+            "A continuous variable cannot be mapped to the shape aesthetic. "
+            "Choose a different aesthetic or use scale_shape_binned()."
+        ),
+        "linetype_continuous": (
+            "A continuous variable cannot be mapped to the linetype aesthetic. "
+            "Choose a different aesthetic or use scale_linetype_binned()."
+        ),
+    }
+)
+
+
+def reject_unsupported_scale(name: str) -> None:
+    """R 里直接 abort 的标度名（连续 → shape / linetype）→ `ScaleError`。"""
+    message = _UNSUPPORTED_SCALE_NAMES.get(name)
+    if message is not None:
+        raise ScaleError(f"{name}(): {message}")
+
+
+#: `scale_<family>_*` 的前缀 → 家族。`color_` 与 `colour_` 是同一个家族。
+_SCALE_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("colour_", "colour"),
+    ("color_", "colour"),
+    ("fill_", "fill"),
+    ("shape_", "shape"),
+    ("linetype_", "linetype"),
+    ("linewidth_", "linewidth"),
+    ("size_", "size"),
+    ("alpha_", "alpha"),
+    ("x_", "x"),
+    ("y_", "y"),
+)
+
+#: 没有下划线的裸标度名（`scale_size` / `scale_shape` …）→ 家族。
+_BARE_SCALES: Mapping[str, str] = MappingProxyType(
+    {
+        "size": "size",
+        "alpha": "alpha",
+        "shape": "shape",
+        "linetype": "linetype",
+        "linewidth": "linewidth",
+    }
+)
+
+
+def _scale_family(name: str) -> tuple[str | None, str]:
+    """`"colour_viridis_d"` → `("colour", "viridis_d")`；`"size"` → `("size", "default")`。"""
+    bare = _BARE_SCALES.get(name)
+    if bare is not None:
+        return bare, "default"
+    for prefix, family in _SCALE_PREFIXES:
+        if name.startswith(prefix):
+            return family, name[len(prefix) :]
+    return None, name
+
+
+def _warn_ordinal(name: str, message: str) -> None:
+    warnings.warn(f"{name}(): {message}", UserWarning, stacklevel=4)
+
+
+def _manual_scale_for(aesthetic: str, params: Mapping[str, Any]) -> ScaleBase:
+    """`scale_discrete_manual(aesthetics = ...)`：按美学挑 manual 实现。"""
+    if aesthetic in ("colour", "fill"):
+        return HueScale(aesthetic, params)
+    if aesthetic == "shape":
+        return ShapeScale(aesthetic, params)
+    if aesthetic == "linetype":
+        return LinetypeScale(aesthetic, params)
+    if aesthetic == "size":
+        return SizeOrdinalScale(aesthetic, params)
+    if aesthetic == "alpha":
+        return AlphaOrdinalScale(aesthetic, params)
+    if aesthetic == "linewidth":
+        return LinewidthOrdinalScale(aesthetic, params)
+    raise ScaleError(
+        f"scale_discrete_manual 不认识 aesthetics = {aesthetic!r}"
+        "（支持 colour / fill / shape / linetype / size / alpha / linewidth）"
+    )
+
+
+def _colour_scale(name: str, aesthetic: str, params: Mapping[str, Any], variant: str) -> ScaleBase:
+    if variant in ("continuous", "gradient"):
+        return GradientScale(aesthetic, params)
+    if variant in ("discrete", "hue"):
+        return HueScale(aesthetic, params)
+    if variant == "brewer":
+        return BrewerScale(aesthetic, params)
+    if variant == "grey":
+        return GreyScale(aesthetic, params)
+    if variant == "ordinal":
+        return OrdinalColourScale(aesthetic, params)
+    if variant == "manual":
+        return HueScale(aesthetic, params)
+    if variant == "identity":
+        return DiscreteIdentityScale(aesthetic, params)
+    if variant == "viridis_d":
+        return ViridisScale(aesthetic, params)
+    if variant == "viridis_b":
+        return BinnedColourScale(aesthetic, params)
+    if variant == "distiller":
+        distiller_params = dict(params)
+        colours = brewer_pal(
+            type=str(distiller_params.get("type", "seq")),
+            palette=distiller_params.get("palette", 1),
+            direction=float(distiller_params.get("direction", -1.0)),
+        )(7)
+        return GradientNScale(aesthetic, params, colours=[str(c) for c in colours if c])
+    if variant == "viridis_c":
+        colours = viridis_pal(
+            alpha=float(params.get("alpha", 1.0)),
+            begin=float(params.get("begin", 0.0)),
+            end=float(params.get("end", 1.0)),
+            direction=float(params.get("direction", 1.0)),
+            option=str(params.get("option", "D")),
+        )(6)
+        return GradientNScale(aesthetic, params, colours=colours)
+    raise ScaleError(
+        f"{name} 未实现：colour / fill 的这个变体不在本任务范围"
+        "（连续 / 分箱 / steps / gradient2 / gradientn 归 M2-4 A，见 docs/notes/scales.md §9）"
+    )
+
+
+def _shape_scale(name: str, aesthetic: str, params: Mapping[str, Any], variant: str) -> ScaleBase:
+    if variant in ("default", "shape", "discrete"):
+        return ShapeScale(aesthetic, params)
+    if variant == "ordinal":
+        _warn_ordinal(name, "Using shapes for an ordinal variable is not advised")
+        return ShapeScale(aesthetic, params)
+    if variant == "manual":
+        return ShapeScale(aesthetic, params)
+    if variant == "identity":
+        return ContinuousIdentityScale(aesthetic, params)
+    if variant == "binned":
+        return BinnedShapeScale(aesthetic, params)
+    raise ScaleError(
+        f"{name} 未实现（shape 只做到 discrete / ordinal / manual / identity / binned）"
+    )
+
+
+def _linetype_scale(
+    name: str, aesthetic: str, params: Mapping[str, Any], variant: str
+) -> ScaleBase:
+    if variant in ("default", "linetype", "discrete"):
+        return LinetypeScale(aesthetic, params)
+    if variant == "manual":
+        return LinetypeScale(aesthetic, params)
+    if variant == "identity":
+        return DiscreteIdentityScale(aesthetic, params)
+    if variant == "binned":
+        return BinnedLinetypeScale(aesthetic, params)
+    raise ScaleError(f"{name} 未实现（linetype 只做到 discrete / manual / identity / binned）")
+
+
+def _linewidth_scale(
+    name: str, aesthetic: str, params: Mapping[str, Any], variant: str
+) -> ScaleBase:
+    if variant in ("default", "linewidth", "continuous"):
+        return RescaleScale(aesthetic, params)
+    if variant == "discrete":
+        _warn_ordinal(name, "Using linewidth for a discrete variable is not advised.")
+        return LinewidthOrdinalScale(aesthetic, params)
+    if variant == "ordinal":
+        return LinewidthOrdinalScale(aesthetic, params)
+    if variant == "manual":
+        return LinewidthOrdinalScale(aesthetic, params)
+    if variant == "identity":
+        return ContinuousIdentityScale(aesthetic, params)
+    if variant == "binned":
+        return BinnedRescaleScale(aesthetic, params)
+    raise ScaleError(f"{name} 未实现（linewidth 的 date / datetime 变体归 M2-4 A）")
+
+
+def _size_scale(name: str, aesthetic: str, params: Mapping[str, Any], variant: str) -> ScaleBase:
+    if variant in ("default", "size", "size_continuous", "continuous"):
+        return SizeScale(aesthetic, params)
+    if variant == "area":
+        return SizeAreaScale(aesthetic, params)
+    if variant == "binned_area":
+        return BinnedAreaScale(aesthetic, params)
+    if variant == "discrete":
+        _warn_ordinal(name, "Using size for a discrete variable is not advised.")
+        return SizeOrdinalScale(aesthetic, params)
+    if variant == "ordinal":
+        return SizeOrdinalScale(aesthetic, params)
+    if variant == "manual":
+        return SizeOrdinalScale(aesthetic, params)
+    if variant == "identity":
+        return ContinuousIdentityScale(aesthetic, params)
+    raise ScaleError(f"{name} 未实现（size 的 binned / date / datetime 变体归 M2-4 A）")
+
+
+def _alpha_scale(name: str, aesthetic: str, params: Mapping[str, Any], variant: str) -> ScaleBase:
+    if variant in ("default", "alpha", "continuous"):
+        return AlphaScale(aesthetic, params)
+    if variant == "discrete":
+        _warn_ordinal(name, "Using alpha for a discrete variable is not advised.")
+        return AlphaOrdinalScale(aesthetic, params)
+    if variant == "ordinal":
+        return AlphaOrdinalScale(aesthetic, params)
+    if variant == "manual":
+        return AlphaOrdinalScale(aesthetic, params)
+    if variant == "identity":
+        return ContinuousIdentityScale(aesthetic, params)
+    raise ScaleError(f"{name} 未实现（alpha 的 binned / date / datetime 变体归 M2-4 A）")
+
+
 def scale_from_component(spec: Scale) -> ScaleBase:
-    """`components.Scale`（注册名 + 参数）→ 具体的标度实现。"""
+    """`components.Scale`（注册名 + 参数）→ 具体的标度实现。
+
+    分派是「家族 × 变体」：family 由名字前缀（`colour_` / `fill_` / `shape_` /
+    `linetype_` / `linewidth_` / `size_` / `alpha_` / `x_` / `y_`）给出，variant
+    是后缀（`discrete` / `manual` / `brewer` / `viridis_d` …）。同一个家族的所有
+    变体共用一套实现，只有色板 / 映射函数不同——与上游 `discrete_scale()` /
+    `continuous_scale()` 的复用方式一致。
+    """
     name = spec.name
     aesthetic = spec.aesthetic
     params = dict(spec.params)
     reject_unimplemented_scale_params(name, params)
-    if name in ("x_continuous", "y_continuous"):
-        return PositionContinuousScale(aesthetic, params)
-    if name in ("x_discrete", "y_discrete"):
-        return PositionDiscreteScale(aesthetic, params)
-    if name in ("x_log10", "y_log10"):
-        return PositionContinuousScale(aesthetic, {**params, "trans": "log10"})
-    if name in ("colour_continuous", "colour_gradient"):
-        return GradientScale(aesthetic, params)
-    if name in ("fill_continuous", "fill_gradient"):
-        return GradientScale(aesthetic, params)
-    if name in ("colour_discrete", "fill_discrete"):
-        return HueScale(aesthetic, params)
-    if name == "size_continuous":
-        return SizeScale(aesthetic, params)
-    if name == "shape_discrete":
-        return ShapeScale(aesthetic, params)
-    if name == "alpha_continuous":
-        return AlphaScale(aesthetic, params)
+    reject_unsupported_scale(name)
+    if name == "radius":
+        return RescaleScale(aesthetic, params)
+    if name == "discrete_manual":
+        return _manual_scale_for(aesthetic, params)
+    if name == "discrete_identity":
+        return DiscreteIdentityScale(aesthetic, params)
+    if name == "continuous_identity":
+        return ContinuousIdentityScale(aesthetic, params)
+    family, variant = _scale_family(name)
+    if family in ("x", "y"):
+        if variant == "continuous":
+            return PositionContinuousScale(aesthetic, params)
+        if variant == "discrete":
+            return PositionDiscreteScale(aesthetic, params)
+        if variant == "log10":
+            return PositionContinuousScale(aesthetic, {**params, "trans": "log10"})
+        raise ScaleError(
+            f"{name} 未实现：位置标度的 {variant} 变体归 M2-4 A（见 docs/notes/scales.md §9）"
+        )
+    if family in ("colour", "fill"):
+        return _colour_scale(name, aesthetic, params, variant)
+    if family == "shape":
+        return _shape_scale(name, aesthetic, params, variant)
+    if family == "linetype":
+        return _linetype_scale(name, aesthetic, params, variant)
+    if family == "linewidth":
+        return _linewidth_scale(name, aesthetic, params, variant)
+    if family == "size":
+        return _size_scale(name, aesthetic, params, variant)
+    if family == "alpha":
+        return _alpha_scale(name, aesthetic, params, variant)
     raise ScaleError(f"未知的标度名 {name!r}（registry.SCALE_SPECS 里没有）")
 
 
@@ -1497,6 +2147,10 @@ def _default_scale(aesthetic: str, column: Column | None) -> ScaleBase | None:
         return AlphaScale(aesthetic)
     if aesthetic == "shape":
         return ShapeScale(aesthetic)
+    if aesthetic == "linetype":
+        return LinetypeScale(aesthetic)
+    if aesthetic == "linewidth":
+        return RescaleScale(aesthetic)
     return None
 
 
@@ -1542,7 +2196,7 @@ class ScaleSet:
         if name in self._scales:
             return self._scales[name]
         if column is None and name not in POSITION_AESTHETICS | frozenset(
-            {"colour", "fill", "size", "alpha", "shape"}
+            {"colour", "fill", "size", "alpha", "shape", "linetype", "linewidth"}
         ):
             return None
         scale = _default_scale(name, column)

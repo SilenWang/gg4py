@@ -47,7 +47,9 @@ key 图形叠在同一个 key 格里。
 
 ggcore 的实现（`build_guides()`）：
 
-1. 按固定顺序扫描 `colour / fill / size / shape / alpha`，每个美学最多一张 guide
+1. 按固定顺序扫描 `colour / fill / size / shape / alpha / linetype / linewidth`，
+   每个美学最多一张 guide（`GUIDE_AESTHETICS`；后两个是 M2-4 B 加的——linetype /
+   linewidth 的键分别画成短线段与不同粗细的线段）
    （`plot.guides` 里同美学后加的替换先加的，与 `plot.scales` 同一口径）；
 2. 默认 guide：连续 colour / fill → `GuideColourbar`，其余 → `GuideLegend`；
 3. 只有「被**映射**过的」美学进图例：`aes(colour = "g")` 进，

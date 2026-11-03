@@ -34,29 +34,60 @@ TOLERANCE = 1e-12
 
 #: 夹具里钉死的 case（改夹具就要同时改这里，防止悄悄少比）。
 EXPECTED_CASES = {
+    "alpha_continuous",
+    "alpha_identity",
+    "alpha_manual",
+    "alpha_ordinal",
+    "colour_brewer_direction",
+    "colour_brewer_qual_dark2",
+    "colour_brewer_set1",
+    "colour_distiller",
+    "colour_gradient",
+    "colour_gradient_limits",
+    "colour_grey",
+    "colour_grey_custom",
+    "colour_hue",
+    "colour_hue_limits",
+    "colour_hue_na_value",
+    "colour_identity",
+    "colour_manual",
+    "colour_ordinal",
+    "colour_viridis_b",
+    "colour_viridis_c",
+    "colour_viridis_d",
+    "colour_viridis_d_begin_end",
     "continuous_default_expand",
     "continuous_expand_zero",
     "continuous_limits_censor",
     "continuous_manual_breaks_labels",
     "continuous_nbreaks",
-    "x_log10",
-    "y_log10",
-    "x_log10_limits",
+    "discrete_drop_false",
     "discrete_levels",
     "discrete_limits",
-    "discrete_drop_false",
     "discrete_na_level",
     "discrete_reverse_limits",
-    "colour_hue",
-    "colour_hue_na_value",
-    "colour_hue_limits",
-    "colour_manual",
+    "fill_brewer_set2",
     "fill_hue",
-    "colour_gradient",
-    "colour_gradient_limits",
-    "size_continuous",
-    "alpha_continuous",
+    "linetype_binned",
+    "linetype_discrete",
+    "linetype_identity",
+    "linetype_manual",
+    "linewidth_binned",
+    "linewidth_continuous",
+    "linewidth_identity",
+    "linewidth_manual",
+    "linewidth_ordinal",
+    "radius",
+    "shape_binned",
     "shape_discrete",
+    "shape_manual",
+    "size_area",
+    "size_binned_area",
+    "size_continuous",
+    "size_ordinal",
+    "x_log10",
+    "x_log10_limits",
+    "y_log10",
 }
 
 
@@ -194,12 +225,16 @@ def test_scale_matches_r(reference: dict, case_id: str) -> None:
 
 
 def test_compared_cell_count(reference: dict) -> None:
-    """规模钉死：23 个 case、87 个断点 / 标签、75 个映射值、13 个 expand 向量。"""
-    assert len(reference["cases"]) == 23
-    assert sum(len(case["breaks"]) for case in reference["cases"]) == 87
-    assert sum(len(case["labels"]) for case in reference["cases"]) == 87
-    assert sum(len(case["mapped"]) for case in reference["cases"]) == 75
-    assert sum(len(case["limits"]) for case in reference["cases"]) == 54
+    """规模钉死：54 个 case、183 个断点 / 标签、170 个映射值、13 个 expand 向量。
+
+    M2-4 B 把 case 从 23 扩到 54（离散 / brewer / viridis / grey / manual /
+    identity / 线型 / 线宽 / 面积 / 分箱各至少一条）。
+    """
+    assert len(reference["cases"]) == 54
+    assert sum(len(case["breaks"] or []) for case in reference["cases"]) == 183
+    assert sum(len(case["labels"] or []) for case in reference["cases"]) == 183
+    assert sum(len(case["mapped"]) for case in reference["cases"]) == 170
+    assert sum(len(case["limits"]) for case in reference["cases"]) == 139
     assert sum(1 for case in reference["cases"] if case["expand"] is not None) == 13
 
 

@@ -79,7 +79,7 @@ __all__ = [
 ]
 
 #: 会产出图例的非位置美学，顺序固定（决定默认的图例顺序）。
-GUIDE_AESTHETICS = ("colour", "fill", "size", "shape", "alpha")
+GUIDE_AESTHETICS = ("colour", "fill", "size", "shape", "alpha", "linetype", "linewidth")
 
 #: `title=waiver()` 的对等物：没显式给标题时按标度 / 映射推。
 AUTO: Any = object()
