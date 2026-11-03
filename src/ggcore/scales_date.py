@@ -22,6 +22,7 @@ from __future__ import annotations
 import datetime as _dt
 import math
 from collections.abc import Sequence
+from typing import Any
 
 __all__ = [
     "DATE_EPOCH",
@@ -342,11 +343,23 @@ def _seconds_from_dt(value: _dt.datetime) -> float:
     return (value - _EPOCH_DT).total_seconds()
 
 
+def _limits_pair(limits: Any, high: float | None = None) -> tuple[float, float]:
+    """`breaks_width()` 的回调口径：上游收**一个** limits 向量（`function(x)`），
+
+    本仓历史上写成 `(low, high)` 两个位置参数；两种形态都接受，避免调用点各记一套。
+    """
+    if high is None:
+        low_value, high_value = (float(value) for value in limits)
+        return low_value, high_value
+    return float(limits), float(high)
+
+
 def breaks_width_date(spec: str):
     """`breaks_width(spec)` 作用在天数上。"""
 
-    def breaks(low: float, high: float) -> tuple[float, ...]:
-        return fullseq_date(low, high, spec)
+    def breaks(limits: Any, n: int | None = None, high: float | None = None):
+        low, upper = _limits_pair(limits, high)
+        return fullseq_date(low, upper, spec)
 
     return breaks
 
@@ -354,8 +367,9 @@ def breaks_width_date(spec: str):
 def breaks_width_time(spec: str):
     """`breaks_width(spec)` 作用在秒上。"""
 
-    def breaks(low: float, high: float) -> tuple[float, ...]:
-        return fullseq_time(low, high, spec)
+    def breaks(limits: Any, n: int | None = None, high: float | None = None):
+        low, upper = _limits_pair(limits, high)
+        return fullseq_time(low, upper, spec)
 
     return breaks
 
@@ -364,8 +378,9 @@ def breaks_width_hms(spec: str):
     """`breaks_width(spec)` 作用在「一天内的秒」上（difftime：纯数值栅格）。"""
     width = unit_seconds(spec)
 
-    def breaks(low: float, high: float) -> tuple[float, ...]:
-        return fullseq_numeric(low, high, width)
+    def breaks(limits: Any, n: int | None = None, high: float | None = None):
+        low, upper = _limits_pair(limits, high)
+        return fullseq_numeric(low, upper, width)
 
     return breaks
 

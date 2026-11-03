@@ -1,0 +1,7 @@
+family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：functional limits"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/functional-limits.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"

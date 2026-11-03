@@ -186,12 +186,12 @@ reason = "`position_stack()` 的 area 堆叠未复刻。"
 [groups.scale_date]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "日期断点 / 标签（8 条）未逐条复刻。"
+reason = "SIL-790 已全部纳管（8 条）：日期默认断点（`pretty.Date()`）、`date_breaks` / `breaks_width` / `label_date`；数据按 R 的 `set.seed(321)` 导出。"
 
 [groups."scales-breaks-labels"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "断点 / 标签函数与空图例（13 条）未逐条复刻。"
+reason = "SIL-790 已全部纳管（13 条）：断点 / 标签函数 / 空图例 / log2 与 exp 变换 / 函数形态 limits。"
 
 [groups."sec-axis"]
 issue = "SIL-715"
@@ -284,6 +284,75 @@ case = "upstream-guides-facet-wrap-legend-right"
 
 [snapshots."guides/facet-wrap-legend-on-top.svg"]
 case = "upstream-guides-facet-wrap-legend-top"
+
+# ---------------------------------------------------------------------------
+# SIL-790（G6 scales）：`scales-breaks-labels` 13 + `scale_date` 8 两簇全部复刻成
+# 三文件 case。复刻表在 `tools/upstream/import_snapshot_cases.py` 的 `_G6_SPECS`，
+# 目录与 expected.svg 由 `pixi run snapshots:import` 生成。
+# ---------------------------------------------------------------------------
+
+[snapshots."scales-breaks-labels/character.svg"]
+case = "upstream-scales-character"
+
+[snapshots."scales-breaks-labels/date.svg"]
+case = "upstream-scales-date"
+
+[snapshots."scales-breaks-labels/functional-limits.svg"]
+case = "upstream-scales-functional-limits"
+
+[snapshots."scales-breaks-labels/no-alpha-breaks-no-legend.svg"]
+case = "upstream-scales-no-alpha-breaks"
+
+[snapshots."scales-breaks-labels/no-colour-breaks-no-legend.svg"]
+case = "upstream-scales-no-colour-breaks"
+
+[snapshots."scales-breaks-labels/no-fill-breaks-no-legend.svg"]
+case = "upstream-scales-no-fill-breaks"
+
+[snapshots."scales-breaks-labels/no-size-breaks-no-legend.svg"]
+case = "upstream-scales-no-size-breaks"
+
+[snapshots."scales-breaks-labels/no-x-breaks.svg"]
+case = "upstream-scales-no-x-breaks"
+
+[snapshots."scales-breaks-labels/no-y-breaks.svg"]
+case = "upstream-scales-no-y-breaks"
+
+[snapshots."scales-breaks-labels/numeric.svg"]
+case = "upstream-scales-numeric"
+
+[snapshots."scales-breaks-labels/numeric-exp.svg"]
+case = "upstream-scales-numeric-exp"
+
+[snapshots."scales-breaks-labels/numeric-log.svg"]
+case = "upstream-scales-numeric-log"
+
+[snapshots."scales-breaks-labels/numeric-polar.svg"]
+case = "upstream-scales-numeric-polar"
+
+[snapshots."scale_date/dates-along-x-default-breaks.svg"]
+case = "upstream-scale-date-dates-along-x-default-breaks"
+
+[snapshots."scale_date/dates-along-y-default-breaks.svg"]
+case = "upstream-scale-date-dates-along-y-default-breaks"
+
+[snapshots."scale_date/scale-x-date-breaks-3-weeks.svg"]
+case = "upstream-scale-date-scale-x-date-breaks-3-weeks"
+
+[snapshots."scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg"]
+case = "upstream-scale-date-scale-x-date-breaks-breaks-width-2-weeks"
+
+[snapshots."scale_date/scale-x-date-labels-label-date-m-d.svg"]
+case = "upstream-scale-date-scale-x-date-labels-label-date-m-d"
+
+[snapshots."scale_date/scale-x-date-labels-label-date-w-week.svg"]
+case = "upstream-scale-date-scale-x-date-labels-label-date-w-week"
+
+[snapshots."scale_date/scale-y-date-breaks-3-weeks.svg"]
+case = "upstream-scale-date-scale-y-date-breaks-3-weeks"
+
+[snapshots."scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg"]
+case = "upstream-scale-date-scale-y-date-breaks-breaks-width-2-weeks"
 
 # ---------------------------------------------------------------------------
 # SIL-788（G1a guides-legend）：图例侧 46 条已复刻成三文件 case。

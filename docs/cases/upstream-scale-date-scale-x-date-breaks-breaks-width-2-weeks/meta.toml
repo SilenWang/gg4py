@@ -1,0 +1,7 @@
+family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_x_date(breaks = breaks_width(\"2 weeks\"))"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"

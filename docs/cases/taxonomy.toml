@@ -68,6 +68,8 @@ features = [
   "scale-log10",
   "scale-discrete",
   "scale-limits",
+  "scale-breaks",
+  "scale-date",
   "scale-gradient",
   "scale-viridis",
   "scale-brewer",

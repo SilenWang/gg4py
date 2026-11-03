@@ -705,7 +705,7 @@ def specs() -> list[dict[str, Any]]:
         for spec in _theme_specs() + _guide_specs() + _dotplot_specs()
         if spec["slug"] not in skip
     ]
-    return base + _G1A_SPECS
+    return base + _G1A_SPECS + _G6_SPECS
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。
@@ -3796,6 +3796,1846 @@ def build():
     },
 ]
 
+#: G6（SIL-790）：`scales-breaks-labels` 13 + `scale_date` 8 两簇的复刻表。
+#:
+#: 与 G1a 同样用完整 `source` + `meta` 正文（每条图的语法组合不同，模板反而难读）。
+#: `scale_date` 的数据是 R 4.5 直接导出的：`set.seed(321)` 之后 `sample(100, 50)`
+#: 取 `dx`、`runif(50)` 取 `price`——不是本仓生成的随机数（R 与 numpy 的 RNG 不可
+#: 互相复现，见 tools/refs/position_ref.R 的同一句口径）。
+_G6_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-scale-date-dates-along-x-default-breaks",
+        "snapshot": "scale_date/dates-along-x-default-breaks.svg",
+        "title": "上游快照：dates along x, default breaks",
+        "source": r'''"""上游快照复刻：dates along x, default breaks。
+
+源：scale_date/dates-along-x-default-breaks.svg。
+vdiffr 名：dates along x, default breaks。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+R 测试里隐含的默认标度（`scale_x_date()`）显式写出：本仓还没有
+「Date 列 → `scale_*_date()`」的隐式标度解析，图本身与 R 一致。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_x_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="dx", y="price"))
+        + geom_line()
+        + scale_x_date()
+        + theme_test()
+        + labs(title="dates along x, default breaks")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：dates along x, default breaks"
+source = "upstream:tests/testthat/_snaps/scale_date/dates-along-x-default-breaks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-dates-along-y-default-breaks",
+        "snapshot": "scale_date/dates-along-y-default-breaks.svg",
+        "title": "上游快照：dates along y, default breaks",
+        "source": r'''"""上游快照复刻：dates along y, default breaks。
+
+源：scale_date/dates-along-y-default-breaks.svg。
+vdiffr 名：dates along y, default breaks。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+R 测试里隐含的默认标度（`scale_y_date()`）显式写出：本仓还没有
+「Date 列 → `scale_*_date()`」的隐式标度解析，图本身与 R 一致。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_y_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="price", y="dx"))
+        + geom_line()
+        + scale_y_date()
+        + theme_test()
+        + labs(title="dates along y, default breaks")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：dates along y, default breaks"
+source = "upstream:tests/testthat/_snaps/scale_date/dates-along-y-default-breaks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-x-date-breaks-3-weeks",
+        "snapshot": "scale_date/scale-x-date-breaks-3-weeks.svg",
+        "title": '上游快照：scale_x_date(breaks = "3 weeks")',
+        "source": r'''"""上游快照复刻：scale_x_date(breaks = "3 weeks")。
+
+源：scale_date/scale-x-date-breaks-3-weeks.svg。
+vdiffr 名：scale_x_date(breaks = "3 weeks")。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_x_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="dx", y="price"))
+        + geom_line()
+        + scale_x_date(date_breaks="3 weeks")
+        + theme_test()
+        + labs(title='scale_x_date(breaks = "3 weeks")')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_x_date(breaks = \"3 weeks\")"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-x-date-breaks-3-weeks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-x-date-breaks-breaks-width-2-weeks",
+        "snapshot": "scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg",
+        "title": '上游快照：scale_x_date(breaks = breaks_width("2 weeks"))',
+        "source": r'''"""上游快照复刻：scale_x_date(breaks = breaks_width("2 weeks"))。
+
+源：scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg。
+vdiffr 名：scale_x_date(breaks = breaks_width("2 weeks"))。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_x_date
+from ggcore.scales_date import breaks_width_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="dx", y="price"))
+        + geom_line()
+        + scale_x_date(breaks=breaks_width_date("2 weeks"))
+        + theme_test()
+        + labs(title='scale_x_date(breaks = breaks_width("2 weeks"))')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_x_date(breaks = breaks_width(\"2 weeks\"))"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-x-date-labels-label-date-m-d",
+        "snapshot": "scale_date/scale-x-date-labels-label-date-m-d.svg",
+        "title": '上游快照：scale_x_date(labels = label_date("%m/%d"))',
+        "source": r'''"""上游快照复刻：scale_x_date(labels = label_date("%m/%d"))。
+
+源：scale_date/scale-x-date-labels-label-date-m-d.svg。
+vdiffr 名：scale_x_date(labels = label_date("%m/%d"))。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_x_date
+from ggcore.scales_date import date_formatter
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="dx", y="price"))
+        + geom_line()
+        + scale_x_date(labels=date_formatter("date", "%m/%d"))
+        + theme_test()
+        + labs(title='scale_x_date(labels = label_date("%m/%d"))')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_x_date(labels = label_date(\"%m/%d\"))"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-x-date-labels-label-date-m-d.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-x-date-labels-label-date-w-week",
+        "snapshot": "scale_date/scale-x-date-labels-label-date-w-week.svg",
+        "title": '上游快照：scale_x_date(labels = label_date("%W"), "week")',
+        "source": r'''"""上游快照复刻：scale_x_date(labels = label_date("%W"), "week")。
+
+源：scale_date/scale-x-date-labels-label-date-w-week.svg。
+vdiffr 名：scale_x_date(labels = label_date("%W"), "week")。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_x_date
+from ggcore.scales_date import date_formatter
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="dx", y="price"))
+        + geom_line()
+        + scale_x_date(breaks="week", labels=date_formatter("date", "%W"))
+        + theme_test()
+        + labs(title='scale_x_date(labels = label_date("%W"), "week")')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_x_date(labels = label_date(\"%W\"), \"week\")"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-x-date-labels-label-date-w-week.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-y-date-breaks-3-weeks",
+        "snapshot": "scale_date/scale-y-date-breaks-3-weeks.svg",
+        "title": '上游快照：scale_y_date(breaks = "3 weeks")',
+        "source": r'''"""上游快照复刻：scale_y_date(breaks = "3 weeks")。
+
+源：scale_date/scale-y-date-breaks-3-weeks.svg。
+vdiffr 名：scale_y_date(breaks = "3 weeks")。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_y_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="price", y="dx"))
+        + geom_line()
+        + scale_y_date(date_breaks="3 weeks")
+        + theme_test()
+        + labs(title='scale_y_date(breaks = "3 weeks")')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_y_date(breaks = \"3 weeks\")"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-y-date-breaks-3-weeks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scale-date-scale-y-date-breaks-breaks-width-2-weeks",
+        "snapshot": "scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg",
+        "title": '上游快照：scale_y_date(breaks = breaks_width("2 weeks"))',
+        "source": r'''"""上游快照复刻：scale_y_date(breaks = breaks_width("2 weeks"))。
+
+源：scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg。
+vdiffr 名：scale_y_date(breaks = breaks_width("2 weeks"))。
+
+`set.seed(321)` 的 `dx` / `price` 由 R 4.5 直接导出
+（`sample(100, 50)` + `runif(50)`），不是本仓生成的随机数。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime
+
+from ggcore.plot import aes, geom_line, ggplot, labs, scale_y_date
+from ggcore.scales_date import breaks_width_date
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "dx": [
+        datetime.date(2012, 2, 29),
+        datetime.date(2012, 3, 3),
+        datetime.date(2012, 3, 6),
+        datetime.date(2012, 3, 7),
+        datetime.date(2012, 3, 8),
+        datetime.date(2012, 3, 10),
+        datetime.date(2012, 3, 12),
+        datetime.date(2012, 3, 14),
+        datetime.date(2012, 3, 16),
+        datetime.date(2012, 3, 17),
+        datetime.date(2012, 3, 19),
+        datetime.date(2012, 3, 22),
+        datetime.date(2012, 3, 24),
+        datetime.date(2012, 3, 28),
+        datetime.date(2012, 3, 29),
+        datetime.date(2012, 3, 30),
+        datetime.date(2012, 4, 2),
+        datetime.date(2012, 4, 3),
+        datetime.date(2012, 4, 4),
+        datetime.date(2012, 4, 9),
+        datetime.date(2012, 4, 13),
+        datetime.date(2012, 4, 14),
+        datetime.date(2012, 4, 15),
+        datetime.date(2012, 4, 16),
+        datetime.date(2012, 4, 17),
+        datetime.date(2012, 4, 19),
+        datetime.date(2012, 4, 22),
+        datetime.date(2012, 4, 26),
+        datetime.date(2012, 4, 27),
+        datetime.date(2012, 4, 28),
+        datetime.date(2012, 4, 30),
+        datetime.date(2012, 5, 1),
+        datetime.date(2012, 5, 2),
+        datetime.date(2012, 5, 5),
+        datetime.date(2012, 5, 11),
+        datetime.date(2012, 5, 13),
+        datetime.date(2012, 5, 15),
+        datetime.date(2012, 5, 16),
+        datetime.date(2012, 5, 17),
+        datetime.date(2012, 5, 18),
+        datetime.date(2012, 5, 19),
+        datetime.date(2012, 5, 20),
+        datetime.date(2012, 5, 22),
+        datetime.date(2012, 5, 26),
+        datetime.date(2012, 5, 27),
+        datetime.date(2012, 5, 28),
+        datetime.date(2012, 5, 29),
+        datetime.date(2012, 6, 3),
+        datetime.date(2012, 6, 6),
+        datetime.date(2012, 6, 7),
+    ],
+    "price": [
+        0.9616501040,
+        0.1624869567,
+        0.0412904064,
+        0.1565073295,
+        0.5024147367,
+        0.7918214588,
+        0.0852337643,
+        0.5842047508,
+        0.3109124061,
+        0.8940171362,
+        0.6412378051,
+        0.9455218136,
+        0.7880687607,
+        0.2636332642,
+        0.1869768053,
+        0.6517536691,
+        0.9137707094,
+        0.9281317706,
+        0.5269326805,
+        0.6258383121,
+        0.1299404269,
+        0.7331085226,
+        0.5964183512,
+        0.4944653544,
+        0.4151498503,
+        0.1815023392,
+        0.0621891215,
+        0.5988593667,
+        0.6920898366,
+        0.5219928171,
+        0.2529071253,
+        0.1591295504,
+        0.5071416628,
+        0.6335240912,
+        0.5045890666,
+        0.6020734545,
+        0.1328208803,
+        0.8721084816,
+        0.1653388974,
+        0.9785593627,
+        0.4015488112,
+        0.6336023652,
+        0.6511391723,
+        0.5311487252,
+        0.9967931078,
+        0.8299274566,
+        0.9569348753,
+        0.8791833892,
+        0.2694185616,
+        0.5792052438,
+    ],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="price", y="dx"))
+        + geom_line()
+        + scale_y_date(breaks=breaks_width_date("2 weeks"))
+        + theme_test()
+        + labs(title='scale_y_date(breaks = breaks_width("2 weeks"))')
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-date"]
+ci = true
+title = "上游快照：scale_y_date(breaks = breaks_width(\"2 weeks\"))"
+source = "upstream:tests/testthat/_snaps/scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名；数据按 R 的 set.seed(321) 导出。"
+""",
+    },
+    {
+        "slug": "upstream-scales-character",
+        "snapshot": "scales-breaks-labels/character.svg",
+        "title": "上游快照：character",
+        "source": r'''"""上游快照复刻：character。
+
+离散 x + `geom_blank()`。
+源：scales-breaks-labels/character.svg。
+vdiffr 名：character。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_blank, ggplot, labs
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": ["2012-02-29", "2012-06-08"],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_chr", y="y"))
+        + geom_blank()
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None, title="character")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：character"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/character.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-date",
+        "snapshot": "scales-breaks-labels/date.svg",
+        "title": "上游快照：date",
+        "source": r'''"""上游快照复刻：date。
+
+月主断点 / 周次断点 + `label_date("%m/%d")`。
+源：scales-breaks-labels/date.svg。
+vdiffr 名：date。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import datetime as _dt
+
+from ggcore.plot import aes, geom_blank, ggplot, labs, scale_x_date
+from ggcore.scales_date import breaks_width_date, date_formatter
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": [_dt.date(2012, 2, 29), _dt.date(2012, 6, 8)],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_date", y="y"))
+        + geom_blank()
+        + scale_x_date(
+            labels=date_formatter("date", "%m/%d"),
+            breaks=breaks_width_date("1 month"),
+            minor_breaks=breaks_width_date("1 week"),
+        )
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None, title="date")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：date"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/date.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-functional-limits",
+        "snapshot": "scales-breaks-labels/functional-limits.svg",
+        "title": "上游快照：functional limits",
+        "source": r'''"""上游快照复刻：functional limits。
+
+`scale_y_continuous(limits = <function>)`。
+源：scales-breaks-labels/functional-limits.svg。
+vdiffr 名：functional limits。
+
+expected.svg 是上游那份，未改写。
+"""
+
+import math
+
+from ggcore.plot import aes, geom_bar, ggplot, labs, scale_y_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+#: `mpg` 的 `class × drv` 计数（只保留本图用到的两列；数据 = 234 行）。
+COUNTS = {
+    "2seater": {"r": 5},
+    "compact": {"4": 12, "f": 35},
+    "midsize": {"4": 3, "f": 38},
+    "minivan": {"f": 11},
+    "pickup": {"4": 33},
+    "subcompact": {"4": 4, "f": 22, "r": 9},
+    "suv": {"4": 51, "r": 11},
+}
+DRIVES = ("4", "f", "r")
+DATA = {
+    "class": [cls for cls, row in COUNTS.items() for drv in DRIVES for _ in range(row.get(drv, 0))],
+    "drv": [drv for cls, row in COUNTS.items() for drv in DRIVES for _ in range(row.get(drv, 0))],
+}
+
+
+def _limiter(by):
+    def limits(values):
+        low, high = values
+        return (math.floor(low / by) * by, math.ceil(high / by) * by)
+
+    return limits
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="class"))
+        + geom_bar(aes(fill="drv"))
+        + scale_y_continuous(limits=_limiter(50))
+        + theme_test()
+        + labs(title="functional limits")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：functional limits"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/functional-limits.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-alpha-breaks",
+        "snapshot": "scales-breaks-labels/no-alpha-breaks-no-legend.svg",
+        "title": "上游快照：no alpha breaks (no legend)",
+        "source": r'''"""上游快照复刻：no alpha breaks (no legend)。
+
+`scale_alpha_continuous(breaks = NULL)` → 无图例。
+源：scales-breaks-labels/no-alpha-breaks-no-legend.svg。
+vdiffr 名：no alpha breaks (no legend)。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_alpha_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x=1, y="y", alpha="x"))
+        + geom_point()
+        + scale_alpha_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no alpha breaks (no legend)")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no alpha breaks (no legend)"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-alpha-breaks-no-legend.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-colour-breaks",
+        "snapshot": "scales-breaks-labels/no-colour-breaks-no-legend.svg",
+        "title": "上游快照：no colour breaks (no legend)",
+        "source": r'''"""上游快照复刻：no colour breaks (no legend)。
+
+`scale_colour_continuous(breaks = NULL)` → 无图例。
+源：scales-breaks-labels/no-colour-breaks-no-legend.svg。
+vdiffr 名：no colour breaks (no legend)。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_colour_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x=1, y="y", colour="x"))
+        + geom_point()
+        + scale_colour_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no colour breaks (no legend)")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no colour breaks (no legend)"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-colour-breaks-no-legend.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-fill-breaks",
+        "snapshot": "scales-breaks-labels/no-fill-breaks-no-legend.svg",
+        "title": "上游快照：no fill breaks (no legend)",
+        "source": r'''"""上游快照复刻：no fill breaks (no legend)。
+
+`scale_fill_continuous(breaks = NULL)` → 无图例。
+源：scales-breaks-labels/no-fill-breaks-no-legend.svg。
+vdiffr 名：no fill breaks (no legend)。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_fill_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x=1, y="y", fill="x"))
+        + geom_point(shape=21)
+        + scale_fill_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no fill breaks (no legend)")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no fill breaks (no legend)"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-fill-breaks-no-legend.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-size-breaks",
+        "snapshot": "scales-breaks-labels/no-size-breaks-no-legend.svg",
+        "title": "上游快照：no size breaks (no legend)",
+        "source": r'''"""上游快照复刻：no size breaks (no legend)。
+
+`scale_size_continuous(breaks = NULL)` → 无图例。
+源：scales-breaks-labels/no-size-breaks-no-legend.svg。
+vdiffr 名：no size breaks (no legend)。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_size_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x=1, y="y", size="x"))
+        + geom_point()
+        + scale_size_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no size breaks (no legend)")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no size breaks (no legend)"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-size-breaks-no-legend.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-x-breaks",
+        "snapshot": "scales-breaks-labels/no-x-breaks.svg",
+        "title": "上游快照：no x breaks",
+        "source": r'''"""上游快照复刻：no x breaks。
+
+`scale_x_continuous(breaks = NULL)`。
+源：scales-breaks-labels/no-x-breaks.svg。
+vdiffr 名：no x breaks。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_x_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_x_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no x breaks")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no x breaks"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-x-breaks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-no-y-breaks",
+        "snapshot": "scales-breaks-labels/no-y-breaks.svg",
+        "title": "上游快照：no y breaks",
+        "source": r'''"""上游快照复刻：no y breaks。
+
+`scale_y_continuous(breaks = NULL)`。
+源：scales-breaks-labels/no-y-breaks.svg。
+vdiffr 名：no y breaks。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, labs, scale_y_continuous
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1, 2, 3], "y": [1, 2, 3]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + scale_y_continuous(breaks=None)
+        + theme_test()
+        + labs(title="no y breaks")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：no y breaks"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/no-y-breaks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-numeric",
+        "snapshot": "scales-breaks-labels/numeric.svg",
+        "title": "上游快照：numeric",
+        "source": r'''"""上游快照复刻：numeric。
+
+主 / 次网格线 + 显式断点。
+源：scales-breaks-labels/numeric.svg。
+vdiffr 名：numeric。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import (
+    aes,
+    geom_blank,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": ["2012-02-29", "2012-06-08"],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_num", y="y"))
+        + geom_blank()
+        + scale_x_continuous(breaks=(1, 2, 3), minor_breaks=(1.25, 2.75))
+        + scale_y_continuous(breaks=(1, 2, 3), minor_breaks=(1.25, 2.75))
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None, title="numeric")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：numeric"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/numeric.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-numeric-exp",
+        "snapshot": "scales-breaks-labels/numeric-exp.svg",
+        "title": "上游快照：numeric-exp",
+        "source": r'''"""上游快照复刻：numeric-exp。
+
+x / y 都走 `transform_exp(2)`。
+源：scales-breaks-labels/numeric-exp.svg。
+vdiffr 名：numeric-exp。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import aes, geom_blank, ggplot, labs, scale_x_continuous, scale_y_continuous
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": ["2012-02-29", "2012-06-08"],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_num", y="x_num"))
+        + geom_blank()
+        + scale_x_continuous(trans=("exp", 2))
+        + scale_y_continuous(trans=("exp", 2))
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None, title="numeric-exp")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：numeric-exp"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/numeric-exp.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-numeric-log",
+        "snapshot": "scales-breaks-labels/numeric-log.svg",
+        "title": "上游快照：numeric log",
+        "source": r'''"""上游快照复刻：numeric log。
+
+x 走 log2、y 走 log10。
+源：scales-breaks-labels/numeric-log.svg。
+vdiffr 名：numeric log。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import (
+    aes,
+    geom_blank,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_log10,
+)
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": ["2012-02-29", "2012-06-08"],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_log", y="x_log"))
+        + geom_blank()
+        + scale_x_continuous(trans="log2")
+        + scale_y_log10()
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None, title="numeric-log")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：numeric log"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/numeric-log.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+    {
+        "slug": "upstream-scales-numeric-polar",
+        "snapshot": "scales-breaks-labels/numeric-polar.svg",
+        "title": "上游快照：numeric-polar",
+        "source": r'''"""上游快照复刻：numeric-polar。
+
+同一张图 + `coord_polar()`。
+源：scales-breaks-labels/numeric-polar.svg。
+vdiffr 名：numeric-polar。
+
+expected.svg 是上游那份，未改写。
+"""
+
+from ggcore.plot import (
+    aes,
+    coord_polar,
+    geom_blank,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+)
+from ggcore.theme import element_line, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = {
+    "x_num": [1, 3],
+    "x_chr": ["a", "b"],
+    "x_date": ["2012-02-29", "2012-06-08"],
+    "x_log": [1, 1e4],
+    "y": [1, 3],
+}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x_num", y="y"))
+        + geom_blank()
+        + scale_x_continuous(breaks=(1, 2, 3), minor_breaks=(1.25, 2.75))
+        + scale_y_continuous(breaks=(1, 2, 3), minor_breaks=(1.25, 2.75))
+        + theme_test()
+        + theme(
+            **{
+                "panel.grid.major": element_line(colour="grey30", linewidth=0.5),
+                "panel.grid.minor": element_line(colour="grey70"),
+            }
+        )
+        + labs(x=None, y=None)
+        + coord_polar()
+        + labs(title="numeric-polar")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "scale"
+features = ["scale-breaks"]
+ci = true
+title = "上游快照：numeric-polar"
+source = "upstream:tests/testthat/_snaps/scales-breaks-labels/numeric-polar.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
+""",
+    },
+]
+
 _PLOT_NAMES = (
     "aes",
     "coord_flip",
@@ -3861,6 +5701,9 @@ def _plot_source(spec: dict[str, Any]) -> str:
 
 
 def _meta_source(spec: dict[str, Any]) -> str:
+    # G6 的条目直接给 `meta` 正文，原样落盘（族 / 特性 / tolerance 各簇自己定）。
+    if "meta" in spec:
+        return spec["meta"]
     # G1a（SIL-788）的条目直接给 `source`（完整 plot.py 正文）；dotplot 族也带
     # `features`，所以判别键必须是 `source`，不能用 `features`。
     if "source" in spec:

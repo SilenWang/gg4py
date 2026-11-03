@@ -8,7 +8,7 @@ M2-4 按「家族 × 变体」补齐到 **129 个注册名**（A 段连续侧 75
 
 | 族 | 导出 | 实现 |
 | --- | --- | --- |
-| 位置连续 | `x/y_continuous`、`_log10`、`_sqrt`、`_reverse` | `PositionContinuousScale` + `trans` |
+| 位置连续 | `x/y_continuous`、`_log10`、`_sqrt`、`_reverse`；`trans = "log2"` / `("exp", base)` | `PositionContinuousScale` + `trans` |
 | 位置分箱 | `x/y_binned` | `BinnedPositionScale`（stat 前箱号 / stat 后箱中心） |
 | 位置日期时间 | `x/y_date`、`_datetime`、`_time` | `PositionContinuousScale` + `trans = date/time/hms` |
 | 连续渐变 | `{colour,color,fill}_continuous`、`_gradient`、`_date`、`_datetime` | `GradientScale` |
@@ -148,6 +148,10 @@ ordered / Date 标记，`ggcore.Column` 还没有这两种标记（日期标度�
   `get_limits()` 存的也是变换后的值（上例 → `(0, 2)`），`expanded_limits()` /
   `breaks()` / `map()` 都在这个空间里消费。单侧 `None` 取训练范围（已经是变换
   后的值，不能再变换一次）；log10 下给 0 / 负值时按模块统一约定落成 NA；
+- `limits` 可以是**函数**（`scale_y_continuous(limits = function(lims) ...)`）：
+  上游 `ScaleContinuous$get_limits()` 把**变换后**的训练范围喂给它，返回值也按
+  变换后空间消费；无数据时给 `(0, 1)`，返回值不是 2 元就报 `ScaleError`。
+  `functional-limits` 快照的 `limiter(50)`（计数 0..62 → 0..100）就是这条；
 - `Scale.expanded_limits()` = 上游 `scale$dimension(expand = …)`：面板范围，
   只对**位置**标度有意义（非位置标度返回 `None`）；
 - 模块级 `expand_range(low, high, mult=0.05, add=0)` 是**唯一**的 expand 实现
@@ -195,9 +199,16 @@ ordered / Date 标记，`ggcore.Column` 还没有这两种标记（日期标度�
 - 默认标签仿 R 的 `format(x, trim = TRUE, justify = "left")`：整组取同一套小数位
   （`c(0, 0.25, 0.5)` → `"0.00" "0.25" "0.50"`），定宽与科学记号比宽度
   （`1e5` → `"1e+05"`，`123456` 仍是定宽）。
-- `labels=` 支持三种写法：等长序列（按位置）、映射（断点值 / 水平 → 标签）、
-  含 `%` 的格式串（`"%.1f"`）。`breaks = NULL` / `labels = NULL` 是显式「不要」，
+- `labels=` 支持四种写法：等长序列（按位置）、映射（断点值 / 水平 → 标签）、
+  含 `%` 的格式串（`"%.1f"`）、**函数**（`label_date(...)` / 自定义回调）。函数只
+  收**未 censor** 的断点（`None` 位置留空），返回长度不等就报错——与
+  `Scale$get_labels()` 一致。`breaks = NULL` / `labels = NULL` 是显式「不要」，
   与不写参数（默认）不同，`_has_param()` 区分这两者。
+- `breaks=` 可以是序列 / 映射 / 函数；日期时间标度上还可以是**字符串**
+  （`scale_x_date(breaks = "week")`）——上游 `datetime_scale()` 把它当
+  `breaks_width(<spec>)` 的简写。`breaks_width()` 的回调收一个 limits 向量
+  （`function(x)`），本仓的 `breaks_width_date/time/hms()` 同时接受 `(limits)` 与
+  `(low, high)` 两种写法。
 - `minor_breaks = NULL` 关掉次网格；给定序列 / 函数时走上游
   `get_breaks_minor()` 的优先级（`date_minor_breaks` 优先于 `minor_breaks`）。
 
@@ -363,6 +374,17 @@ hue 的十六进制值与 R 4.0.3 **逐字节相同**：n = 2 → `#F8766D #00BF
 `size_date` / `alpha_datetime` …）时是同一个 `datetime_scale` 的实现，只是
 palette 换成对应的连续调色板（渐变 / area / 线性）。
 
+**已知缺口（SIL-790 发现）**：`ggio` 把 `Date` 与 `POSIXct` 都归一成
+`kind = "datetime"`（前者是天、后者是秒，见 `docs/notes/data.md`），所以默认标度
+解析（`scales._default_scale()`）**分不出**该建 `trans = "date"` 还是 `"time"`，
+现在两者都落到 identity 连续标度——日期列不加 `scale_x_date()` 时，断点是
+`extended_breaks()` 的数值（标签 `"15400"` 这种）。R 的默认标度是
+`scale_x_date()` / `scale_x_datetime()`。修法要给 `Column` 加「日历单位」标记
+（或恢复 `date` kind），跨 `ggio` / `data.py` / 几个数值 kind 判定点，不在
+SIL-790 的文件范围内；`scale_date` 的 8 条 case 因此显式写 `scale_*_date()`
+（与 R 测试里隐含的默认标度等价），`docs/notes/snapshot-inventory.md` 的两条
+「default breaks」也按这个口径复刻。
+
 ## 10. 与 R 对拍
 
 夹具：`tests/fixtures/scales_r_reference.json`，由
@@ -414,7 +436,8 @@ size_area / size_binned_area / radius / size_ordinal / alpha_ordinal / alpha_man
 
 | 项 | 状态 |
 | --- | --- |
-| `trans = "log2" / "log" / "exp" / "log1p" / "pseudo_log" / "reciprocal" / "logit" / "probit" / "asn" / "atanh"` | 未实现；构造时报错并点名后续任务 |
+| `trans = "log1p" / "pseudo_log" / "reciprocal" / "logit" / "probit" / "asn" / "atanh"` | 未实现；构造时报错并点名后续任务 |
+| `trans = "log2"` / `"exp"` / `("log", base)` / `("exp", base)` | SIL-790 已实现：`_Log(base)` / `_Exp(base)`。`log2` 的断点走 `breaks_log(base = 2)`（2 的幂）；`exp` 与上游 `transform_exp()` 一样不传 breaks / domain，断点仍在数据空间。`"exp"` 单独写等于自然底 |
 | `space != "Lab"` 的渐变插值 | 上游 4.0.3 已废弃；这里报 `ScaleError` |
 | secondary axis（`sec.axis`） | M2-1 已实现（`sec_axis()` / `dup_axis()`，见 `docs/notes/coord.md` §12）；标度侧只存引用，断点 / 标签在 `ggcore.axis` |
 | 位置标度以外的 expand / 面板范围 | 不做（只有 x / y 有 `expanded_limits()`） |

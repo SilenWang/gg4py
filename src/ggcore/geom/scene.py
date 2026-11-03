@@ -46,6 +46,7 @@ from ggcore.axis import (
     axis_title_grob,
     margin_sides_cm,
     paint,
+    polar_axis_row_cm,
     text_line_cm,
 )
 from ggcore.axis_guide import (
@@ -343,7 +344,8 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
         if aesthetic in mapping:
             return str(mapping[aesthetic])
     # 上游 `setup_plot_labels()` 的最后一级：`Stat$default_aes`（`after_stat()`）
-    # 也参与轴标题，例如 `geom_dotplot()` / `geom_histogram()` 的 y = "count"。
+    # 也参与轴标题（`geom_bar()` 只映射 `x` 时 y 轴标题是 `count`，不是空），
+    # 例如 `geom_dotplot()` / `geom_histogram()` 的 y = "count"。
     for layer in getattr(build, "layers", ()):
         for name, source in _STAT_DEFAULT_AES.get(layer.stat, ()):
             if name == aesthetic:
@@ -459,6 +461,9 @@ def plot_layout(
         ticks_y = axis_ticks(_panel_scale(build, panel, params.scale_key("left")), params, "left")
         guide_x = guide_for(build, "x")
         guide_y = guide_for(build, "y")
+        if params.polar is not None:
+            # θ 标签画在面板里，但 R 的 `axis-b` 行仍在（刻度 + 标签行高）。
+            x_axis = max(x_axis, polar_axis_row_cm(theme))
         if params.polar is None:
             guide_ticks_x = axis_guide_ticks(
                 _panel_scale(build, panel, params.scale_key("bottom")),
@@ -1097,7 +1102,14 @@ def _polar_grid_grobs(
 
     r_element = theme.get(f"panel.grid.{kind}.{polar.r_axis}")
     colour = paint(getattr(r_element, "colour", None))
-    if isinstance(r_element, ElementLine) and colour is not None and r_scale is not None:
+    # R 的 `CoordPolar$render_bg()` 只画 `panel.grid.major.<r>` 的同心圆：theta
+    # 有 minor 辐条，r **没有** minor 圆。`panel.grid.minor.<r>` 在这里不消费。
+    if (
+        kind == "major"
+        and isinstance(r_element, ElementLine)
+        and colour is not None
+        and r_scale is not None
+    ):
         values = r_scale.minor_breaks() if kind == "minor" else r_scale.breaks()
         radii: list[float] = []
         for value in values:
