@@ -43,7 +43,18 @@ from ggcore.data import Column, ColumnTable
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
-from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
+from ggcore.theme import (
+    theme_bw,
+    theme_classic,
+    theme_dark,
+    theme_gray,
+    theme_grey,
+    theme_light,
+    theme_linedraw,
+    theme_minimal,
+    theme_test,
+    theme_void,
+)
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。`position` 紧跟 `stat`：
 #: 它作用在 stat 之后、标度映射之前（就是流水线第 4 阶段）。
@@ -652,6 +663,10 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             ("x|width|xmin|xmax", "y|height|ymin|ymax"),
             _RECT_DEFAULTS,
         ),
+        # `geom_tile` 的绘制由 SIL-737 落地。上游 `GeomTile$default_aes` 是
+        # `fill = col_mix(ink, paper, 0.2)`（grey20）、`linewidth = 0.4 * borderwidth`
+        # （0.2），与 M2-6 的 build-only 桩（SIL-735 口径、grey92）不同：绘制实现
+        # 以本条为准，桩由它取代。
         "tile": GeomSpec(
             ("x", "y"),
             {
@@ -664,6 +679,69 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
                 "height": 1.0,
             },
             non_missing_aes=("xmin", "xmax", "ymin", "ymax"),
+        ),
+        # --- M2-6：2D 族的 build-only 部分 ------------------------------------
+        # 这 5 个 geom 只有 **build 级** 实现（`setup_data()` 与默认美学照上游，
+        # `ggplot_build()` 的 `$data` 与 R 逐列一致）；`draw()` 报 `GeomError` 并
+        # 点名 SIL-735。`tile` 已由 SIL-737 实现绘制（见上），不在此列。
+        "hex": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": None,
+                "fill": "grey50",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "identity",
+            "identity",
+        ),
+        "contour": GeomSpec(
+            ("x", "y"),
+            {
+                "weight": 1.0,
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour",
+            "identity",
+        ),
+        "contour_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey60",
+                "colour": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "contour_filled",
+            "identity",
+        ),
+        "density_2d": GeomSpec(
+            ("x", "y"),
+            {
+                "colour": "#3366FF",
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d",
+            "identity",
+        ),
+        "density_2d_filled": GeomSpec(
+            ("x", "y"),
+            {
+                "fill": "grey60",
+                "colour": None,
+                "linewidth": 0.5,
+                "linetype": 1,
+                "alpha": None,
+            },
+            "density_2d_filled",
+            "identity",
         ),
         "raster": GeomSpec(
             ("x", "y"),
@@ -724,7 +802,10 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
     }
 )
 
-#: stat 导出（M1-1 的 6 个 + M2-6 的 14 个长尾；`align` 是 4.0.3 里 area 的默认 stat）。
+#: `stat_*()` 的名字（M1-1 的 6 个 + M2-6 的 2D 族）。别名与正名是同一份实现，
+#: 只多一个入口：`stat_bin2d` / `stat_binhex` / `stat_summary2d` / `stat_density2d`
+#: 构造出来的图层里 `stat.name` 仍是正名（与 ggplot2 的 `stat_bin2d <- stat_bin_2d`
+#: 一致）。M2-6 另有 14 个长尾 stat（`align` 是 4.0.3 里 area 的默认 stat）。
 STAT_NAMES: tuple[str, ...] = (
     "identity",
     "bin",
@@ -732,6 +813,18 @@ STAT_NAMES: tuple[str, ...] = (
     "boxplot",
     "smooth",
     "align",
+    "bin_2d",
+    "bin_hex",
+    "summary_2d",
+    "summary_hex",
+    "contour",
+    "contour_filled",
+    "density_2d",
+    "density_2d_filled",
+    "bin2d",
+    "binhex",
+    "summary2d",
+    "density2d",
     "qq",
     "qq_line",
     "ecdf",
@@ -747,6 +840,20 @@ STAT_NAMES: tuple[str, ...] = (
     "manual",
     "spoke",
     "ydensity",
+    "bin2d",
+    "binhex",
+    "summary2d",
+    "density2d",
+)
+
+#: 2D 族的旧别名 → 正名。
+STAT_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "bin2d": "bin_2d",
+        "binhex": "bin_hex",
+        "summary2d": "summary_2d",
+        "density2d": "density_2d",
+    }
 )
 
 #: `stat_*()` 的默认 geom（照 4.0.3 的 `stat_*` 构造器；`spoke` 已 `deprecate_stop`，
@@ -759,6 +866,14 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
         "boxplot": "boxplot",
         "smooth": "smooth",
         "align": "area",
+        "bin_2d": "tile",
+        "bin_hex": "hex",
+        "summary_2d": "tile",
+        "summary_hex": "hex",
+        "contour": "contour",
+        "contour_filled": "contour_filled",
+        "density_2d": "density_2d",
+        "density_2d_filled": "density_2d_filled",
         "qq": "point",
         "qq_line": "abline",
         "ecdf": "step",
@@ -1011,15 +1126,17 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
 
     参数路由（M1-3 的约定）：`**params` 只进 `Stat.params`；geom 需要的参数
     （例如 `width`）不在这里，走 geom 的缺省值或 `geom=` 显式传入。
+    别名（`stat_bin2d` 等）在图层里落成正名，默认 geom 与正名一致。
 
     4.0.3 里有几个 stat 的默认 geom 属于 M2-7（`step` / `violin` / `pointrange` /
     `quantile` / `function` / `abline`）。那一组落地之前，用这些默认值的
     `stat_*()` 在**构造时**报错并点名可用的 `geom=`，不拖到构建期才炸。
     """
 
-    geom_name = STAT_GEOMS.get(name, "point")
+    stat_name = STAT_ALIASES.get(name, name)
+    geom_name = STAT_GEOMS.get(stat_name, "point")
 
-    if name == "spoke":
+    if stat_name == "spoke":
         # 4.0.3 的 `stat_spoke()` 本体是 `lifecycle::deprecate_stop()`：
         # 注册项保留（NAMESPACE 里仍然导出），调用即报错并指向 `geom_spoke()`。
         def deprecated(*args: Any, **params: Any) -> Layer:
@@ -1065,8 +1182,13 @@ def _stat_layer_factory(name: str) -> Callable[..., Layer]:
                 () if spec is None else spec.non_missing_aes,
                 () if spec is None else spec.optional_aes,
             ),
-            stat=Stat(name, params),
-            position=as_position(position, STAT_POSITIONS[name]),
+            stat=Stat(stat_name, params),
+            # `STAT_POSITIONS` 是 M2-6 长尾 stat 的缺省表；2D 族沿用各自 geom
+            # 的缺省 position（`GEOM_SPECS[...]`，M2-6 的另一半登记在那里）。
+            position=as_position(
+                position,
+                STAT_POSITIONS.get(stat_name) or ("identity" if spec is None else spec.position),
+            ),
             mapping=as_aes(mapping),
             data=data,
             inherit_aes=inherit_aes,
@@ -1253,9 +1375,16 @@ def _register_defaults() -> None:
         register_facet(name, _facet_factory(name))
     for name in GUIDE_NAMES:
         register_guide(name, _guide_factory(name))
+    # 9 套完整主题（`gray` 是 `grey` 的美式拼写别名，上游两个都导出）。
     register_theme("grey", theme_grey)
+    register_theme("gray", theme_gray)
     register_theme("bw", theme_bw)
+    register_theme("classic", theme_classic)
+    register_theme("light", theme_light)
+    register_theme("dark", theme_dark)
+    register_theme("linedraw", theme_linedraw)
     register_theme("minimal", theme_minimal)
+    register_theme("test", theme_test)
     register_theme("void", theme_void)
     register_label("labs", _labels_factory)
 

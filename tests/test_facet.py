@@ -20,9 +20,11 @@ import pytest
 
 from ggcore import registry
 from ggcore.aes import aes
+from ggcore.axis import sec_axis
 from ggcore.build import BuildError, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
+from ggcore.geom.scene import plot_layout
 from ggcore.plot import ggplot
 from ggcore.theme import element_blank, element_rect, element_text, theme
 from ggcore.units import unit
@@ -500,9 +502,135 @@ def test_facet_grid_one_sided_layouts_keep_a_single_row_or_column() -> None:
     assert [strip.side for strip in rows_only.facet_table().strips] == ["right", "right"]
 
 
-def test_free_scales_reject_coord_fixed_ratio() -> None:
+_FREE_COORD_FIXED_REJECTS = {
+    "wrap_free": lambda: wrap_plot(scales="free"),
+    "grid_free": lambda: grid_plot(scales="free"),
+    "grid_free_x_space_free_x": lambda: grid_plot(scales="free_x", space="free_x"),
+    "grid_free_y_space_free_y": lambda: grid_plot(scales="free_y", space="free_y"),
+    "grid_free_space_free_x": lambda: grid_plot(scales="free", space="free_x"),
+    "grid_free_space_free_y": lambda: grid_plot(scales="free", space="free_y"),
+    "wrap_space_free_x": lambda: wrap_plot(space="free_x", scales="free"),
+    "wrap_space_free_y": lambda: wrap_plot(space="free_y", scales="free"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_FREE_COORD_FIXED_REJECTS))
+def test_free_scales_with_coord_fixed_is_rejected(name: str) -> None:
+    """SIL-759：R 4.0.3 只有 grid + `space = "free"` 允许自由刻度配 ratio。"""
     with pytest.raises(BuildError, match="coord_fixed"):
-        build_plot(wrap_plot(scales="free") + registry.coord_fixed(ratio=2))
+        build_plot(_FREE_COORD_FIXED_REJECTS[name]() + registry.coord_fixed(ratio=2))
+
+
+@pytest.mark.parametrize("scales", ["free", "free_x", "free_y"])
+def test_grid_space_free_allows_free_scales_with_coord_fixed(scales: str) -> None:
+    """两维都 free 时 R 4.0.3 接受自由刻度 + ratio（`respect = TRUE`）。"""
+    build = build_plot(grid_plot(scales=scales, space="free") + registry.coord_fixed(ratio=2))
+    table = build.facet_table()
+    assert table.respect is True
+    assert table.aspect_ratio == pytest.approx(2.0)
+
+
+def test_space_free_with_coord_fixed_folds_ratio_into_row_weights() -> None:
+    """SIL-759：`heights` = 行范围差 × |ratio|，面板高/宽 = ratio × yspan / xspan。"""
+    build = build_plot(grid_plot(scales="free", space="free") + registry.coord_fixed(ratio=2))
+    table = build.facet_table()
+    assert table.respect is True
+
+    def span(panel, axis: str) -> float:
+        params = panel.panel_params
+        low, high = params.x_range if axis == "x" else params.y_range
+        return high - low
+
+    x_spans = [span(next(p for p in build.panels if p.col == col), "x") for col in (1, 2)]
+    y_spans = [span(next(p for p in build.panels if p.row == row), "y") for row in (1, 2)]
+    assert table.width_weights == pytest.approx(tuple(x_spans))
+    assert table.height_weights == pytest.approx(tuple(2.0 * value for value in y_spans))
+
+    layout = plot_layout(build)
+    for panel in build.panels:
+        box = layout.panel_boxes[panel.panel]
+        expected = 2.0 * span(panel, "y") / span(panel, "x")
+        assert box.height_cm / box.width_cm == pytest.approx(expected, rel=1e-9)
+
+
+def test_space_free_fixed_scales_aspect_matches_r_values() -> None:
+    """固定刻度 + `space = "free"` + `coord_fixed(2)`：行权重全是 19.8（R 值）。"""
+    build = build_plot(grid_plot(space="free") + registry.coord_fixed(2))
+    table = build.facet_table()
+    params = build.panels[0].panel_params
+    x_span = params.x_range[1] - params.x_range[0]
+    y_span = params.y_range[1] - params.y_range[0]
+    assert table.width_weights == pytest.approx((x_span,) * 2)
+    assert table.height_weights == pytest.approx((2.0 * y_span,) * 2)
+    boxes = list(plot_layout(build).panel_boxes.values())
+    assert all(
+        box.height_cm / box.width_cm == pytest.approx(2.0 * y_span / x_span, rel=1e-9)
+        for box in boxes
+    )
+
+
+@pytest.mark.parametrize("space", ["free", "free_x", "free_y"])
+def test_polar_with_space_free_raises(space: str) -> None:
+    """R 4.0.3 自己在 `init_gtable()` 里报 `values must be length 1`；这里同口径报错。"""
+    facet = (
+        registry.facet_grid(("b",), ("a",), space=space)
+        if space == "free"
+        else registry.facet_wrap(("a",), space=space)
+    )
+    with pytest.raises(BuildError, match="space"):
+        build_plot(base_plot() + facet + registry.coord_polar())
+
+
+def test_grid_right_strip_puts_the_last_row_variable_next_to_the_panel() -> None:
+    """SIL-759：R `build_strip(horizontal = FALSE)` 先 rev() 行变量，b 贴着面板。"""
+    build = build_plot(base_plot() + registry.facet_grid(("a", "b"), labeller="label_both"))
+    table = build.facet_table()
+    rights = [strip for strip in table.strips if strip.side == "right"]
+    assert rights
+    for strip in rights:
+        assert [part.var for part in strip.parts] == ["b", "a"]
+        assert strip.parts[0].text.startswith("b: ")
+        assert strip.parts[1].text.startswith("a: ")
+    # 顶部（列变量）顺序不反转：第一个变量在上，最后一个贴面板。
+    top = build_plot(
+        base_plot() + registry.facet_grid(cols=("a", "b"), labeller="label_both")
+    ).facet_table()
+    strip = top.strip_for(1, "top")
+    assert strip is not None
+    assert [part.var for part in strip.parts] == ["a", "b"]
+
+
+def test_strip_outside_falls_back_inside_when_a_secondary_axis_is_present() -> None:
+    """SIL-759：右侧次轴带会把 `outside` strip 压住；有次轴时回退 inside。"""
+    plot = (
+        grid_plot()
+        + registry.scale_y_continuous(sec_axis=sec_axis(lambda value: value * 2))
+        + theme(**{"strip.placement.y": "outside"})
+    )
+    build = build_plot(plot)
+    layout = plot_layout(build)
+    table = build.facet_table(right_inside=True)
+    assert layout.secondary_y is True
+    assert table.right_placement == "inside"
+    assert layout.right_strip_band is None
+    # strip 落在 gtable 列里：右缘不超过面板区右边界；次轴带在面板区之外。
+    placement = next(row for row in table.gtable.layout if row.name.startswith("strip-r"))
+    sizes = table.gtable.resolve(layout.panel_area.width_cm, layout.panel_area.height_cm)
+    cell = table.gtable.region_box(
+        placement.t,
+        placement.l,
+        placement.b,
+        placement.r,
+        width_cm=layout.panel_area.width_cm,
+        height_cm=layout.panel_area.height_cm,
+        sizes=sizes,
+    )
+    strip_right = layout.panel_area.x_cm + cell.x_cm + cell.width_cm
+    assert strip_right <= layout.panel_area.right + 1e-9
+    assert layout.panel_area.right + layout.y_axis_right_cm <= layout.width_cm + 1e-9
+    # 没有次轴时仍是 outside（不进 gtable 列，另留 band）。
+    plain = plot_layout(build_plot(grid_plot() + theme(**{"strip.placement.y": "outside"})))
+    assert plain.right_strip_band is not None
 
 
 # ---------------------------------------------------------------------------
@@ -583,7 +711,7 @@ def test_facet_table_uses_labeller_and_theme_elements() -> None:
     table = build_plot(plot).facet_table()
     assert {strip.text for strip in table.strips} == {"Q level", "P level"}
     # strip 高度 = 文本高度 + 上下 margin（theme_grey 的 8.8pt / 4.4pt）。
-    assert table.strip_height_cm == pytest.approx(0.6058, abs=5e-4)
+    assert table.strip_height_cm == pytest.approx(0.5870, abs=5e-4)
     blank = build_plot(plot + theme(**{"strip.text": element_blank()})).facet_table()
     assert blank.strip_height_cm == 0.0
 
@@ -612,7 +740,7 @@ def test_strip_row_height_uses_the_device_text_line_caliber() -> None:
     strip_pt = table.strip_height_cm * 72.0 / 2.54
     assert strip_pt == pytest.approx(16.67, abs=0.05)
     # 无度量时仍是 M1-6 的历史口径（0.955em），两套口径各自的用途都钉住。
-    assert build_plot(plot).facet_table().strip_height_cm == pytest.approx(0.6058, abs=5e-4)
+    assert build_plot(plot).facet_table().strip_height_cm == pytest.approx(0.5870, abs=5e-4)
 
 
 def test_facet_table_spacing_comes_from_panel_spacing() -> None:
@@ -654,12 +782,13 @@ def test_facet_wrap_multirow_puts_a_strip_above_every_panel_row() -> None:
 def test_grid_right_strip_follows_strip_text_y_and_strip_background() -> None:
     """SIL-694 #6：右 strip 尺寸读 strip.text.y；strip.background 真正参与。"""
     base = build_plot(grid_plot()).facet_table()
-    assert base.strip_width_cm == pytest.approx(0.6058, abs=5e-4)
+    assert base.strip_width_cm == pytest.approx(0.5870, abs=5e-4)
     taller = build_plot(
         grid_plot() + theme(**{"strip.text.y": element_text(size=20)})
     ).facet_table()
-    # R（ggplot2 4.0.3）同一条主题改法是 0.9710957cm；0.955em 近似差 1.3%。
-    assert taller.strip_width_cm == pytest.approx(0.9711, rel=0.02)
+    # R（ggplot2 4.0.3 + svglite）同一条主题改法是 0.9414906cm；
+    # strip.text.y 默认 angle=-90，列宽 = 行高（20pt × 0.8945）+ 左右 margin。
+    assert taller.strip_width_cm == pytest.approx(0.9415, rel=0.02)
     assert taller.strip_height_cm == base.strip_height_cm
 
     assert base.strip_for(1, "top").fill == "#D9D9D9"
@@ -678,21 +807,20 @@ def test_grid_right_strip_follows_strip_text_y_and_strip_background() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_facet_grid_rejects_unimplemented_margins_and_free_space() -> None:
-    with pytest.raises(FacetError, match="margins"):
-        build_plot(grid_plot(margins=True))
-    with pytest.raises(FacetError, match="space"):
-        build_plot(grid_plot(space="free_x"))
+def test_facet_grid_rejects_duplicate_variables_across_rows_and_cols() -> None:
     with pytest.raises(FacetError, match="只能出现在 rows 或 cols"):
         build_plot(base_plot() + registry.facet_grid(("a",), ("a",)))
+    # margins / space 的合法值已实现（见 margins / space 两组测试）。
+    build_plot(grid_plot(margins=True))
+    build_plot(grid_plot(space="free_x"))
 
 
 def test_facet_wrap_space_is_validated_instead_of_silently_ignored() -> None:
-    """SIL-694 #5：space 不能静默按 fixed 画；未实现的值点名后续任务。"""
-    with pytest.raises(FacetError, match="facet space 的面板尺寸约束"):
-        facet_from_component(registry.facet_wrap(("a",), space="free_x"))
+    """SIL-694 #5 的校验仍在：非法值点名报错；上游不接受 facet_wrap(space="free")。"""
     with pytest.raises(FacetError, match="space 只能是"):
         facet_from_component(registry.facet_wrap(("a",), space="banana"))
+    with pytest.raises(FacetError, match="space 只能是"):
+        facet_from_component(registry.facet_wrap(("a",), space="free"))
     assert facet_from_component(registry.facet_wrap(("a",), space="fixed")).space == "fixed"
 
 
@@ -725,3 +853,140 @@ def test_compute_aesthetics_checks_panel_length() -> None:
     plot = base_plot()
     with pytest.raises(BuildError, match="panels"):
         compute_aesthetics(plot, plot.layers[0], panels=np.array([1, 2], dtype=np.int64))
+
+
+# ---------------------------------------------------------------------------
+# margins / space = "free" / strip.placement（M2-3）
+# ---------------------------------------------------------------------------
+
+
+def panel_row_counts(build) -> dict[int, int]:
+    """每个面板的数据行数（`scaled` 表里的 PANEL 列计数）。"""
+    column = build.layers[0].scaled.column("PANEL")
+    counts: dict[int, int] = {}
+    for value in np.asarray(column.values):
+        panel = int(value)
+        counts[panel] = counts.get(panel, 0) + 1
+    return counts
+
+
+def test_facet_grid_margins_add_all_panels_and_duplicate_rows() -> None:
+    """margins = TRUE：3×3（含 (all) 行 / 列），一行数据同时进普通与 margin 面板。"""
+    build = build_plot(grid_plot(margins=True))
+    layout = build.layout
+    assert layout is not None
+    assert (layout.nrow, layout.ncol) == (3, 3)
+    assert [layout.label(panel, "a") for panel in layout.panel_ids] == [
+        "q",
+        "p",
+        "(all)",
+        "q",
+        "p",
+        "(all)",
+        "q",
+        "p",
+        "(all)",
+    ]
+    assert [layout.label(panel, "b") for panel in layout.panel_ids] == [
+        "v",
+        "v",
+        "v",
+        "u",
+        "u",
+        "u",
+        "(all)",
+        "(all)",
+        "(all)",
+    ]
+    counts = panel_row_counts(build)
+    # b=v 的 4 行覆盖 a=p/p/q/q → 每个交叉格 2 行；margin 面板吃掉整行/整列，
+    # (all,all) 是全部 8 行。
+    assert counts == {1: 2, 2: 2, 3: 4, 4: 2, 5: 2, 6: 4, 7: 4, 8: 4, 9: 8}
+
+
+def test_facet_grid_margins_single_variable_adds_one_dimension() -> None:
+    build = build_plot(grid_plot(margins="a"))
+    layout = build.layout
+    assert layout is not None
+    assert (layout.nrow, layout.ncol) == (2, 3)
+    assert [layout.label(panel, "a") for panel in layout.panel_ids] == [
+        "q",
+        "p",
+        "(all)",
+        "q",
+        "p",
+        "(all)",
+    ]
+    assert [layout.label(panel, "b") for panel in layout.panel_ids] == [
+        "v",
+        "v",
+        "v",
+        "u",
+        "u",
+        "u",
+    ]
+
+
+def test_facet_grid_margins_reject_unknown_variables() -> None:
+    with pytest.raises(FacetError, match="margins"):
+        facet_from_component(registry.facet_grid(("b",), ("a",), margins="nope"))
+
+
+def test_facet_wrap_space_free_forces_one_row_or_column() -> None:
+    """上游：space = "free_x" 强制一行（忽略 ncol）；free_y 强制一列。"""
+    wrap_x = facet_from_component(registry.facet_wrap(("a",), ncol=2, space="free_x"))
+    assert (wrap_x.nrow, wrap_x.ncol) == (1, None)
+    build = build_plot(base_plot() + registry.facet_wrap(("a",), space="free_x"))
+    layout = build.layout
+    assert layout is not None and (layout.nrow, layout.ncol) == (1, 2)
+    wrap_y = facet_from_component(registry.facet_wrap(("a",), space="free_y"))
+    assert (wrap_y.nrow, wrap_y.ncol) == (None, 1)
+
+
+def test_facet_wrap_rejects_space_free() -> None:
+    """facet_wrap 的上游取值只有 fixed / free_x / free_y。"""
+    with pytest.raises(FacetError, match="space 只能是"):
+        facet_from_component(registry.facet_wrap(("a",), space="free"))
+
+
+def test_space_free_weights_follow_panel_ranges() -> None:
+    """space = "free" 的 null 权重 = 该列 / 行面板的范围差。"""
+    table = build_plot(grid_plot(space="free")).facet_table()
+    # 固定刻度：所有面板共用一套范围 → 权重相同（不是 1，R 也读范围差）。
+    assert table.width_weights[0] == pytest.approx(table.width_weights[1])
+    free = build_plot(grid_plot(scales="free", space="free")).facet_table()
+    # x 按列、y 按行：q 组 x 1..3+10..30，p 组 x 2..4+20..40。
+    assert all(weight > 0 for weight in free.width_weights)
+    assert all(weight > 0 for weight in free.height_weights)
+
+
+def test_strip_placement_outside_reserves_a_band_above_the_axes() -> None:
+    """`strip.placement = "outside"`：strip 块移到轴带之外，面板区让出同高度。"""
+    inside = plot_layout(build_plot(wrap_plot(ncol=2)))
+    outside_build = build_plot(wrap_plot(ncol=2) + theme(**{"strip.placement": "outside"}))
+    outside = plot_layout(outside_build)
+    table = outside_build.facet_table()
+    assert outside.top_strip_band is not None
+    assert outside.top_strip_band.height_cm == pytest.approx(table.strip_height_cm)
+    assert inside.panel_area.height_cm - outside.panel_area.height_cm == pytest.approx(
+        table.strip_height_cm
+    )
+    # strip 不再占 gtable 行：面板区里只剩 1null。
+    assert [str(item) for item in table.gtable.heights] == ["1null"]
+
+
+def test_polar_facet_panels_stay_square_and_strips_sit_above_them() -> None:
+    """polar × facet：`aspect = 1` 作用在每个面板单元格上，strip 仍在面板上方。"""
+    polar = build_plot(base_plot() + registry.coord_polar() + registry.facet_wrap(("a",), ncol=2))
+    layout = plot_layout(polar)
+    boxes = list(layout.panel_boxes.values())
+    assert len(boxes) == 2
+    for box in boxes:
+        assert box.width_cm == pytest.approx(box.height_cm, rel=1e-6)
+    table = polar.facet_table()
+    for strip in table.strips:
+        if strip.side != "top":
+            continue
+        placement = next(row for row in table.gtable.layout if row.name == strip.name)
+        panel_top = next(top for panel, top, _, _, _ in table.panels if panel == strip.panel)
+        assert placement.t == panel_top - 1

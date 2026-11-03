@@ -1,0 +1,7 @@
+family = "facet"
+features = ["aes-mapping", "facet-grid", "facet-space-free", "coord-equal"]
+ci = true
+title = "facet：space = free × coord_fixed(2)"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "列 l/r 的 x 范围 2.2/3.2、两行 y 范围 5.5/8.8；ratio=2 折进行权重（11/17.6 null），面板高/宽 = 2 × yspan / xspan（SIL-759）。"

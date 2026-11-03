@@ -37,8 +37,10 @@ DEFAULT_ROOT = REPO / "src" / "ggcore"
 
 # 自有包（包内互相导入不算越界）。
 SELF = "ggcore"
-# 唯一允许的第三方：numpy 是计算内核；CBOR 编码库是 IR 的序列化格式。
-THIRD_PARTY = frozenset({"numpy", "cbor2"})
+# 允许的第三方：numpy 是计算内核；CBOR 编码库是 IR 的序列化格式；
+# contourpy 是等值线 / 等值带的 nums 内核（M2-6 排期定的实现，Pyodide 包索引
+# 里有对应轮子，见 docs/notes/gates.md）。
+THIRD_PARTY = frozenset({"numpy", "cbor2", "contourpy"})
 STDLIB = frozenset(sys.stdlib_module_names) | {"__future__"}
 
 # 动态导入：模块名在字符串里，`import` 扫描看不到，必须单独拦。

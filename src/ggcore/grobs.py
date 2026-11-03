@@ -274,8 +274,23 @@ _NAMED_COLOURS: Mapping[str, tuple[int, int, int]] = {
 }
 
 
+#: R 命名色表里的 `grey0` … `grey100`（X11 `rgb.txt` 的取值，不是公式）。
+#: 它与 `round(255 * k / 100)` 在 `.5` 处会差 1 个灰阶（`grey50` = 127 而不是
+#: 128、`grey30` = 77 而不是 76），所以整张表照抄，避免 `greyNN` 写进主题后
+#: 与 `col2rgb()` 对不上。
+_GREY_LEVELS: tuple[int, ...] = (
+    0, 3, 5, 8, 10, 13, 15, 18, 20, 23, 26, 28, 31, 33, 36, 38, 41, 43, 46, 48,
+    51, 54, 56, 59, 61, 64, 66, 69, 71, 74, 77, 79, 82, 84, 87, 89, 92, 94, 97,
+    99, 102, 105, 107, 110, 112, 115, 117, 120, 122, 125, 127, 130, 133, 135,
+    138, 140, 143, 145, 148, 150, 153, 156, 158, 161, 163, 166, 168, 171, 173,
+    176, 179, 181, 184, 186, 189, 191, 194, 196, 199, 201, 204, 207, 209, 212,
+    214, 217, 219, 222, 224, 227, 229, 232, 235, 237, 240, 242, 245, 247, 250,
+    252, 255,
+)  # fmt: skip
+
+
 def _grey(name: str) -> tuple[int, int, int] | None:
-    """R 的 `grey<k>` / `gray<k>`（k = 0..100，可以是小数）：`round(255*k/100)`。"""
+    """R 的 `grey<k>` / `gray<k>`：整数 k（0..100）查 R 色表，小数按公式取整。"""
     for prefix in ("grey", "gray"):
         if name.startswith(prefix):
             digits = name[len(prefix) :]
@@ -285,10 +300,13 @@ def _grey(name: str) -> tuple[int, int, int] | None:
                 percent = float(digits)
             except ValueError:
                 return None
-            if 0.0 <= percent <= 100.0:
+            if not 0.0 <= percent <= 100.0:
+                return None
+            if percent.is_integer():
+                channel = _GREY_LEVELS[int(percent)]
+            else:
                 channel = round(255.0 * percent / 100.0)
-                return (channel, channel, channel)
-            return None
+            return (channel, channel, channel)
     return None
 
 

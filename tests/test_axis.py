@@ -210,3 +210,38 @@ def test_axis_ticks_reject_bad_arguments() -> None:
         AxisTicks("middle", (), ())
     with pytest.raises(AxisError, match="必须等长"):
         AxisTicks("bottom", (0.1, 0.2), ("a",))
+
+
+def test_secondary_axis_title_is_hidden_for_waiver_and_derived_for_dup_axis() -> None:
+    """SIL-759：`sec_axis()` 缺省（R waiver）不显示标题；`dup_axis()`（derive）沿用主轴。"""
+    from ggcore.axis import DERIVE, dup_axis, sec_axis
+    from ggcore.geom.scene import _secondary_title, plot_layout
+
+    def layout_and_scale(secondary):
+        build = build_plot(
+            ggplot(table(), aes(x="x", y="y"))
+            + registry.geom_point()
+            + registry.scale_x_continuous(**{"sec.axis": secondary})
+            + registry.labs(x="primary")
+        )
+        return build, plot_layout(build)
+
+    # R 4.0.3 实测：sec_axis() 的 name 缺省是 waiver() → zeroGrob，顶部没有 xlab-t。
+    build, layout = layout_and_scale(sec_axis(lambda value: value * 2))
+    assert _secondary_title(build, "x", build.scales.scale("x")) is None
+    assert layout.x_title_top_cm == 0.0
+
+    # 显式 NULL 同义。
+    build, layout = layout_and_scale(sec_axis(lambda value: value * 2, name=None))
+    assert _secondary_title(build, "x", build.scales.scale("x")) is None
+    assert layout.x_title_top_cm == 0.0
+
+    # 给名字才画标题（R：1grobheight 的 xlab-t）。
+    build, layout = layout_and_scale(sec_axis(lambda value: value * 2, name="double"))
+    assert _secondary_title(build, "x", build.scales.scale("x")) == "double"
+    assert layout.x_title_top_cm > 0.0
+
+    # dup_axis() 的 name = derive()：沿用主轴标题。
+    build, layout = layout_and_scale(dup_axis(name=DERIVE))
+    assert _secondary_title(build, "x", build.scales.scale("x")) == "primary"
+    assert layout.x_title_top_cm > 0.0

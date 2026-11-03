@@ -357,10 +357,15 @@ def test_stat_matches_r_column_by_column(reference: dict, case_name: str) -> Non
 
 
 def test_max_absolute_difference_is_tiny(reference: dict) -> None:
-    """整份夹具的最大绝对差（评论里的数字来源）。"""
+    """整份夹具的最大绝对差（评论里的数字来源）。
+
+    只统计 M1-8 的 case（M2-6 的 2D case 在 `tests/test_stat_2d_r_parity.py`
+    里单独统计；等值线族不逐顶点比）。
+    """
     worst = 0.0
     worst_name = ""
-    for case_name, case in reference["cases"].items():
+    for case_name in sorted(BUILDERS):
+        case = reference["cases"][case_name]
         built = build_plot(BUILDERS[case_name]()).layers[0].data
         for spec in case["built"]["columns"]:
             if spec["kind"] != "float" or spec["name"] not in built:

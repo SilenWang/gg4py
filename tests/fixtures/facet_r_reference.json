@@ -52,12 +52,12 @@
           {
             "name": "strip-t-1-1",
             "width": "1null",
-            "height": "0.607099627092846cm"
+            "height": "0.587668627092847cm"
           },
           {
             "name": "strip-t-2-1",
             "width": "1null",
-            "height": "0.607099627092846cm"
+            "height": "0.587668627092847cm"
           }
         ],
         "strip_positions": [
@@ -208,21 +208,21 @@
           {
             "name": "strip-t-1",
             "width": "1null",
-            "height": "0.607099627092846cm"
+            "height": "0.587668627092847cm"
           },
           {
             "name": "strip-t-2",
             "width": "1null",
-            "height": "0.607099627092846cm"
+            "height": "0.587668627092847cm"
           },
           {
             "name": "strip-r-1",
-            "width": "0.607099627092846cm",
+            "width": "0.587668627092847cm",
             "height": "1null"
           },
           {
             "name": "strip-r-2",
-            "width": "0.607099627092846cm",
+            "width": "0.587668627092847cm",
             "height": "1null"
           }
         ],
@@ -1099,7 +1099,7 @@
         "panel_rows": ["1null", "1null", "1null"],
         "top_strip_count": 9,
         "top_strip_rows_above_panels": true,
-        "strip_heights": ["0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm", "0.607099627092846cm"],
+        "strip_heights": ["0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm", "0.587668627092847cm"],
         "panel_spacing_rows": 2,
         "strip_widths": ["1null", "1null", "1null", "1null", "1null", "1null", "1null", "1null", "1null"]
       }
@@ -1213,9 +1213,2682 @@
         "panel_rows": ["1null", "1null"],
         "top_strip_count": 2,
         "top_strip_rows_above_panels": true,
-        "strip_heights": ["0.607099627092846cm", "0.607099627092846cm"],
+        "strip_heights": ["0.587668627092847cm", "0.587668627092847cm"],
         "panel_spacing_rows": 1,
-        "strip_widths": ["1null", "1null", "0.971095738203958cm", "0.971095738203958cm"]
+        "strip_widths": ["1null", "1null", "0.941490627092846cm", "0.941490627092846cm"]
+      }
+    }
+  ],
+  "full": [
+    {
+      "name": "wrap_free_x",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 2,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "q"
+        },
+        {
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [1.15, 41.85],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_free_y",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 2
+        }
+      ],
+      "labels": [
+        {
+          "a": "q"
+        },
+        {
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [11.5, 418.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [0.5, 209.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_free_x",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 2,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 2,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [1.15, 41.85],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [1.15, 41.85],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.0499999999999999, 20.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_free_y",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 2
+        }
+      ],
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [85, 415]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [85, 415]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [8.5, 41.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [8.5, 41.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_space_free_x",
+      "data": {
+        "columns": {
+          "x": ["a", "a", "b", "b", "c", "c", "a", "b", "c", "a"],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "g": ["p", "p", "p", "q", "q", "q", "r", "r", "r", "p"],
+          "h": ["u", "u", "u", "u", "v", "v", "v", "v", "u", "v"]
+        },
+        "types": {
+          "x": "factor",
+          "y": "numeric",
+          "g": "factor",
+          "h": "factor"
+        },
+        "levels": {
+          "x": ["a", "b", "c"],
+          "y": null,
+          "g": ["p", "q", "r"],
+          "h": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 3
+        }
+      ],
+      "labels": [
+        {
+          "g": "p"
+        },
+        {
+          "g": "q"
+        },
+        {
+          "g": "r"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.4, 2.6],
+          "y_range": [3.9, 6.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.4, 3.6],
+          "y_range": [6.9, 9.1]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["2.2null", "2.2null", "3.2null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-3-1",
+            "t": 9,
+            "l": 15,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["r"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_space_free_y",
+      "data": {
+        "columns": {
+          "x": ["a", "a", "b", "b", "c", "c", "a", "b", "c", "a"],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "g": ["p", "p", "p", "q", "q", "q", "r", "r", "r", "p"],
+          "h": ["u", "u", "u", "u", "v", "v", "v", "v", "u", "v"]
+        },
+        "types": {
+          "x": "factor",
+          "y": "numeric",
+          "g": "factor",
+          "h": "factor"
+        },
+        "levels": {
+          "x": ["a", "b", "c"],
+          "y": null,
+          "g": ["p", "q", "r"],
+          "h": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 2,
+          "COL": 1,
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 3,
+          "ROW": 3,
+          "COL": 1,
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 3
+        }
+      ],
+      "labels": [
+        {
+          "g": "p"
+        },
+        {
+          "g": "q"
+        },
+        {
+          "g": "r"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.4, 2.6],
+          "y_range": [3.9, 6.1]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.4, 3.6],
+          "y_range": [6.9, 9.1]
+        }
+      ],
+      "gtable": {
+        "panel_columns": "1null",
+        "panel_rows": ["9.9null", "2.2null", "2.2null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-3",
+            "t": 19,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["r"]
+          },
+          {
+            "name": "strip-t-1-2",
+            "t": 14,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_space_free",
+      "data": {
+        "columns": {
+          "x": ["a", "a", "b", "b", "c", "c", "a", "b", "c", "a"],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "g": ["p", "p", "p", "q", "q", "q", "r", "r", "r", "p"],
+          "h": ["u", "u", "u", "u", "v", "v", "v", "v", "u", "v"]
+        },
+        "types": {
+          "x": "factor",
+          "y": "numeric",
+          "g": "factor",
+          "h": "factor"
+        },
+        "levels": {
+          "x": ["a", "b", "c"],
+          "y": null,
+          "g": ["p", "q", "r"],
+          "h": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "h": "v",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "h": "v",
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "h": "v",
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "h": "u",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "h": "u",
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "h": "u",
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 2
+        }
+      ],
+      "labels": [
+        {
+          "h": "v",
+          "g": "p"
+        },
+        {
+          "h": "v",
+          "g": "q"
+        },
+        {
+          "h": "v",
+          "g": "r"
+        },
+        {
+          "h": "u",
+          "g": "p"
+        },
+        {
+          "h": "u",
+          "g": "q"
+        },
+        {
+          "h": "u",
+          "g": "r"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.4, 2.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.4, 2.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.4, 3.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.6, 9.4]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["2.2null", "2.2null", "3.2null"],
+        "panel_rows": ["5.5null", "8.8null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-3",
+            "t": 9,
+            "l": 11,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["r"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "5.5null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "8.8null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_space_free_aspect",
+      "data": {
+        "columns": {
+          "x": ["a", "a", "b", "b", "c", "c", "a", "b", "c", "a"],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "g": ["p", "p", "p", "q", "q", "q", "r", "r", "r", "p"],
+          "h": ["u", "u", "u", "u", "v", "v", "v", "v", "u", "v"]
+        },
+        "types": {
+          "x": "factor",
+          "y": "numeric",
+          "g": "factor",
+          "h": "factor"
+        },
+        "levels": {
+          "x": ["a", "b", "c"],
+          "y": null,
+          "g": ["p", "q", "r"],
+          "h": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "h": "v",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "h": "v",
+          "g": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "h": "v",
+          "g": "r",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "h": "u",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "h": "u",
+          "g": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "h": "u",
+          "g": "r",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "h": "v",
+          "g": "p"
+        },
+        {
+          "h": "v",
+          "g": "q"
+        },
+        {
+          "h": "v",
+          "g": "r"
+        },
+        {
+          "h": "u",
+          "g": "p"
+        },
+        {
+          "h": "u",
+          "g": "q"
+        },
+        {
+          "h": "u",
+          "g": "r"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.55, 10.45]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["3.2null", "3.2null", "3.2null"],
+        "panel_rows": ["19.8null", "19.8null"],
+        "respect": true,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-3",
+            "t": 9,
+            "l": 11,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["r"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "19.8null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "19.8null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_space_free_aspect_scales_free",
+      "data": {
+        "columns": {
+          "x": ["a", "a", "b", "b", "c", "c", "a", "b", "c", "a"],
+          "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          "g": ["p", "p", "p", "q", "q", "q", "r", "r", "r", "p"],
+          "h": ["u", "u", "u", "u", "v", "v", "v", "v", "u", "v"]
+        },
+        "types": {
+          "x": "factor",
+          "y": "numeric",
+          "g": "factor",
+          "h": "factor"
+        },
+        "levels": {
+          "x": ["a", "b", "c"],
+          "y": null,
+          "g": ["p", "q", "r"],
+          "h": ["v", "u"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "h": "v",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "h": "v",
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "h": "v",
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "h": "u",
+          "g": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "h": "u",
+          "g": "q",
+          "SCALE_X": 2,
+          "SCALE_Y": 2
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "h": "u",
+          "g": "r",
+          "SCALE_X": 3,
+          "SCALE_Y": 2
+        }
+      ],
+      "labels": [
+        {
+          "h": "v",
+          "g": "p"
+        },
+        {
+          "h": "v",
+          "g": "q"
+        },
+        {
+          "h": "v",
+          "g": "r"
+        },
+        {
+          "h": "u",
+          "g": "p"
+        },
+        {
+          "h": "u",
+          "g": "q"
+        },
+        {
+          "h": "u",
+          "g": "r"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [0.4, 2.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [0.4, 2.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [0.4, 3.6],
+          "y_range": [4.75, 10.25]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [0.4, 2.6],
+          "y_range": [0.6, 9.4]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [0.4, 3.6],
+          "y_range": [0.6, 9.4]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["2.2null", "2.2null", "3.2null"],
+        "panel_rows": ["11null", "17.6null"],
+        "respect": true,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "2.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-3",
+            "t": 9,
+            "l": 11,
+            "width": "3.2null",
+            "height": "0.587668627092847cm",
+            "cells": ["r"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "11null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "17.6null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_rows_label_both",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "b": "v",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 2,
+          "COL": 1,
+          "a": "q",
+          "b": "u",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 3,
+          "COL": 1,
+          "a": "p",
+          "b": "v",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 4,
+          "COL": 1,
+          "a": "p",
+          "b": "u",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "a: q",
+          "b": "b: v"
+        },
+        {
+          "a": "a: q",
+          "b": "b: u"
+        },
+        {
+          "a": "a: p",
+          "b": "b: v"
+        },
+        {
+          "a": "a: p",
+          "b": "b: u"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": "1null",
+        "panel_rows": ["1null", "1null", "1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-r-1",
+            "t": 9,
+            "l": 8,
+            "width": "1.17533725418569cm",
+            "height": "1null",
+            "cells": ["b: v", "a: q"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 11,
+            "l": 8,
+            "width": "1.17533725418569cm",
+            "height": "1null",
+            "cells": ["b: u", "a: q"]
+          },
+          {
+            "name": "strip-r-3",
+            "t": 13,
+            "l": 8,
+            "width": "1.17533725418569cm",
+            "height": "1null",
+            "cells": ["b: v", "a: p"]
+          },
+          {
+            "name": "strip-r-4",
+            "t": 15,
+            "l": 8,
+            "width": "1.17533725418569cm",
+            "height": "1null",
+            "cells": ["b: u", "a: p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_margins",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "b": "v",
+          "a": "(all)",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "b": "u",
+          "a": "(all)",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 7,
+          "ROW": 3,
+          "COL": 1,
+          "b": "(all)",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 8,
+          "ROW": 3,
+          "COL": 2,
+          "b": "(all)",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 9,
+          "ROW": 3,
+          "COL": 3,
+          "b": "(all)",
+          "a": "(all)",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "v",
+          "a": "(all)"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "(all)"
+        },
+        {
+          "b": "(all)",
+          "a": "q"
+        },
+        {
+          "b": "(all)",
+          "a": "p"
+        },
+        {
+          "b": "(all)",
+          "a": "(all)"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 7,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 8,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 9,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null", "1null"],
+        "panel_rows": ["1null", "1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-3",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["(all)"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["u"]
+          },
+          {
+            "name": "strip-r-3",
+            "t": 14,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["(all)"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_margins_var",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 1,
+          "COL": 3,
+          "b": "v",
+          "a": "(all)",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 5,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 6,
+          "ROW": 2,
+          "COL": 3,
+          "b": "u",
+          "a": "(all)",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "v",
+          "a": "(all)"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "(all)"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 5,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 6,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-t-3",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["(all)"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 12,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_label_both",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "b": "v",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "q",
+          "b": "u",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "a": "p",
+          "b": "v",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "a": "p",
+          "b": "u",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "a: q",
+          "b": "b: v"
+        },
+        {
+          "a": "a: q",
+          "b": "b: u"
+        },
+        {
+          "a": "a: p",
+          "b": "b: v"
+        },
+        {
+          "a": "a: p",
+          "b": "b: u"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-2",
+            "t": 14,
+            "l": 7,
+            "width": "1null",
+            "height": "1.17533725418569cm",
+            "cells": ["a: p", "b: v"]
+          },
+          {
+            "name": "strip-t-2-2",
+            "t": 14,
+            "l": 11,
+            "width": "1null",
+            "height": "1.17533725418569cm",
+            "cells": ["a: p", "b: u"]
+          },
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "1.17533725418569cm",
+            "cells": ["a: q", "b: v"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "1.17533725418569cm",
+            "cells": ["a: q", "b: u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_label_context",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "q"
+        },
+        {
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "grid_label_both",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "b: v",
+          "a": "a: q"
+        },
+        {
+          "b": "b: v",
+          "a": "a: p"
+        },
+        {
+          "b": "b: u",
+          "a": "a: q"
+        },
+        {
+          "b": "b: u",
+          "a": "a: p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["a: q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["a: p"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["b: v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 10,
+            "width": "0.587668627092847cm",
+            "height": "1null",
+            "cells": ["b: u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "wrap_labeller_named",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "Q level"
+        },
+        {
+          "a": "P level"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["Q level"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["P level"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "strip_y_angle0",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "v",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 3,
+          "ROW": 2,
+          "COL": 1,
+          "b": "u",
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 4,
+          "ROW": 2,
+          "COL": 2,
+          "b": "u",
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "v",
+          "a": "q"
+        },
+        {
+          "b": "v",
+          "a": "p"
+        },
+        {
+          "b": "u",
+          "a": "q"
+        },
+        {
+          "b": "u",
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 3,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 4,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": ["1null", "1null"],
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2",
+            "t": 9,
+            "l": 9,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          },
+          {
+            "name": "strip-r-1",
+            "t": 10,
+            "l": 10,
+            "width": "0.481815009037291cm",
+            "height": "1null",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-r-2",
+            "t": 12,
+            "l": 10,
+            "width": "0.481815009037291cm",
+            "height": "1null",
+            "cells": ["u"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "strip_x_size20",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "q"
+        },
+        {
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.941490627092846cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.941490627092846cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "strip_outside",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "a": "q",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "a": "p",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "a": "q"
+        },
+        {
+          "a": "p"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        },
+        {
+          "PANEL": 2,
+          "x_range": [-0.95, 41.95],
+          "y_range": [-9.5, 419.5]
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": false,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 8,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["q"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 8,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["p"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "polar_facet",
+      "data": {
+        "columns": {
+          "x": [1, 2, 3, 4, 10, 20, 30, 40],
+          "y": [10, 20, 30, 40, 100, 200, 300, 400],
+          "a": ["p", "p", "q", "q", "p", "p", "q", "q"],
+          "b": ["u", "u", "u", "u", "v", "v", "v", "v"],
+          "c": ["d", "d", "c", "c", "b", "b", "a", "a"]
+        },
+        "types": {
+          "x": "numeric",
+          "y": "numeric",
+          "a": "factor",
+          "b": "factor",
+          "c": "factor"
+        },
+        "levels": {
+          "x": null,
+          "y": null,
+          "a": ["q", "p"],
+          "b": ["v", "u"],
+          "c": ["d", "c", "b", "a"]
+        }
+      },
+      "layout": [
+        {
+          "PANEL": 1,
+          "ROW": 1,
+          "COL": 1,
+          "b": "v",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        },
+        {
+          "PANEL": 2,
+          "ROW": 1,
+          "COL": 2,
+          "b": "u",
+          "SCALE_X": 1,
+          "SCALE_Y": 1
+        }
+      ],
+      "labels": [
+        {
+          "b": "v"
+        },
+        {
+          "b": "u"
+        }
+      ],
+      "panels": [
+        {
+          "PANEL": 1,
+          "x_range": null,
+          "y_range": null
+        },
+        {
+          "PANEL": 2,
+          "x_range": null,
+          "y_range": null
+        }
+      ],
+      "gtable": {
+        "panel_columns": ["1null", "1null"],
+        "panel_rows": "1null",
+        "respect": true,
+        "strips": [
+          {
+            "name": "strip-t-1-1",
+            "t": 9,
+            "l": 7,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["v"]
+          },
+          {
+            "name": "strip-t-2-1",
+            "t": 9,
+            "l": 11,
+            "width": "1null",
+            "height": "0.587668627092847cm",
+            "cells": ["u"]
+          }
+        ]
       }
     }
   ]

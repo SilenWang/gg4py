@@ -63,6 +63,11 @@ function requireAssets() {
   }
   const wheel = readdirSync(ASSETS).find((name) => /^numpy-.*\.whl$/.test(name));
   if (!wheel) throw new Error(`no numpy wheel in ${ASSETS} — run \`pixi run spike:e1:assets\``);
+  // M2-6 / SIL-758：等值线冒烟要真的在浏览器运行时里跑 contourpy。
+  const contourWheel = readdirSync(ASSETS).find((name) => /^contourpy-.*\.whl$/.test(name));
+  if (!contourWheel) {
+    throw new Error(`no contourpy wheel in ${ASSETS} — run \`pixi run spike:e1:assets\``);
+  }
   return wheel;
 }
 
@@ -78,7 +83,8 @@ async function main() {
   const bootMs = performance.now() - started;
 
   const numpyStart = performance.now();
-  await pyodide.loadPackage("numpy");
+  // contourpy 与 numpy 一起装：`run_ir.py` 的等值线冒烟要用它算几何。
+  await pyodide.loadPackage(["numpy", "contourpy"]);
   const numpyMs = performance.now() - numpyStart;
 
   const mountStart = performance.now();
@@ -134,7 +140,8 @@ rc
     writeFileSync(resolve(args.meta), JSON.stringify(meta, null, 1) + "\n");
   }
   console.log(
-    `${bytes.length} B (+${edge.length} B edge) via pyodide ${pyodide.version}, numpy ${meta.numpy}`,
+    `${bytes.length} B (+${edge.length} B edge) via pyodide ${pyodide.version}, ` +
+      `numpy ${meta.numpy}, contourpy ${meta.contourpy}`,
   );
 }
 

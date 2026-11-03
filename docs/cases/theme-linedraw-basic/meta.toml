@@ -1,0 +1,6 @@
+family = "theme"
+features = ["aes-mapping", "theme-complete", "scale-limits"]
+ci = true
+title = "theme：theme_linedraw 完整主题"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+notes = "M2-5 主题切换：与 theme-grey-basic 同一份数据/几何，只把主题换成 theme_linedraw()。走默认容差（图级 2% / 均值 1%）：候选分支实测 1.1028% / 0.1676%，面板背景像素差 0，纯黑边框与网格/数据点逐项一致，残余是亚像素抗锯齿。旧 base 的 2.07% 同样来自面板 x 偏 0.196pt，合入当前 main 后已消失，2.3% 覆盖已删（SIL-761 驳回）。"
