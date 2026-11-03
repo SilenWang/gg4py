@@ -36,7 +36,11 @@ key 的图形**复用 `Geom.draw()`**：每个几何一个 key grob，不另写�
 `guide$widths` / `heights` 对拍），`LegendBoxLayout` 把同一方位的图例排成
 `gtable_col` / `gtable_row`。
 
-未实现（明确报错、点名）：`guide_bins` / `guide_coloursteps`（M2-2 A 组）。
+M2-S2（SIL-739）补齐：`guide_colourbar()` 的全量参数（display / nbin /
+draw.ulim / draw.llim / ticks.colour / frame.colour / title.position / alpha）、
+`guide_bins()` / `guide_coloursteps()`；轴 guide（`guide_axis` /
+`guide_axis_logticks` / `guide_axis_stack` / `guide_axis_theta`）在
+:mod:`ggcore.axis_guide`。
 """
 
 from __future__ import annotations
@@ -72,9 +76,12 @@ from ggcore.viewport import NA, gpar, viewport
 __all__ = [
     "AUTO",
     "GUIDE_AESTHETICS",
+    "BinnedKeys",
     "Guide",
+    "GuideBins",
     "GuideBuild",
     "GuideColourbar",
+    "GuideColoursteps",
     "GuideCustom",
     "GuideError",
     "GuideKey",
@@ -85,7 +92,9 @@ __all__ = [
     "LegendLayout",
     "build_guides",
     "custom_grob",
+    "guide_bins",
     "guide_colourbar",
+    "guide_coloursteps",
     "guide_custom",
     "guide_from_component",
     "guide_gengrob",
@@ -227,15 +236,34 @@ class GuideLegend(Guide):
 
 @dataclass(frozen=True, slots=True)
 class GuideColourbar(Guide):
-    """`guide_colourbar()`：连续色标——渐变条 + 断点刻度 + 标签。"""
+    """`guide_colourbar()`：连续色标——渐变条 + 断点刻度 + 标签。
+
+    4.0.3 把一批老参数挪进了主题（`legend.key.width/height` → `barwidth/barheight`、
+    `legend.ticks` → `ticks.colour`、`legend.frame` → `frame.colour`、
+    `legend.title.position` → `title.position`）。这里两套写法都认：guide 上的显式
+    参数优先于主题，未给时用主题值（与 R 的 `replace_null()` 同口径）。
+
+    `display` 是 4.0.3 的正式参数（`"raster"` / `"rectangles"` / `"gradient"`）；
+    旧写法 `raster=TRUE/FALSE` 在工厂里折成 `"raster"` / `"rectangles"`。
+    本仓的 IR 没有渐变填充之外的差别：`raster` / `rectangles` 都画成 `nbin` 条
+    相邻矩形（两者在 R 里只差 rasterGrob 还是 rectGrob，像素等价），`gradient`
+    的 `nbin` 默认 15。
+    """
 
     title: Any = AUTO
     direction: str | None = None
     position: str | None = None
     barwidth: Any = None
     barheight: Any = None
-    nbin: int = 256
+    nbin: int | None = None
     ticks: bool = True
+    display: str = "raster"
+    draw_llim: bool = True
+    draw_ulim: bool = True
+    ticks_colour: Any = None
+    frame_colour: Any = None
+    title_position: str | None = None
+    alpha: float | None = None
     reverse: bool = False
     order: float = 0.0
     kind: str = "colourbar"
@@ -251,8 +279,100 @@ class GuideColourbar(Guide):
                 f"guide_colourbar(position=) 只能是 top / bottom / left / right / inside，"
                 f"收到 {self.position!r}"
             )
+        if self.display not in ("raster", "rectangles", "gradient"):
+            raise GuideError(
+                "guide_colourbar(display=) 只能是 'raster' / 'rectangles' / 'gradient'，"
+                f"收到 {self.display!r}"
+            )
+        if self.nbin is None:
+            object.__setattr__(self, "nbin", 15 if self.display == "gradient" else 300)
         if not isinstance(self.nbin, int) or self.nbin < 2:
             raise GuideError(f"guide_colourbar(nbin=) 必须 ≥ 2，收到 {self.nbin!r}")
+        if self.title_position not in (None, "top", "bottom", "left", "right"):
+            raise GuideError(
+                "guide_colourbar(title.position=) 只能是 top / bottom / left / right，"
+                f"收到 {self.title_position!r}"
+            )
+        if self.alpha is not None and not 0.0 <= float(self.alpha) <= 1.0:
+            raise GuideError(f"guide_colourbar(alpha=) 必须在 0..1，收到 {self.alpha!r}")
+
+
+@dataclass(frozen=True, slots=True)
+class GuideBins(Guide):
+    """`guide_bins()`：分箱图例——每个箱一格键，标签落在箱的边界上。"""
+
+    title: Any = AUTO
+    direction: str | None = None
+    angle: float | None = None
+    position: str | None = None
+    override_aes: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
+    reverse: bool = False
+    order: float = 0.0
+    show_limits: bool | None = None
+    kind: str = "bins"
+
+    def __post_init__(self) -> None:
+        if self.direction not in (None, "vertical", "horizontal"):
+            raise GuideError(
+                f"guide_bins(direction=) 只能是 'vertical' / 'horizontal'，收到 {self.direction!r}"
+            )
+        object.__setattr__(self, "override_aes", MappingProxyType(dict(self.override_aes)))
+
+
+@dataclass(frozen=True, slots=True)
+class GuideColoursteps(Guide):
+    """`guide_coloursteps()`：分段色条——等宽（`even.steps=True`）或按数据间距。"""
+
+    title: Any = AUTO
+    direction: str | None = None
+    angle: float | None = None
+    position: str | None = None
+    even_steps: bool = True
+    show_limits: bool | None = None
+    alpha: float | None = None
+    reverse: bool = False
+    order: float = 0.0
+    kind: str = "coloursteps"
+
+    def __post_init__(self) -> None:
+        if self.direction not in (None, "vertical", "horizontal"):
+            raise GuideError(
+                "guide_coloursteps(direction=) 只能是 'vertical' / 'horizontal'，"
+                f"收到 {self.direction!r}"
+            )
+        if self.alpha is not None and not 0.0 <= float(self.alpha) <= 1.0:
+            raise GuideError(f"guide_coloursteps(alpha=) 必须在 0..1，收到 {self.alpha!r}")
+
+
+@dataclass(frozen=True, slots=True)
+class BinnedKeys:
+    """分箱 guide 的训练结果：箱边界 + 每箱的映射值 + 边界标签。
+
+    `edges` / `labels` 长度都是「箱数 + 1」；`bin_values[i]` 是第 i 箱中心的映射
+    值（`colour` 是色串，`size` / `alpha` 是数）。`show_limits` 是首尾两个边界
+    标签是否画（R 的 `show.limits`，边界本身是断点时总是画）。
+    """
+
+    edges: tuple[float, ...]
+    labels: tuple[str, ...]
+    bin_values: tuple[Mapping[str, Any], ...]
+    even: bool = True
+    show_limits: tuple[bool, bool] = (False, False)
+
+    @property
+    def bins(self) -> int:
+        return len(self.bin_values)
+
+    def bin_bounds(self) -> tuple[tuple[float, float], ...]:
+        """每箱在 0..1 上的 `(low, high)`（`even=True` 等宽，否则按 edges 间距）。"""
+        low, high = self.edges[0], self.edges[-1]
+        span = high - low
+        if span == 0:
+            return tuple((index / self.bins, (index + 1) / self.bins) for index in range(self.bins))
+        if self.even:
+            return tuple((index / self.bins, (index + 1) / self.bins) for index in range(self.bins))
+        fractions = [(edge - low) / span for edge in self.edges]
+        return tuple((fractions[index], fractions[index + 1]) for index in range(self.bins))
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,20 +481,46 @@ def guide_colourbar(
     direction: str | None = None,
     barwidth: Any = None,
     barheight: Any = None,
-    nbin: int = 256,
+    nbin: int | None = None,
     ticks: bool = True,
+    display: str = "raster",
+    draw_llim: bool = True,
+    draw_ulim: bool = True,
+    ticks_colour: Any = None,
+    frame_colour: Any = None,
+    title_position: str | None = None,
+    alpha: float | None = None,
     reverse: bool = False,
     order: float = 0.0,
     position: str | None = None,
+    *,
+    raster: bool | None = None,
+    **legacy: Any,
 ) -> GuideColourbar:
+    """`guide_colourbar()`。参数名同时认 R 的点号写法（`ticks.colour` 等）。"""
+    if raster is not None:
+        display = "raster" if raster else "rectangles"
+    ticks_colour = _first_not_none(ticks_colour, legacy.pop("ticks.colour", None))
+    frame_colour = _first_not_none(frame_colour, legacy.pop("frame.colour", None))
+    title_position = _first_not_none(title_position, legacy.pop("title.position", None))
+    if legacy:
+        unknown = ", ".join(sorted(legacy))
+        raise GuideError(f"guide_colourbar() 不认识这些参数：{unknown}")
     return GuideColourbar(
         title=title,
         direction=direction,
         position=position,
         barwidth=barwidth,
         barheight=barheight,
-        nbin=int(nbin),
+        nbin=nbin,
         ticks=bool(ticks),
+        display=display,
+        draw_llim=bool(draw_llim),
+        draw_ulim=bool(draw_ulim),
+        ticks_colour=ticks_colour,
+        frame_colour=frame_colour,
+        title_position=title_position,
+        alpha=None if alpha is None else float(alpha),
         reverse=bool(reverse),
         order=float(order),
     )
@@ -396,6 +542,75 @@ def guide_custom(
         position=position,
         order=float(order),
     )
+
+
+def guide_bins(
+    title: Any = AUTO,
+    direction: str | None = None,
+    angle: float | None = None,
+    position: str | None = None,
+    override_aes: Mapping[str, Any] | None = None,
+    reverse: bool = False,
+    order: float = 0.0,
+    show_limits: bool | None = None,
+    **legacy: Any,
+) -> GuideBins:
+    """`guide_bins()`：分箱图例。`show.limits` 的点号写法也认。"""
+    show_limits = _first_not_none(show_limits, legacy.pop("show.limits", None))
+    if legacy:
+        unknown = ", ".join(sorted(legacy))
+        raise GuideError(f"guide_bins() 不认识这些参数：{unknown}")
+    return GuideBins(
+        title=title,
+        direction=direction,
+        angle=None if angle is None else float(angle),
+        position=position,
+        override_aes=dict(override_aes or {}),
+        reverse=bool(reverse),
+        order=float(order),
+        show_limits=show_limits,
+    )
+
+
+def guide_coloursteps(
+    title: Any = AUTO,
+    direction: str | None = None,
+    angle: float | None = None,
+    position: str | None = None,
+    even_steps: bool = True,
+    show_limits: bool | None = None,
+    alpha: float | None = None,
+    reverse: bool = False,
+    order: float = 0.0,
+    **legacy: Any,
+) -> GuideColoursteps:
+    """`guide_coloursteps()`（别名 `guide_colorsteps`）。"""
+    even_steps = _first_not_none(even_steps, legacy.pop("even.steps", None))
+    show_limits = _first_not_none(show_limits, legacy.pop("show.limits", None))
+    if not isinstance(even_steps, bool):
+        raise GuideError(f"guide_coloursteps(even.steps=) 必须是布尔值，收到 {even_steps!r}")
+    if legacy:
+        unknown = ", ".join(sorted(legacy))
+        raise GuideError(f"guide_coloursteps() 不认识这些参数：{unknown}")
+    return GuideColoursteps(
+        title=title,
+        direction=direction,
+        angle=None if angle is None else float(angle),
+        position=position,
+        even_steps=even_steps,
+        show_limits=show_limits,
+        alpha=None if alpha is None else float(alpha),
+        reverse=bool(reverse),
+        order=float(order),
+    )
+
+
+def _first_not_none(*values: Any) -> Any:
+    """返回第一个非 None 的值（R 的 `%||%`）。"""
+    for value in values:
+        if value is not None:
+            return value
+    return None
 
 
 def guide_none() -> GuideNone:
@@ -433,6 +648,46 @@ _COLOURBAR_PARAMS = frozenset(
         "barheight",
         "nbin",
         "ticks",
+        "display",
+        "raster",
+        "draw_llim",
+        "draw_ulim",
+        "ticks_colour",
+        "ticks.colour",
+        "frame_colour",
+        "frame.colour",
+        "title_position",
+        "title.position",
+        "alpha",
+        "reverse",
+        "order",
+    }
+)
+_BINS_PARAMS = frozenset(
+    {
+        "title",
+        "direction",
+        "angle",
+        "position",
+        "override_aes",
+        "override.aes",
+        "reverse",
+        "order",
+        "show_limits",
+        "show.limits",
+    }
+)
+_STEPS_PARAMS = frozenset(
+    {
+        "title",
+        "direction",
+        "angle",
+        "position",
+        "even_steps",
+        "even.steps",
+        "show_limits",
+        "show.limits",
+        "alpha",
         "reverse",
         "order",
     }
@@ -472,6 +727,10 @@ def guide_from_component(component: Any) -> Guide:
         return guide_legend(**{k: v for k, v in _clean(params, _LEGEND_PARAMS).items()})
     if name in ("colourbar", "colorbar"):
         return guide_colourbar(**{k: v for k, v in _clean(params, _COLOURBAR_PARAMS).items()})
+    if name == "bins":
+        return guide_bins(**{k: v for k, v in _clean(params, _BINS_PARAMS).items()})
+    if name in ("coloursteps", "colorsteps", "steps"):
+        return guide_coloursteps(**{k: v for k, v in _clean(params, _STEPS_PARAMS).items()})
     if name == "custom":
         cleaned = _clean(params, _CUSTOM_PARAMS)
         if "grob" not in cleaned:
@@ -491,9 +750,9 @@ def guide_from_component(component: Any) -> Guide:
             )
         return built
     raise GuideError(
-        f"未知的 guide {name!r}；已实现：legend / colourbar / none / custom"
+        f"未知的 guide {name!r}；已实现：legend / colourbar / bins / coloursteps / none / custom"
         "，其余用 registry.register_guide() + build_guide() 扩展"
-        "（guide_bins / guide_coloursteps 见 M2-2 A 组，本组不实现）"
+        "（轴 guide 见 ggcore.axis_guide）"
     )
 
 
@@ -531,6 +790,8 @@ class GuideBuild:
     palette: Callable[[Sequence[float]], Sequence[str]] | None = None
     #: `plot.guides` 里登记的名字（自定义 guide 用；普通 guide 为空）。
     name: str = ""
+    #: 分箱 guide（bins / coloursteps）的训练结果；其它 guide 为 None。
+    bins: BinnedKeys | None = None
 
     @property
     def kind(self) -> str:
@@ -614,20 +875,24 @@ def _guide_from_value(value: Any) -> Guide | None:
             return guide_legend()
         if value in ("colourbar", "colorbar"):
             return guide_colourbar()
+        if value == "bins":
+            return guide_bins()
+        if value in ("coloursteps", "colorsteps", "steps"):
+            return guide_coloursteps()
         from ggcore import registry as _registry
 
         if value in _registry.registered("guide"):
             return guide_from_component(_registry.construct("guide", value))
         raise GuideError(
-            f"未知的 guide {value!r}；已实现：legend / colourbar / none / custom"
+            f"未知的 guide {value!r}；已实现：legend / colourbar / bins / coloursteps / none"
             "，其余用 registry.register_guide() + build_guide() 扩展"
-            "（guide_bins / guide_coloursteps 见 M2-2 A 组，本组不实现）"
+            "（轴 guide 用 ggcore.axis_guide，见 docs/notes/guide.md §8）"
         )
     if getattr(value, "name", None) is not None:
         return guide_from_component(value)
     raise GuideError(
-        f"无法把 {value!r} 当作 guide；用字符串（'none' / 'legend' / 'colourbar'）"
-        "或 guide_legend() / guide_colourbar() / guide_custom() / guide_none()"
+        f"无法把 {value!r} 当作 guide；用字符串（'none' / 'legend' / 'colourbar' / "
+        "'bins' / 'coloursteps'）或 guide_legend() / guide_colourbar() / guide_custom()"
     )
 
 
@@ -700,6 +965,106 @@ def _list_of(mapped: Any) -> list[Any]:
     return [None if missing else float(item) for item, missing in pairs]
 
 
+def _show_limits(scale: Any, guide: Guide) -> bool:
+    """`show.limits`：guide 显式 > 标度参数 > False（R 的 `%||%` 链）。"""
+    value = getattr(guide, "show_limits", None)
+    if value is None:
+        params = getattr(scale, "params", None) or {}
+        value = params.get("show.limits", params.get("show_limits", False))
+    return bool(value)
+
+
+def _binned_keys(
+    scale: Any,
+    aesthetic: str,
+    keys: Sequence[tuple[str, Any, Any]],
+    limits: tuple[float, float],
+    guide: Guide,
+) -> BinnedKeys:
+    """断点 → 箱：边界 = limits 两端 + 落在范围内的断点。
+
+    与 R 的 `parse_binned_breaks()` 同口径：limit 本身是断点时不再重复加一条，
+    且那个边界标签**总是**画（`show.limits` 只管不在断点上的两端）。
+    """
+    low, high = sorted((float(limits[0]), float(limits[1])))
+    inner = [
+        (label, float(value))
+        for label, value, _item in keys
+        if value is not None and low < float(value) < high
+    ]
+    edges = [low, *(value for _label, value in inner), high]
+    label_low, label_high = _limit_labels(scale, low, high)
+    labels = [label_low, *(label for label, _value in inner), label_high]
+    midpoints = [(edges[index] + edges[index + 1]) / 2.0 for index in range(len(edges) - 1)]
+    mapped = _list_of(scale.map(_column_of(midpoints, scale)))
+    bin_values = tuple({aesthetic: item} for item in mapped)
+    show = _show_limits(scale, guide)
+    at_low = any(abs(value - low) <= 1e-12 * max(1.0, abs(low)) for _label, value in inner)
+    at_high = any(abs(value - high) <= 1e-12 * max(1.0, abs(high)) for _label, value in inner)
+    even = not isinstance(guide, GuideColoursteps) or bool(guide.even_steps)
+    return BinnedKeys(
+        edges=tuple(edges),
+        labels=tuple(labels),
+        bin_values=bin_values,
+        even=even,
+        show_limits=(show or at_low, show or at_high),
+    )
+
+
+def _limit_labels(scale: Any, low: float, high: float) -> tuple[str, str]:
+    """limits 两端的标签（`scale.labels_in()`；不可用时退回数值格式）。"""
+    labels_in = getattr(scale, "labels_in", None)
+    if callable(labels_in):
+        try:
+            result = tuple(labels_in((low, high)))
+        except Exception:  # pragma: no cover - 自定义标度可能没有 labels_in
+            result = ()
+        if len(result) == 2 and result[0] is not None and result[1] is not None:
+            return str(result[0]), str(result[1])
+    from ggcore.scales import format_numbers
+
+    numbers = [str(item) for item in format_numbers([low, high])]
+    return numbers[0], numbers[1]
+
+
+def _binned_guide_keys(
+    aesthetic: str,
+    keys: Sequence[tuple[str, Any, Any]],
+    bins: BinnedKeys,
+    guide: Guide,
+    reverse: bool,
+) -> list[GuideKey]:
+    """分箱 guide 的 `keys`（`get_guide_data()` 的形状，用于 R 对拍）。
+
+    - `guide_bins`：`箱数 + 1` 行，`.value = i / 箱数`，标签是边界；最后一行的
+      映射值是 NA（R 的 `c(scale$map(bin_at), NA)`）。
+    - `guide_coloursteps`：断点行，`.value = (i + 1) / 箱数`；`show.limits` 时
+      再补两端各一行。
+    """
+    if isinstance(guide, GuideBins):
+        rows: list[GuideKey] = []
+        for index, label in enumerate(bins.labels):
+            mapped = bins.bin_values[index][aesthetic] if index < bins.bins else None
+            rows.append(GuideKey(label, {aesthetic: mapped}, value=index / max(1, bins.bins)))
+        if reverse:
+            rows.reverse()
+            rows = [GuideKey(row.label, row.values, 1.0 - float(row.value)) for row in rows]
+        return rows
+    rows = []
+    n = max(1, bins.bins)
+    for index, (label, _value, item) in enumerate(keys):
+        rows.append(GuideKey(label, {aesthetic: item}, value=(index + 1) / n))
+    if bins.show_limits[0] or bins.show_limits[1]:
+        if bins.show_limits[0]:
+            rows.insert(0, GuideKey(bins.labels[0], {aesthetic: None}, value=0.0))
+        if bins.show_limits[1]:
+            rows.append(GuideKey(bins.labels[-1], {aesthetic: None}, value=1.0))
+    if reverse:
+        rows.reverse()
+        rows = [GuideKey(row.label, row.values, 1.0 - float(row.value)) for row in rows]
+    return rows
+
+
 def _train_scale_guide(
     guide: Guide, build: PlotBuild, aesthetic: str, scale: Any
 ) -> GuideBuild | None:
@@ -719,8 +1084,7 @@ def _train_scale_guide(
             title = str(explicit)
     else:
         title = None if title_value is None else str(title_value)
-    if bool(getattr(guide, "reverse", False)):
-        keys = tuple(reversed(keys))
+    reverse = bool(getattr(guide, "reverse", False))
     layers = tuple(
         index for index in range(len(build.layers)) if _is_mapped(build, index, aesthetic)
     )
@@ -728,16 +1092,47 @@ def _train_scale_guide(
     if not bool(getattr(scale, "discrete", False)):
         limits = tuple(float(item) for item in scale.limits())
     palette = getattr(scale, "palette", None)
+    bins = None
+    if isinstance(guide, (GuideBins, GuideColoursteps)):
+        if limits is None:
+            raise GuideError(
+                f"{aesthetic!r} 是离散标度，guide_bins / guide_coloursteps 只服务连续色标"
+            )
+        bins = _binned_keys(scale, aesthetic, keys, limits, guide)
+        rows = tuple(_binned_guide_keys(aesthetic, keys, bins, guide, reverse))
+    else:
+        if reverse:
+            keys = tuple(reversed(keys))
+        rows = tuple(GuideKey(label, {aesthetic: item}, value) for label, value, item in keys)
     built = GuideBuild(
         guide=guide,
         aesthetics=(aesthetic,),
         title=title,
-        keys=tuple(GuideKey(label, {aesthetic: item}, value) for label, value, item in keys),
+        keys=rows,
         layers=layers,
         limits=limits,
         palette=palette if callable(palette) else None,
+        bins=bins,
     )
     return replace(built, keys=guide.transform(built.keys))
+
+
+#: 轴 guide 在 `plot.guides` 里的键（不产图例，由 scene 的轴阶段消费）。
+_AXIS_GUIDE_KEYS = ("x", "y", "theta")
+
+#: 轴 guide 的组件名（`guide_axis()` 家族；见 `ggcore.axis_guide`）。
+_AXIS_GUIDE_NAMES = ("axis", "axis_logticks", "axis_stack", "stacked_axis", "axis_theta")
+
+
+def _is_axis_guide_entry(key: Any, raw: Any) -> bool:
+    """这条 `plot.guides` 条目是不是轴 guide（x / y / theta）。"""
+    if getattr(raw, "name", None) in _AXIS_GUIDE_NAMES:
+        return True
+    from ggcore.axis_guide import AxisGuide
+
+    if isinstance(raw, AxisGuide):
+        return True
+    return _rename_key(key) in _AXIS_GUIDE_KEYS
 
 
 def _custom_builds(build: PlotBuild) -> list[GuideBuild]:
@@ -745,6 +1140,8 @@ def _custom_builds(build: PlotBuild) -> list[GuideBuild]:
     out: list[GuideBuild] = []
     seen: dict[Any, int] = {}
     for key, raw in (getattr(build, "guides", None) or {}).items():
+        if _is_axis_guide_entry(key, raw):
+            continue
         component = _resolve_guide_value(raw)
         if not isinstance(component, GuideCustom):
             continue
@@ -933,6 +1330,7 @@ def _merge(left: GuideBuild, right: GuideBuild) -> GuideBuild:
         limits=left.limits if left.limits is not None else right.limits,
         palette=left.palette if left.palette is not None else right.palette,
         name=left.name,
+        bins=left.bins if left.bins is not None else right.bins,
     )
 
 
@@ -1482,6 +1880,12 @@ def legend_layout(
         if direction == "vertical"
         else (_cm_unit(theme.get("legend.key.spacing.y"), height=True))
     )
+    title_line = text_line_cm(title_size) if guide_build.title else 0.0
+    title_w = (
+        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
+        if guide_build.title
+        else 0.0
+    )
 
     if isinstance(guide, GuideCustom):
         return _custom_layout(
@@ -1507,9 +1911,32 @@ def legend_layout(
             theme,
             direction=direction,
             padding=padding,
-            title_h=title_h,
-            title_w=title_w,
             title_line=title_line,
+            title_w=title_w,
+            spacing_x=spacing_x,
+            text_el=text_el,
+            metrics=metrics,
+        )
+    if isinstance(guide, GuideColoursteps):
+        return _steps_layout(
+            guide_build,
+            theme,
+            direction=direction,
+            padding=padding,
+            title_line=title_line,
+            title_w=title_w,
+            spacing_x=spacing_x,
+            text_el=text_el,
+            metrics=metrics,
+        )
+    if isinstance(guide, GuideBins):
+        return _bins_layout(
+            guide_build,
+            theme,
+            direction=direction,
+            padding=padding,
+            title_line=title_line,
+            title_w=title_w,
             spacing_x=spacing_x,
             text_el=text_el,
             metrics=metrics,
@@ -1883,24 +2310,95 @@ def _bar_ticks(
 ) -> tuple[tuple[float, str], ...]:
     """刻度位置（竖向是 y、横向是 x；局部 cm）+ 标签。
 
-    `reverse=TRUE` 时 R 的 `.value` 是 `1 - (value - low) / span`：标签跟着色带一起
-    翻，不能只翻色带（v1 的 bug）。
+    R 4.0.3 的 `extract_params()` 把键值重标到**箱心**：`(0.5, nbin - 0.5) / nbin`
+    （`display = "gradient"` 时是 `(0, 1)`）。`reverse=TRUE` 再取 `1 - fraction`。
+    `draw.llim = FALSE` / `draw.ulim = FALSE` 只去掉首 / 尾那根刻度和标签（R 的
+    `build_ticks()` 在解出位置之后才删，键本身仍在 `get_guide_data()` 里）。
     """
     low, high = guide_build.limits if guide_build.limits is not None else (0.0, 1.0)
     span = float(high) - float(low)
+    display = getattr(guide, "display", "raster")
+    if display == "gradient":
+        to_low, to_high = 0.0, 1.0
+    else:
+        nbin = int(guide.nbin or 300)
+        to_low, to_high = 0.5 / nbin, (nbin - 0.5) / nbin
     ticks: list[tuple[float, str]] = []
-    for key in guide_build.keys:
+    last = len(guide_build.keys) - 1
+    for index, key in enumerate(guide_build.keys):
         if span == 0 or not isinstance(key.value, (int, float)):
-            fraction = 0.0
+            fraction = to_low
         else:
-            fraction = (float(key.value) - float(low)) / span
+            fraction = to_low + (float(key.value) - float(low)) / span * (to_high - to_low)
         if guide.reverse:
             fraction = 1.0 - fraction
+        if index == 0 and not guide.draw_llim:
+            continue
+        if index == last and not guide.draw_ulim:
+            continue
         if direction == "horizontal":
             ticks.append((box.x_cm + fraction * box.width_cm, key.label))
         else:
             ticks.append((box.y_cm + fraction * box.height_cm, key.label))
     return tuple(ticks)
+
+
+def _title_position_of(guide: Guide, direction: str) -> str:
+    """`legend.title.position`：guide 显式 > 主题 > 方向默认（竖排 top / 横排 left）。"""
+    explicit = getattr(guide, "title_position", None)
+    if explicit in ("top", "bottom", "left", "right"):
+        return explicit
+    return "top" if direction == "vertical" else "left"
+
+
+def _compose_title(
+    content_w: float,
+    content_h: float,
+    *,
+    padding: tuple[float, float, float, float],
+    title_position: str,
+    title_line: float,
+    title_w: float,
+    title: bool,
+    gap: float = 0.0,
+) -> tuple[float, float, _Box | None, float, float]:
+    """内容块 + 标题 → `(总宽, 总高, 标题盒, 内容左下角 x, y)`（cm）。
+
+    `gap` 是 `legend.key.spacing`：R 的 `position_margin()` 把它加在标题靠近内容
+    的那一侧（`legend.title` 的 margin），所以标题占 `title_line + gap`。
+    """
+    pad_t, pad_r, pad_b, pad_l = padding
+    if not title:
+        return content_w + pad_l + pad_r, content_h + pad_t + pad_b, None, pad_l, pad_b
+    if title_position == "top":
+        height = title_line + gap + content_h + pad_t + pad_b
+        width = max(content_w, title_w) + pad_l + pad_r
+        box = _Box(pad_l, height - pad_t - title_line, title_w, title_line)
+        return width, height, box, pad_l, pad_b
+    if title_position == "bottom":
+        height = title_line + gap + content_h + pad_t + pad_b
+        width = max(content_w, title_w) + pad_l + pad_r
+        box = _Box(pad_l, pad_b, title_w, title_line)
+        return width, height, box, pad_l, pad_b + title_line + gap
+    if title_position == "left":
+        # 图例标题**从不旋转**（R 的 `Guide$setup_elements()` 只改 hjust / margin）：
+        # 左 / 右标题是普通横排文字，列宽 = 文字宽 + 与内容的 gap。
+        width = title_w + gap + content_w + pad_l + pad_r
+        height = content_h + pad_t + pad_b
+        box = _Box(pad_l, pad_b, title_w, title_line)
+        return width, height, box, pad_l + title_w + gap, pad_b
+    width = title_w + gap + content_w + pad_l + pad_r
+    height = content_h + pad_t + pad_b
+    box = _Box(pad_l + content_w + gap, pad_b, title_w, title_line)
+    return width, height, box, pad_l, pad_b
+
+
+def _label_width(guide_build: GuideBuild, text_el: ElementText, metrics: Any) -> float:
+    size = float(text_el.size or 0.0)
+    return max(
+        (text_width_cm(key.label, size, metrics, text_el.family or "") for key in guide_build.keys),
+        default=0.0,
+    )
 
 
 def _colourbar_layout(
@@ -1909,50 +2407,39 @@ def _colourbar_layout(
     *,
     direction: str,
     padding: tuple[float, float, float, float],
-    title_h: float,
-    title_w: float,
     title_line: float,
+    title_w: float,
     spacing_x: float,
     text_el: ElementText,
     metrics: Any,
 ) -> LegendLayout:
     guide = guide_build.guide
     assert isinstance(guide, GuideColourbar)
-    pad_t, pad_r, pad_b, pad_l = padding
     key_w, key_h = _key_size(theme, guide)
     bar_w, bar_h = _bar_size(guide, key_w, key_h, direction)
     text_size = float(text_el.size or 0.0)
-    label_w = max(
-        (
-            text_width_cm(key.label, text_size, metrics, text_el.family or "")
-            for key in guide_build.keys
-        ),
-        default=0.0,
-    )
+    label_w = _label_width(guide_build, text_el, metrics)
+    label_row = text_line_cm(text_size)
+    gap_row = _cm_unit(theme.get("legend.key.spacing"), height=True)
     if direction == "horizontal":
-        # 横向：色条在上，标签排在下方一行（R 的 1.487cm 高就是这个结构）。
-        width = max(bar_w, title_w) + pad_l + pad_r
-        label_row = text_line_cm(text_size)
-        height = title_h + bar_h + label_row + pad_t + pad_b
-        title_box = None
-        if guide_build.title:
-            title_box = _Box(pad_l, height - pad_t - title_line, title_w, title_line)
-        bar_box = _Box(pad_l, height - pad_t - title_h - bar_h, bar_w, bar_h)
-        return LegendLayout(
-            width_cm=width,
-            height_cm=height,
-            direction=direction,
-            title_box=title_box,
-            bar=bar_box,
-            ticks=_bar_ticks(guide_build, guide, bar_box, direction),
-        )
-    width = bar_w + spacing_x + label_w + pad_l + pad_r
-    width = max(width, title_w + pad_l + pad_r)
-    height = title_h + bar_h + pad_t + pad_b
-    title_box = None
-    if guide_build.title:
-        title_box = _Box(pad_l, height - pad_t - title_line, title_w, title_line)
-    bar_box = _Box(pad_l, height - pad_t - title_h - bar_h, bar_w, bar_h)
+        content_w = bar_w
+        content_h = bar_h + label_row + gap_row
+    else:
+        content_w = bar_w + spacing_x + label_w
+        content_h = bar_h
+    title = bool(guide_build.title)
+    gap = _cm_unit(theme.get("legend.key.spacing"), height=True)
+    width, height, title_box, cx, cy = _compose_title(
+        content_w,
+        content_h,
+        padding=padding,
+        title_position=_title_position_of(guide, direction),
+        title_line=title_line,
+        title_w=title_w,
+        title=title,
+        gap=gap,
+    )
+    bar_box = _Box(cx, cy if direction == "vertical" else cy + label_row, bar_w, bar_h)
     return LegendLayout(
         width_cm=width,
         height_cm=height,
@@ -1960,6 +2447,203 @@ def _colourbar_layout(
         title_box=title_box,
         bar=bar_box,
         ticks=_bar_ticks(guide_build, guide, bar_box, direction),
+        title_position=_title_position_of(guide, direction),
+    )
+
+
+def _step_ticks(
+    guide_build: GuideBuild,
+    box: _Box,
+    direction: str,
+    *,
+    show_limits: tuple[bool, bool],
+    reverse: bool,
+    flip: bool = False,
+) -> tuple[tuple[float, str], ...]:
+    """分箱 guide 的边界刻度：`edges` 在 0..1 上的位置；两端按 `show.limits` 取舍。
+
+    `flip=True` 是竖排 `guide_bins` 的口径：R 的 `GuideBins$build_labels()` 先做
+    `1 - .value`，所以**低值在上**（与色条相反）。`reverse` 再整体翻一次，两者
+    互抵（R 的 `extract_params()` 已经把 `.value` 翻过一遍）。
+    """
+    bins = guide_build.bins
+    if bins is None:
+        return ()
+    low, high = bins.edges[0], bins.edges[-1]
+    span = high - low
+    fractions = [0.0] if span == 0 else [(edge - low) / span for edge in bins.edges]
+    if flip != bool(reverse):
+        fractions = [1.0 - value for value in fractions]
+    last = len(bins.labels) - 1
+    out: list[tuple[float, str]] = []
+    for index, (fraction, label) in enumerate(zip(fractions, bins.labels, strict=True)):
+        if (index == 0 and not show_limits[0]) or (index == last and not show_limits[1]):
+            continue
+        if direction == "horizontal":
+            out.append((box.x_cm + fraction * box.width_cm, label))
+        else:
+            out.append((box.y_cm + fraction * box.height_cm, label))
+    return tuple(out)
+
+
+def _steps_layout(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    *,
+    direction: str,
+    padding: tuple[float, float, float, float],
+    title_line: float,
+    title_w: float,
+    spacing_x: float,
+    text_el: ElementText,
+    metrics: Any,
+) -> LegendLayout:
+    """`guide_coloursteps()`：与色条同构，只是标签落在箱边界上。"""
+    guide = guide_build.guide
+    assert isinstance(guide, GuideColoursteps)
+    bins = guide_build.bins
+    if bins is None:  # pragma: no cover - build_guides 一定带上
+        raise GuideError("guide_coloursteps 缺少分箱数据（build_guides 没有训练它）")
+    key_w, key_h = _key_size(theme, guide)
+    bar_w, bar_h = _bar_size(GuideColourbar(), key_w, key_h, direction)
+    text_size = float(text_el.size or 0.0)
+    label_w = _label_width(guide_build, text_el, metrics)
+    label_row = text_line_cm(text_size)
+    gap_row = _cm_unit(theme.get("legend.key.spacing"), height=True)
+    if direction == "horizontal":
+        content_w, content_h = bar_w, bar_h + label_row + gap_row
+    else:
+        content_w, content_h = bar_w + spacing_x + label_w, bar_h
+    gap = _cm_unit(theme.get("legend.key.spacing"), height=True)
+    width, height, title_box, cx, cy = _compose_title(
+        content_w,
+        content_h,
+        padding=padding,
+        title_position=_title_position_of(guide, direction),
+        title_line=title_line,
+        title_w=title_w,
+        title=bool(guide_build.title),
+        gap=gap,
+    )
+    bar_box = _Box(cx, cy if direction == "vertical" else cy + label_row, bar_w, bar_h)
+    return LegendLayout(
+        width_cm=width,
+        height_cm=height,
+        direction=direction,
+        title_box=title_box,
+        bar=bar_box,
+        ticks=_step_ticks(
+            guide_build,
+            bar_box,
+            direction,
+            show_limits=bins.show_limits,
+            reverse=bool(guide.reverse),
+        ),
+        title_position=_title_position_of(guide, direction),
+    )
+
+
+def _bins_layout(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    *,
+    direction: str,
+    padding: tuple[float, float, float, float],
+    title_line: float,
+    title_w: float,
+    spacing_x: float,
+    text_el: ElementText,
+    metrics: Any,
+) -> LegendLayout:
+    """`guide_bins()`：每箱一格键（复用几何），标签落在箱边界。
+
+    R 的竖排 bins **低值在上**（`build_labels()` 先 `1 - .value` 再翻转），与
+    colourbar 相反；这里照搬（见 `tools/refs/guide_long_ref.R` 的 `bins` 夹具）。
+    """
+    guide = guide_build.guide
+    assert isinstance(guide, GuideBins)
+    bins = guide_build.bins
+    if bins is None:  # pragma: no cover
+        raise GuideError("guide_bins 缺少分箱数据（build_guides 没有训练它）")
+    key_w, key_h = _key_size(theme, guide)
+    n = max(1, bins.bins)
+    text_size = float(text_el.size or 0.0)
+    label_w = _label_width(guide_build, text_el, metrics)
+    if direction == "vertical":
+        content_w = key_w + spacing_x + label_w
+        content_h = n * key_h
+    else:
+        content_w = n * key_w
+        content_h = key_h + text_line_cm(text_size)
+    gap = _cm_unit(theme.get("legend.key.spacing"), height=True)
+    width, height, title_box, cx, cy = _compose_title(
+        content_w,
+        content_h,
+        padding=padding,
+        title_position=_title_position_of(guide, direction),
+        title_line=title_line,
+        title_w=title_w,
+        title=bool(guide_build.title),
+        gap=gap,
+    )
+    reverse = bool(getattr(guide, "reverse", False))
+    bin_values = list(bins.bin_values)
+    bin_labels = list(bins.labels)
+    if reverse:
+        # R 的 `GuideBins$extract_params()`：键行倒序 + 美学列左旋一格，
+        # 等价于「颜色与边界标签一起镜像」。
+        bin_values.reverse()
+        bin_labels.reverse()
+    cells: list[LegendKeyCell] = []
+    if direction == "vertical":
+        for index, values in enumerate(bin_values):
+            # 低值在顶：第 0 箱占最上面一格。
+            y = cy + (n - index - 1) * key_h
+            key = GuideKey(
+                label=bin_labels[index],
+                values=values,
+                value=index / max(1, n - 1),
+            )
+            cells.append(
+                LegendKeyCell(
+                    key,
+                    _Box(cx, y, key_w, key_h),
+                    _Box(cx + key_w + spacing_x, y, label_w, key_h),
+                )
+            )
+        bar_box = _Box(cx, cy, key_w, content_h)
+    else:
+        for index, values in enumerate(bin_values):
+            x = cx + index * key_w
+            key = GuideKey(
+                label=bin_labels[index],
+                values=values,
+                value=index / max(1, n - 1),
+            )
+            cells.append(
+                LegendKeyCell(
+                    key,
+                    _Box(x, cy + text_line_cm(text_size), key_w, key_h),
+                    _Box(x, cy, key_w, text_line_cm(text_size)),
+                )
+            )
+        bar_box = _Box(cx, cy + text_line_cm(text_size), content_w, key_h)
+    return LegendLayout(
+        width_cm=width,
+        height_cm=height,
+        direction=direction,
+        title_box=title_box,
+        keys=tuple(cells),
+        bar=bar_box,
+        ticks=_step_ticks(
+            guide_build,
+            bar_box,
+            direction,
+            show_limits=bins.show_limits,
+            reverse=bool(guide.reverse),
+            flip=direction == "vertical",
+        ),
+        title_position=_title_position_of(guide, direction),
     )
 
 
@@ -2115,6 +2799,12 @@ def legend_grob(
     if isinstance(guide_build.guide, GuideColourbar) and layout.bar is not None:
         grobs.extend(_colourbar_grobs(guide_build, theme, layout, name=name))
         return grobs
+    if isinstance(guide_build.guide, GuideColoursteps) and layout.bar is not None:
+        grobs.extend(_steps_grobs(guide_build, theme, layout, name=name))
+        return grobs
+    if isinstance(guide_build.guide, GuideBins) and layout.bar is not None:
+        grobs.extend(_bins_grobs(guide_build, build, theme, layout, name=name))
+        return grobs
     text_el = _text_element(theme, "legend.text")
     key_el = theme.get("legend.key")
     guide = guide_build.guide
@@ -2250,6 +2940,164 @@ def _layer_maps_any(build: PlotBuild, index: int, aesthetics: Sequence[str]) -> 
     return any(aesthetic in mapping for aesthetic in aesthetics)
 
 
+def _frame_paint(guide: Any, theme: ResolvedTheme) -> tuple[str | None, float]:
+    """图例边框：guide 的 `frame.colour` > **显式**主题 `legend.frame` > 不画。
+
+    R 4.0.3 的 `GuideColourbar$setup_elements()` 用
+    `replace_null(theme, legend.frame = element_blank())`：主题里**没有写过**
+    `legend.frame` 时边框是 blank，只有用户显式给了才继承 `element_rect()` 的
+    黑框。`resolve_theme()` 会把继承出来的 `legend.frame` 填成黑框，所以这里要看
+    主题对象里有没有显式条目。
+    """
+    explicit = getattr(guide, "frame_colour", None)
+    if explicit is not None:
+        return paint(explicit), 0.5 * 72.0 / 25.4
+    source = getattr(theme, "theme", None)
+    elements = getattr(source, "elements", None) or {}
+    if "legend.frame" not in elements:
+        return None, 0.0
+    frame = theme.get("legend.frame")
+    if not isinstance(frame, ElementRect):
+        return None, 0.0
+    colour = paint(frame.colour)
+    width = float(frame.linewidth or 0.0) * 72.0 / 25.4
+    return colour, width
+
+
+def _tick_style(guide: Any, theme: ResolvedTheme) -> tuple[str | None, float, float]:
+    """图例刻度的 `(colour, length_cm, lwd)`；guide 的 `ticks.colour` 优先。"""
+    element = theme.get("legend.ticks")
+    if isinstance(element, ElementBlank):
+        return None, 0.0, 0.0
+    colour = paint(getattr(guide, "ticks_colour", None) or getattr(element, "colour", None))
+    if colour is None:
+        return None, 0.0, 0.0
+    length = _cm_unit(theme.get("legend.ticks.length"), height=False)
+    width = float(getattr(element, "linewidth", None) or 0.0) * 72.0 / 25.4
+    return colour, length, width
+
+
+def _bar_bands(
+    box: _Box,
+    bounds: Sequence[tuple[float, float]],
+    colours: Sequence[str],
+    horizontal: bool,
+    *,
+    name: str,
+) -> list[Any]:
+    """一段条带 = 若干 `(low, high)` 小矩形（0..1）；相邻条多铺 1pt 防白缝。"""
+    grobs: list[Any] = []
+    for index, ((low, high), colour) in enumerate(zip(bounds, colours, strict=True)):
+        extra = _BAND_OVERLAP_CM if index < len(bounds) - 1 else 0.0
+        if horizontal:
+            grobs.append(
+                rect_grob(
+                    box.x_cm + low * box.width_cm,
+                    box.y_cm,
+                    (high - low) * box.width_cm + extra,
+                    box.height_cm,
+                    just=("left", "bottom"),
+                    default_units="cm",
+                    gp=gpar(fill=colour, col=NA),
+                    name=f"{name}.bar-{index}",
+                )
+            )
+        else:
+            grobs.append(
+                rect_grob(
+                    box.x_cm,
+                    box.y_cm + low * box.height_cm,
+                    box.width_cm,
+                    (high - low) * box.height_cm + extra,
+                    just=("left", "bottom"),
+                    default_units="cm",
+                    gp=gpar(fill=colour, col=NA),
+                    name=f"{name}.bar-{index}",
+                )
+            )
+    return grobs
+
+
+def _bar_axis_grobs(
+    layout: LegendLayout,
+    theme: ResolvedTheme,
+    guide: Any,
+    *,
+    name: str,
+    label_prefix: str,
+    ticks: bool = True,
+    label_bottom_offset: float = 0.0,
+) -> list[Any]:
+    """条带外侧的刻度线 + 标签（竖向在右、横向在下）。"""
+    from ggcore.grobs import segments_grob
+
+    box = layout.bar
+    assert box is not None
+    horizontal = layout.direction == "horizontal"
+    text_el = _text_element(theme, "legend.text")
+    spacing_x = _cm_unit(theme.get("legend.key.spacing.x"), height=False)
+    label_x = box.x_cm + box.width_cm + spacing_x
+    colour, tick_len, tick_lwd = _tick_style(guide, theme)
+    draw_ticks = bool(ticks) and colour is not None and tick_len > 0
+    grobs: list[Any] = []
+    for index, (position, label) in enumerate(layout.ticks):
+        if draw_ticks:
+            if horizontal:
+                grobs.append(
+                    segments_grob(
+                        [position, position],
+                        [box.y_cm, box.y_cm],
+                        [position, position],
+                        [box.y_cm - tick_len, box.y_cm - tick_len],
+                        default_units="cm",
+                        gp=gpar(col=colour, lwd=tick_lwd),
+                        name=f"{name}.tick-{index}",
+                    )
+                )
+            else:
+                grobs.append(
+                    segments_grob(
+                        [box.x_cm + box.width_cm, box.x_cm + box.width_cm],
+                        [position, position],
+                        [box.x_cm + box.width_cm + tick_len, box.x_cm + box.width_cm + tick_len],
+                        [position, position],
+                        default_units="cm",
+                        gp=gpar(col=colour, lwd=tick_lwd),
+                        name=f"{name}.tick-{index}",
+                    )
+                )
+        if horizontal:
+            grobs.append(
+                text_grob(
+                    label,
+                    position,
+                    box.y_cm
+                    - _cm_unit(theme.get("legend.key.spacing"), height=True)
+                    - tick_len
+                    - label_bottom_offset,
+                    hjust=0.5,
+                    vjust=1.0,
+                    default_units="cm",
+                    gp=gpar(**_text_gp(text_el)),
+                    name=f"{name}.{label_prefix}-{index}",
+                )
+            )
+        else:
+            grobs.append(
+                text_grob(
+                    label,
+                    label_x,
+                    position,
+                    hjust=0.0,
+                    vjust=0.5,
+                    default_units="cm",
+                    gp=gpar(**_text_gp(text_el)),
+                    name=f"{name}.{label_prefix}-{index}",
+                )
+            )
+    return grobs
+
+
 def _colourbar_grobs(
     guide_build: GuideBuild,
     theme: ResolvedTheme,
@@ -2268,46 +3116,16 @@ def _colourbar_grobs(
     assert isinstance(guide, GuideColourbar)
     box = layout.bar
     assert box is not None
-    nbin = int(guide.nbin)
-    grobs: list[Any] = []
-    steps = _colourbar_colours(guide_build, nbin)
-    overlap = _BAND_OVERLAP_CM
+    nbin = int(guide.nbin or 300)
     horizontal = layout.direction == "horizontal"
+    steps = _apply_alpha(_colourbar_colours(guide_build, nbin), guide.alpha)
     if horizontal:
-        # 横向：从左到右铺 nbin 个竖条（左端是最小值 / reverse 后是最大值）。
-        step_w = box.width_cm / nbin
-        for index, colour in enumerate(steps):
-            extra = overlap if index < nbin - 1 else 0.0
-            grobs.append(
-                rect_grob(
-                    box.x_cm + index * step_w,
-                    box.y_cm,
-                    step_w + extra,
-                    box.height_cm,
-                    just=("left", "bottom"),
-                    default_units="cm",
-                    gp=gpar(fill=colour, col=NA),
-                    name=f"{name}.bar-{index}",
-                )
-            )
+        bounds = tuple((index / nbin, (index + 1) / nbin) for index in range(nbin))
     else:
-        step_h = box.height_cm / nbin
-        for index, colour in enumerate(steps):
-            extra = overlap if index < nbin - 1 else 0.0
-            grobs.append(
-                rect_grob(
-                    box.x_cm,
-                    box.y_cm + index * step_h,
-                    box.width_cm,
-                    step_h + extra,
-                    just=("left", "bottom"),
-                    default_units="cm",
-                    gp=gpar(fill=colour, col=NA),
-                    name=f"{name}.bar-{index}",
-                )
-            )
-    frame = theme.get("legend.frame")
-    if isinstance(frame, ElementRect) and paint(frame.colour) is not None:
+        bounds = tuple((index / nbin, (index + 1) / nbin) for index in range(nbin))
+    grobs = _bar_bands(box, bounds, steps, horizontal, name=name)
+    colour, width = _frame_paint(guide, theme)
+    if colour is not None:
         grobs.append(
             rect_grob(
                 box.x_cm,
@@ -2316,78 +3134,155 @@ def _colourbar_grobs(
                 box.height_cm,
                 just=("left", "bottom"),
                 default_units="cm",
-                gp=gpar(fill=NA, col=paint(frame.colour), lwd=0.0),
+                gp=gpar(fill=NA, col=colour, lwd=width),
                 name=f"{name}.frame",
             )
         )
-    text_el = _text_element(theme, "legend.text")
-    label_x = box.x_cm + box.width_cm + _cm_unit(theme.get("legend.key.spacing.x"), height=False)
-    tick_el = theme.get("legend.ticks")
-    tick_len = _cm_unit(theme.get("legend.ticks.length"), height=False) or 0.0
-    from ggcore.grobs import segments_grob
-
-    colour = paint(getattr(tick_el, "colour", None))
-    # `guide_colourbar(ticks = FALSE)` 只去掉刻度线，标签照画（与 R 4.0.3 一致）。
-    draw_ticks = (
-        bool(guide.ticks)
-        and not isinstance(tick_el, ElementText)  # 防御：类型不会走到这
-        and colour is not None
-        and tick_len > 0
+    grobs.extend(
+        _bar_axis_grobs(
+            layout,
+            theme,
+            guide,
+            name=name,
+            label_prefix="colourbar-label",
+            ticks=bool(guide.ticks),
+        )
     )
-    for index, (position, label) in enumerate(layout.ticks):
-        if draw_ticks:
-            if horizontal:
-                grobs.append(
-                    segments_grob(
-                        [position, position],
-                        [box.y_cm, box.y_cm],
-                        [position, position],
-                        [box.y_cm - tick_len, box.y_cm - tick_len],
-                        default_units="cm",
-                        gp=gpar(col=colour, lwd=0.0),
-                        name=f"{name}.tick-{index}",
-                    )
-                )
-            else:
-                grobs.append(
-                    segments_grob(
-                        [box.x_cm + box.width_cm, box.x_cm + box.width_cm],
-                        [position, position],
-                        [box.x_cm + box.width_cm + tick_len, box.x_cm + box.width_cm + tick_len],
-                        [position, position],
-                        default_units="cm",
-                        gp=gpar(col=colour, lwd=0.0),
-                        name=f"{name}.tick-{index}",
-                    )
-                )
-        if horizontal:
-            # 横向：标签居中排在色条下方（R 的 text-anchor = middle）。
-            grobs.append(
-                text_grob(
-                    label,
-                    position,
-                    box.y_cm - tick_len,
-                    hjust=0.5,
-                    vjust=1.0,
-                    default_units="cm",
-                    gp=gpar(**_text_gp(text_el)),
-                    name=f"{name}.colourbar-label-{index}",
-                )
-            )
-        else:
-            grobs.append(
-                text_grob(
-                    label,
-                    label_x,
-                    position,
-                    hjust=0.0,
-                    vjust=0.5,
-                    default_units="cm",
-                    gp=gpar(**_text_gp(text_el)),
-                    name=f"{name}.colourbar-label-{index}",
-                )
-            )
     return grobs
+
+
+def _steps_grobs(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    layout: LegendLayout,
+    *,
+    name: str,
+) -> list[Any]:
+    """分段色条：每个箱一个矩形（等宽或按数据间距），标签在箱边界。"""
+    guide = guide_build.guide
+    assert isinstance(guide, GuideColoursteps)
+    box = layout.bar
+    assert box is not None
+    bins = guide_build.bins
+    if bins is None:  # pragma: no cover
+        raise GuideError("guide_coloursteps 缺少分箱数据")
+    horizontal = layout.direction == "horizontal"
+    bounds = bins.bin_bounds()
+    colours = [
+        _apply_alpha([str(values.get("colour") or values.get("fill") or "#808080")], guide.alpha)[0]
+        for values in bins.bin_values
+    ]
+    if guide.reverse:
+        # R 的 `.value <- 1 - .value`：色阶与箱位置一起镜像（标签由
+        # `_step_ticks(reverse=...)` 翻，三者必须同向）。
+        colours.reverse()
+        bounds = tuple((1.0 - high, 1.0 - low) for low, high in reversed(bounds))
+    grobs = _bar_bands(box, bounds, colours, horizontal, name=name)
+    colour, width = _frame_paint(guide, theme)
+    if colour is not None:
+        grobs.append(
+            rect_grob(
+                box.x_cm,
+                box.y_cm,
+                box.width_cm,
+                box.height_cm,
+                just=("left", "bottom"),
+                default_units="cm",
+                gp=gpar(fill=NA, col=colour, lwd=width),
+                name=f"{name}.frame",
+            )
+        )
+    grobs.extend(
+        _bar_axis_grobs(
+            layout,
+            theme,
+            guide,
+            name=name,
+            label_prefix="coloursteps-label",
+        )
+    )
+    return grobs
+
+
+def _bins_grobs(
+    guide_build: GuideBuild,
+    build: PlotBuild,
+    theme: ResolvedTheme,
+    layout: LegendLayout,
+    *,
+    name: str,
+) -> list[Any]:
+    """分箱图例：每箱一个几何 key（与 legend 同一套 `Geom.draw()`），标签在边界。"""
+    guide = guide_build.guide
+    assert isinstance(guide, GuideBins)
+    grobs: list[Any] = []
+    key_el = theme.get("legend.key")
+    for index, cell in enumerate(layout.keys):
+        key_box = cell.box
+        if isinstance(key_el, ElementRect) and paint(key_el.fill) is not None:
+            grobs.append(
+                rect_grob(
+                    key_box.x_cm,
+                    key_box.y_cm,
+                    key_box.width_cm,
+                    key_box.height_cm,
+                    just=("left", "bottom"),
+                    default_units="cm",
+                    gp=gpar(fill=paint(key_el.fill), col=paint(key_el.colour) or NA, lwd=0.0),
+                    name=f"{name}.key-{index}-bg",
+                )
+            )
+        vp = viewport(
+            f"{name}-key-{index}",
+            x=unit(key_box.x_cm + key_box.width_cm / 2.0, "cm"),
+            y=unit(key_box.y_cm + key_box.height_cm / 2.0, "cm"),
+            width=unit(key_box.width_cm, "cm"),
+            height=unit(key_box.height_cm, "cm"),
+            just="centre",
+            xscale=(0.0, 1.0),
+            yscale=(0.0, 1.0),
+            clip="on",
+        )
+        for layer_index in guide_build.layers:
+            if not _layer_maps_any(build, layer_index, guide_build.aesthetics):
+                continue
+            decor = _key_grob(
+                build,
+                layer_index,
+                cell.key.values,
+                override=_override(guide_build.guide),
+            )
+            if decor is None:
+                continue
+            grobs.append(replace(decor, vp=vp) if getattr(decor, "vp", None) is None else decor)
+    grobs.extend(
+        _bar_axis_grobs(
+            layout,
+            theme,
+            guide,
+            name=name,
+            label_prefix="bins-label",
+        )
+    )
+    return grobs
+
+
+def _apply_alpha(colours: Sequence[str], alpha: float | None) -> list[str]:
+    """`alpha` 把颜色混到白底上（R 的 `alpha()` 在 svglite 白底上等价）。"""
+    if alpha is None or float(alpha) >= 1.0:
+        return list(colours)
+    if float(alpha) <= 0.0:
+        return ["#FFFFFF"] * len(colours)
+    from ggcore.grobs import parse_colour
+
+    out: list[str] = []
+    for colour in colours:
+        red, green, blue = parse_colour(colour)[:3]
+        mixed = [
+            round(255.0 + (float(channel) - 255.0) * float(alpha)) for channel in (red, green, blue)
+        ]
+        out.append("#{:02X}{:02X}{:02X}".format(*mixed))
+    return out
 
 
 def _colourbar_colours(guide_build: GuideBuild, nbin: int) -> list[str]:

@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-colourbar", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "guide：colourbar display=gradient"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "IR 没有渐变类型（docs/notes/ir.md §12），按 nbin=15 画 15 条矩形；本 case 钉住这组视觉值。"

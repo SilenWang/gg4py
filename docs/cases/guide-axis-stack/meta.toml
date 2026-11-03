@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis-stack", "rotation"]
+ci = true
+title = "guide：轴叠放"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "guide_axis_stack 把两条轴从内到外叠放。"
