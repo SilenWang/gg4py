@@ -49,7 +49,7 @@ from typing import Any
 
 import numpy as np
 
-from ggcore import ir
+from ggcore import fills, ir
 from ggcore.gtable import GTable, gtable_height, gtable_width, is_gtable
 from ggcore.ir import Blob, BlobTable, NodeKind
 from ggcore.units import (
@@ -339,8 +339,14 @@ def parse_colour(value: Any) -> tuple[int, int, int, int]:
     raise GrobError(f"invalid colour: {value!r}")
 
 
-def _paint(value: Any) -> tuple[int, int, int, int] | None:
-    """解析后的颜色 → IR 的 `col` / `fill`：`None` = 不画。"""
+def _paint(value: Any) -> tuple[int, int, int, int] | fills.FillSpec | None:
+    """解析后的颜色 → IR 的 `col` / `fill`：`None` = 不画。
+
+    渐变 / 图案的**待解析**规格（`ggcore.fills`，SIL-751）原样透传：坐标要等被
+    填充对象的包围盒，到 :meth:`Instruction.to_node` 才折成 IR 的最终几何。
+    """
+    if isinstance(value, fills.FillSpec):
+        return value
     if value is None or value is NA:
         return None
     if isinstance(value, str) and value.strip().lower() == "transparent":
@@ -1514,9 +1520,16 @@ class Instruction:
         bufs: dict[str, Any] = {}
         for name, value in self.bufs.items():
             bufs[name] = ir.i32(value) if name == "id" else ir.f32(value)
+        gpar = self.gpar
+        if isinstance(gpar.fill, fills.FillSpec):
+            # npc 口径要等几何定下来才能折成局部坐标（`ggcore.fills` 模块头）。
+            bbox = fills.node_bbox(self.kind, self.bufs, self.params)
+            if bbox is None:
+                raise GrobError(f"{self.kind} 没有可以量包围盒的几何，渐变 / 图案无从解析")
+            gpar = replace(gpar, fill=gpar.fill.resolve(bbox))
         return ir.Node(
             kind=self.kind,
-            gpar=self.gpar,
+            gpar=gpar,
             params=dict(self.params),
             bufs=bufs,
             texts=self.texts,

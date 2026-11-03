@@ -28,18 +28,39 @@ import math
 import re
 import warnings
 from collections.abc import Iterator, Sequence
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
 import skia
 
 from ggcore.device import Device, DeviceError, DeviceWarning
-from ggcore.ir import LineEnd, LineJoin, NodeKind, Scene
+from ggcore.ir import (
+    Extend,
+    LinearGradient,
+    LineEnd,
+    LineJoin,
+    NodeKind,
+    RadialGradient,
+    Scene,
+    TilePattern,
+)
 from ggskia.curves import curve_points, xspline_points
 from ggskia.pch import character_pch, symbol
 from ggskia.text import LINE_PITCH, TextShaper
 
 __all__ = ["SkiaPdfDevice", "SkiaRasterDevice", "SkiaSvgDevice"]
+
+#: 渐变 / 图案的 `extend` → skia 的 tile mode（SVG 的 `spreadMethod` 同一套）。
+_EXTENDS = {
+    Extend.PAD: skia.TileMode.kClamp,
+    Extend.REPEAT: skia.TileMode.kRepeat,
+    Extend.REFLECT: skia.TileMode.kMirror,
+}
+
+#: 一个图案最多铺多少块 tile：tile 尺寸趋近 0 时会画出天文数字个小图元，
+#: 宁可报错也不要卡死（写方的 npc / pt 尺寸给成 0 附近才算 bug）。
+MAX_PATTERN_TILES = 40_000
 
 _CAPS = {
     LineEnd.ROUND: skia.Paint.kRound_Cap,
@@ -148,8 +169,8 @@ class _SkiaDevice(Device):
     # -- 画笔 ---------------------------------------------------------------
 
     def _paint(self, gpar: Any, *, stroke: bool, use_col: bool = False) -> skia.Paint | None:
-        colour = gpar.col if (stroke or use_col) else gpar.fill
-        if colour is None:
+        value = gpar.col if (stroke or use_col) else gpar.fill
+        if value is None:
             return None
         # `lwd = 0` 在 R / svglite 里是「不画线」（`stroke-width: 0` 在 SVG 里
         # 同样是零宽 = 不描边），但 skia 的 `setStrokeWidth(0)` 是 **hairline**，
@@ -157,7 +178,12 @@ class _SkiaDevice(Device):
         # 不跳过的话点会比参考图大一圈（M2-12 的两腿对拍抓到 1 pt 包围盒差）。
         if stroke and gpar.lwd <= 0:
             return None
-        red, green, blue, alpha = colour
+        if not isinstance(value, tuple):
+            # 渐变 / 图案填充（SIL-751）。`col` 仍只有纯色。
+            if stroke or use_col:
+                raise DeviceError(f"渐变 / 图案只支持填充：{type(value).__name__} 不能当描边色")
+            return self._gradient_paint(value, gpar.alpha)
+        red, green, blue, alpha = value
         paint = skia.Paint(AntiAlias=True)
         paint.setColor(skia.ColorSetARGB(round(alpha * gpar.alpha), red, green, blue))
         if stroke:
@@ -176,12 +202,121 @@ class _SkiaDevice(Device):
             paint.setStyle(skia.Paint.kFill_Style)
         return paint
 
+    def _gradient_paint(self, fill: Any, alpha: float) -> skia.Paint:
+        """渐变 → skia shader 画笔。
+
+        坐标是**节点局部坐标**（IR 的 `gpar.fill` 已经是解析后的几何），
+        skia 的 shader 按画布当前的 CTM 求值，所以和几何共用同一套变换；
+        `extend` 直接映射成 tile mode（pad/repeat/reflect ↔ clamp/repeat/mirror）。
+        `gpar.alpha` 乘在整支画笔上（每档色标的 alpha 已经在颜色里）。
+        """
+        if not isinstance(fill, (LinearGradient, RadialGradient)):
+            raise DeviceError(f"{type(fill).__name__} 不是渐变")
+        colours = [
+            skia.ColorSetARGB(stop.colour[3], stop.colour[0], stop.colour[1], stop.colour[2])
+            for stop in fill.stops
+        ]
+        positions = [stop.offset for stop in fill.stops]
+        mode = _EXTENDS[fill.extend]
+        if isinstance(fill, LinearGradient):
+            shader = skia.GradientShader.MakeLinear(
+                points=[skia.Point(*fill.start), skia.Point(*fill.end)],
+                colors=colours,
+                positions=positions,
+                mode=mode,
+            )
+        elif fill.focal is None:
+            shader = skia.GradientShader.MakeRadial(
+                center=skia.Point(*fill.center),
+                radius=fill.radius,
+                colors=colours,
+                positions=positions,
+                mode=mode,
+            )
+        else:
+            fx, fy, fr = fill.focal
+            shader = skia.GradientShader.MakeTwoPointConical(
+                start=skia.Point(fx, fy),
+                startRadius=fr,
+                end=skia.Point(*fill.center),
+                endRadius=fill.radius,
+                colors=colours,
+                positions=positions,
+                mode=mode,
+            )
+        if shader is None:  # pragma: no cover - 参数非法时 skia 才返回空
+            raise DeviceError(f"skia 造不出渐变 shader：{fill!r}")
+        paint = skia.Paint(AntiAlias=True)
+        paint.setShader(shader)
+        paint.setAlphaf(float(alpha))
+        paint.setStyle(skia.Paint.kFill_Style)
+        return paint
+
+    # -- 图案 ---------------------------------------------------------------
+
+    def _tile_path(self, path: skia.Path, fill: TilePattern, alpha: float) -> None:
+        """把图案铺进一条路径：逐 tile 裁剪 + 平移画内容（矢量，不落位图）。
+
+        SVG 的 `<pattern>` 语义（`patternUnits = patternContentUnits =
+        userSpaceOnUse`）：内容按**节点局部坐标**画一次，窗口 `[origin,
+        origin + size)` 截出来的部分按 tile 周期重复。所以第 `(i, j)` 块 =
+        内容平移 `(i·w, j·h)`、裁到窗口平移后的同一位移。
+        """
+        assert self.canvas is not None
+        if fill.extend is not Extend.REPEAT:
+            raise DeviceError(
+                f"图案只支持 extend=repeat，收到 {fill.extend.value}；"
+                "pad / reflect 对平铺没有两端渲染器一致的语义"
+            )
+        bounds = path.getBounds()
+        if bounds.isEmpty():
+            return
+        origin_x, origin_y = fill.origin
+        width, height = fill.size
+        left = math.floor((bounds.left() - origin_x) / width)
+        right = math.ceil((bounds.right() - origin_x) / width)
+        top = math.floor((bounds.top() - origin_y) / height)
+        bottom = math.ceil((bounds.bottom() - origin_y) / height)
+        columns = max(1, right - left)
+        rows = max(1, bottom - top)
+        if columns * rows > MAX_PATTERN_TILES:
+            raise DeviceError(
+                f"图案要铺 {columns * rows} 块 tile（上限 {MAX_PATTERN_TILES}）："
+                f"tile 尺寸 {width!r} × {height!r} 太小或覆盖范围太大"
+            )
+        content = tuple(
+            replace(item, gpar=replace(item.gpar, alpha=item.gpar.alpha * float(alpha)))
+            for item in fill.content
+        )
+        self.canvas.save()
+        self.canvas.clipPath(path, doAntiAlias=True)
+        for row in range(top, top + rows):
+            for column in range(left, left + columns):
+                shift_x = origin_x + column * width
+                shift_y = origin_y + row * height
+                self.canvas.save()
+                self.canvas.clipRect(
+                    skia.Rect.MakeLTRB(shift_x, shift_y, shift_x + width, shift_y + height)
+                )
+                self.canvas.translate(column * width, row * height)
+                for item in content:
+                    self._paint_node(item)
+                self.canvas.restore()
+        self.canvas.restore()
+
+    def _fill_path(self, path: skia.Path, gpar: Any) -> None:
+        """填充一条路径：图案走平铺，其余（纯色 / 渐变）走画笔。"""
+        if isinstance(gpar.fill, TilePattern):
+            self._tile_path(path, gpar.fill, gpar.alpha)
+            return
+        paint = self._paint(gpar, stroke=False)
+        if paint is not None:
+            self.canvas.drawPath(path, paint)
+
     def _stroke_and_fill(self, node: Any, path: skia.Path, *, fill: bool = True) -> None:
         assert self.canvas is not None
         if fill:
-            paint = self._paint(node.gpar, stroke=False)
-            if paint is not None:
-                self.canvas.drawPath(path, paint)
+            self._fill_path(path, node.gpar)
         stroke = self._paint(node.gpar, stroke=True)
         if stroke is not None:
             self.canvas.drawPath(path, stroke)
@@ -243,23 +378,35 @@ class _SkiaDevice(Device):
 
     def _draw_rect(self, node: Any) -> None:
         assert self.canvas is not None
+        tiled = isinstance(node.gpar.fill, TilePattern)
         for x0, y0, x1, y1 in node.bufs["rect"]:
             left, right = sorted((float(x0), float(x1)))
             top, bottom = sorted((float(y0), float(y1)))
             rect = skia.Rect.MakeLTRB(left, top, right, bottom)
-            fill = self._paint(node.gpar, stroke=False)
-            if fill is not None:
-                self.canvas.drawRect(rect, fill)
+            if tiled:
+                path = skia.Path()
+                path.addRect(rect)
+                self._tile_path(path, node.gpar.fill, node.gpar.alpha)
+            else:
+                fill = self._paint(node.gpar, stroke=False)
+                if fill is not None:
+                    self.canvas.drawRect(rect, fill)
             stroke = self._paint(node.gpar, stroke=True)
             if stroke is not None:
                 self.canvas.drawRect(rect, stroke)
 
     def _draw_circle(self, node: Any) -> None:
         assert self.canvas is not None
+        tiled = isinstance(node.gpar.fill, TilePattern)
         for cx, cy, radius in node.bufs["circle"]:
-            fill = self._paint(node.gpar, stroke=False)
-            if fill is not None:
-                self.canvas.drawCircle(float(cx), float(cy), float(radius), fill)
+            if tiled:
+                path = skia.Path()
+                path.addCircle(float(cx), float(cy), float(radius))
+                self._tile_path(path, node.gpar.fill, node.gpar.alpha)
+            else:
+                fill = self._paint(node.gpar, stroke=False)
+                if fill is not None:
+                    self.canvas.drawCircle(float(cx), float(cy), float(radius), fill)
             stroke = self._paint(node.gpar, stroke=True)
             if stroke is not None:
                 self.canvas.drawCircle(float(cx), float(cy), float(radius), stroke)
@@ -296,13 +443,14 @@ class _SkiaDevice(Device):
         assert self.canvas is not None
         pch = int(node.params["pch"])
         size = float(node.params["size"])
+        tiled = isinstance(node.gpar.fill, TilePattern)
         stroke = self._paint(node.gpar, stroke=True)
-        fill = self._paint(node.gpar, stroke=False)
+        fill = None if tiled else self._paint(node.gpar, stroke=False)
         col_fill = self._paint(node.gpar, stroke=False, use_col=True)
         # 三者都得看：实心 pch（15..19）的 gpar 里 `fill = None`、`col = 颜色`、
         # 且 `lwd = 0`（无描边），只判 fill / stroke 会把这些点整批画丢
         # （M2-12 的两腿对拍抓到：skia 侧整张图只剩白底）。
-        if stroke is None and fill is None and col_fill is None:
+        if stroke is None and fill is None and col_fill is None and not tiled:
             return
         text = character_pch(pch)
         if text is not None:
@@ -326,8 +474,11 @@ class _SkiaDevice(Device):
             self.canvas.translate(float(cx), float(cy))
             if shape.fill_col and col_fill is not None:
                 self.canvas.drawPath(shape.path, col_fill)
-            if shape.fill_gpar and fill is not None:
-                self.canvas.drawPath(shape.path, fill)
+            if shape.fill_gpar:
+                if tiled:
+                    self._tile_path(shape.path, node.gpar.fill, node.gpar.alpha)
+                elif fill is not None:
+                    self.canvas.drawPath(shape.path, fill)
             if shape.stroke and stroke is not None:
                 self.canvas.drawPath(shape.path, stroke)
             self.canvas.restore()

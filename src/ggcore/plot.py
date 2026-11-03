@@ -34,6 +34,9 @@ from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Guides, Labels, Scale, Theme
 from ggcore.coord import coord_munch as coord_munch
+from ggcore.fills import linear_gradient as linear_gradient
+from ggcore.fills import radial_gradient as radial_gradient
+from ggcore.fills import tile_pattern as tile_pattern
 from ggcore.layer import Layer, Position
 from ggcore.scales import scale_type as scale_type
 from ggcore.theme import merge_theme, theme_grey

@@ -18,6 +18,7 @@ from ggcore.geom.base import (
     POINT_PER_MM,
     GeomRenderer,
     alpha_colour,
+    fill_values,
     flip_data,
     lty_value,
     npc_values,
@@ -56,7 +57,7 @@ class SmoothRenderer(GeomRenderer):
         y = npc_values(panel, frame, "y", "y")
         groups = _group_key(frame)
         colours = _values(frame, "colour", "#3366FF")
-        fills = _values(frame, "fill", "grey60")
+        fills = fill_values(frame, build.params, "grey60")
         alpha = table_numeric(frame, "alpha", default=0.4)
         linewidth = table_numeric(frame, "linewidth", default=1.0)
         linetype = _values(frame, "linetype", 1)

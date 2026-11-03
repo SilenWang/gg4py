@@ -38,6 +38,7 @@ __all__ = [
     "GeomError",
     "GeomRenderer",
     "alpha_colour",
+    "fill_values",
     "flip_data",
     "flipped_names",
     "lty_value",
@@ -446,6 +447,24 @@ def lty_value(value: Any) -> Any:
             return "solid"
         return LTY_NAMES.get(int(value), "solid")
     return value
+
+
+def fill_values(data: Any, params: Any, default: Any) -> list[Any]:
+    """整层填充值：层参数是渐变 / 图案规格时整层用它，否则逐行读 `fill` 列。
+
+    渐变 / 图案是**一个对象**（不是逐行的标量），塞不进 `Column`（kind 里没有
+    object），所以 `build.finish()` 不把它写成列、留在 `build.params` 里，由这里
+    整层复用（SIL-751）。
+    """
+    spec = params.get("fill") if params is not None else None
+    if hasattr(type(spec), "resolve"):
+        return [spec] * data.nrows
+    if "fill" not in data:
+        return [default] * data.nrows
+    column = data.column("fill")
+    values = column.values.tolist()
+    mask = np.asarray(column.na_mask, dtype=bool).tolist()
+    return [_NA if missing else value for value, missing in zip(values, mask, strict=True)]
 
 
 def alpha_colour(colour: Any, alpha: Any) -> Any:

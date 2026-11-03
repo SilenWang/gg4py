@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -216,17 +217,90 @@ def _element_style(element: ET.Element, inherited: dict[str, str]) -> dict[str, 
     return style
 
 
+_URL_REF = re.compile(r"^url\(#(.+)\)$")
+
+
+def _local(tag: str) -> str:
+    return tag.replace(f"{{{SVG_NS}}}", "")
+
+
+def _painted_colours(element: ET.Element, inherited: dict[str, str]) -> set[tuple[str, str]]:
+    """一个元素（及其子树）按 SVG 缺省值解析后的涂色集合。"""
+    found: set[tuple[str, str]] = set()
+    style = _element_style(element, inherited)
+    if _local(element.tag) in _PAINTED:
+        group = float(style.get("opacity", "1") or 1)
+        for role, opacity_key in (("fill", "fill-opacity"), ("stroke", "stroke-opacity")):
+            colour = style.get(role, _DEFAULTS[role])
+            if colour == "none":
+                continue
+            alpha = group * float(style.get(opacity_key, "1") or 1)
+            found.add((colour, f"{round(alpha, 3):g}"))
+    for child in element:
+        found |= _painted_colours(child, style)
+    return found
+
+
+def _paint_definitions(
+    root: ET.Element,
+) -> tuple[dict[str, list[tuple[str, str]]], dict[str, set[tuple[str, str]]]]:
+    """`<defs>` 里的渐变 / 图案索引：`url(#id)` 引用要能翻译成具体颜色。
+
+    两条腿对同一份 IR 生成的 `<linearGradient id>` 名字不同（skia 是
+    `gradient_0`，查看器是 `ggv-fill-0`），所以**不能**拿 `url(#…)` 字符串当涂色
+    比；要按引用解到 stop 颜色 / 图案内容颜色上（SIL-751）。
+    """
+    gradients: dict[str, list[tuple[str, str]]] = {}
+    patterns: dict[str, set[tuple[str, str]]] = {}
+    for element in root.iter():
+        tag = _local(element.tag)
+        if tag in ("linearGradient", "radialGradient"):
+            stops: list[tuple[str, str]] = []
+            for stop in element:
+                if _local(stop.tag) != "stop":
+                    continue
+                colour = _norm_colour(stop.get("stop-color", "#000000"))
+                opacity = _norm_number(stop.get("stop-opacity", "1"))
+                stops.append((colour, opacity))
+            gradients[element.get("id", "")] = stops
+        elif tag == "pattern":
+            patterns[element.get("id", "")] = _painted_colours(element, dict(_DEFAULTS))
+    return gradients, patterns
+
+
 def normalised_palette(svg_path: Path) -> set[tuple[str, str]]:
     """SVG 里所有已绘制元素的最终涂色 `(颜色, 不透明度)`（集合）。
 
     不计重数是关键：同一份 IR，skia 把一行文字拆成 43 条字形路径，查看器是一
     条轮廓路径；同一涂色出现几次没有语义。
+
+    `fill: url(#…)` 按**定义**展开：渐变取每档 stop 的（颜色 × stop-opacity ×
+    元素 fill-opacity），图案取内容元素的涂色 × 元素 fill-opacity。这样两条腿
+    的 id 不一样也不影响比较，真正比的是「画到画布上的颜色与透明度」。
     """
     root = ET.parse(svg_path).getroot()
+    gradients, patterns = _paint_definitions(root)
     palette: set[tuple[str, str]] = set()
 
+    def add_paint(colour: str, alpha: float) -> None:
+        reference = _URL_REF.match(colour)
+        if reference is None:
+            palette.add((colour, f"{round(alpha, 3):g}"))
+            return
+        key = reference.group(1)
+        if key in gradients:
+            for stop_colour, stop_opacity in gradients[key]:
+                palette.add((stop_colour, f"{round(alpha * float(stop_opacity), 3):g}"))
+            return
+        if key in patterns:
+            for inner_colour, inner_alpha in patterns[key]:
+                palette.add((inner_colour, f"{round(alpha * float(inner_alpha), 3):g}"))
+            return
+        # 引用不到定义（例如 mask）：保留原样，让集合差自己报出来。
+        palette.add((colour, f"{round(alpha, 3):g}"))
+
     def walk(element: ET.Element, inherited: dict[str, str]) -> None:
-        tag = element.tag.replace(f"{{{SVG_NS}}}", "")
+        tag = _local(element.tag)
         if tag in ("defs", "clipPath", "linearGradient", "radialGradient", "pattern", "mask"):
             return
         style = _element_style(element, inherited)
@@ -237,7 +311,7 @@ def normalised_palette(svg_path: Path) -> set[tuple[str, str]]:
                 if colour == "none":
                     continue
                 alpha = group * float(style.get(opacity_key, "1") or 1)
-                palette.add((colour, f"{round(alpha, 3):g}"))
+                add_paint(colour, alpha)
         for child in element:
             walk(child, style)
 

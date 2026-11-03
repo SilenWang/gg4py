@@ -173,6 +173,9 @@ r-quantreg = ">=6.1,<7"
 # M2-12：查看器渲染器专项 case 的参考图（lty 全量 / pch 0..25 / alpha 合成）。
 # 独立脚本是刻意的：`refs:cases` 会重写全部历史 expected.svg，本组只新增。
 "refs:viewer-cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/viewer_cases_ref.R"
+# SIL-751：渐变 / 图案填充的 3 条 case（linear / radial / pattern）参考图。
+# 同样只**新增**，不重写历史 expected.svg。
+"refs:gradient-cases" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/gradient_cases_ref.R"
 # 文字度量对拍夹具（M1 文字测量）：逐行 stringWidth / stringHeight / 行距。
 "refs:text" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/text_ref.R"
 # M1-3 图层流水线夹具：16+ 张图的内置数据（列名 / 列序 / 类型 / 逐行值）。

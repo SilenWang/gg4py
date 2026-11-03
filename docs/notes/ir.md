@@ -125,6 +125,14 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
   故按资格 A 判 minor。若 v0.1 已有渲染端按子坐标读它、或仓库外有实现/发布物按
   语义读过它，这次就是 major。
+- **0.2 → 0.3 记账（判 minor，只加字段）**：新增 `gpar.fill` 的三种非纯色分支
+  （`linear` / `radial` / `pattern`，§6.1）。纯色的线格式**一个字节没动**（仍是
+  不带 `kind` 的 `[r, g, b, a]`），`GPAR_FIELDS` 的字段集合也没变——`fill` 只是从
+  「四元组或 null」扩成「四元组 / 三类带 `kind` 的映射 / null」的联合类型。旧
+  v0.2（与更早的 v0.1）文件里 `fill` 只可能是四元组，新读方照原样读，所以
+  `tests/test_ir_fill.py::test_v0_2_file_still_reads` / `::test_v0_2_file_without_fill_still_reads`
+  两个方向都钉住。反方向（新文件给旧读方）不承诺：旧读方遇到带 `kind` 的映射会
+  按「必须是四元组」报错——这正是「minor 只向前兼容」的边界。
 
 ## 4. 节点类型表
 
@@ -210,8 +218,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 
 | 字段 | 类型 | 缺省 | 说明 |
 | --- | --- | --- | --- |
-| `fill` | RGBA 整数元组 (0..255) 或 null | null | 不填充 |
-| `col` | RGBA 整数元组或 null | null | 不描边；`text` 的文字颜色也用 `col` |
+| `fill` | 纯色 RGBA 四元组 / 渐变或图案映射 / null | null | 不填充；三种非纯色分支见 §6.1 |
+| `col` | RGBA 整数元组或 null | null | 不描边；`text` 的文字颜色也用 `col`（**没有**渐变描边） |
 | `lwd` | float | 1.0 | pt |
 | `lty` | float 元组 | () | 已按 `lwd` 折算的 pt 段长；空 = 实线 |
 | `lineend` | "round" / "butt" / "square" | "round" | 对标 grid 缺省 |
@@ -225,6 +233,50 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - 缺省 = 什么都不画；`gpar` 键缺省与 `gpar: {}` 不同：前者表示“没有 gpar”，后者表示
   “gpar 全是缺省值”。解码保持这个区别。
 - 只有非缺省字段上线（canonical + 体积）。
+
+### 6.1 `fill` 的渐变与图案（v0.3）
+
+纯色还是 `[r, g, b, a]`；其余三种是带 `kind` 的映射。**色标写成一条 f4 `(n, 5)`
+缓冲**（`offset + r, g, b, a`），不是逐档的小映射——线格式与 `bufs` 里的缓冲对象
+同构（`{"dtype": "f4", "shape": [n, 5], "data": b"…"}`），所以体积是 20 B/档：
+
+```text
+"fill": {"kind": "linear",  "stops": <f4 (n,5)>, "start": [x1, y1], "end": [x2, y2],
+         "extend": "pad"}
+"fill": {"kind": "radial",  "stops": <f4 (n,5)>, "center": [cx, cy], "radius": r,
+         "focal": [fx, fy, fr], "extend": "pad"}        # focal 可缺省
+"fill": {"kind": "pattern", "content": [<节点>, …], "size": [w, h], "origin": [x, y],
+         "extend": "repeat"}
+```
+
+坐标口径（三条渲染腿共用一套）：
+
+- **全部在节点局部坐标里**，与几何同一个坐标系（不是页面坐标、不是子视口坐标）。
+  `viewport.transform` 会同时作用在几何与渐变 / 图案上，所以不需要第二套变换。
+- 写方的 `ggcore.fills` 用 grid 的 npc 口径：`npc` 是**被填充对象包围盒**的比例，
+  `pt` 是局部坐标直通。注意 npc 的 **y 向上**（npc 0 = 包围盒底边）、IR 的局部
+  坐标 y 向下，写 IR 时翻一次——`fill` 的分支里只有 y 位置翻，尺寸不翻。
+- 多行节点（一个 `rectGrob` 画三根柱子）只有**一整层包围盒**：R 也是这样解析的
+  （`geom_col()` 的三行共用一个多行 grob，svglite 写三条**坐标相同**的
+  `<linearGradient>`，实测见 `docs/cases/viewer-gradient-linear/expected.svg`）。
+- `pattern.content` 的原语用**与节点几何同一个局部坐标**（不是 tile 相对坐标）。
+  窗口是 `[origin, origin + size)`；第 `(i, j)` 块 = 内容 + `(i·w, j·h)`，裁到窗口。
+  这与 R `grid::pattern()`、SVG `patternContentUnits="userSpaceOnUse"` 一致。
+- `pattern` 的 tile 以写方的 `(x, y)` 为**中心**（grid `just = "centre"`），所以
+  `origin = 中心 − size/2`。
+- `stop.offset` 必须单调不减、`0..1`；颜色分量必须是 `0..255` 的整数；线性渐变的
+  两端点不能重合；`radial.radius > 0`，给 `focal` 时 `0 ≤ fr < radius`。这些都
+  在构造 / 解码时校验，渲染端不猜。
+- `pattern.content` 只收 `rect` / `circle` / `polygon` / `path` / `polyline` /
+  `lines` / `segments`，`gpar.fill` 只能是纯色——不允许在图案里再嵌渐变 / 图案。
+
+消费端缺口（**已知差异**，两条腿对拍的 case 只用 `extend = pad` 的普通渐变）：
+
+| 缺口 | 现状 | 影响 |
+| --- | --- | --- |
+| skia 的 SVG 序列化不写 `spreadMethod` | PNG / PDF 的 `extend` 正确；SVG 退化成 pad | `viewer:parity` 的渐变 case 只用 `pad`；`tests/test_skia_fill.py::test_gradient_extend_pad_and_repeat_differ_in_raster` 钉住栅格侧正确 |
+| skia 的 SVG 把 focal 渐变的 `fr` / `r` 写反 | `fr = endRadius`、`r = startRadius`，与 SVG 规范相反（规范要求 `fr < r`） | 含 `focal` 的 SVG 输出不可用；PNG / PDF 正确。`tests/test_skia_fill.py::test_radial_gradient_with_focal_point` 记录现状 |
+| 图案只支持 `extend = repeat` | `pad` / `reflect` 在 skia 侧显式 `DeviceError`，浏览器侧 `<pattern>` 本身只有平铺语义 | 写方 API 的缺省就是 `repeat` |
 
 ## 7. text：只带最终宽度与锚点
 
@@ -323,6 +375,24 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 - 所以“禁止逐元素 JSON”这条门禁（X1）站得住：不是为了 10× 的营销数字，而是 5× 起步、
   且是**唯一**能保住逐位精度的表示。314 份快照的规模下这个差值是几百 MB 的量级。
 
+### 10.1 渐变 / 图案的账（v0.3）
+
+色标是「一个小结构」而不是 bulk 数据，但仍然按缓冲写（一条 f4 `(n, 5)`，20 B/档），
+所以档数线性增长、没有逐档的映射开销。实测（`/tmp` 里的一次性脚本，同一条 fill 的
+CBOR 段 vs 逐档 JSON 文本；JSON 用 `{"offset":…,"colour":[…,…,…,…]}`）：
+
+| fill | CBOR 字节 | 逐档 JSON 字节 | 说明 |
+| --- | ---: | ---: | --- |
+| 纯色 `[r, g, b, a]` | 9 | — | 与 v0.2 完全一致（不含键名，键名由 gpar 映射承担） |
+| 2 档线性渐变 | 120 | 190 | 每多一档 +20 B |
+| 3 档线性渐变 | 140 | 237 | |
+| 10 档线性渐变 | 280 | 700+ | |
+| 3 档径向渐变 | 152 | 232 | 多一个 `radius` / 可选 `focal` |
+| 图案（1 个内容矩形） | 170 | — | 图案的体积由**内容节点**决定，不含位图 |
+
+结论：渐变不是体积风险，档数再多也只是 20 B/档；图案内容是普通 IR 节点（缓冲仍然是
+float32），不引入第二套坐标系，也不往 blob 表里塞位图。
+
 ## 11. 错误类型
 
 | 异常 | 何时 | 调用方怎么处理 |
@@ -336,7 +406,8 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 ## 12. 明确不做（留给后续 minor / major）
 
 - **箭头**（`arrow()`）：M0-6 落地真实箭头需求时按 minor 加 param，不预留空字段。
-- **渐变 / 图案笔刷**：`fill` 目前只有 RGBA；渐变要么进 gpar 的联合类型（minor），要么进 blob。
+- **渐变描边**：`col` 只有纯色；渐变 / 图案只做 `fill`（§6.1）。加渐变描边按 minor
+  扩 `col` 的联合类型，渲染端要各自补一条描边画笔。
 - **组级不透明度 / 混合模式**：`gtree` 在 v0 只是顺序容器。
 - **glyph run / 字体文件表**：如果 M0-8 的 PDF 需要“字体随 IR 走”，届时定 blob 里的字体约定；
   现在按 `font` key 两端各自解析。
@@ -357,7 +428,7 @@ M1-13 的浏览器查看器（`docs/notes/viewer.md`）只能在现有字段上�
 | 图例 level → 数据行 | 不做（点图例只隐藏图例组本身） | 同上，需要 level 到行的映射 |
 | `text.lineheight` / 非缺省行距 | 固定 grid 缺省 1.2（§7 已记 M1-b） | `text.lineheight`（minor） |
 | 字符型 `points.pch`（32..127 / 负数） | 只画 0..25 的几何符号；字符型不猜 | 要么写方先转 `<text>`，要么 IR 带字体引用 |
-| 渐变 / 图案笔刷 | 按 256 条细矩形画（M2 的实现缺口） | `fill` 的联合类型或 blob（§12 已记） |
+| 图案内嵌文字 / 位图 | 不支持（`pattern.content` 只收几何图元） | `pattern.content` 放开到 `text` / `raster`，并把字体 / blob 约定带进去 |
 
 查看器的逐项支持状态（支持 / 降级 / 不支持）见 `docs/notes/viewer.md` §10.1。
 

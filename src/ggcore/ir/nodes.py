@@ -15,6 +15,7 @@ IR 承载的是**已解析几何**：单位换算、gpar 继承、视口变换�
 from __future__ import annotations
 
 import hashlib
+import itertools
 import math
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -181,6 +182,215 @@ def _finite(value: Any, field_name: str) -> float:
     return number
 
 
+class FillKind(StrEnum):
+    """`gpar.fill` 的联合类型：纯色不写 kind（线格式仍是 `[r, g, b, a]`）。"""
+
+    LINEAR = "linear"
+    RADIAL = "radial"
+    PATTERN = "pattern"
+
+
+class Extend(StrEnum):
+    """渐变 / 图案越出定义域时的行为（对标 SVG `spreadMethod` / grid `extend`）。"""
+
+    PAD = "pad"
+    REPEAT = "repeat"
+    REFLECT = "reflect"
+
+
+def _pair(value: Any, field_name: str) -> tuple[float, float]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence) or len(value) != 2:
+        raise IRValidationError(f"{field_name} 必须是两个数，收到 {value!r}")
+    first = _finite(value[0], field_name)
+    second = _finite(value[1], field_name)
+    return (first, second)
+
+
+@dataclass(frozen=True)
+class Stop:
+    """渐变的一个色标：`offset` 是 0..1 的位置，颜色是 8 位 RGBA。"""
+
+    offset: float
+    colour: Color
+
+    def __post_init__(self) -> None:
+        offset = _finite(self.offset, "stop.offset")
+        if not 0.0 <= offset <= 1.0:
+            raise IRValidationError(f"stop.offset 必须在 [0, 1]，收到 {offset!r}")
+        object.__setattr__(self, "offset", offset)
+        object.__setattr__(self, "colour", _colour(self.colour, "stop"))
+
+    def to_row(self) -> list[float]:
+        """写进 stops 缓冲的一行：offset + r, g, b, a。"""
+        red, green, blue, alpha = self.colour
+        return [self.offset, float(red), float(green), float(blue), float(alpha)]
+
+
+def _stops(value: Any) -> tuple[Stop, ...]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise IRValidationError(f"渐变至少要两个 Stop，收到 {value!r}")
+    stops = tuple(step if isinstance(step, Stop) else Stop(*step) for step in value)
+    if len(stops) < 2:
+        raise IRValidationError(f"渐变至少要两个色标，收到 {len(stops)} 个")
+    offsets = [stop.offset for stop in stops]
+    if any(later < earlier for earlier, later in itertools.pairwise(offsets)):
+        raise IRValidationError(f"stop.offset 必须单调不减，收到 {offsets!r}")
+    return stops
+
+
+@dataclass(frozen=True)
+class LinearGradient:
+    """线性渐变：`start`/`end` 是**节点局部坐标**（与几何同一个坐标系）的端点。
+
+    两端点重合时文件里没有任何可画的东西（SVG 会当成空画笔、skia 取最后一个
+    色标），两端渲染器会各说各话，所以构造期直接拒绝。
+    """
+
+    stops: tuple[Stop, ...]
+    start: tuple[float, float]
+    end: tuple[float, float]
+    extend: Extend = Extend.PAD
+    kind: FillKind = field(default=FillKind.LINEAR, init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "stops", _stops(self.stops))
+        start = _pair(self.start, "linear.start")
+        end = _pair(self.end, "linear.end")
+        object.__setattr__(self, "start", start)
+        object.__setattr__(self, "end", end)
+        if start == end:
+            raise IRValidationError(f"线性渐变的两端点不能重合，收到 {start!r}")
+        object.__setattr__(self, "extend", _extend(self.extend))
+
+
+@dataclass(frozen=True)
+class RadialGradient:
+    """径向渐变：`center`/`radius` 在节点局部坐标；`focal` 是可选焦点圆。
+
+    `radius > 0`；给 `focal` 时要求 `0 <= fr < radius`（焦点圆必须严格落在
+    外圈里，否则 SVG 的 `fr >= r` 是未定义行为）。
+    """
+
+    stops: tuple[Stop, ...]
+    center: tuple[float, float]
+    radius: float
+    focal: tuple[float, float, float] | None = None
+    extend: Extend = Extend.PAD
+    kind: FillKind = field(default=FillKind.RADIAL, init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "stops", _stops(self.stops))
+        object.__setattr__(self, "center", _pair(self.center, "radial.center"))
+        radius = _finite(self.radius, "radial.radius")
+        if radius <= 0:
+            raise IRValidationError(f"radial.radius 必须为正，收到 {radius!r}")
+        object.__setattr__(self, "radius", radius)
+        if self.focal is not None:
+            if (
+                isinstance(self.focal, (str, bytes))
+                or not isinstance(self.focal, Sequence)
+                or len(self.focal) != 3
+            ):
+                raise IRValidationError(f"radial.focal 必须是 (fx, fy, fr)，收到 {self.focal!r}")
+            fx = _finite(self.focal[0], "radial.focal")
+            fy = _finite(self.focal[1], "radial.focal")
+            fr = _finite(self.focal[2], "radial.focal")
+            if not 0.0 <= fr < radius:
+                raise IRValidationError(
+                    f"radial.focal 的半径必须在 [0, radius) 内，收到 fr={fr!r} / radius={radius!r}"
+                )
+            object.__setattr__(self, "focal", (fx, fy, fr))
+        object.__setattr__(self, "extend", _extend(self.extend))
+
+
+#: 图案 tile 里允许出现的内层原语：只用封闭/线状的小图元，不带文字与位图
+#: （图案里嵌文字要字体度量、嵌位图要么 blob 要么二次采样，都不属于这一版）。
+PATTERN_KINDS = frozenset(
+    {
+        NodeKind.RECT,
+        NodeKind.CIRCLE,
+        NodeKind.POLYGON,
+        NodeKind.PATH,
+        NodeKind.POLYLINE,
+        NodeKind.LINES,
+        NodeKind.SEGMENTS,
+    }
+)
+
+
+@dataclass(frozen=True)
+class TilePattern:
+    """平铺图案：`[origin, origin + size)` 是一个 tile 的窗口，`content` 是内容。
+
+    `content` 里的原语用**与节点几何同一个局部坐标系**（不是 tile 相对坐标）：
+    这跟 R `grid::pattern()` 与 SVG `patternContentUnits="userSpaceOnUse"` 的
+    口径一致——tile 窗口在世界里平移重复，内容不动，窗口里看到什么就画什么。
+    内容节点的 gpar.fill 只能是纯色，不允许再嵌一层图案。
+    """
+
+    content: tuple[Node, ...]
+    size: tuple[float, float]
+    origin: tuple[float, float]
+    extend: Extend = Extend.REPEAT
+    kind: FillKind = field(default=FillKind.PATTERN, init=False)
+
+    def __post_init__(self) -> None:
+        width, height = _pair(self.size, "pattern.size")
+        if width <= 0 or height <= 0:
+            raise IRValidationError(f"pattern.size 的两个分量都必须为正，收到 {self.size!r}")
+        object.__setattr__(self, "size", (width, height))
+        object.__setattr__(self, "origin", _pair(self.origin, "pattern.origin"))
+        object.__setattr__(self, "extend", _extend(self.extend))
+        if isinstance(self.content, (str, bytes)) or not isinstance(self.content, Sequence):
+            raise IRValidationError(f"pattern.content 必须是节点序列，收到 {self.content!r}")
+        content = tuple(self.content)
+        if not content:
+            raise IRValidationError("pattern.content 不能为空（空 tile 什么都画不出来）")
+        for item in content:
+            if not isinstance(item, Node):
+                raise IRValidationError(
+                    f"pattern.content 的每一项必须是 Node，收到 {type(item).__name__}"
+                )
+            if item.kind not in PATTERN_KINDS:
+                raise IRValidationError(
+                    f"pattern.content 不支持 {item.kind}；可选："
+                    + ", ".join(sorted(kind.value for kind in PATTERN_KINDS))
+                )
+            if item.children or item.texts:
+                raise IRValidationError(f"pattern.content 的 {item.kind} 不能带 children / texts")
+            if item.gpar is None:
+                raise IRValidationError(f"pattern.content 的 {item.kind} 必须带 gpar")
+            if isinstance(item.gpar.fill, (LinearGradient, RadialGradient, TilePattern)):
+                raise IRValidationError("pattern.content 里不能再嵌渐变 / 图案（只收纯色）")
+        object.__setattr__(self, "content", content)
+
+
+#: `gpar.fill` 的非纯色分支（线格式里带 `kind` 的映射就是这三种之一）。
+Fill = LinearGradient | RadialGradient | TilePattern
+
+
+def _extend(value: Any) -> Extend:
+    if isinstance(value, Extend):
+        return value
+    try:
+        return Extend(value)
+    except ValueError as exc:
+        allowed = ", ".join(member.value for member in Extend)
+        raise IRValidationError(f"extend 不认识 {value!r}，可选：{allowed}") from exc
+
+
+def _fill(value: Any, field_name: str) -> Color | Fill | None:
+    if value is None:
+        return None
+    if isinstance(value, (LinearGradient, RadialGradient, TilePattern)):
+        return value
+    if field_name == "fill" and hasattr(type(value), "resolve"):
+        # 写方内部的**待解析**规格（`ggcore.fills`）：坐标要等几何包围盒才知道。
+        # `Node` 构造期会拒绝它——落盘的节点必须是解析后的最终几何（§6.1）。
+        return value
+    return _colour(value, field_name)
+
+
 @dataclass(frozen=True)
 class Gpar:
     """一个节点的最终图形参数（继承已经在写 IR 之前算完）。
@@ -188,9 +398,12 @@ class Gpar:
     缺省值就是“什么都不画”：`col` / `fill` 为 None 表示不描边 / 不填充。颜色是
     8 位 RGBA（`col2rgb` 的舍入在写 IR 前完成）；`lwd` 单位 pt，虚线 `lty` 是
     已经按 `lwd` 折算好的 pt 段长（空元组 = 实线）。
+
+    `fill` 另收 :class:`LinearGradient` / :class:`RadialGradient` /
+    :class:`TilePattern`（SIL-751）；`col` 仍然只有纯色——渐变描边不在这一版。
     """
 
-    fill: Color | None = None
+    fill: Color | Fill | None = None
     col: Color | None = None
     lwd: float = 1.0
     lty: tuple[float, ...] = ()
@@ -201,7 +414,7 @@ class Gpar:
 
     def __post_init__(self) -> None:
         if self.fill is not None:
-            object.__setattr__(self, "fill", _colour(self.fill, "fill"))
+            object.__setattr__(self, "fill", _fill(self.fill, "fill"))
         if self.col is not None:
             object.__setattr__(self, "col", _colour(self.col, "col"))
         lwd = _finite(self.lwd, "gpar.lwd")
@@ -572,6 +785,11 @@ class Node:
 
         if self.gpar is not None and not isinstance(self.gpar, Gpar):
             raise IRValidationError(f"{kind}.gpar 必须是 Gpar，收到 {type(self.gpar).__name__}")
+        if self.gpar is not None and hasattr(type(self.gpar.fill), "resolve"):
+            raise IRValidationError(
+                f"{kind}.gpar.fill 还是待解析的规格（{type(self.gpar.fill).__name__}）；"
+                "写 IR 之前必须先按包围盒折成 LinearGradient / RadialGradient / TilePattern"
+            )
         if self.gpar is not None and not spec.gpar:
             raise IRValidationError(f"{kind} 是容器/空节点，不携带 gpar")
 

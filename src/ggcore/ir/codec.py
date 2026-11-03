@@ -38,17 +38,24 @@ from ggcore.ir.errors import IRDecodeError, IRValidationError, IRVersionError
 from ggcore.ir.nodes import (
     DEFAULT_MIME,
     DTYPE_WIRE,
+    F32,
     GPAR_FIELDS,
     NODE_SPECS,
     WIRE_DTYPES,
     Blob,
     BlobTable,
+    Extend,
+    FillKind,
     Gpar,
+    LinearGradient,
     LineEnd,
     LineJoin,
     Node,
     NodeKind,
+    RadialGradient,
     Scene,
+    Stop,
+    TilePattern,
 )
 
 #: 实际在跑的 CBOR 实现。CPython 用 `cbor2`（Rust 扩展）；Pyodide 的包索引里没有
@@ -65,7 +72,7 @@ except ImportError:  # pragma: no cover - 只有 Pyodide 走这里
     CBOR_BACKEND = "ggcore.ir._cbor"
 
 #: 当前写出的 IR 版本：(major, minor)。major 涨 = 不兼容，minor 涨 = 只加字段。
-IR_VERSION: tuple[int, int] = (0, 2)
+IR_VERSION: tuple[int, int] = (0, 3)
 IR_VERSION_STR = ".".join(str(part) for part in IR_VERSION)
 MAGIC = "ggir"
 
@@ -159,11 +166,58 @@ def _node_to_obj(node: Node) -> dict[str, Any]:
 
 
 def _to_wire(value: Any) -> Any:
+    if isinstance(value, (LinearGradient, RadialGradient, TilePattern)):
+        return _fill_to_wire(value)
     if isinstance(value, str):
         return str(value)
     if isinstance(value, tuple):
         return list(value)
     return value
+
+
+#: 每种非纯色 fill 的已知键（解码时用于“未知字段”口径）。
+_FILL_KEYS: Mapping[str, frozenset[str]] = {
+    FillKind.LINEAR.value: frozenset({"kind", "stops", "start", "end", "extend"}),
+    FillKind.RADIAL.value: frozenset({"kind", "stops", "center", "radius", "focal", "extend"}),
+    FillKind.PATTERN.value: frozenset({"kind", "content", "size", "origin", "extend"}),
+}
+
+
+def _stops_to_wire(stops: Sequence[Stop]) -> dict[str, Any]:
+    """色标写成一条 f4 (n, 5) 缓冲：offset + r, g, b, a（20 B/档）。"""
+    rows = np.array([stop.to_row() for stop in stops], dtype=np.float64)
+    data = np.ascontiguousarray(rows.astype(F32))
+    return {"dtype": "f4", "shape": list(data.shape), "data": data.tobytes()}
+
+
+def _fill_to_wire(fill: Any) -> dict[str, Any]:
+    if isinstance(fill, LinearGradient):
+        return {
+            "kind": fill.kind.value,
+            "stops": _stops_to_wire(fill.stops),
+            "start": list(fill.start),
+            "end": list(fill.end),
+            "extend": fill.extend.value,
+        }
+    if isinstance(fill, RadialGradient):
+        obj: dict[str, Any] = {
+            "kind": fill.kind.value,
+            "stops": _stops_to_wire(fill.stops),
+            "center": list(fill.center),
+            "radius": fill.radius,
+            "extend": fill.extend.value,
+        }
+        if fill.focal is not None:
+            obj["focal"] = list(fill.focal)
+        return obj
+    assert isinstance(fill, TilePattern)
+    return {
+        "kind": fill.kind.value,
+        "size": list(fill.size),
+        "origin": list(fill.origin),
+        "extend": fill.extend.value,
+        "content": [_node_to_obj(item) for item in fill.content],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +383,9 @@ def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool) -> Gpar:
     defaults = dict(GPAR_FIELDS)
     _reject_unknown_keys(raw, frozenset(defaults), where=path, what="字段", tolerant=tolerant)
     fields = {name: raw.get(name, default) for name, default in defaults.items()}
+    # `fill` 是联合类型：纯色仍是 4 元组，渐变 / 图案是带 `kind` 的映射（§6.1）。
+    if isinstance(fields["fill"], Mapping):
+        fields["fill"] = _fill_from_obj(fields["fill"], path=f"{path}.fill", tolerant=tolerant)
     for name, enum in (("lineend", LineEnd), ("linejoin", LineJoin)):
         value = fields[name]
         if isinstance(value, enum):
@@ -339,6 +396,93 @@ def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool) -> Gpar:
             raise IRDecodeError(f"{path}.{name} 不认识：{value!r}") from exc
     try:
         return Gpar(**fields)
+    except IRValidationError as exc:
+        raise IRDecodeError(f"{path}: {exc}") from exc
+
+
+def _extend_from_obj(raw: Any, *, path: str) -> Extend:
+    try:
+        return Extend("pad" if raw is None else raw)
+    except ValueError as exc:
+        allowed = ", ".join(member.value for member in Extend)
+        raise IRDecodeError(f"{path} 不认识：{raw!r}（可选 {allowed}）") from exc
+
+
+def _stops_from_obj(raw: Any, *, path: str, tolerant: bool) -> tuple[Stop, ...]:
+    """色标缓冲 → `Stop` 序列。列必须是 offset + r, g, b, a，颜色是整数。"""
+    arr = _buffer_from_obj(raw, path=path, tolerant=tolerant)
+    if arr.ndim != 2 or arr.shape[1] != 5:
+        raise IRDecodeError(f"{path} 必须是 (n, 5) 的 f4 缓冲，收到 shape={arr.shape}")
+    if arr.shape[0] < 2:
+        raise IRDecodeError(f"{path} 至少要两个色标，收到 {arr.shape[0]} 个")
+    stops: list[Stop] = []
+    for index, row in enumerate(arr):
+        offset = float(row[0])
+        if not 0.0 <= offset <= 1.0:
+            raise IRDecodeError(f"{path}[{index}].offset 必须在 [0, 1]，收到 {offset!r}")
+        channels: list[int] = []
+        for channel in row[1:]:
+            value = float(channel)
+            if not value.is_integer() or not 0.0 <= value <= 255.0:
+                raise IRDecodeError(
+                    f"{path}[{index}] 的颜色分量必须是 0..255 的整数，收到 {value!r}"
+                )
+            channels.append(int(value))
+        stops.append(Stop(offset, (channels[0], channels[1], channels[2], channels[3])))
+    return tuple(stops)
+
+
+def _fill_from_obj(raw: Any, *, path: str, tolerant: bool) -> LinearGradient | RadialGradient:
+    kind = raw.get("kind")
+    if not isinstance(kind, str) or kind not in _FILL_KEYS:
+        raise IRDecodeError(
+            f"{path}.kind 不认识：{kind!r}（可选 {sorted(_FILL_KEYS)}）；"
+            "纯色 fill 是不带 kind 的 4 元组"
+        )
+    _reject_unknown_keys(
+        raw, _FILL_KEYS[kind], where=f"{path}（{kind}）", what="字段", tolerant=tolerant
+    )
+    try:
+        if kind == FillKind.PATTERN.value:
+            content_raw = raw.get("content")
+            if isinstance(content_raw, (str, bytes)) or not isinstance(content_raw, Sequence):
+                raise IRDecodeError(f"{path}.content 必须是节点数组")
+            content = tuple(
+                _node_from_obj(item, tolerant=tolerant, path=f"{path}.content[{index}]")
+                for index, item in enumerate(content_raw)
+            )
+            return TilePattern(
+                content=content,
+                size=_pair(raw.get("size"), f"{path}.size"),
+                origin=_pair(raw.get("origin"), f"{path}.origin"),
+                extend=_extend_from_obj(raw.get("extend"), path=f"{path}.extend"),
+            )
+        stops = _stops_from_obj(raw.get("stops"), path=f"{path}.stops", tolerant=tolerant)
+        extend = _extend_from_obj(raw.get("extend"), path=f"{path}.extend")
+        if kind == FillKind.LINEAR.value:
+            return LinearGradient(
+                stops=stops,
+                start=_pair(raw.get("start"), f"{path}.start"),
+                end=_pair(raw.get("end"), f"{path}.end"),
+                extend=extend,
+            )
+        focal_raw = raw.get("focal")
+        focal = None
+        if focal_raw is not None:
+            if (
+                isinstance(focal_raw, (str, bytes))
+                or not isinstance(focal_raw, Sequence)
+                or len(focal_raw) != 3
+            ):
+                raise IRDecodeError(f"{path}.focal 必须是三个数（fx, fy, fr），收到 {focal_raw!r}")
+            focal = tuple(_number(value, f"{path}.focal") for value in focal_raw)
+        return RadialGradient(
+            stops=stops,
+            center=_pair(raw.get("center"), f"{path}.center"),
+            radius=_number(raw.get("radius"), f"{path}.radius"),
+            focal=focal,
+            extend=extend,
+        )
     except IRValidationError as exc:
         raise IRDecodeError(f"{path}: {exc}") from exc
 

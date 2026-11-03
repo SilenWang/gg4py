@@ -226,6 +226,10 @@ def _check_number(name: str, value: Any) -> None:
 def _check_colour(name: str, value: Any) -> None:
     if value is None or value is NA:
         return
+    if name == "fill" and hasattr(type(value), "resolve"):
+        # 渐变 / 图案的待解析规格（`ggcore.fills`，SIL-751）。只收 fill：
+        # 渐变描边这一版没有（`docs/notes/ir.md` §6.1）。
+        return
     if not isinstance(value, str):
         raise ThemeError(f"{name} 必须是颜色名或 #RRGGBB，得到 {type(value).__name__}")
 
@@ -884,9 +888,13 @@ def _combine(child: Any, parent: Any) -> Any:
     return replace(child, **updates)
 
 
-def _canonical_colour(value: Any) -> str | None:
+def _canonical_colour(value: Any) -> Any:
     if value is None or value is NA:
         return None
+    if hasattr(type(value), "resolve"):
+        # 渐变 / 图案的待解析规格（`ggcore.fills`）：不是颜色字符串，原样留着，
+        # 由写 IR 的一方按包围盒解析（SIL-751）。
+        return value
     try:
         red, green, blue, alpha = parse_colour(value)
     except GrobError as error:
