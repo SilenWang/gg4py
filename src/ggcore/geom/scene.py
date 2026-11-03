@@ -48,6 +48,14 @@ from ggcore.axis import (
     paint,
     text_line_cm,
 )
+from ggcore.axis_guide import (
+    axis_guide_extent,
+    axis_guide_grobs,
+    axis_guide_ticks,
+    axis_line_range,
+    guide_for,
+    polar_axis_grobs,
+)
 from ggcore.build import LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
 from ggcore.data import ColumnTable
@@ -420,9 +428,33 @@ def plot_layout(
             _panel_scale(build, panel, params.scale_key("bottom")), params, "bottom"
         )
         ticks_y = axis_ticks(_panel_scale(build, panel, params.scale_key("left")), params, "left")
+        guide_x = guide_for(build, "x")
+        guide_y = guide_for(build, "y")
         if params.polar is None:
-            x_axis = max(x_axis, axis_extent(theme, ticks_x, metrics=metrics))
-        y_axis = max(y_axis, axis_extent(theme, ticks_y, metrics=metrics))
+            guide_ticks_x = axis_guide_ticks(
+                _panel_scale(build, panel, params.scale_key("bottom")),
+                params,
+                "bottom",
+                guide_x,
+                theme,
+                base=ticks_x,
+            )
+            x_axis = max(
+                x_axis,
+                axis_guide_extent(theme, guide_ticks_x, guide_x, side="bottom", metrics=metrics),
+            )
+        guide_ticks_y = axis_guide_ticks(
+            _panel_scale(build, panel, params.scale_key("left")),
+            params,
+            "left",
+            guide_y,
+            theme,
+            base=ticks_y,
+        )
+        y_axis = max(
+            y_axis,
+            axis_guide_extent(theme, guide_ticks_y, guide_y, side="left", metrics=metrics),
+        )
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
         right_scale = _panel_scale(build, panel, params.scale_key("right"))
         if top_scale is not None and getattr(top_scale, "secondary_axis", None) is not None:
@@ -1156,9 +1188,27 @@ def _axis_grobs(
         scale_right = _panel_scale(build, panel, params.scale_key("right"))
         ticks_x = axis_ticks(scale_bottom, params, "bottom")
         ticks_y = axis_ticks(scale_left, params, "left")
-        grobs.extend(axis_grobs(theme, ticks_x, cell, metrics=metrics, name=f"axis-x-{panel}"))
-        grobs.extend(axis_grobs(theme, ticks_y, cell, metrics=metrics, name=f"axis-y-{panel}"))
-        grobs.extend(_axis_line_grobs(theme, cell, name=f"axis-line-{panel}"))
+        guide_x = guide_for(build, "x")
+        guide_y = guide_for(build, "y")
+        gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
+        gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
+        grobs.extend(
+            axis_guide_grobs(theme, gx, cell, guide_x, metrics=metrics, name=f"axis-x-{panel}")
+        )
+        grobs.extend(
+            axis_guide_grobs(theme, gy, cell, guide_y, metrics=metrics, name=f"axis-y-{panel}")
+        )
+        grobs.extend(
+            _axis_line_grobs(
+                theme,
+                cell,
+                name=f"axis-line-{panel}",
+                ranges={
+                    "bottom": axis_line_range(guide_x, gx),
+                    "left": axis_line_range(guide_y, gy),
+                },
+            )
+        )
         # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推。
         if scale_top is not None and getattr(scale_top, "secondary_axis", None) is not None:
             grobs.extend(
@@ -1180,8 +1230,32 @@ def _axis_grobs(
                     name=f"axis-y-sec-{panel}",
                 )
             )
+        for annotation in getattr(build, "annotations", ()) or ():
+            from ggcore.annotations import logticks_grobs
+
+            grobs.extend(
+                logticks_grobs(
+                    annotation,
+                    params,
+                    cell,
+                    name=f"annotation-logticks-{panel}",
+                )
+            )
         if params.polar is not None:
-            grobs.extend(_polar_theta_grobs(build, panel, params, theme, cell, metrics))
+            from ggcore.axis_guide import guide_for as _guide_for
+
+            theta_scale = _panel_scale(build, panel, params.polar.theta_axis)
+            grobs.extend(
+                polar_axis_grobs(
+                    theta_scale,
+                    params,
+                    theme,
+                    cell,
+                    _guide_for(build, "theta"),
+                    metrics=metrics,
+                    name=f"axis-theta-{panel}",
+                )
+            )
     area = layout.panel_area
     if x_title:
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
@@ -1246,58 +1320,21 @@ def _axis_grobs(
     return grobs
 
 
-def _polar_theta_grobs(
-    build: PlotBuild,
-    panel: int,
-    params: PanelParams,
+def _axis_line_grobs(
     theme: ResolvedTheme,
     box: CellBox,
-    metrics: Any,
+    *,
+    name: str,
+    ranges: Mapping[str, tuple[float, float] | None] | None = None,
 ) -> list[Any]:
-    """极坐标的 theta 标签（画在面板里、半径 0.45 处，`hjust = vjust = 0.5`）。
+    """`axis.line.x` / `axis.line.y`；`ranges` 给 `cap=` 裁出的端点（npc 0..1）。
 
-    与 R `CoordPolar$render_fg()` 同口径：标签用 `axis.text.x` 的样式，位置
-    `0.45·sin/cos + 0.5`；首尾重合时上游已把文字合并成 `"a/b"`（见
-    `ggcore.axis.polar_theta_ticks`）。
+    R 的轴线是 guide 的 decor（`GuideAxis$extract_decor()`），`cap=` 会把它收到
+    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。
     """
-    from ggcore.axis import polar_theta_ticks
-
-    polar = params.polar
-    assert polar is not None
-    scale = _panel_scale(build, panel, polar.theta_axis)
-    entries = polar_theta_ticks(scale, params)
-    if not entries:
-        return []
-    from ggcore.axis import _text_element
-
-    element = _text_element(theme, "bottom")
-    if not isinstance(element, ElementText):
-        return []
-    gp = gpar(
-        col=paint(element.colour) or "black",
-        fontsize=float(element.size or 8.8),
-        fontfamily=element.family or "",
-        font=_font_int(element.face),
-        lineheight=float(element.lineheight or 1.2),
-    )
-    return [
-        text_grob(
-            text,
-            box.x_cm + x_npc * box.width_cm,
-            box.y_cm + y_npc * box.height_cm,
-            hjust=0.5,
-            vjust=0.5,
-            default_units="cm",
-            gp=gp,
-            name=f"axis-theta-{panel}-{index}",
-        )
-        for index, (x_npc, y_npc, text) in enumerate(entries)
-    ]
-
-
-def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[Any]:
     from ggcore.grobs import segments_grob
 
+    ranges = ranges or {}
     grobs: list[Any] = []
     for side, element_name in (("bottom", "axis.line.x"), ("left", "axis.line.y")):
         element = theme.get(element_name)
@@ -1305,20 +1342,21 @@ def _axis_line_grobs(theme: ResolvedTheme, box: CellBox, *, name: str) -> list[A
         if colour is None:
             continue
         lwd = _mm_to_pt(getattr(element, "linewidth", None))
+        low, high = ranges.get(side) or (0.0, 1.0)
+        if high - low <= 1e-12:
+            continue
         if side == "bottom":
-            coords = (
-                [box.x_cm, box.x_cm + box.width_cm],
-                [box.y_cm, box.y_cm],
-            )
+            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm
+            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm
         else:
-            coords = (
-                [box.x_cm, box.x_cm],
-                [box.y_cm, box.y_cm + box.height_cm],
-            )
+            x0, y0 = box.x_cm, box.y_cm + low * box.height_cm
+            x1, y1 = box.x_cm, box.y_cm + high * box.height_cm
         grobs.append(
             segments_grob(
-                coords[0],
-                coords[1],
+                x0,
+                y0,
+                x1,
+                y1,
                 default_units="cm",
                 gp=gpar(col=colour, lwd=lwd),
                 name=f"{name}-{side}",

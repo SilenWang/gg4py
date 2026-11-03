@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-coloursteps", "colour-aes", "scale-gradient", "scale-limits"]
+ci = true
+title = "guide：guide_coloursteps"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "等宽分段色条 + show.limits。"

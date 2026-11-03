@@ -721,3 +721,115 @@ save_case("guide-legend-two", local({
     ) +
     fx(0, 1) + fy(0, 1) + theme_void()
 }))
+
+# --- guides 长尾（M2-S2 / SIL-739） ------------------------------------------
+
+# 色条全量参数：nbin=8 的 rectangles、标题在左、刻度 / 边框颜色、draw.ulim=FALSE。
+save_case("guide-colourbar-full", local({
+  df <- data.frame(
+    x = c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.25, 0.75),
+    y = c(0.20, 0.50, 0.35, 0.70, 0.45, 0.80, 0.60, 0.85, 0.15),
+    v = c(0.00, 0.12, 0.25, 0.38, 0.50, 0.62, 0.75, 0.88, 1.00)
+  )
+  ggplot(df, aes(x, y, colour = v)) +
+    geom_point(shape = 19, size = 3.2) +
+    guides(colour = guide_colourbar(nbin = 8, display = "rectangles", draw.ulim = FALSE)) +
+    theme_void() +
+    theme(
+      legend.title.position = "left",
+      legend.ticks = element_line(colour = "#3366CC"),
+      legend.frame = element_rect(colour = "#666666", linewidth = 0.5)
+    ) +
+    fx(0, 1) + fy(0, 1)
+}))
+
+# 渐变条：display = "gradient"（IR 没有渐变类型，仍是 15 条矩形）。
+save_case("guide-colourbar-gradient", local({
+  df <- data.frame(
+    x = c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.25, 0.75),
+    y = c(0.20, 0.50, 0.35, 0.70, 0.45, 0.80, 0.60, 0.85, 0.15),
+    v = c(0.00, 0.12, 0.25, 0.38, 0.50, 0.62, 0.75, 0.88, 1.00)
+  )
+  ggplot(df, aes(x, y, colour = v)) +
+    geom_point(shape = 19, size = 3.2) +
+    guides(colour = guide_colourbar(display = "gradient")) +
+    theme_void() + fx(0, 1) + fy(0, 1)
+}))
+
+# 分箱：5 个箱 + 边界标签（show.limits 显示两端）。
+save_case("guide-bins", local({
+  df <- data.frame(
+    x = c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.25, 0.75),
+    y = c(0.20, 0.50, 0.35, 0.70, 0.45, 0.80, 0.60, 0.85, 0.15),
+    v = c(0.00, 0.12, 0.25, 0.38, 0.50, 0.62, 0.75, 0.88, 1.00)
+  )
+  ggplot(df, aes(x, y, colour = v)) +
+    geom_point(shape = 19, size = 3.2) +
+    guides(colour = guide_bins(show.limits = TRUE)) +
+    theme_void() + fx(0, 1) + fy(0, 1)
+}))
+
+# 分箱 + reverse=TRUE：键格颜色 / 边界标签 / 刻度三者一起翻（R 的 1 - .value）。
+save_case("guide-bins-reverse", local({
+  df <- data.frame(
+    x = c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.25, 0.75),
+    y = c(0.20, 0.50, 0.35, 0.70, 0.45, 0.80, 0.60, 0.85, 0.15),
+    v = c(0.00, 0.12, 0.25, 0.38, 0.50, 0.62, 0.75, 0.88, 1.00)
+  )
+  ggplot(df, aes(x, y, colour = v)) +
+    geom_point(shape = 19, size = 3.2) +
+    guides(colour = guide_bins(reverse = TRUE, show.limits = TRUE)) +
+    theme_void() + fx(0, 1) + fy(0, 1)
+}))
+
+# 分段色条：等宽（even.steps）+ show.limits。
+save_case("guide-coloursteps", local({
+  df <- data.frame(
+    x = c(0.10, 0.20, 0.35, 0.50, 0.65, 0.80, 0.90, 0.25, 0.75),
+    y = c(0.20, 0.50, 0.35, 0.70, 0.45, 0.80, 0.60, 0.85, 0.15),
+    v = c(0.00, 0.12, 0.25, 0.38, 0.50, 0.62, 0.75, 0.88, 1.00)
+  )
+  ggplot(df, aes(x, y, colour = v)) +
+    geom_point(shape = 19, size = 3.2) +
+    guides(colour = guide_coloursteps(show.limits = TRUE)) +
+    theme_void() + fx(0, 1) + fy(0, 1)
+}))
+
+.x_axis <- c(1.5, 1.8, 2.2, 2.6, 3.0, 3.4, 3.8, 4.2, 4.6, 5.0, 5.3, 5.6)
+.y_axis <- c(26.0, 25.0, 24.5, 23.0, 22.5, 21.0, 20.5, 19.5, 18.0, 17.5, 16.5, 15.0)
+
+# 轴标签旋转 + 稀疏。
+save_case("guide-axis-angle", local({
+  df <- data.frame(x = .x_axis, y = .y_axis)
+  ggplot(df, aes(x, y)) + geom_point(shape = 19, size = 1.8) +
+    guides(x = guide_axis(angle = 45, check.overlap = TRUE))
+}))
+
+# 对数轴三档次刻度。
+save_case("guide-axis-logticks", local({
+  df <- data.frame(x = .x_axis, y = .y_axis)
+  ggplot(df, aes(x, y)) + geom_point(shape = 19, size = 1.8) +
+    scale_x_log10() + guides(x = guide_axis_logticks())
+}))
+
+# 两条轴叠放：普通轴 + 旋转 45° 的轴。
+save_case("guide-axis-stack", local({
+  df <- data.frame(x = .x_axis, y = .y_axis)
+  ggplot(df, aes(x, y)) + geom_point(shape = 19, size = 1.8) +
+    guides(x = guide_axis_stack(guide_axis(), guide_axis(angle = 45)))
+}))
+
+# 轴线 cap：`axis.line` 收到最外一根刻度（theme_classic 才画轴线）。
+save_case("guide-axis-cap", local({
+  df <- data.frame(x = .x_axis, y = .y_axis)
+  ggplot(df, aes(x, y)) + geom_point(shape = 19, size = 1.8) +
+    guides(x = guide_axis(cap = "both"), y = guide_axis(cap = "both")) +
+    theme(axis.line = element_line(colour = "black"))
+}))
+
+# 标注对数刻度（面板内），与轴联动。
+save_case("annotation-logticks", local({
+  df <- data.frame(x = .x_axis, y = .y_axis)
+  ggplot(df, aes(x, y)) + geom_point(shape = 19, size = 1.8) +
+    scale_x_log10() + annotation_logticks(sides = "bl")
+}))

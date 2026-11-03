@@ -877,7 +877,7 @@ def test_sec_axis_is_accepted_and_validated() -> None:
 
 
 def test_other_unimplemented_scale_messages_are_intact() -> None:
-    """`guide_bins` 与 `geom_line(arrow=)` 的既有报错文案没被这次改动动到。"""
+    """`guide_bins` 的连续 / 离散错配与 `geom_line(arrow=)` 的报错文案。"""
     from ggcore import registry
     from ggcore.geom.line import LineRenderer
     from ggcore.theme import theme_void
@@ -896,9 +896,20 @@ def test_other_unimplemented_scale_messages_are_intact() -> None:
 
     from ggcore.guide import build_guides
 
-    base = ggplot(table, aes(x="x", y="y", colour="x")) + geom_point()
+    # M2-S2：分箱 guide 已实现，但仍然只服务连续色标——离散标度要点名报错。
+    discrete = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 2.0]))),
+            ("y", Column("float", np.array([1.0, 2.0]))),
+            (
+                "g",
+                Column("categorical", np.array([0, 1], dtype=np.int32), levels=("a", "b")),
+            ),
+        ]
+    )
+    base = ggplot(discrete, aes(x="x", y="y", colour="g")) + geom_point()
     with pytest.raises(Exception, match="guide_bins"):
-        build_guides(build_plot(base + registry.scale_colour_continuous(guide="bins")))
+        build_guides(build_plot(base + registry.scale_colour_discrete(guide="bins")))
 
 
 # ---------------------------------------------------------------------------
