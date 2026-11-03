@@ -1,0 +1,7 @@
+family = "theme"
+features = ["aes-mapping", "theme-complete", "scale-limits"]
+ci = true
+title = "theme：theme_bw 完整主题"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.026 }
+notes = "M2-5 主题切换：与 theme-grey-basic 同一份数据/几何，只把主题换成 theme_bw()。图级 2.48% / 均值 0.22%：面板边框（#333，0.5mm）与浅灰网格在半像素上的抗锯齿差，几何差来自已知的字体度量（SIL-715 条目 6），不是主题数值错。阈值按实测放宽到 2.6%。"

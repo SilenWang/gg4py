@@ -36,7 +36,7 @@ from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
 from ggcore.coord import coord_munch as coord_munch
 from ggcore.layer import Layer, Position
 from ggcore.scales import scale_type as scale_type
-from ggcore.theme import merge_theme, theme_grey
+from ggcore.theme import merge_theme, theme_get
 
 __all__: list[str] = []
 
@@ -73,9 +73,10 @@ class ggplot:
         self.layers: list[Layer] = list(layers) if layers is not None else []
         self.scales: dict[str, Scale] = dict(scales) if scales is not None else {}
         self.guides: dict[str, Guide] = dict(guides) if guides is not None else {}
-        # ggplot2 的默认主题是 theme_grey()；`p + theme_void()` 这类完整主题
-        # 整份替换它（merge_theme 的语义），局部 theme() 只合并元素。
-        self.theme: Theme = theme if theme is not None else theme_grey()
+        # 默认主题是 `theme_get()`（初值 theme_grey()；`theme_set()` 之后是新的
+        # 全局默认）。`p + theme_void()` 这类完整主题整份替换它（merge_theme
+        # 的语义），局部 theme() 只合并元素。
+        self.theme: Theme = theme if theme is not None else theme_get()
         self.coordinates: Coord = coordinates if coordinates is not None else Coord("cartesian")
         self.facet: Facet = facet if facet is not None else Facet("null")
         self.labels: dict[str, Any] = dict(frozen_mapping(labels)) if labels is not None else {}

@@ -11,6 +11,7 @@ import pytest
 from ggcore import plot
 from ggcore.components import Theme
 from ggcore.theme import (
+    NA,
     ElementBlank,
     ElementLine,
     ElementRect,
@@ -21,7 +22,10 @@ from ggcore.theme import (
     element_geom,
     element_line,
     element_point,
+    element_polygon,
+    element_rect,
     element_text,
+    margin,
     merge_theme,
     rel,
     resolve_theme,
@@ -31,7 +35,7 @@ from ggcore.theme import (
     theme_minimal,
     theme_void,
 )
-from ggcore.units import Unit
+from ggcore.units import Unit, unit
 
 
 def margin_pt(value) -> tuple[float | None, ...]:
@@ -374,3 +378,287 @@ def test_no_rel_survives_outside_the_whitelist() -> None:
         if site not in _REL_WHITELIST and not site[0].startswith("axis.minor.ticks.length")
     }
     assert leftovers == set()
+
+
+# ---------------------------------------------------------------------------
+# 元素字段：全字段类型校验与解析（M2-5）
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("factory", "kwargs", "field"),
+    [
+        (element_rect, {"linetype": 1.5}, "linetype"),
+        (element_rect, {"linetype": 7}, "linetype"),
+        (element_rect, {"linetype": "dotted-line"}, "linetype"),
+        (element_rect, {"linejoin": "miter"}, "linejoin"),
+        (element_rect, {"fill": 42}, "fill"),
+        (element_polygon, {"linetype": "wavy"}, "linetype"),
+        (element_polygon, {"linejoin": "sharp"}, "linejoin"),
+        (element_line, {"linetype": 9}, "linetype"),
+        (element_line, {"arrow": 1}, "arrow"),
+        (element_line, {"lineend": "rounding"}, "lineend"),
+        (element_text, {"family": 12}, "family"),
+        (element_text, {"debug": "yes"}, "debug"),
+        (element_text, {"face": "heavy"}, "face"),
+        (element_point, {"shape": 26}, "shape"),
+        (element_point, {"shape": "ab"}, "shape"),
+        (element_point, {"stroke": "thick"}, "stroke"),
+        (element_point, {"fill": ["red"]}, "fill"),
+        (element_geom, {"linetype": -1}, "linetype"),
+        (element_geom, {"bordertype": 8}, "bordertype"),
+        (element_geom, {"family": object()}, "family"),
+        (element_geom, {"pointshape": 30}, "pointshape"),
+    ],
+)
+def test_element_constructors_reject_wrongly_typed_fields(factory, kwargs, field) -> None:
+    with pytest.raises(ThemeError, match=field):
+        factory(**kwargs)
+
+
+def test_element_fields_accept_their_r_domains() -> None:
+    line = element_line(linetype="dotdash", lineend="butt", linejoin="round", arrow=True)
+    assert (line.linetype, line.lineend, line.linejoin, line.arrow) == (
+        "dotdash",
+        "butt",
+        "round",
+        True,
+    )
+    # R 的 8 位十六进制自定义虚线模式。
+    assert element_rect(linetype="#FF00FF00").linetype == "#FF00FF00"
+
+    point = element_point(shape=15, size=2.5, stroke=0.5, fill="red")
+    assert (point.shape, point.size, point.stroke, point.fill) == (15, 2.5, 0.5, "red")
+    assert element_point(shape="A").shape == "A"
+
+    geom = element_geom(linetype=1, bordertype="dashed", pointshape=19, family="sans")
+    assert (geom.linetype, geom.bordertype, geom.pointshape, geom.family) == (
+        1,
+        "dashed",
+        19,
+        "sans",
+    )
+
+
+def test_every_element_field_survives_resolution() -> None:
+    """解析后的元素保留构造时的每个字段（颜色规范化除外）。"""
+    resolved = resolve_theme(
+        merge_theme(
+            theme_grey(),
+            theme(
+                **{
+                    "panel.grid.major": element_line(
+                        colour="red", linewidth=1.25, linetype="longdash", lineend="square"
+                    ),
+                    "strip.background": element_rect(
+                        fill="grey90", colour="blue", linewidth=0.75, linetype="dotted"
+                    ),
+                    "panel.background": element_rect(fill="white", colour=NA, linejoin="mitre"),
+                    "axis.text": element_text(
+                        family="sans",
+                        face="bold",
+                        size=9,
+                        colour="black",
+                        hjust=1,
+                        vjust=0,
+                        angle=45,
+                        lineheight=1.1,
+                        debug=True,
+                    ),
+                    "point": element_point(
+                        colour="black", shape=17, size=2, fill="red", stroke=0.4
+                    ),
+                }
+            ),
+        )
+    )
+
+    grid = resolved["panel.grid.major"]
+    assert (grid.colour, grid.linewidth, grid.linetype, grid.lineend) == (
+        "#FF0000",
+        1.25,
+        "longdash",
+        "square",
+    )
+    strip = resolved["strip.background"]
+    assert (strip.fill, strip.colour, strip.linewidth, strip.linetype) == (
+        "#E5E5E5",
+        "#0000FF",
+        0.75,
+        "dotted",
+    )
+    panel = resolved["panel.background"]
+    assert (panel.fill, panel.colour, panel.linejoin) == ("#FFFFFF", None, "mitre")
+    text = resolved["axis.text"]
+    assert (
+        text.family,
+        text.face,
+        text.size,
+        text.hjust,
+        text.vjust,
+        text.angle,
+        text.lineheight,
+        text.debug,
+    ) == ("sans", "bold", 9, 1, 0, 45, 1.1, True)
+    point = resolved["point"]
+    assert (point.colour, point.shape, point.size, point.fill, point.stroke) == (
+        "#000000",
+        17,
+        2,
+        "#FF0000",
+        0.4,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 9 套主题、全局默认主题与 theme_sub_*（M2-5）
+# ---------------------------------------------------------------------------
+
+
+def test_theme_gray_is_an_alias_of_theme_grey() -> None:
+    from ggcore.theme import theme_gray
+
+    assert theme_gray is theme_grey
+    # `gray` 也是注册表里的独立入口，构造出同一份完整主题。
+    assert plot.theme_gray().elements == theme_grey().elements
+
+
+def test_theme_classic_draws_axis_lines_and_no_grid() -> None:
+    from ggcore.theme import theme_classic
+
+    resolved = resolve_theme(theme_classic())
+    assert resolved.is_blank("panel.grid.major")
+    assert resolved.is_blank("panel.border")
+
+    line = resolved["axis.line"]
+    assert isinstance(line, ElementLine)
+    assert (line.colour, line.lineend) == ("#000000", "square")
+    # 轴线子元素沿 `skip_blank` 语义跳过 blank 的 axis.line.x…（树里没有它们时）
+    # 也照样继承同一条线。
+    assert resolved["axis.line.x"].colour == "#000000"
+
+
+def test_theme_dark_and_light_differ_in_panel_fill() -> None:
+    from ggcore.theme import theme_dark, theme_light
+
+    dark = resolve_theme(theme_dark())
+    light = resolve_theme(theme_light())
+    assert dark["panel.background"].fill == "#7F7F7F"
+    assert light["panel.background"].fill == "#FFFFFF"
+    # dark 的网格是 mix(ink, paper, 0.42)，light 是 0.871。
+    assert dark["panel.grid.major"].colour == "#6B6B6B"
+    assert light["panel.grid.major"].colour == "#DEDEDE"
+
+
+def test_theme_test_and_linedraw_panel_border() -> None:
+    from ggcore.theme import theme_linedraw, theme_test
+
+    test = resolve_theme(theme_test())
+    assert test.is_blank("panel.grid.major")
+    assert isinstance(test["panel.border"], ElementRect)
+    assert test["panel.border"].colour == "#333333"
+
+    linedraw = resolve_theme(theme_linedraw())
+    assert linedraw["panel.border"].colour == "#000000"
+    assert linedraw["panel.grid.major"].colour == "#000000"
+    assert linedraw["strip.background"].fill == "#000000"
+    assert linedraw["strip.text"].colour == "#FFFFFF"
+
+
+@pytest.fixture
+def keep_default_theme():
+    """还原全局默认主题：`theme_set()` 是模块级状态，测试之间不能泄漏。"""
+    from ggcore.theme import theme_get, theme_set
+
+    previous = theme_get()
+    try:
+        yield
+    finally:
+        theme_set(previous)
+
+
+def test_theme_set_get_update_replace(keep_default_theme) -> None:
+    from ggcore.theme import (
+        theme_get,
+        theme_replace,
+        theme_set,
+        theme_update,
+    )
+
+    assert theme_get().name == "grey"
+
+    old = theme_set(plot.theme_dark())
+    assert old.name == "grey"
+    assert theme_get().name == "dark"
+    # 新建的图跟着全局默认走。
+    p = plot.ggplot({"x": [1.0], "y": [2.0]})
+    assert p.theme.name == "dark"
+
+    # 无参 theme_set() 只读，不改。
+    assert theme_set().name == "dark"
+
+    previous = theme_update(**{"panel.background": element_rect(fill="red")})
+    assert previous.name == "dark"
+    updated = theme_get()
+    assert updated.name == "dark"
+    assert updated.complete is True
+    assert updated.elements["panel.background"].fill == "red"
+    # update 是逐元素合并：其余元素仍是 dark 的。
+    assert resolve_theme(updated)["panel.grid.major"].colour == "#6B6B6B"
+
+    theme_replace(**{"panel.grid.major": element_line(colour="blue")})
+    replaced = theme_get()
+    assert replaced.elements["panel.grid.major"].colour == "blue"
+    # replace 整份换掉该元素（linewidth 回落到父元素 line，而不是 dark 的 rel(0.5)）。
+    assert replaced.elements["panel.grid.major"].linewidth is None
+    resolved = resolve_theme(replaced)
+    assert resolved["panel.grid.major"].linewidth == 0.5
+
+
+def test_theme_set_rejects_partial_and_non_theme(keep_default_theme) -> None:
+    from ggcore.theme import theme_set
+
+    with pytest.raises(ThemeError, match="完整主题"):
+        theme_set(theme(**{"panel.background": element_rect(fill="red")}))
+    with pytest.raises(TypeError, match="Theme"):
+        theme_set("theme_dark")
+
+
+def test_theme_sub_axis_maps_parameters_to_prefixed_elements() -> None:
+    from ggcore.theme import (
+        theme_sub_axis,
+        theme_sub_axis_bottom,
+        theme_sub_legend,
+        theme_sub_strip,
+    )
+
+    axis = theme_sub_axis(text=element_text(size=9), ticks_length=unit(3, "pt"))
+    assert set(axis.elements) == {"axis.text", "axis.ticks.length"}
+
+    bottom = theme_sub_axis_bottom(minor_ticks=element_blank(), ticks_length=unit(4, "pt"))
+    assert set(bottom.elements) == {
+        "axis.minor.ticks.x.bottom",
+        "axis.ticks.length.x.bottom",
+    }
+
+    legend = theme_sub_legend(key_size=unit(2, "cm"), box_margin=margin(1))
+    assert set(legend.elements) == {"legend.key.size", "legend.box.margin"}
+
+    strip = theme_sub_strip(text_x_top=element_text(angle=20), switch_pad_wrap=unit(1, "pt"))
+    assert set(strip.elements) == {"strip.text.x.top", "strip.switch.pad.wrap"}
+
+
+def test_theme_sub_unknown_argument_is_a_type_error() -> None:
+    from ggcore.theme import theme_sub_panel
+
+    with pytest.raises(TypeError):
+        theme_sub_panel(panell=element_blank())
+
+
+def test_theme_sub_none_deletes_the_element() -> None:
+    from ggcore.theme import theme_sub_panel
+
+    merged = merge_theme(theme_grey(), theme_sub_panel(background=None))
+    assert merged.elements["panel.background"] is None
+    # 删除后回落到父元素 rect（白底黑边）。
+    assert resolve_theme(merged)["panel.background"].fill == "#FFFFFF"
