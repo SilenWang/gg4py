@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-flip", "orientation-horizontal"]
+ci = true
+title = "coord_flip：横向柱（flip × 柱）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.005 }
+notes = "柱是 rectGrob；flip 只换映射与面板范围，geom 里没有 coord 名字判断。"

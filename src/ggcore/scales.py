@@ -799,6 +799,17 @@ class ScaleBase:
         self.aesthetic = aesthetic
         self.params: Mapping[str, Any] = MappingProxyType(dict(params or {}))
         self._trained = False
+        from ggcore.axis import SecondaryAxis
+
+        secondary = self._param("sec.axis")
+        if secondary is not None and not isinstance(secondary, SecondaryAxis):
+            raise ScaleError(f"sec.axis 必须是 sec_axis() / dup_axis() 的结果，收到 {secondary!r}")
+        self._secondary_axis = secondary
+
+    @property
+    def secondary_axis(self) -> Any:
+        """`scale_*(sec.axis = sec_axis(...))` 的第二条轴（没有就是 None）。"""
+        return self._secondary_axis
 
     # -- 参数读取 ---------------------------------------------------------
 
@@ -957,9 +968,11 @@ class ContinuousScale(ScaleBase):
         value = self._param("n_breaks")
         return None if value is None else int(value)
 
-    def _raw_breaks(self) -> tuple[float, ...]:
+    def _raw_breaks(self, limits: Any = None) -> tuple[float, ...]:
         # 位置标度用 expand 后的范围（面板 / guide 看到的那一套），其余用 limits。
-        limits = self.expanded_limits() or self.limits()
+        # `limits` 显式给定时按它算（上游 `Scale$break_info(range)` 的入口，
+        # coord limits / coord_trans 的断点走这条路）。
+        limits = self.expanded_limits() or self.limits() if limits is None else tuple(limits)
         # 上游先把 domain 变换到当前空间，再 squish 到 domain（见 get_breaks()）。
         transformed_domain, _ = self.transform_.transform(
             np.asarray(self.transform_.domain, dtype=np.float64)
@@ -996,13 +1009,35 @@ class ContinuousScale(ScaleBase):
     def breaks(self) -> tuple[float | None, ...]:
         """面板断点（变换后的空间）；越界项是 `None`（R 的 `NA`）。"""
         low, high = sorted(self.expanded_limits() or self.limits())
+        return self.breaks_in(low, high)
+
+    def breaks_in(self, low: float, high: float) -> tuple[float | None, ...]:
+        """给定范围内（**标度空间**）的断点；越界项 `None`（R `break_info(range)`）。
+
+        `coord_cartesian(xlim=)` / `coord_trans()` 的断点要用面板自己的
+        `continuous_range`，不是标度自己的 limits：R 的 `view_scales_from_scale()`
+        把面板范围喂给 `scale$break_info()`。SIL-729 的
+        `log10_scale_limits_coord`（1/3/10 而不是 1/10/100）钉住这条。
+        """
+        low, high = sorted((float(low), float(high)))
         out: list[float | None] = []
-        for value in self._raw_breaks():
+        for value in self._raw_breaks((low, high)):
             if not math.isfinite(value) or value < low or value > high:
                 out.append(None)
             else:
                 out.append(float(value))
         return tuple(out)
+
+    def labels_in(self, breaks: Sequence[float | None]) -> tuple[str | None, ...]:
+        """给定断点的标签（与 :meth:`breaks_in` 配套；R `get_labels(breaks)`）。"""
+        requested = self._param("labels")
+        if requested is not None:
+            return _apply_labels(requested, breaks, inverse=self.transform_.inverse)
+        data_values = [
+            None if value is None else float(self.transform_.inverse(np.array([value]))[0])
+            for value in breaks
+        ]
+        return tuple(format_numbers(data_values))
 
     def minor_breaks(self) -> tuple[float, ...]:
         """次断点 = 相邻主断点的中点（R 的 `regular_minor_breaks()`，n = 2）。
@@ -1034,15 +1069,7 @@ class ContinuousScale(ScaleBase):
         return tuple(value for value in midpoints if low <= value <= high)
 
     def labels(self) -> tuple[str | None, ...]:
-        breaks = self.breaks()
-        requested = self._param("labels")
-        if requested is not None:
-            return _apply_labels(requested, breaks, inverse=self.transform_.inverse)
-        data_values = [
-            None if value is None else float(self.transform_.inverse(np.array([value]))[0])
-            for value in breaks
-        ]
-        return tuple(format_numbers(data_values))
+        return self.labels_in(self.breaks())
 
     # -- 映射 -------------------------------------------------------------
 
@@ -1429,24 +1456,31 @@ def _apply_labels(
 # 组件 → 实现
 # ---------------------------------------------------------------------------
 
-#: 标度参数里没有实现的项：点名报错，不静默忽略。R 的 `sec.axis` 接受
-#: `sec_axis(~ . * 2)` / `dup_axis()`，要第二条断点 / 标签轴与绘制；M1 只做主轴，
-#: 所以这里和 `guide_bins` / `geom_line(arrow=)` 同一口径（明确报错、点名）。
-_UNIMPLEMENTED_SCALE_PARAMS: Mapping[str, str] = MappingProxyType(
-    {
-        "sec.axis": "secondary axis（`sec_axis()` / `dup_axis()`）",
-        "sec_axis": "secondary axis（`sec_axis()` / `dup_axis()`）",
-    }
-)
+#: 标度参数里没有实现的项：点名报错，不静默忽略。M2-1 起 `sec.axis` 已实现
+#: （`sec_axis()` / `dup_axis()`，见 `ggcore.axis`），这里只剩空表——保留入口
+#: 是为了后续标度任务继续往这里登记。
+_UNIMPLEMENTED_SCALE_PARAMS: Mapping[str, str] = MappingProxyType({})
 
 
 def reject_unimplemented_scale_params(name: str, params: Mapping[str, Any]) -> None:
-    """标度参数里的未实现项 → `ScaleError`（构造与解析两条路径都调用）。"""
+    """标度参数的校验（构造与解析两条路径都调用）。
+
+    现在只剩两件事：登记表里的未实现项（暂时为空）与 `sec.axis` 的类型检查
+    ——`sec_axis()` / `dup_axis()` 之外的值不能静默吞掉（M2-1）。
+    """
     for key, what in _UNIMPLEMENTED_SCALE_PARAMS.items():
         if key in params:
             raise ScaleError(
-                f"{name}({key} = ...) 未实现：{what} 需要第二条轴，"
-                "M1 只做主轴（见 docs/notes/guide.md「未实现」）"
+                f"{name}({key} = ...) 未实现：{what}（见 docs/notes/guide.md「未实现」）"
+            )
+    secondary = params.get("sec.axis", params.get("sec_axis"))
+    if secondary is not None:
+        from ggcore.axis import SecondaryAxis
+
+        if not isinstance(secondary, SecondaryAxis):
+            raise ScaleError(
+                f"{name}(sec.axis = ...) 必须是 sec_axis() / dup_axis() 的结果，"
+                f"收到 {secondary!r}（见 docs/notes/coord.md「次轴」）"
             )
 
 

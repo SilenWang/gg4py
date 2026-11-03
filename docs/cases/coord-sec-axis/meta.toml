@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-sec-axis"]
+ci = true
+title = "sec_axis：右侧次轴（~ . * 2）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "次轴画在 right 槽（与主轴 left 分开），标题旋转 +90；断点位置与 R 的 AxisSecondary$break_info() 逐项对拍。"

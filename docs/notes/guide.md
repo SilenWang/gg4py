@@ -193,7 +193,7 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
 | 能力 | 现状 |
 | --- | --- |
 | `guide_bins` / `guide_coloursteps` | 未注册；`guide_from_component()` 报 `GuideError` 并列出已实现的名字 |
-| secondary axis（`sec_axis()` / `dup_axis()`） | 明确报错：`scale_x_continuous(sec.axis = ...)`（`+` 与方法链两条入口）在构造时抛 `ScaleError`；`scale_from_component()` 解析时兜底。SIL-723 之前是静默忽略 |
+| secondary axis（`sec_axis()` / `dup_axis()`） | **M2-1 已实现**（`ggcore.axis.secondary_ticks()`，画在 top / right 槽）；极坐标下的 `r.sec` / `theta.sec` 仍报 `AxisError`，见 `docs/notes/coord.md` §12 |
 | `legend.position = "inside"` | `plot_layout()` 报 `GuideError`，点名「面板内定位未实现」 |
 | `legend.position = c(x, y)`（数值坐标） | 同上 |
 | 旋转的轴标签（`axis.text.*(angle != 0)`） | `axis_grobs()` 报 `AxisError`（锚点要照 R 的 `rotate_just()`，未做） |

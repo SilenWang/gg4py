@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-equal", "aes-mapping"]
+ci = true
+title = "coord_equal：面板高/宽 = y 跨度 / x 跨度"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "4×3 in 页面上面板按比例收成居中矩形（R 的 respect），与 coord_fixed(ratio = 1) 同值。"

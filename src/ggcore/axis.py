@@ -10,7 +10,10 @@
 - 轴文字的行高用 R `stringHeight` + descent 的 0.955em 口径
   （`TEXT_LINE_EM`，与 `ggcore.facet` 的 strip 同一常量），宽度走
   `Metrics.strwidth()`；没有度量时按 0.6em/字符估（`FALLBACK_CHAR_EM`）；
-- 只做主轴：`sec_axis()` 明确报错（见 docs/notes/guide.md「未实现」）。
+- 主轴 + 次轴（M2-1）：`scale_*(sec.axis = sec_axis(~ . * 2))` 的断点 / 标签
+  与上游 `AxisSecondary$break_info()` 逐步对齐（数值反演用 `np.interp`，等价于
+  R 的 `approx()`）；次轴画在 **top / right**（R 的 axis-t / axis-r 槽），主轴
+  仍只占 bottom / left，两层互不撑大对方。
 
 坐标约定：面板矩形是 cm、**y 向上**（与 grid 的 `subRegion()` 一致），所有
 轴 grob 都以页面 cm 坐标直接落位，不引入新的视口层级。
@@ -19,6 +22,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -37,18 +41,23 @@ from ggcore.units import UnitContext, convert_height, convert_width
 from ggcore.viewport import NA, gpar
 
 __all__ = [
+    "DERIVE",
     "FALLBACK_CHAR_EM",
     "TEXT_LINE_EM",
     "AxisError",
     "AxisTicks",
+    "SecondaryAxis",
     "axis_extent",
     "axis_grobs",
     "axis_ticks",
     "axis_title_extent",
     "axis_title_grob",
+    "dup_axis",
     "font_int",
     "margin_sides_cm",
     "paint",
+    "sec_axis",
+    "secondary_ticks",
     "text_line_cm",
     "text_width_cm",
     "tick_length_cm",
@@ -79,7 +88,81 @@ _POINTS_PER_INCH = 72.0
 
 
 class AxisError(ValueError):
-    """轴参数无法表达（secondary axis / 旋转标签等尚未实现的东西）。"""
+    """轴参数无法表达（secondary axis 的非法变换 / 旋转标签等）。"""
+
+
+#: `sec_axis()` 的「沿用主轴」标记（上游 `derive()`）。`None` 与它同义。
+DERIVE: Any = object()
+
+
+@dataclass(frozen=True, slots=True)
+class SecondaryAxis:
+    """`sec_axis(transform, name, breaks, labels, guide)`（上游 `AxisSecondary`）。
+
+    `transform` 是**主轴值 → 次轴值**的函数（`~ . * 2` 即 `lambda v: v * 2`）。
+    断点 / 标签 / 标题缺省 `None`（= 上游的 `waiver()` / `derive()`：沿用主轴）。
+    """
+
+    transform: Callable[[Any], Any] | None = None
+    name: Any = None
+    breaks: Any = None
+    labels: Any = None
+    guide: Any = None
+
+    def __post_init__(self) -> None:
+        if self.transform is not None and not callable(self.transform):
+            raise AxisError(
+                f"sec_axis() 的 transform 必须是函数（`~ . * 2` → `lambda v: v * 2`），"
+                f"收到 {self.transform!r}"
+            )
+        if self.breaks is not None:
+            if isinstance(self.breaks, (str, bytes)) or not isinstance(self.breaks, Sequence):
+                raise AxisError(f"sec_axis(breaks = ...) 必须是序列（数值），收到 {self.breaks!r}")
+            if len(self.breaks) != 2:
+                raise AxisError(
+                    "sec_axis(breaks = ...) 目前只支持 2 元范围（R 的 c(lo, hi)），"
+                    f"收到 {self.breaks!r}"
+                )
+
+    @property
+    def empty(self) -> bool:
+        return self.transform is None
+
+    @property
+    def is_identity(self) -> bool:
+        """`dup_axis()` 的口径：变换就是恒等（不传或显式 identity）。"""
+        return self.transform is None or self.transform is _identity
+
+    def forward(self, values: np.ndarray) -> np.ndarray:
+        if self.transform is None:
+            return np.asarray(values, dtype=np.float64)
+        return np.asarray(self.transform(np.asarray(values, dtype=np.float64)), dtype=np.float64)
+
+
+def _identity(values: Any) -> Any:
+    return values
+
+
+def sec_axis(
+    transform: Callable[[Any], Any] | None = None,
+    name: Any = None,
+    breaks: Any = None,
+    labels: Any = None,
+    guide: Any = None,
+) -> SecondaryAxis:
+    """`sec_axis(~ . * 2)`：给位置标度加第二条轴（画在 top / right）。"""
+    return SecondaryAxis(transform, name, breaks, labels, guide)
+
+
+def dup_axis(
+    transform: Callable[[Any], Any] | None = None,
+    name: Any = None,
+    breaks: Any = None,
+    labels: Any = None,
+    guide: Any = None,
+) -> SecondaryAxis:
+    """`dup_axis()`：与主轴同值的第二条轴（`sec_axis(identity)`）。"""
+    return SecondaryAxis(transform or _identity, name, breaks, labels, guide)
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,8 +174,8 @@ class AxisTicks:
     labels: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        if self.side not in ("bottom", "left"):
-            raise AxisError(f"side 只能是 'bottom' / 'left'，收到 {self.side!r}")
+        if self.side not in ("bottom", "left", "top", "right"):
+            raise AxisError(f"side 只能是 bottom / left / top / right，收到 {self.side!r}")
         if len(self.positions) != len(self.labels):
             raise AxisError(
                 f"刻度位置 {len(self.positions)} 个，标签 {len(self.labels)} 个（必须等长）"
@@ -194,36 +277,44 @@ def _mm_to_pt(value: Any) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _axis_range(params: Any, side: str) -> tuple[float, float]:
-    return params.x_range if side == "bottom" else params.y_range
+def axis_breaks(scale: Any, params: Any, axis: str) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+    """一条轴的断点 / 标签（npc 之前）。
 
-
-def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
-    """一个面板的刻度位置（npc 0..1）+ 标签文本。
-
-    `scale` 是该面板自己的标度（`PanelScaleSet.scale("x")`）；`params` 是
-    :class:`ggcore.coord.PanelParams`。标度缺失 / 断点为空时返回空刻度。
+    连续标度用面板自己的 `continuous_range` 取断点（R
+    `view_scales_from_scale()` 把连续范围喂给 `scale$break_info()`）：这是
+    `coord_cartesian(xlim=)` / `coord_trans()` 下 1 / 3 / 10 与 1 / 10 / 100 的
+    分水岭。离散标度按 1..n 的水平序号，和标度自己的断点一致。
     """
-    if side not in ("bottom", "left"):
-        raise AxisError(f"side 只能是 'bottom' / 'left'，收到 {side!r}")
-    if scale is None:
-        return AxisTicks(side, (), ())
-    low, high = _axis_range(params, side)
-    span = float(high) - float(low)
-    if span == 0:
-        raise AxisError(f"{side} 轴的面板范围跨度为 0（{low!r} == {high!r}）")
     breaks = tuple(scale.breaks())
     labels = tuple(scale.labels())
-    if len(breaks) != len(labels):
-        raise AxisError(
-            f"标度 {scale.aesthetic!r} 的 breaks（{len(breaks)}）与 labels"
-            f"（{len(labels)}）长度不一致"
-        )
+    if bool(getattr(scale, "discrete", False)) or not hasattr(scale, "breaks_in"):
+        return breaks, labels
+    continuous = getattr(params, "continuous_ranges", None)
+    if continuous is None or axis not in continuous:
+        return breaks, labels
+    low, high = continuous[axis]
+    sized = tuple(scale.breaks_in(low, high))
+    if sized == breaks:
+        return breaks, labels
+    return sized, tuple(scale.labels_in(sized))
+
+
+def _tick_positions(
+    scale: Any,
+    params: Any,
+    side: str,
+    values: Sequence[Any],
+    labels: Sequence[Any],
+    *,
+    filter_outside: bool,
+) -> AxisTicks:
+    """断点 / 标签 → npc；两条路径（离散 1..n、连续数值）最后都走 `position_of()`。"""
+    axis = params.screen_axis(side)
     positions: list[float] = []
     texts: list[str] = []
     discrete = bool(getattr(scale, "discrete", False))
     levels = tuple(scale.levels) if discrete else ()
-    for value, label in zip(breaks, labels, strict=True):
+    for value, label in zip(values, labels, strict=True):
         if value is None or label is None:
             continue
         text = str(label)
@@ -231,20 +322,229 @@ def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
             continue
         if discrete:
             try:
-                code = levels.index(str(value)) + 1
+                number = float(levels.index(str(value)) + 1)
             except ValueError:
                 continue
-            position = (float(code) - float(low)) / span
         else:
             number = float(value)
             if not math.isfinite(number):
                 continue
-            position = (number - float(low)) / span
+        position = params.position_of(axis, number)
         if not math.isfinite(position):
             continue
-        positions.append(position)
+        if filter_outside and not (-1e-9 <= position <= 1.0 + 1e-9):
+            continue
+        positions.append(min(max(position, 0.0), 1.0))
         texts.append(text)
     return AxisTicks(side, tuple(positions), tuple(texts))
+
+
+def axis_ticks(
+    scale: Any,
+    params: Any,
+    side: str,
+    *,
+    secondary: bool = False,
+) -> AxisTicks:
+    """一个面板在某条边上的刻度位置（npc 0..1）+ 标签文本。
+
+    `scale` 是该面板自己的标度（`PanelScaleSet.scale(...)`；flip 时由
+    `params.scale_key(side)` 给出对侧标度）；`params` 是
+    :class:`ggcore.coord.PanelParams`。标度缺失 / 断点为空时返回空刻度。
+
+    - 主轴：`bottom` / `left`；
+    - 次轴（`secondary=True`）：`top` / `right`，断点由
+      :func:`secondary_ticks()` 从 `scale.secondary_axis` 推出；
+    - 极坐标：theta 轴不占 gtable 槽（标签画在面板里，见
+      :func:`polar_theta_ticks`），r 轴在 `left`（`r.axis.inside = TRUE` 时为空）。
+    """
+    if side not in ("bottom", "left", "top", "right"):
+        raise AxisError(f"side 只能是 bottom / left / top / right，收到 {side!r}")
+    if scale is None:
+        return AxisTicks(side, (), ())
+    if secondary:
+        return secondary_ticks(scale, params, side)
+    if getattr(params, "polar", None) is not None:
+        return _polar_ticks(scale, params, side)
+    breaks, labels = axis_breaks(scale, params, params.screen_axis(side))
+    ticks = _tick_positions(
+        scale,
+        params,
+        side,
+        breaks,
+        labels,
+        filter_outside=bool(getattr(params, "flipped", False))
+        or not getattr(params, "is_linear", True),
+    )
+    return AxisTicks(side, ticks.positions, ticks.labels)
+
+
+def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
+    """次轴刻度：`AxisSecondary$break_info()` 的移植（M2-1）。
+
+    步骤与上游一致：
+
+    1. 主轴范围 `continuous_range`（标度空间 + expand）上取 1000 个样点，
+       过 `transform()` 得到次轴空间；样点必须严格单调（上游 `mono_test()`）。
+    2. `breaks` 缺省时，在次轴空间的范围内用 `extended_breaks()` 取断点
+       （`dup_axis()` 的恒等变换直接沿用主轴断点 / 标签）。
+    3. 用 `np.interp()` 把次轴断点反演回主轴值（R 是 `approx(full, old, ...)`），
+       再按主轴范围映射成 npc。
+    """
+    sa = getattr(scale, "secondary_axis", None)
+    if sa is None:
+        return AxisTicks(side, (), ())
+    polar = getattr(params, "polar", None)
+    if polar is not None:
+        raise AxisError(
+            "极坐标 / 径向坐标下的次轴（r.sec / theta.sec）尚未实现；"
+            "M2-1 只做笛卡尔系的 sec_axis()，见 docs/notes/coord.md"
+        )
+    axis = params.screen_axis(side)
+    low, high = params.continuous_ranges[axis]
+    if high < low:
+        low, high = high, low
+    if bool(getattr(sa, "is_identity", False)):
+        breaks = tuple(scale.breaks())
+        labels = tuple(scale.labels())
+        values = [float(value) for value in breaks if value is not None]
+        positions = [params.position_of(axis, value) for value in values]
+        pairs = [
+            (position, str(label))
+            for position, label in zip(positions, labels, strict=True)
+            if label is not None and str(label) and -1e-9 <= position <= 1.0 + 1e-9
+        ]
+        return AxisTicks(
+            side,
+            tuple(min(max(position, 0.0), 1.0) for position, _ in pairs),
+            tuple(text for _, text in pairs),
+        )
+    samples = np.linspace(low, high, 1000)
+    forward = sa.forward(samples)
+    if not np.all(np.isfinite(forward)):
+        raise AxisError(
+            "sec_axis() 的变换在主轴范围上给出了非有限值（R: Transformation for "
+            "secondary axes must be strictly monotonic）；检查定义域"
+        )
+    steps = np.diff(forward)
+    if not (np.all(steps > 0) or np.all(steps < 0)):
+        raise AxisError(
+            "sec_axis() 的变换必须严格单调（R: Transformation for secondary "
+            "axes must be strictly monotonic）"
+        )
+    order = np.argsort(forward)
+    forward = forward[order]
+    primary = samples[order]
+    sec_range = (float(forward[0]), float(forward[-1]))
+    breaks_param = getattr(sa, "breaks", None)
+    if breaks_param is not None:
+        sec_breaks = list(breaks_param)
+    else:
+        from ggcore.scales import extended_breaks
+
+        sec_breaks = list(extended_breaks(sec_range[0], sec_range[1], 5))
+    labels_param = getattr(sa, "labels", None)
+    if labels_param is not None:
+        labels = [str(item) for item in labels_param]
+        if len(labels) != len(sec_breaks):
+            raise AxisError(
+                f"sec_axis(labels=) 有 {len(labels)} 项，断点有 {len(sec_breaks)} 项（必须等长）"
+            )
+    else:
+        from ggcore.scales import format_numbers
+
+        labels = [str(item) for item in format_numbers(sec_breaks)]
+    primary_values = np.interp(np.asarray(sec_breaks, dtype=np.float64), forward, primary)
+    positions = [params.position_of(axis, float(value)) for value in primary_values]
+    pairs = [
+        (position, label)
+        for position, label in zip(positions, labels, strict=True)
+        if label and -1e-9 <= position <= 1.0 + 1e-9
+    ]
+    return AxisTicks(
+        side,
+        tuple(min(max(position, 0.0), 1.0) for position, _ in pairs),
+        tuple(label for _, label in pairs),
+    )
+
+
+def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
+    """极坐标的 r 轴（`left`）：`r_rescale(r, r.range) + 0.5`（上游同式）。
+
+    theta 轴没有 gtable 槽（R 的 `render_axis_h()` 给的是 `zeroGrob()`），
+    标签画在面板里，由 :func:`polar_theta_ticks` 提供。
+    """
+    polar = params.polar
+    if side in ("bottom", "top"):
+        return AxisTicks(side, (), ())
+    if bool(getattr(polar, "r_axis_inside", False)):
+        return AxisTicks(side, (), ())
+    axis = params.screen_axis(side)
+    values: list[float] = []
+    texts: list[str] = []
+    breaks = tuple(scale.breaks())
+    labels = tuple(scale.labels())
+    discrete = bool(getattr(scale, "discrete", False))
+    levels = tuple(scale.levels) if discrete else ()
+    for value, label in zip(breaks, labels, strict=True):
+        if value is None or label is None or not str(label):
+            continue
+        if discrete:
+            try:
+                number = float(levels.index(str(value)) + 1)
+            except ValueError:
+                continue
+        else:
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                continue
+        if not math.isfinite(number):
+            continue
+        values.append(float(polar.radius(np.array([number]))[0]) + 0.5)
+        texts.append(str(label))
+    del axis
+    return AxisTicks(side, tuple(values), tuple(texts))
+
+
+def polar_theta_ticks(scale: Any, params: Any) -> tuple[tuple[float, float, str], ...]:
+    """theta 轴的标签锚点：`(x_npc, y_npc, text)`，半径 0.45（外圈 0.05 留给标签）。
+
+    满圆时首尾两个标签（0 与 2π 是同一个位置）按上游 `render_fg()` 的规则合并成
+    `"a/b"`：`ends_apart < 0.05` 才合并。
+    """
+    polar = params.polar
+    if polar is None or scale is None:
+        return ()
+    breaks = tuple(scale.breaks())
+    labels = tuple(scale.labels())
+    angles: list[float] = []
+    texts: list[str] = []
+    for value, label in zip(breaks, labels, strict=True):
+        if value is None or label is None or not str(label):
+            continue
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(number):
+            continue
+        angles.append(float(polar.theta_angle(np.array([number]))[0]))
+        texts.append(str(label))
+    if not texts:
+        return ()
+    if len(angles) >= 2:
+        ends_apart = (angles[-1] - angles[0]) % (2.0 * math.pi)
+        if ends_apart < 0.05:
+            texts = [f"{texts[0]}/{texts[-1]}", *texts[1:-1]]
+            angles = angles[:-1]
+    (x0, x1), (y0, y1) = polar.bbox
+    out: list[tuple[float, float, str]] = []
+    for angle, text in zip(angles, texts, strict=True):
+        px = 0.45 * math.sin(angle) + 0.5
+        py = 0.45 * math.cos(angle) + 0.5
+        out.append(((px - x0) / (x1 - x0), (py - y0) / (y1 - y0), text))
+    return tuple(out)
 
 
 # ---------------------------------------------------------------------------
@@ -252,16 +552,20 @@ def axis_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
 # ---------------------------------------------------------------------------
 
 
+def _horizontal(side: str) -> bool:
+    return side in ("bottom", "top")
+
+
 def _tick_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.ticks.x" if side == "bottom" else "axis.ticks.y")
+    return theme.get("axis.ticks.x" if _horizontal(side) else "axis.ticks.y")
 
 
 def _text_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.text.x" if side == "bottom" else "axis.text.y")
+    return theme.get("axis.text.x" if _horizontal(side) else "axis.text.y")
 
 
 def _title_element(theme: ResolvedTheme, side: str) -> Any:
-    return theme.get("axis.title.x" if side == "bottom" else "axis.title.y")
+    return theme.get("axis.title.x" if _horizontal(side) else "axis.title.y")
 
 
 def tick_paint(theme: ResolvedTheme, side: str) -> tuple[str, float, int] | None:
@@ -283,11 +587,11 @@ def tick_length_cm(theme: ResolvedTheme, side: str) -> float:
     `theme_minimal()` 的 `axis-b` 都是 12.87pt（R 4.5.3 + svglite 实测）。
     刻度本身画不画由 :func:`tick_paint` 决定，与这里的占位无关。
     """
-    value = theme.get("axis.ticks.length.x" if side == "bottom" else "axis.ticks.length.y")
+    value = theme.get("axis.ticks.length.x" if _horizontal(side) else "axis.ticks.length.y")
     if value is None:
         return 0.0
     context = UnitContext()
-    convert = convert_height if side == "bottom" else convert_width
+    convert = convert_height if _horizontal(side) else convert_width
     return float(np.asarray(convert(value, "cm", ctx=context)).sum())
 
 
@@ -300,7 +604,7 @@ def _text_extent_cm(
     size = float(element.size or 0.0)
     family = element.family or ""
     mt, mr, mb, ml = margin_sides_cm(element.margin)
-    if side == "bottom":
+    if _horizontal(side):
         return text_line_cm(size) + mt + mb
     if not labels:
         return 0.0
@@ -344,7 +648,7 @@ def axis_title_extent(
         return 0.0
     size = float(element.size or 0.0)
     mt, mr, mb, ml = margin_sides_cm(element.margin)
-    if side == "bottom":
+    if _horizontal(side):
         return text_line_cm(size) + mt + mb
     # y 轴标题旋转 90°：外向尺寸是行高（不是文字宽度）。
     return text_line_cm(size) + ml + mr
@@ -394,14 +698,16 @@ def axis_grobs(
     grobs: list[Any] = []
     if paint_tick is not None and ticks.positions and tick > 0:
         colour, lwd, lty = paint_tick
-        if side == "bottom":
+        if _horizontal(side):
             xs = [box.x_cm + position * box.width_cm for position in ticks.positions]
+            edge = box.y_cm + box.height_cm if side == "top" else box.y_cm
+            inward = tick if side == "top" else -tick
             grobs.append(
                 segments_grob(
                     xs,
-                    [box.y_cm] * len(xs),
+                    [edge] * len(xs),
                     xs,
-                    [box.y_cm - tick] * len(xs),
+                    [edge + inward] * len(xs),
                     default_units="cm",
                     gp=gpar(col=colour, lwd=lwd, lty=lty),
                     name=f"{name}.ticks",
@@ -409,11 +715,14 @@ def axis_grobs(
             )
         else:
             ys = [box.y_cm + position * box.height_cm for position in ticks.positions]
+            # 左轴刻度朝外（面板左边缘 → 更左），右轴（次轴）朝右。
+            edge = box.right if side == "right" else box.x_cm
+            inward = tick if side == "right" else -tick
             grobs.append(
                 segments_grob(
-                    [box.x_cm] * len(ys),
+                    [edge] * len(ys),
                     ys,
-                    [box.x_cm - tick] * len(ys),
+                    [edge + inward] * len(ys),
                     ys,
                     default_units="cm",
                     gp=gpar(col=colour, lwd=lwd, lty=lty),
@@ -423,8 +732,13 @@ def axis_grobs(
 
     mt, mr, _mb, _ml = margin_sides_cm(text.margin)
     gp = _text_gp(text)
-    if side == "bottom":
-        y = box.y_cm - tick - mt
+    if _horizontal(side):
+        if side == "top":
+            y = box.y_cm + box.height_cm + tick + _mb
+            vjust = 0.0
+        else:
+            y = box.y_cm - tick - mt
+            vjust = 1.0
         for index, (position, label) in enumerate(zip(ticks.positions, ticks.labels, strict=True)):
             grobs.append(
                 text_grob(
@@ -432,21 +746,26 @@ def axis_grobs(
                     box.x_cm + position * box.width_cm,
                     y,
                     hjust=float(text.hjust if text.hjust is not None else 0.5),
-                    vjust=1.0,
+                    vjust=vjust,
                     default_units="cm",
                     gp=gpar(**gp),
                     name=f"{name}.text.{index}",
                 )
             )
     else:
-        x = box.x_cm - tick - mr
+        if side == "right":
+            x = box.right + tick + mr
+            hjust = 0.0
+        else:
+            x = box.x_cm - tick - mr
+            hjust = 1.0
         for index, (position, label) in enumerate(zip(ticks.positions, ticks.labels, strict=True)):
             grobs.append(
                 text_grob(
                     label,
                     x,
                     box.y_cm + position * box.height_cm,
-                    hjust=1.0,
+                    hjust=hjust,
                     vjust=float(text.vjust if text.vjust is not None else 0.5),
                     default_units="cm",
                     gp=gpar(**gp),
@@ -466,33 +785,43 @@ def axis_title_grob(
     metrics: Any = None,
     name: str = "axis-title",
 ) -> Any | None:
-    """轴标题（x 轴水平、y 轴旋转 90°），与 R 的 `axis.title.*` 同一锚点口径。"""
+    """轴标题（x 轴水平、y 轴旋转 90°），与 R 的 `axis.title.*` 同一锚点口径。
+
+    `top` / `right`（次轴）也走这里：左侧标题 `rotate(-90)`（本仓 IR 的 y 向下，
+    对应 `rot = 90`），右侧标题 `rotate(90)`（`rot = -90`）——与 R 的 SVG 同向。
+    """
     element = _title_element(theme, side)
     if title is None or not title or not isinstance(element, ElementText):
         return None
     mt, mr, _mb, _ml = margin_sides_cm(element.margin)
     gp = _text_gp(element)
     anchor = labels_extent_cm
-    if side == "bottom":
-        y = box.y_cm - anchor - mt
+    if _horizontal(side):
+        if side == "top":
+            y = box.top + anchor + _mb
+            vjust = 0.0
+        else:
+            y = box.y_cm - anchor - mt
+            vjust = 1.0
         return text_grob(
             title,
             box.x_cm + box.width_cm / 2.0,
             y,
             hjust=float(element.hjust if element.hjust is not None else 0.5),
-            vjust=1.0,
+            vjust=vjust,
             default_units="cm",
             gp=gpar(**gp),
             name=name,
         )
-    x = box.x_cm - anchor - mr
+    right = side == "right"
+    x = (box.right + anchor + mr) if right else (box.x_cm - anchor - mr)
     return text_grob(
         title,
         x,
         box.y_cm + box.height_cm / 2.0,
         hjust=0.5,
         vjust=0.5,
-        rot=90.0,
+        rot=-90.0 if right else 90.0,
         default_units="cm",
         gp=gpar(**gp),
         name=name,

@@ -41,6 +41,7 @@ __all__ = [
     "flip_data",
     "flipped_names",
     "lty_value",
+    "munch_xy",
     "npc_values",
     "row_slice",
     "table_column",
@@ -153,46 +154,9 @@ def default_size(table: ColumnTable, name: str, default: float = 0.9) -> float:
 # 横向（flipped_aes）与列名重命名
 # ---------------------------------------------------------------------------
 
-#: ggplot2 的 `ggplot_global$x_aes` / `y_aes`（4.0.3）。
-X_AES: tuple[str, ...] = (
-    "x",
-    "xmin",
-    "xmax",
-    "xend",
-    "xintercept",
-    "xmin_final",
-    "xmax_final",
-    "xlower",
-    "xmiddle",
-    "xupper",
-    "x0",
-)
-Y_AES: tuple[str, ...] = (
-    "y",
-    "ymin",
-    "ymax",
-    "yend",
-    "yintercept",
-    "ymin_final",
-    "ymax_final",
-    "lower",
-    "middle",
-    "upper",
-    "y0",
-)
-
-
-def flipped_names(flip: bool = True) -> dict[str, str]:
-    """`switch_orientation()`：x 族 ↔ y 族的**对换**（两个方向都在表里）。
-
-    对换是自反的，所以同一个映射既能翻过去也能翻回来——与 R 的
-    `names(data) <- switch_orientation(names(data))` 一致。
-    """
-    mapping: dict[str, str] = {}
-    for x_name, y_name in zip(X_AES, Y_AES, strict=True):
-        mapping[x_name] = y_name
-        mapping[y_name] = x_name
-    return mapping
+#: ggplot2 的 `ggplot_global$x_aes` / `y_aes` 与 `switch_orientation()` 现在住在
+#: :mod:`ggcore.aes`——coord 的 flip / 极坐标也要用同一份名字表，这里只做再导出。
+from ggcore.aes import flipped_names as flipped_names  # noqa: E402
 
 
 def flip_data(table: ColumnTable, flip: bool) -> ColumnTable:
@@ -365,13 +329,97 @@ def _remove_missing(data: ColumnTable, missing: np.ndarray, na_rm: bool, name: s
 def npc_values(panel: Any, table: ColumnTable, name: str, axis: str) -> np.ndarray:
     """一列数据坐标 → 面板 npc（`coord$transform()`；y 向上）。
 
+    走 :meth:`ggcore.coord.PanelParams.transform_column`——flip 时读对侧列、
+    极坐标时把该列与配对轴一起投到二维。geom 只按**屏幕**轴要坐标，不判断
+    coord 名字。
+
     缺失位保持 NaN（由调用方决定断线 / 跳过）；越界值不夹。
     """
-    column = table.column(name)
-    transformed = panel.transform(column, axis)
+    transformed = panel.transform_column(table, name, axis)
     values = np.asarray(transformed.values, dtype=np.float64).copy()
     values[np.asarray(transformed.na_mask, dtype=bool)] = np.nan
     return values
+
+
+def munch_xy(
+    panel: Any,
+    xs: Any,
+    ys: Any,
+    groups: Any,
+    *,
+    closed: bool = False,
+    segment_length: float = 0.01,
+) -> tuple[np.ndarray, np.ndarray, list[int]]:
+    """数据空间折线 / 多边形 → npc，非线性坐标按 `segment_length` 逐边细分。
+
+    R 的 geom 在坐标非线性时都走 `coord_munch()`（rect / polygon / path）。这里
+    是同一件事的 numpy 版本：每组独立插值（归一化距离用面板跨度），再
+    `panel.project_xy()`。返回 `(x_npc, y_npc, id)`，`id` 直接喂给
+    `polygon_grob` / `polyline_grob` 的 `id=`。
+
+    线性坐标不细分（与上游 `if (coord$is_linear()) return(...)` 一致），
+    输出与逐列 `npc_values()` 相同。
+    """
+    x_values = np.asarray(xs, dtype=np.float64)
+    y_values = np.asarray(ys, dtype=np.float64)
+    group_values = list(groups)
+    if len(x_values) != len(y_values) or len(group_values) != len(x_values):
+        raise GeomError(
+            f"munch_xy 的 x / y / group 长度必须一致，收到 {len(x_values)} / "
+            f"{len(y_values)} / {len(group_values)}"
+        )
+    if getattr(panel, "is_linear", True):
+        px, py = panel.project_xy(x_values, y_values)
+        ids: list[int] = []
+        current = 0
+        previous: Any = object()
+        for key in group_values:
+            if key != previous:
+                current += 1
+                previous = key
+            ids.append(current)
+        return px, py, ids
+    if not (math.isfinite(float(segment_length)) and float(segment_length) > 0):
+        raise GeomError(f"segment_length 必须是正有限数，收到 {segment_length!r}")
+    x_span = float(panel.x_range[1]) - float(panel.x_range[0])
+    y_span = float(panel.y_range[1]) - float(panel.y_range[0])
+    out_x: list[float] = []
+    out_y: list[float] = []
+    out_id: list[int] = []
+    start = 0
+    identifier = 0
+    for index in range(1, len(group_values) + 1):
+        if index < len(group_values) and group_values[index] == group_values[start]:
+            continue
+        identifier += 1
+        gx = x_values[start:index].tolist()
+        gy = y_values[start:index].tolist()
+        if closed and len(gx) >= 2:
+            gx.append(gx[0])
+            gy.append(gy[0])
+        if gx:
+            out_x.append(gx[0])
+            out_y.append(gy[0])
+            out_id.append(identifier)
+        pairs = zip(
+            zip(gx[:-1], gy[:-1], strict=True), zip(gx[1:], gy[1:], strict=True), strict=True
+        )
+        for (x0, y0), (x1, y1) in pairs:
+            if not all(math.isfinite(value) for value in (x0, y0, x1, y1)):
+                out_x.append(x1)
+                out_y.append(y1)
+                out_id.append(identifier)
+                continue
+            distance = math.hypot((x1 - x0) / x_span, (y1 - y0) / y_span)
+            steps = max(1, math.ceil(distance / float(segment_length)))
+            for step in range(1, steps + 1):
+                ratio = step / steps
+                out_x.append(x0 + (x1 - x0) * ratio)
+                out_y.append(y0 + (y1 - y0) * ratio)
+                out_id.append(identifier)
+        start = index
+    px, py = panel.project_xy(np.asarray(out_x), np.asarray(out_y))
+    return px, py, out_id
 
 
 #: R `lty` 的编号 → 名字（gpar 的 `lty` 同时接受两者；向量只认名字）。

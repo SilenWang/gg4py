@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-polar", "orientation-horizontal"]
+ci = true
+title = "coord_polar：玫瑰图（柱 + munch）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "上下边是弧不是弦：geom 走 `panel.is_linear == False` 的 `coord_munch()` 分支，采样 0.01 的归一化距离。"
