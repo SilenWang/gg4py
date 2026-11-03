@@ -453,6 +453,31 @@ def test_thin_wrappers_draw_the_underlying_primitive(
 
 
 # ---------------------------------------------------------------------------
+# 默认 stat 的别名（SIL-765）
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("factory", ["geom_bin_2d", "geom_hex"])
+def test_default_stat_alias_resolves_to_the_registered_stat(factory: str) -> None:
+    """`Geom$default_stat` 是 R 的别名（`bin2d` / `binhex`），要落到正名实现。
+
+    M2-6 的 stat 只登记正名（`bin_2d` / `bin_hex`）；`compute_stat()` 走
+    `STAT_ALIASES` 解析，否则 `geom_bin_2d()` / `geom_hex()` 的默认 stat 会报
+    「尚未实现」。
+    """
+    data = to_column_table(
+        {
+            "x": [0.1, 0.4, 0.7, 0.2, 0.5, 0.8],
+            "y": [0.2, 0.6, 0.3, 0.7, 0.4, 0.9],
+        }
+    )
+    plot = ggplot(data, aes(x="x", y="y")) + getattr(registry, factory)()
+    build = build_plot(plot)
+    assert build.layers[0].data.nrows > 0
+    assert {"count", "fill"}.issubset(set(build.layers[0].data.names))
+
+
+# ---------------------------------------------------------------------------
 # 图例 key
 # ---------------------------------------------------------------------------
 

@@ -211,6 +211,12 @@ def compute_stat(
     if custom is not None:
         return custom(aesthetics.table, scales=scales)
     if name not in IMPLEMENTED_STATS:
+        # `Geom$default_stat` 用的是 R 的别名（`bin2d` / `binhex` / `density2d`），
+        # 注册表把入口名映射到正名（`bin_2d` / `bin_hex` / `density_2d`）。
+        from ggcore.registry import STAT_ALIASES
+
+        name = STAT_ALIASES.get(name, name)
+    if name not in IMPLEMENTED_STATS:
         raise BuildError(
             f"stat {name!r} 尚未实现；已实现：{', '.join(IMPLEMENTED_STATS)}"
             "（stat 的缺省值来自 geom 契约，`geom_*(stat=…)` 可覆盖）"
