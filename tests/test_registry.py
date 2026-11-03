@@ -62,6 +62,22 @@ def test_default_names_are_registered_in_order(kind: str) -> None:
     assert registry.registered(kind) == EXPECTED[kind]
 
 
+def test_theme_names_is_derived_from_the_registry() -> None:
+    # 常量是注册表的快照，不是手写清单（SIL-671：手写的三元组漏了 `bw`）。
+    assert registry.THEME_NAMES == registry.registered("theme")
+    assert registry.THEME_NAMES == ("grey", "bw", "minimal", "void")
+
+
+def test_theme_names_tracks_register_and_unregister() -> None:
+    before = registry.THEME_NAMES
+    registry.register_theme("wb", registry.theme_grey)
+    try:
+        assert registry.THEME_NAMES == (*before, "wb")
+    finally:
+        registry.unregister("theme", "wb")
+    assert registry.THEME_NAMES == before
+
+
 def test_kind_order_is_fixed() -> None:
     assert registry.KINDS == (
         "geom",

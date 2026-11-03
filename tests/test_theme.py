@@ -1,4 +1,4 @@
-"""M1-10 theme：元素树、继承、`None` vs `blank`、`rel()` 与三套完整主题。
+"""M1-10 theme：元素树、继承、`None` vs `blank`、`rel()` 与四套完整主题（含 bw）。
 
 数值口径与 ggplot2 4.0.3 的 `calc_element()` 对拍在
 `tests/test_theme_r_parity.py`；这里守的是 API 契约和任务点名的语义。
@@ -293,6 +293,29 @@ def test_element_text_carries_italic_fontweight_fontwidth() -> None:
     # 完整主题里这三项没设置，保持 None（R 侧同样是 null）。
     plain = resolve_theme(theme_grey())["axis.text"]
     assert (plain.italic, plain.fontweight, plain.fontwidth) == (None, None, None)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "field"),
+    [
+        ({"italic": "yes"}, "italic"),
+        ({"italic": 1}, "italic"),
+        ({"fontweight": True}, "fontweight"),
+        ({"fontweight": ["bold"]}, "fontweight"),
+        ({"fontwidth": object()}, "fontwidth"),
+    ],
+)
+def test_element_text_rejects_wrongly_typed_font_fields(kwargs: dict, field: str) -> None:
+    with pytest.raises(ThemeError, match=field):
+        element_text(**kwargs)
+
+
+def test_element_text_accepts_numeric_and_named_font_axes() -> None:
+    # 数值 weight 走 systemfonts（1–1000），width 接受字体栈认的名字。
+    text = element_text(italic=True, fontweight=700, fontwidth="condensed")
+    assert (text.italic, text.fontweight, text.fontwidth) == (True, 700, "condensed")
+    plain = element_text(italic=False, fontweight="bold", fontwidth=87.5)
+    assert (plain.italic, plain.fontweight, plain.fontwidth) == (False, "bold", 87.5)
 
 
 _REL_WHITELIST = {
