@@ -1,0 +1,7 @@
+family = "guide"
+features = ["aes-mapping", "colour-aes", "shape-aes", "guide-legend", "guide-merged", "scale-limits"]
+ci = true
+title = "guide：colour + fill 同变量合并图例"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "colour 与 fill 映射同一变量（标题 / 标签 / guide 类型相同）→ `Guide$merge()` 合成一张；合并后的键同时带描边与填充，键行数不变（M2-2 SIL-738）。"

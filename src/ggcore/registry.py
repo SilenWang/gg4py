@@ -36,7 +36,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ggcore.aes import as_aes, frozen_mapping
-from ggcore.components import Coord, Facet, Guide, Labels, Scale
+from ggcore.components import Coord, Facet, Guide, Labels, Scale, Theme
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
 from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
@@ -105,6 +105,26 @@ __all__: list[str] = [
 #: 每个种类的有序注册表。用 dict 的插入序，保证遍历稳定。
 _REGISTRY: dict[str, dict[str, Callable[..., Any]]] = {kind: {} for kind in KINDS}
 
+#: 组件种类 → 扩展基类。`register_*()` 收到这些类的子类时，会把它包成
+#: 两个入口都能用的构造器（geom / stat 包成图层工厂，其余包成组件实例）。
+_BASES: Mapping[str, type[Any]] = MappingProxyType(
+    {
+        "geom": Geom,
+        "stat": Stat,
+        "position": Position,
+        "scale": Scale,
+        "coord": Coord,
+        "facet": Facet,
+        "guide": Guide,
+        "theme": Theme,
+    }
+)
+
+#: 内置名字的快照（`_register_defaults()` 之后填）。第三方登记同名组件默认
+#: 被拒绝；显式 `allow_override=True` 才能替换，`unregister()` 会恢复原件。
+_BUILTIN: dict[str, frozenset[str]] = {}
+_ORIGINAL: dict[str, dict[str, Callable[..., Any]]] = {}
+
 #: `ggplot` 类在 `ggcore.plot` 导入时注册进来（避免 registry ↔ plot 循环导入）。
 _PLOT_CLASS: type[Any] | None = None
 #: `ggplot` 所在的模块（`ggcore.plot`），用来把新登记的名字也挂成模块级函数。
@@ -170,21 +190,36 @@ def _sync_theme_names() -> None:
     globals()["THEME_NAMES"] = registered("theme")
 
 
-def register(kind: str, name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
+def register(
+    kind: str,
+    name: str,
+    constructor: Callable[..., Any],
+    *,
+    allow_override: bool = False,
+) -> Callable[..., Any]:
     """登记一个组件构造器，并（重新）生成两个入口。
 
     - 同名重复登记是替换，不是追加（顺序保持第一次出现的位置）；
     - 名字必须能拼出合法标识符，否则入口函数没法用属性/方法的方式暴露。
+    - 内置名字默认不能被第三方覆盖（要替换必须显式 ``allow_override=True``）；
+      被替换的内置项在 `unregister()` 时恢复原件。
+    - 传进来的是组件基类的子类时，自动包成构造器：``Geom`` / ``Stat`` 包装成
+      图层工厂，其余组件包装成组件实例。这样自定义组件只需要"实现一个类"。
     """
     _check_kind(kind)
     if not isinstance(name, str):
         raise TypeError(f"组件名必须是 str，得到 {type(name).__name__}")
     if not callable(constructor):
         raise TypeError(f"{entry_name(kind, name)} 的构造器必须可调用")
+    if name in _BUILTIN.get(kind, frozenset()) and not allow_override:
+        raise ValueError(
+            f"{kind} {name!r} 是内置名字；第三方登记不能覆盖它"
+            "（确实要替换时传 allow_override=True，unregister() 会恢复原件）"
+        )
     entry = entry_name(kind, name)
     if not entry.isidentifier():
         raise ValueError(f"组件名 {name!r} 生成的入口 {entry!r} 不是合法标识符")
-    _REGISTRY[kind][name] = constructor
+    _REGISTRY[kind][name] = _adapt_constructor(kind, name, constructor)
     _refresh_entry(kind, name)
     if kind == "theme":
         _sync_theme_names()
@@ -192,10 +227,23 @@ def register(kind: str, name: str, constructor: Callable[..., Any]) -> Callable[
 
 
 def unregister(kind: str, name: str) -> None:
-    """撤销登记，并清掉两个入口（测试与后续任务的替换用）。"""
+    """撤销登记，并清掉两个入口（测试与后续任务的替换用）。
+
+    内置名字如果被 `allow_override=True` 替换过，这里恢复原件而不是删除；
+    内置组件本身不能注销（否则 `unregister("geom", "point")` 会永久破坏它）。
+    """
     _check_kind(kind)
     if name not in _REGISTRY[kind]:
         raise LookupError(f"{kind} {name!r} 未注册；已注册：{_available(kind)}")
+    if name in _BUILTIN.get(kind, frozenset()):
+        original = _ORIGINAL[kind][name]
+        if _REGISTRY[kind][name] is original:
+            raise ValueError(f"{kind} {name!r} 是内置组件，不能注销")
+        _REGISTRY[kind][name] = original
+        _refresh_entry(kind, name)
+        if kind == "theme":
+            _sync_theme_names()
+        return
     del _REGISTRY[kind][name]
     if kind == "theme":
         _sync_theme_names()
@@ -270,6 +318,177 @@ def _forget_export(module: Any, entry: str) -> None:
     exports = getattr(module, "__all__", None)
     if isinstance(exports, list) and entry in exports:
         exports.remove(entry)
+
+
+def _component_class(kind: str, constructor: Callable[..., Any]) -> type[Any] | None:
+    """`constructor` 是某一类组件基类的子类时返回它，否则 None。"""
+    base = _BASES.get(kind)
+    if base is None or not isinstance(constructor, type):
+        return None
+    try:
+        return constructor if issubclass(constructor, base) else None
+    except TypeError:  # pragma: no cover - 非类的 callable 已在 register() 里排除
+        return None
+
+
+def _set_component_name(kind: str, name: str, cls: type[Any]) -> None:
+    declared = cls.__dict__.get("name")
+    if declared is None or not isinstance(declared, str) or not declared:
+        cls.name = name  # type: ignore[attr-defined]
+    elif declared != name:
+        raise ValueError(
+            f"register_{kind}({name!r}, {cls.__name__})：类里的 name={declared!r} 与登记名不一致"
+        )
+
+
+def _geom_from_name(name: str) -> Geom:
+    """已注册的 geom 名 → 带契约的 `Geom` 实例（用于 stat 的缺省 geom）。"""
+    spec = GEOM_SPECS.get(name)
+    if spec is None:
+        raise ValueError(f"geom {name!r} 没有静态契约，请传 Geom 实例（如 MyGeom()）")
+    return Geom(
+        name=name,
+        required_aes=spec.required_aes,
+        default_aes=spec.default_aes,
+        non_missing_aes=spec.non_missing_aes,
+        optional_aes=spec.optional_aes,
+    )
+
+
+def _geom_class_factory(name: str, cls: type[Geom]) -> Callable[..., Layer]:
+    """`register_geom(name, MyGeom)` → 与内置 `geom_*()` 同形的图层工厂。"""
+
+    _set_component_name("geom", name, cls)
+
+    def factory(
+        mapping: Any = None,
+        data: Any = None,
+        *,
+        stat: Stat | str | None = None,
+        position: Position | str | None = None,
+        inherit_aes: bool = True,
+        show_legend: bool | None = None,
+        **params: Any,
+    ) -> Layer:
+        geom = cls()
+        return Layer(
+            geom=geom,
+            stat=as_stat(stat, getattr(cls, "stat", "identity")),
+            position=as_position(position, getattr(cls, "position", "identity")),
+            mapping=as_aes(mapping),
+            data=data,
+            params=params,
+            inherit_aes=inherit_aes,
+            show_legend=show_legend,
+        )
+
+    return factory
+
+
+def _stat_class_factory(name: str, cls: type[Stat]) -> Callable[..., Layer]:
+    """`register_stat(name, MyStat)` → `stat_*()` 图层快捷方式。"""
+
+    _set_component_name("stat", name, cls)
+    default_geom = getattr(cls, "geom", "point")
+
+    def factory(
+        mapping: Any = None,
+        data: Any = None,
+        *,
+        geom: Geom | str | None = None,
+        position: Position | str | None = None,
+        inherit_aes: bool = True,
+        show_legend: bool | None = None,
+        **params: Any,
+    ) -> Layer:
+        selected = geom if geom is not None else default_geom
+        geom_object = selected if isinstance(selected, Geom) else _geom_from_name(str(selected))
+        return Layer(
+            geom=geom_object,
+            stat=cls(params=params),
+            position=as_position(position, getattr(cls, "position", "identity")),
+            mapping=as_aes(mapping),
+            data=data,
+            inherit_aes=inherit_aes,
+            show_legend=show_legend,
+        )
+
+    return factory
+
+
+def _position_class_factory(name: str, cls: type[Position]) -> Callable[..., Position]:
+    _set_component_name("position", name, cls)
+
+    def factory(**params: Any) -> Position:
+        return cls(params=params)
+
+    return factory
+
+
+def _scale_class_factory(name: str, cls: type[Scale]) -> Callable[..., Scale]:
+    _set_component_name("scale", name, cls)
+    declared_aesthetic = cls.__dict__.get("aesthetic", "")
+    aesthetic = declared_aesthetic if isinstance(declared_aesthetic, str) else ""
+
+    def factory(**params: Any) -> Scale:
+        return cls(name=name, aesthetic=aesthetic, params=params)
+
+    return factory
+
+
+def _coord_class_factory(name: str, cls: type[Coord]) -> Callable[..., Coord]:
+    _set_component_name("coord", name, cls)
+
+    def factory(*args: Any, **params: Any) -> Coord:
+        if args:
+            raise TypeError(
+                f"自定义 coord_{name}() 只接受关键字参数（规范见 docs/notes/extension.md）"
+            )
+        return cls(params=params)
+
+    return factory
+
+
+def _guide_class_factory(name: str, cls: type[Guide]) -> Callable[..., Guide]:
+    _set_component_name("guide", name, cls)
+
+    def factory(aesthetic: str | None = None, **params: Any) -> Guide:
+        return cls(name=name, aesthetic=aesthetic, params=params)
+
+    return factory
+
+
+def _theme_class_factory(name: str, cls: type[Theme]) -> Callable[..., Theme]:
+    _set_component_name("theme", name, cls)
+
+    def factory(**params: Any) -> Theme:
+        return cls(**params)
+
+    return factory
+
+
+def _adapt_constructor(kind: str, name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
+    """把"组件类"包成构造器；普通 callable 原样返回（M1 的工厂路径不变）。"""
+    cls = _component_class(kind, constructor)
+    if cls is None:
+        return constructor
+    if kind == "geom":
+        return _geom_class_factory(name, cls)
+    if kind == "stat":
+        return _stat_class_factory(name, cls)
+    if kind == "position":
+        return _position_class_factory(name, cls)
+    if kind == "scale":
+        return _scale_class_factory(name, cls)
+    if kind == "coord":
+        return _coord_class_factory(name, cls)
+    if kind == "guide":
+        return _guide_class_factory(name, cls)
+    if kind == "theme":
+        return _theme_class_factory(name, cls)
+    # facet 等其余种类：统一按 `cls(params=...)` 构造。
+    _set_component_name(kind, name, cls)
+    return lambda **params: cls(params=params)
 
 
 def bind_plot(cls: type[Any]) -> type[Any]:
@@ -782,40 +1001,58 @@ def _labels_factory(**values: Any) -> Labels:
     return Labels(frozen_mapping(values))
 
 
-def register_geom(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("geom", name, constructor)
+def register_geom(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("geom", name, constructor, allow_override=allow_override)
 
 
-def register_stat(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("stat", name, constructor)
+def register_stat(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("stat", name, constructor, allow_override=allow_override)
 
 
-def register_position(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("position", name, constructor)
+def register_position(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("position", name, constructor, allow_override=allow_override)
 
 
-def register_scale(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("scale", name, constructor)
+def register_scale(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("scale", name, constructor, allow_override=allow_override)
 
 
-def register_coord(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("coord", name, constructor)
+def register_coord(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("coord", name, constructor, allow_override=allow_override)
 
 
-def register_facet(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("facet", name, constructor)
+def register_facet(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("facet", name, constructor, allow_override=allow_override)
 
 
-def register_guide(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("guide", name, constructor)
+def register_guide(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("guide", name, constructor, allow_override=allow_override)
 
 
-def register_theme(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("theme", name, constructor)
+def register_theme(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("theme", name, constructor, allow_override=allow_override)
 
 
-def register_label(name: str, constructor: Callable[..., Any]) -> Callable[..., Any]:
-    return register("label", name, constructor)
+def register_label(
+    name: str, constructor: Callable[..., Any], *, allow_override: bool = False
+) -> Callable[..., Any]:
+    return register("label", name, constructor, allow_override=allow_override)
 
 
 def _register_defaults() -> None:
@@ -842,6 +1079,11 @@ def _register_defaults() -> None:
 
 
 _register_defaults()
+
+#: 内置名单快照：第三方 `register_*()` 默认不能覆盖这些名字。
+for _kind in KINDS:
+    _BUILTIN[_kind] = frozenset(_REGISTRY[_kind])
+    _ORIGINAL[_kind] = dict(_REGISTRY[_kind])
 
 #: 已登记的主题名（按登记顺序）。由注册表派生：`register_theme()` /
 #: `unregister()` 会同步刷新，避免像 SIL-671 之前那样手写清单漏掉 `bw`。

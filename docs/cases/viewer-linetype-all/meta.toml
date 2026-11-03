@@ -1,0 +1,9 @@
+family = "geom-line"
+features = ["line-type", "scale-linetype"]
+ci = true
+title = "line：全部 lty 取值（solid/dashed/dotted/dotdash/longdash/twodash/blank）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """七条线各用一种 lty，`blank` 那一条（最上面一行）按 R 的口径什么都不画。
+守 `stroke-dasharray` 的三个口径：段长是 lwd 倍数、要乘线宽、要乘视口变换的平均
+缩放；`blank` 不等于 solid。"""
