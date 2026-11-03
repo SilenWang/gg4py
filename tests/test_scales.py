@@ -361,19 +361,59 @@ def test_reverse_check_log10_versus_plain() -> None:
     assert logged.layers[0].data.column("x").values.tolist() == [0.0, 1.0, 2.0]
 
 
-def test_unsupported_transforms_raise_with_task_name() -> None:
-    for trans in ("reverse", "sqrt", "log2", "exp", "pseudo_log"):
+def test_sqrt_and_reverse_transforms_are_implemented() -> None:
+    sqrt = scale_from_component(Scale("x_sqrt", "x", {}))
+    trained = sqrt.transform(column([0.0, 4.0, 9.0, -1.0]))
+    sqrt.train(trained)
+    assert sqrt.non_finite_count == 1
+    assert sqrt.limits() == (0.0, 3.0)
+    assert sqrt.map(sqrt.transform(column([0.0, 4.0, 9.0]))).values.tolist() == [0.0, 2.0, 3.0]
+
+    reverse = scale_from_component(Scale("x_reverse", "x", {}))
+    values = reverse.transform(column([1.0, 3.0, 7.0]))
+    reverse.train(values)
+    assert reverse.limits() == (-7.0, -1.0)
+    assert reverse.map(values).values.tolist() == [-1.0, -3.0, -7.0]
+    # 断点在变换后的空间里倒序（R 的 get_breaks 口径）。
+    assert reverse.breaks() == (None, -2.0, -4.0, -6.0, None)
+    assert reverse.labels() == (None, "2", "4", "6", None)
+
+
+def test_unsupported_transforms_still_raise() -> None:
+    for trans in ("log2", "exp", "pseudo_log", "logit"):
         with pytest.raises(ScaleError, match="尚未实现"):
             scale_from_component(Scale("x_continuous", "x", {"trans": trans}))
-    with pytest.raises(ScaleError, match="reverse"):
-        scale_from_component(Scale("x_continuous", "x", {"trans": "reverse"}))
     with pytest.raises(ScaleError, match="未知的 trans"):
         scale_from_component(Scale("x_continuous", "x", {"trans": "nope"}))
 
 
-def test_oob_squish_is_rejected() -> None:
-    with pytest.raises(ScaleError, match="squish"):
-        scale_from_component(Scale("x_continuous", "x", {"oob": "squish"}))
+def test_oob_censor_squish_keep_and_squish_infinite() -> None:
+    """`oob` 四态与 R 一致（SIL-731）：censor / squish / squish_infinite / keep。"""
+
+    def mapped(oob):
+        scale = scale_from_component(Scale("x_continuous", "x", {"limits": [2, 6], "oob": oob}))
+        scale.train(scale.transform(column([1.0, 3.0, 7.0])))
+        return scale.map(scale.transform(column([1.0, 3.0, 7.0])))
+
+    censored = mapped("censor")
+    assert censored.na_mask.tolist() == [True, False, True]
+
+    squished = mapped("squish")
+    assert squished.values.tolist() == [2.0, 3.0, 6.0]
+    assert not squished.na_mask.any()
+
+    kept = mapped("keep")
+    assert kept.values.tolist() == [1.0, 3.0, 7.0]
+
+    infinite = scale_from_component(
+        Scale("x_continuous", "x", {"limits": [2, 6], "oob": "squish_infinite"})
+    )
+    infinite.train(infinite.transform(column([1.0, 3.0, 7.0])))
+    result = infinite.map(column([1.0, 3.0, math.inf, -math.inf]))
+    assert result.values.tolist()[:2] == [1.0, 3.0]
+    assert result.values.tolist()[2:] == [6.0, 2.0]
+    with pytest.raises(ScaleError, match="oob"):
+        scale_from_component(Scale("x_continuous", "x", {"oob": "nope"}))
 
 
 # ---------------------------------------------------------------------------
@@ -546,14 +586,25 @@ def test_palette_parameter_accepts_callable_and_sequence() -> None:
     assert sequence_scale.map(column(["b", "a"])).values.tolist() == ["#444444", "#333333"]
 
 
+#: 必填颜色的族：`gradientn` / `stepsn` 在上游没有默认 colours。
+_REQUIRED_COLOURS = ("gradientn", "stepsn")
+
+
+def _required_params(name: str) -> dict:
+    if name.endswith(_REQUIRED_COLOURS):
+        return {"colours": ("#0000FF", "#FFFFFF", "#FF0000")}
+    return {}
+
+
 def test_every_registered_scale_name_has_an_implementation() -> None:
-    """`registry.SCALE_SPECS` 是唯一的名字表：13 个注册名都能建成标度对象。
+    """`registry.SCALE_SPECS` 是唯一的名字表：75 个注册名都能建成标度对象。
 
     回归 SIL-681：`scales.SCALE_NAMES` 曾是第二份名字表且无人使用，已删除；
-    这条断言守住「注册表 ↔ 实现」不漂移。
+    这条断言守住「注册表 ↔ 实现」不漂移。`gradientn` / `stepsn` 在 R 里也必须
+    给 `colours`，所以这里补上这一条必填参数。
     """
     for name, aesthetic, _defaults in SCALE_SPECS:
-        scale = scale_from_component(Scale(name, aesthetic, {}))
+        scale = scale_from_component(Scale(name, aesthetic, _required_params(name)))
         assert scale.aesthetic == aesthetic
         assert scale.discrete is (name.endswith("_discrete"))
 
@@ -634,7 +685,8 @@ def test_registry_names_cover_every_scale_implementation() -> None:
     from ggcore.registry import SCALE_SPECS
 
     for name, aesthetic, defaults in SCALE_SPECS:
-        scale = scale_from_component(Scale(name, aesthetic, defaults))
+        params = {**defaults, **_required_params(name)}
+        scale = scale_from_component(Scale(name, aesthetic, params))
         assert scale.aesthetic == aesthetic, name
 
 

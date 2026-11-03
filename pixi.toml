@@ -136,6 +136,7 @@ r-gtable = "0.3.*"
 # 用 svglite 出 SVG。这一组只活在 refs 环境里，dev/prod 不会带上 R。
 r-ggplot2 = "==4.0.3"
 r-svglite = ">=2.2,<3"
+r-hms = ">=1.1,<2"
 
 [feature.refs.tasks]
 "refs:units" = "Rscript tools/refs/units_ref.R"

@@ -39,6 +39,7 @@ from ggcore.aes import as_aes, frozen_mapping
 from ggcore.components import Coord, Facet, Guide, Labels, Scale
 from ggcore.layer import Geom, Layer, Position, Stat, as_geom, as_position, as_stat
 from ggcore.position import POSITION_FACTORIES, POSITION_NAMES
+from ggcore.scale_specs import SCALE_SPECS as _SCALE_SPECS
 from ggcore.theme import theme_bw, theme_grey, theme_minimal, theme_void
 
 #: 组件种类，顺序即遍历顺序（不要改成 set）。`position` 紧跟 `stat`：
@@ -403,25 +404,10 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
 )
 
 #: 6 组 scale：position（x/y 连续与离散）+ colour / fill / size / shape / alpha。
-SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = (
-    ("x_continuous", "x", {"type": "continuous"}),
-    ("y_continuous", "y", {"type": "continuous"}),
-    ("x_discrete", "x", {"type": "discrete"}),
-    ("y_discrete", "y", {"type": "discrete"}),
-    ("x_log10", "x", {"trans": "log10"}),
-    ("y_log10", "y", {"trans": "log10"}),
-    ("colour_continuous", "colour", {"type": "continuous"}),
-    # ggplot2 的 `scale_colour_gradient()` / `scale_fill_gradient()` 与
-    # `scale_*_continuous()` 同一实现（Lab 插值、low/high 默认值相同）。
-    ("colour_gradient", "colour", {"type": "continuous"}),
-    ("colour_discrete", "colour", {"type": "discrete"}),
-    ("fill_continuous", "fill", {"type": "continuous"}),
-    ("fill_gradient", "fill", {"type": "continuous"}),
-    ("fill_discrete", "fill", {"type": "discrete"}),
-    ("size_continuous", "size", {"type": "continuous"}),
-    ("shape_discrete", "shape", {"type": "discrete"}),
-    ("alpha_continuous", "alpha", {"type": "continuous"}),
-)
+#: M2-4 A 段起，名字与默认值由 `ggcore.scale_specs` 的声明表提供：NAMESPACE 的
+#: 131 个 `scale_*` 导出分两段登记（A 段连续侧 70 个、B 段离散/色板 61 个）。
+#: 这里只是同名导出，注册表的遍历顺序 = 表的顺序。
+SCALE_SPECS: tuple[tuple[str, str, dict[str, Any]], ...] = _SCALE_SPECS
 
 THEME_NAMES: tuple[str, ...] = ("grey", "minimal", "void")
 COORD_NAMES: tuple[str, ...] = ("cartesian", "fixed")
