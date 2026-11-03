@@ -32,6 +32,7 @@ from ggcore.geom.base import (
     GeomRenderer,
     alpha_colour,
     default_size,
+    fill_values,
     flip_data,
     lty_value,
     munch_xy,
@@ -116,7 +117,7 @@ class BarRenderer(GeomRenderer):
         ymin = npc_values(panel, data, "ymin", "y")
         ymax = npc_values(panel, data, "ymax", "y")
         colours = _values(data, "colour", None)
-        fills = _values(data, "fill", "grey35")
+        fills = fill_values(data, build.params, "grey35")
         alpha = table_numeric(data, "alpha", default=math.nan)
         linewidth = table_numeric(data, "linewidth", default=0.5)
         linetype = _values(data, "linetype", 1)
@@ -323,7 +324,7 @@ class AreaRenderer(GeomRenderer):
             return _munch_area(
                 data,
                 panel,
-                fills=_values(data, "fill", "grey20"),
+                fills=fill_values(data, build.params, "grey20"),
                 colours=_values(data, "colour", None),
                 alpha=table_numeric(data, "alpha", default=math.nan),
                 linewidth=table_numeric(data, "linewidth", default=0.5),
@@ -343,7 +344,7 @@ class AreaRenderer(GeomRenderer):
             along = npc_values(panel, data, "x", "x")
             low = npc_values(panel, data, "ymin", "y")
             high = npc_values(panel, data, "ymax", "y")
-        fill = _values(data, "fill", "grey20")
+        fill = fill_values(data, build.params, "grey20")
         colour = _values(data, "colour", None)
         alpha = table_numeric(data, "alpha", default=math.nan)
         linewidth = table_numeric(data, "linewidth", default=0.5)

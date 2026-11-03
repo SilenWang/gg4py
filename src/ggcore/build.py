@@ -66,6 +66,7 @@ from ggcore.facet import (
     PanelScaleSet,
     facet_from_component,
 )
+from ggcore.fills import FillSpec
 from ggcore.layer import Layer, Position
 from ggcore.registry import construct, registered, required_aes_groups
 from ggcore.scales import ScaleSet
@@ -618,6 +619,11 @@ def finish(layer: Layer, scaled: ColumnTable, index: int = 0) -> ColumnTable:
             continue
         columns = _put(columns, name, _default_column(value, scaled.nrows))
     for name, value in _aes_params(layer).items():
+        if isinstance(value, FillSpec):
+            # 渐变 / 图案是**一个对象**，不是逐行的标量：不进数据列，留在
+            # `layer.params` 里，画的时候由 geom 当整层的填充缺省值用
+            # （`docs/notes/ir.md` §6.1 的写方口径）。
+            continue
         columns = _put(columns, name, _value_column(value, scaled.nrows))
     return ColumnTable(columns, nrows=scaled.nrows)
 

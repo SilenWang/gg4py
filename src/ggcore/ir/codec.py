@@ -38,17 +38,24 @@ from ggcore.ir.errors import IRDecodeError, IRValidationError, IRVersionError
 from ggcore.ir.nodes import (
     DEFAULT_MIME,
     DTYPE_WIRE,
+    F32,
     GPAR_FIELDS,
     NODE_SPECS,
     WIRE_DTYPES,
     Blob,
     BlobTable,
+    Extend,
+    FillKind,
     Gpar,
+    LinearGradient,
     LineEnd,
     LineJoin,
     Node,
     NodeKind,
+    RadialGradient,
     Scene,
+    Stop,
+    TilePattern,
 )
 
 #: 实际在跑的 CBOR 实现。CPython 用 `cbor2`（Rust 扩展）；Pyodide 的包索引里没有
@@ -65,7 +72,9 @@ except ImportError:  # pragma: no cover - 只有 Pyodide 走这里
     CBOR_BACKEND = "ggcore.ir._cbor"
 
 #: 当前写出的 IR 版本：(major, minor)。major 涨 = 不兼容，minor 涨 = 只加字段。
-IR_VERSION: tuple[int, int] = (0, 3)
+#: 0.3 = `arrow*` 标记属性（#61），0.4 = `gpar.fill` 的渐变 / 图案联合类型（本 PR）。
+#: 两个 PR 各自都标过 0.3，交叉解码双向失败过（SIL-767），所以渐变必须另占一个 minor。
+IR_VERSION: tuple[int, int] = (0, 4)
 IR_VERSION_STR = ".".join(str(part) for part in IR_VERSION)
 MAGIC = "ggir"
 
@@ -159,6 +168,8 @@ def _node_to_obj(node: Node) -> dict[str, Any]:
 
 
 def _to_wire(value: Any) -> Any:
+    if isinstance(value, (LinearGradient, RadialGradient, TilePattern)):
+        return _fill_to_wire(value)
     if isinstance(value, str):
         return str(value)
     if isinstance(value, tuple):
@@ -166,15 +177,80 @@ def _to_wire(value: Any) -> Any:
     return value
 
 
+#: 每种非纯色 fill 的已知键（解码时用于“未知字段”口径）。
+_FILL_KEYS: Mapping[str, frozenset[str]] = {
+    FillKind.LINEAR.value: frozenset({"kind", "stops", "start", "end", "extend"}),
+    FillKind.RADIAL.value: frozenset({"kind", "stops", "center", "radius", "focal", "extend"}),
+    FillKind.PATTERN.value: frozenset({"kind", "content", "size", "origin", "extend"}),
+}
+
+#: 每种 fill 分支引入的 IR minor。读方的 minor 低于它时，带该 `kind` 的 `fill` 一律
+#: 按「文件比读方新」处理并抛 `IRVersionError`——**跳过未知键**在这里等于「静默不填充」，
+#: 那不是前向兼容，是画错图。纯色（不带 `kind` 的四元组）不受这条约束。
+_FILL_MINOR: Mapping[str, int] = {
+    FillKind.LINEAR.value: 4,
+    FillKind.RADIAL.value: 4,
+    FillKind.PATTERN.value: 4,
+}
+
+
+def _stops_to_wire(stops: Sequence[Stop]) -> dict[str, Any]:
+    """色标写成一条 f4 (n, 5) 缓冲：offset + r, g, b, a（20 B/档）。"""
+    rows = np.array([stop.to_row() for stop in stops], dtype=np.float64)
+    data = np.ascontiguousarray(rows.astype(F32))
+    return {"dtype": "f4", "shape": list(data.shape), "data": data.tobytes()}
+
+
+def _fill_to_wire(fill: Any) -> dict[str, Any]:
+    if isinstance(fill, LinearGradient):
+        return {
+            "kind": fill.kind.value,
+            "stops": _stops_to_wire(fill.stops),
+            "start": list(fill.start),
+            "end": list(fill.end),
+            "extend": fill.extend.value,
+        }
+    if isinstance(fill, RadialGradient):
+        obj: dict[str, Any] = {
+            "kind": fill.kind.value,
+            "stops": _stops_to_wire(fill.stops),
+            "center": list(fill.center),
+            "radius": fill.radius,
+            "extend": fill.extend.value,
+        }
+        if fill.focal is not None:
+            obj["focal"] = list(fill.focal)
+        return obj
+    assert isinstance(fill, TilePattern)
+    return {
+        "kind": fill.kind.value,
+        "size": list(fill.size),
+        "origin": list(fill.origin),
+        "extend": fill.extend.value,
+        "content": [_node_to_obj(item) for item in fill.content],
+    }
+
+
 # ---------------------------------------------------------------------------
 # 解码
 # ---------------------------------------------------------------------------
 
 
-def decode(data: bytes | bytearray | memoryview) -> Scene:
-    """把 CBOR 字节解回 scene；版本或结构不认识时抛 `IRDecodeError`。"""
+def decode(
+    data: bytes | bytearray | memoryview,
+    *,
+    reader_version: tuple[int, int] | None = None,
+) -> Scene:
+    """把 CBOR 字节解回 scene；版本或结构不认识时抛 `IRDecodeError`。
+
+    `reader_version` 是**读方的版本视野**，缺省就是本实现写出的 `IR_VERSION`。
+    只在跨版本读测试 / 迁移工具里传旧版本：它决定「哪些 fill 分支算认识」，
+    好把「旧读方拿到新文件必须明确报版本错误」这一条钉成可执行的用例
+    （`tests/test_ir_fill.py::test_v0_4_gradient_file_is_rejected_by_a_v0_3_reader`）。
+    """
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise TypeError(f"decode() 只接受 bytes，收到 {type(data).__name__}")
+    reader_minor = IR_VERSION[1] if reader_version is None else int(reader_version[1])
     try:
         payload = cbor2.loads(bytes(data))
     except Exception as exc:  # cbor2 的异常族很杂，统一包成 IRDecodeError
@@ -184,7 +260,7 @@ def decode(data: bytes | bytearray | memoryview) -> Scene:
         raise IRDecodeError(f"顶层必须是映射，收到 {type(payload).__name__}")
     if payload.get("magic") != MAGIC:
         raise IRDecodeError(f"magic 不是 {MAGIC!r}：{payload.get('magic')!r}")
-    tolerant = _check_version(payload.get("ir_version"))
+    tolerant = _check_version(payload.get("ir_version"), reader_minor)
     _reject_unknown_keys(
         payload, _ENVELOPE_KEYS, where="envelope", what="顶层键", tolerant=tolerant
     )
@@ -198,14 +274,16 @@ def decode(data: bytes | bytearray | memoryview) -> Scene:
         blobs = _blobs_from_obj(scene_obj.get("blobs", {}), tolerant=tolerant)
         size = _pair(scene_obj.get("size"), "scene.size")
         dpi = _number(scene_obj.get("dpi", 72.0), "scene.dpi")
-        root = _node_from_obj(scene_obj.get("root"), tolerant=tolerant, path="scene.root")
+        root = _node_from_obj(
+            scene_obj.get("root"), tolerant=tolerant, minor=reader_minor, path="scene.root"
+        )
         return Scene(root=root, size=size, dpi=dpi, blobs=blobs)
     except IRValidationError as exc:
         raise IRDecodeError(str(exc)) from exc
 
 
-def _check_version(raw: Any) -> bool:
-    """返回是否进入“容忍未知字段”模式（线格式 minor 比本实现新）。"""
+def _check_version(raw: Any, reader_minor: int = IR_VERSION[1]) -> bool:
+    """返回是否进入“容忍未知字段”模式（线格式 minor 比读方新）。"""
     if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)) or len(raw) != 2:
         raise IRDecodeError(f"ir_version 必须是 [major, minor]，收到 {raw!r}")
     for part in raw:
@@ -217,7 +295,7 @@ def _check_version(raw: Any) -> bool:
             f"IR major={major} 不被支持；本实现只认 {IR_VERSION[0]}.x"
             f"（写出的版本是 {IR_VERSION_STR}）"
         )
-    return minor > IR_VERSION[1]
+    return minor > reader_minor
 
 
 def _blobs_from_obj(raw: Any, *, tolerant: bool) -> BlobTable:
@@ -246,7 +324,7 @@ def _blobs_from_obj(raw: Any, *, tolerant: bool) -> BlobTable:
     return BlobTable(entries)
 
 
-def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
+def _node_from_obj(raw: Any, *, tolerant: bool, minor: int, path: str) -> Node:
     if not isinstance(raw, Mapping):
         raise IRDecodeError(f"{path} 必须是映射，收到 {type(raw).__name__}")
     kind_raw = raw.get("kind")
@@ -263,7 +341,7 @@ def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
     if "gpar" in raw:
         if not spec.gpar:
             raise IRDecodeError(f"{path}（{kind.value}）不携带 gpar")
-        gpar = _gpar_from_obj(raw["gpar"], path=f"{path}.gpar", tolerant=tolerant)
+        gpar = _gpar_from_obj(raw["gpar"], path=f"{path}.gpar", tolerant=tolerant, minor=minor)
 
     params_raw = raw.get("params", {})
     if not isinstance(params_raw, Mapping):
@@ -306,7 +384,7 @@ def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
     if not isinstance(children_raw, Sequence) or isinstance(children_raw, (str, bytes)):
         raise IRDecodeError(f"{path}.children 必须是数组")
     children = [
-        _node_from_obj(child, tolerant=tolerant, path=f"{path}.children[{index}]")
+        _node_from_obj(child, tolerant=tolerant, minor=minor, path=f"{path}.children[{index}]")
         for index, child in enumerate(children_raw)
     ]
 
@@ -323,12 +401,17 @@ def _node_from_obj(raw: Any, *, tolerant: bool, path: str) -> Node:
         raise IRDecodeError(f"{path}: {exc}") from exc
 
 
-def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool) -> Gpar:
+def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool, minor: int) -> Gpar:
     if not isinstance(raw, Mapping):
         raise IRDecodeError(f"{path} 必须是映射")
     defaults = dict(GPAR_FIELDS)
     _reject_unknown_keys(raw, frozenset(defaults), where=path, what="字段", tolerant=tolerant)
     fields = {name: raw.get(name, default) for name, default in defaults.items()}
+    # `fill` 是联合类型：纯色仍是 4 元组，渐变 / 图案是带 `kind` 的映射（§6.1）。
+    if isinstance(fields["fill"], Mapping):
+        fields["fill"] = _fill_from_obj(
+            fields["fill"], path=f"{path}.fill", tolerant=tolerant, minor=minor
+        )
     for name, enum in (("lineend", LineEnd), ("linejoin", LineJoin)):
         value = fields[name]
         if isinstance(value, enum):
@@ -339,6 +422,103 @@ def _gpar_from_obj(raw: Any, *, path: str, tolerant: bool) -> Gpar:
             raise IRDecodeError(f"{path}.{name} 不认识：{value!r}") from exc
     try:
         return Gpar(**fields)
+    except IRValidationError as exc:
+        raise IRDecodeError(f"{path}: {exc}") from exc
+
+
+def _extend_from_obj(raw: Any, *, path: str) -> Extend:
+    try:
+        return Extend("pad" if raw is None else raw)
+    except ValueError as exc:
+        allowed = ", ".join(member.value for member in Extend)
+        raise IRDecodeError(f"{path} 不认识：{raw!r}（可选 {allowed}）") from exc
+
+
+def _stops_from_obj(raw: Any, *, path: str, tolerant: bool) -> tuple[Stop, ...]:
+    """色标缓冲 → `Stop` 序列。列必须是 offset + r, g, b, a，颜色是整数。"""
+    arr = _buffer_from_obj(raw, path=path, tolerant=tolerant)
+    if arr.ndim != 2 or arr.shape[1] != 5:
+        raise IRDecodeError(f"{path} 必须是 (n, 5) 的 f4 缓冲，收到 shape={arr.shape}")
+    if arr.shape[0] < 2:
+        raise IRDecodeError(f"{path} 至少要两个色标，收到 {arr.shape[0]} 个")
+    stops: list[Stop] = []
+    for index, row in enumerate(arr):
+        offset = float(row[0])
+        if not 0.0 <= offset <= 1.0:
+            raise IRDecodeError(f"{path}[{index}].offset 必须在 [0, 1]，收到 {offset!r}")
+        channels: list[int] = []
+        for channel in row[1:]:
+            value = float(channel)
+            if not value.is_integer() or not 0.0 <= value <= 255.0:
+                raise IRDecodeError(
+                    f"{path}[{index}] 的颜色分量必须是 0..255 的整数，收到 {value!r}"
+                )
+            channels.append(int(value))
+        stops.append(Stop(offset, (channels[0], channels[1], channels[2], channels[3])))
+    return tuple(stops)
+
+
+def _fill_from_obj(
+    raw: Any, *, path: str, tolerant: bool, minor: int
+) -> LinearGradient | RadialGradient:
+    kind = raw.get("kind")
+    required_minor = _FILL_MINOR.get(kind) if isinstance(kind, str) else None
+    if required_minor is not None and required_minor > minor:
+        raise IRVersionError(
+            f"{path}.kind={kind!r} 需要 IR ≥ 0.{required_minor}，读方的版本视野是 0.{minor}："
+            "渐变 / 图案 fill 不能被「跳过未知键」吞掉（会画成不填充）"
+        )
+    if not isinstance(kind, str) or kind not in _FILL_KEYS:
+        raise IRDecodeError(
+            f"{path}.kind 不认识：{kind!r}（可选 {sorted(_FILL_KEYS)}）；"
+            "纯色 fill 是不带 kind 的 4 元组"
+        )
+    _reject_unknown_keys(
+        raw, _FILL_KEYS[kind], where=f"{path}（{kind}）", what="字段", tolerant=tolerant
+    )
+    try:
+        if kind == FillKind.PATTERN.value:
+            content_raw = raw.get("content")
+            if isinstance(content_raw, (str, bytes)) or not isinstance(content_raw, Sequence):
+                raise IRDecodeError(f"{path}.content 必须是节点数组")
+            content = tuple(
+                _node_from_obj(
+                    item, tolerant=tolerant, minor=minor, path=f"{path}.content[{index}]"
+                )
+                for index, item in enumerate(content_raw)
+            )
+            return TilePattern(
+                content=content,
+                size=_pair(raw.get("size"), f"{path}.size"),
+                origin=_pair(raw.get("origin"), f"{path}.origin"),
+                extend=_extend_from_obj(raw.get("extend"), path=f"{path}.extend"),
+            )
+        stops = _stops_from_obj(raw.get("stops"), path=f"{path}.stops", tolerant=tolerant)
+        extend = _extend_from_obj(raw.get("extend"), path=f"{path}.extend")
+        if kind == FillKind.LINEAR.value:
+            return LinearGradient(
+                stops=stops,
+                start=_pair(raw.get("start"), f"{path}.start"),
+                end=_pair(raw.get("end"), f"{path}.end"),
+                extend=extend,
+            )
+        focal_raw = raw.get("focal")
+        focal = None
+        if focal_raw is not None:
+            if (
+                isinstance(focal_raw, (str, bytes))
+                or not isinstance(focal_raw, Sequence)
+                or len(focal_raw) != 3
+            ):
+                raise IRDecodeError(f"{path}.focal 必须是三个数（fx, fy, fr），收到 {focal_raw!r}")
+            focal = tuple(_number(value, f"{path}.focal") for value in focal_raw)
+        return RadialGradient(
+            stops=stops,
+            center=_pair(raw.get("center"), f"{path}.center"),
+            radius=_number(raw.get("radius"), f"{path}.radius"),
+            focal=focal,
+            extend=extend,
+        )
     except IRValidationError as exc:
         raise IRDecodeError(f"{path}: {exc}") from exc
 

@@ -1,0 +1,8 @@
+family = "geom-col"
+features = ["gradient-fill"]
+ci = true
+title = "col：径向渐变填充（圆心 / 短边半径的 npc 解析）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """缺省 `radialGradient()` 的圆心在包围盒正中、半径是短边的一半（npc）。三根柱子共用一个
+多行 rectGrob，所以只有一条 `<radialGradient>`；按短边算半径（而不是宽或对角线）才能对上。"""

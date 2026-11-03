@@ -1,0 +1,9 @@
+family = "geom-col"
+features = ["gradient-fill", "alpha"]
+ci = true
+title = "col：4 档线性渐变（中间档带 alpha）"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = """4 档、offset 不均匀（0 / 0.3 / 0.7 / 1）、中间档 `#56B1F780` 的 alpha 是 0.50。
+守两点：中间档按 offset 插在正确位置；单档 alpha 落在 `stop-opacity` 上，而不是
+整条渐变的 `fill-opacity`——三段柱子应该同时看到「半透明中段 + 不透明两端」。"""
