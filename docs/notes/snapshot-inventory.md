@@ -4,29 +4,26 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**177**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**134**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **111** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**200**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**111**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **88** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
 | `guide-axis` | m2-closeout | 23 | 10 | 13 |
-| `coord-polar` | m2-closeout | 11 | 0 | 11 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `theme` | m2-closeout | 39 | 31 | 8 |
-| `sec-axis` | m2-closeout | 7 | 0 | 7 |
 | `aes` | m2-closeout | 6 | 0 | 6 |
 | `labels` | m2-closeout | 6 | 0 | 6 |
-| `coord-cartesian` | m2-closeout | 5 | 0 | 5 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
 | `geom-path` | m2-closeout | 5 | 0 | 5 |
+| `coord-polar` | m2-closeout | 11 | 7 | 4 |
 | `draw-key` | m2-closeout | 6 | 2 | 4 |
 | `facet-` | m2-closeout | 4 | 0 | 4 |
 | `patterns` | m2-closeout | 4 | 0 | 4 |
-| `coord-transform` | m2-closeout | 3 | 0 | 3 |
 | `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
 | `geom-hex` | m2-closeout | 3 | 0 | 3 |
 | `stat-align` | m2-closeout | 3 | 0 | 3 |
@@ -38,7 +35,6 @@
 | `geom-polygon` | m2-closeout | 2 | 0 | 2 |
 | `geom-smooth` | m2-closeout | 2 | 0 | 2 |
 | `guide-legend` | m2-closeout | 7 | 5 | 2 |
-| `coord-flip` | m2-closeout | 1 | 0 | 1 |
 | `facet-layout` | m2-closeout | 1 | 0 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-label` | m2-closeout | 1 | 0 | 1 |
@@ -46,13 +42,17 @@
 | `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
+| `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
+| `coord-flip` | m2-closeout | 1 | 1 | 0 |
+| `coord-transform` | m2-closeout | 3 | 3 | 0 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
 | `geom-raster` | m2-closeout | 12 | 12 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
-| **合计** | — | 311 | 177 | 134 |
+| `sec-axis` | m2-closeout | 7 | 7 | 0 |
+| **合计** | — | 311 | 200 | 111 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -60,6 +60,22 @@
 
 | 快照 | case |
 | --- | --- |
+| `coord-cartesian/clip-on-by-default-only-inside-visible.svg` | `upstream-coord-cartesian-clip-on` |
+| `coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg` | `upstream-coord-cartesian-clip-off` |
+| `coord-cartesian/contract-range.svg` | `upstream-coord-cartesian-contract-range` |
+| `coord-cartesian/expand-range.svg` | `upstream-coord-cartesian-expand-range` |
+| `coord-cartesian/reversed-cartesian-coords.svg` | `upstream-coord-cartesian-reversed` |
+| `coord-flip/turning-off-secondary-title-with-coord-flip.svg` | `upstream-coord-flip-sec-title` |
+| `coord-polar/racetrack-plot-closed-and-has-center-hole.svg` | `upstream-coord-polar-racetrack-hole` |
+| `coord-polar/racetrack-plot-closed-and-no-center-hole.svg` | `upstream-coord-polar-racetrack-no-hole` |
+| `coord-polar/rays-circular-arcs-and-spiral-arcs.svg` | `upstream-coord-polar-rays` |
+| `coord-polar/reversed-polar-coords.svg` | `upstream-coord-polar-reversed` |
+| `coord-polar/rose-plot-with-has-equal-spacing.svg` | `upstream-coord-polar-rose` |
+| `coord-polar/secondary-axis-ticks-and-labels.svg` | `upstream-coord-polar-sec-axis` |
+| `coord-polar/three-concentric-circles.svg` | `upstream-coord-polar-three-circles` |
+| `coord-transform/basic-coord-transform-plot.svg` | `upstream-coord-transform-basic` |
+| `coord-transform/reversed-transformed-coords.svg` | `upstream-coord-transform-reversed` |
+| `coord-transform/sec-axis-with-coord-transform.svg` | `upstream-coord-transform-sec-axis` |
 | `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
 | `draw-key/horizontal-linerange-and-pointrange.svg` | `upstream-draw-key-horizontal-linerange-pointrange` |
 | `geom-dotplot/2-na-values-bin-along-y-stack-center.svg` | `upstream-geom-dotplot-2-na-bin-along-y` |
@@ -206,6 +222,13 @@
 | `scales-breaks-labels/numeric-log.svg` | `upstream-scales-numeric-log` |
 | `scales-breaks-labels/numeric-polar.svg` | `upstream-scales-numeric-polar` |
 | `scales-breaks-labels/numeric.svg` | `upstream-scales-numeric` |
+| `sec-axis/sec-axis-custom-transform.svg` | `upstream-sec-axis-custom` |
+| `sec-axis/sec-axis-datetime-scale.svg` | `upstream-sec-axis-datetime` |
+| `sec-axis/sec-axis-independent-transformations.svg` | `upstream-sec-axis-independent` |
+| `sec-axis/sec-axis-monotonicity-test.svg` | `upstream-sec-axis-monotonicity` |
+| `sec-axis/sec-axis-sec-power-transform.svg` | `upstream-sec-axis-power` |
+| `sec-axis/sec-axis-skewed-transform.svg` | `upstream-sec-axis-skewed` |
+| `sec-axis/sec-axis-with-division.svg` | `upstream-sec-axis-with-division` |
 | `theme/axes-styling.svg` | `upstream-theme-axes-styling` |
 | `theme/caption-aligned-to-entire-plot.svg` | `upstream-theme-caption-aligned-to-entire-plot` |
 | `theme/height-is-3-times-width-2-column-facets.svg` | `upstream-theme-height-is-3-times-width-2-column-facets` |
@@ -266,30 +289,6 @@
 
 </details>
 
-### `coord-cartesian` — 5 条 · SIL-715 · m2-closeout
-
-依赖上游测试共用的 `mtcars` 数据集夹具（32×11），本批次未内联。
-
-<details><summary>快照</summary>
-
-- `coord-cartesian/clip-on-by-default-only-inside-visible.svg`
-- `coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg`
-- `coord-cartesian/contract-range.svg`
-- `coord-cartesian/expand-range.svg`
-- `coord-cartesian/reversed-cartesian-coords.svg`
-
-</details>
-
-### `coord-flip` — 1 条 · SIL-715 · m2-closeout
-
-同 `coord-cartesian`：需要 `mtcars` 夹具与 sec axis 的翻转组合。
-
-<details><summary>快照</summary>
-
-- `coord-flip/turning-off-secondary-title-with-coord-flip.svg`
-
-</details>
-
 ### `coord-map` — 2 条 · SIL-715 · m3
 
 `coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。
@@ -301,35 +300,43 @@
 
 </details>
 
-### `coord-polar` — 11 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m2-closeout
 
-极坐标 × 轴 / 次轴 / racetrack（内半径切片）组合未逐条复刻；部分能力已实现但缺 atan2 轴标注的像素级对齐。
+SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。
 
 <details><summary>快照</summary>
 
 - `coord-polar/bottom-half-circle-with-rotated-text.svg`
-- `coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg`
-- `coord-polar/inner-radius-with-all-axes.svg`
-- `coord-polar/partial-with-all-axes.svg`
-- `coord-polar/racetrack-plot-closed-and-has-center-hole.svg`
-- `coord-polar/racetrack-plot-closed-and-no-center-hole.svg`
-- `coord-polar/rays-circular-arcs-and-spiral-arcs.svg`
-- `coord-polar/reversed-polar-coords.svg`
-- `coord-polar/rose-plot-with-has-equal-spacing.svg`
-- `coord-polar/secondary-axis-ticks-and-labels.svg`
-- `coord-polar/three-concentric-circles.svg`
 
 </details>
 
-### `coord-transform` — 3 条 · SIL-715 · m2-closeout
+### `coord-polar` — 1 条 · SIL-715 · m2-closeout
 
-`coord_trans()` 的 sec axis 与反向组合未逐条复刻。
+SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。
 
 <details><summary>快照</summary>
 
-- `coord-transform/basic-coord-transform-plot.svg`
-- `coord-transform/reversed-transformed-coords.svg`
-- `coord-transform/sec-axis-with-coord-transform.svg`
+- `coord-polar/inner-radius-with-all-axes.svg`
+
+</details>
+
+### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+
+SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。
+
+<details><summary>快照</summary>
+
+- `coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg`
+
+</details>
+
+### `coord-polar` — 1 条 · SIL-715 · m2-closeout
+
+SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。
+
+<details><summary>快照</summary>
+
+- `coord-polar/partial-with-all-axes.svg`
 
 </details>
 
@@ -764,22 +771,6 @@ pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。
 <details><summary>快照</summary>
 
 - `position-stack/area-stacking.svg`
-
-</details>
-
-### `sec-axis` — 7 条 · SIL-715 · m2-closeout
-
-次轴变换（monotonicity / skew / datetime，7 条）未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `sec-axis/sec-axis-custom-transform.svg`
-- `sec-axis/sec-axis-datetime-scale.svg`
-- `sec-axis/sec-axis-independent-transformations.svg`
-- `sec-axis/sec-axis-monotonicity-test.svg`
-- `sec-axis/sec-axis-sec-power-transform.svg`
-- `sec-axis/sec-axis-skewed-transform.svg`
-- `sec-axis/sec-axis-with-division.svg`
 
 </details>
 

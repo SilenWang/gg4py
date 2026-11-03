@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -122,14 +123,15 @@ class SecondaryAxis:
                 f"sec_axis() 的 transform 必须是函数（`~ . * 2` → `lambda v: v * 2`），"
                 f"收到 {self.transform!r}"
             )
-        if self.breaks is not None:
+        if self.breaks is not None and self.breaks is not DERIVE:
             if isinstance(self.breaks, (str, bytes)) or not isinstance(self.breaks, Sequence):
                 raise AxisError(f"sec_axis(breaks = ...) 必须是序列（数值），收到 {self.breaks!r}")
-            if len(self.breaks) != 2:
-                raise AxisError(
-                    "sec_axis(breaks = ...) 目前只支持 2 元范围（R 的 c(lo, hi)），"
-                    f"收到 {self.breaks!r}"
-                )
+            for item in self.breaks:
+                if not isinstance(item, numbers.Real) or isinstance(item, bool):
+                    raise AxisError(f"sec_axis(breaks = ...) 的每一项必须是数值，收到 {item!r}")
+        if self.labels is not None and self.labels is not DERIVE:
+            if isinstance(self.labels, (str, bytes)):
+                raise AxisError(f"sec_axis(labels = ...) 必须是序列或回调，收到 {self.labels!r}")
 
     @property
     def empty(self) -> bool:
@@ -400,6 +402,17 @@ def axis_ticks(
     return AxisTicks(side, ticks.positions, ticks.labels)
 
 
+def _primary_param(scale: Any, name: str) -> Any:
+    """主轴标度上的原始参数（`breaks` / `labels`）；没写就是 `None`（R 的 waiver）。"""
+    getter = getattr(scale, "_param", None)
+    if getter is None:
+        return None
+    try:
+        return getter(name)
+    except TypeError:  # pragma: no cover - 自定义标度子类可能没有该参数
+        return None
+
+
 def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     """次轴刻度：`AxisSecondary$break_info()` 的移植（M2-1）。
 
@@ -416,12 +429,16 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     if sa is None:
         return AxisTicks(side, (), ())
     polar = getattr(params, "polar", None)
-    if polar is not None:
-        raise AxisError(
-            "极坐标 / 径向坐标下的次轴（r.sec / theta.sec）尚未实现；"
-            "M2-1 只做笛卡尔系的 sec_axis()，见 docs/notes/coord.md"
-        )
-    axis = params.screen_axis(side)
+    axis = polar.r_axis if polar is not None else params.screen_axis(side)
+
+    def _position(value: float) -> float:
+        """次轴值（主轴空间的数值）→ 该边上的 npc 位置。"""
+        if polar is not None:
+            # 极坐标 / 径向坐标的次轴是 r 轴：位置 = `r_rescale(r) + 0.5`
+            # （上游 `CoordPolar$render_axis_v()`）。
+            return float(polar.radius(np.array([value]))[0]) + 0.5
+        return params.position_of(axis, float(value))
+
     low, high = params.continuous_ranges[axis]
     if high < low:
         low, high = high, low
@@ -431,7 +448,7 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
         # `breaks()` 里的越界项是 `None`（R 的 `NA`），标签与它逐位对齐；
         # 先配对再丢 None，不能先滤断点再 zip（长度会错位）。
         pairs = [
-            (params.position_of(axis, float(value)), str(label))
+            (_position(float(value)), str(label))
             for value, label in zip(breaks, labels, strict=False)
             if value is not None and label is not None and str(label)
         ]
@@ -459,6 +476,11 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     primary = samples[order]
     sec_range = (float(forward[0]), float(forward[-1]))
     breaks_param = getattr(sa, "breaks", None)
+    if breaks_param is DERIVE:
+        # `sec_axis(breaks = derive())`：沿用主轴的 breaks **规格**（数值向量 /
+        # 回调 / NULL）。上游 `AxisSecondary$init()` 直接 `self$breaks <- scale$breaks`，
+        # 随后在次轴空间里重新求值。
+        breaks_param = _primary_param(scale, "breaks")
     if breaks_param is not None:
         sec_breaks = list(breaks_param)
     else:
@@ -466,6 +488,8 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
 
         sec_breaks = list(extended_breaks(sec_range[0], sec_range[1], 5))
     labels_param = getattr(sa, "labels", None)
+    if labels_param is DERIVE:
+        labels_param = _primary_param(scale, "labels")
     if labels_param is not None:
         labels = [str(item) for item in labels_param]
         if len(labels) != len(sec_breaks):
@@ -473,11 +497,18 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
                 f"sec_axis(labels=) 有 {len(labels)} 项，断点有 {len(sec_breaks)} 项（必须等长）"
             )
     else:
-        from ggcore.scales import format_numbers
+        date_kind = getattr(getattr(scale, "transform_", None), "date_kind", None)
+        if date_kind is not None:
+            # 日期 / 时间标度的次轴：标签按主轴的时间口径格式化（上游对 date / time
+            # 变换建临时标度，`get_labels()` 仍走日期格式）。
+            transform_ = scale.transform_
+            labels = [str(item) for item in transform_.label(sec_breaks)]
+        else:
+            from ggcore.scales import format_numbers
 
-        labels = [str(item) for item in format_numbers(sec_breaks)]
+            labels = [str(item) for item in format_numbers(sec_breaks)]
     primary_values = np.interp(np.asarray(sec_breaks, dtype=np.float64), forward, primary)
-    positions = [params.position_of(axis, float(value)) for value in primary_values]
+    positions = [_position(float(value)) for value in primary_values]
     pairs = [
         (position, label)
         for position, label in zip(positions, labels, strict=True)

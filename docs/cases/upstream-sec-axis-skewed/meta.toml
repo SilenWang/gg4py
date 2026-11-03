@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-log10", "scale-breaks"]
+ci = true
+title = "上游快照：sec_axis, skewed transform"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-skewed-transform.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`breaks = derive()` 让次轴沿用主轴的断点规格。"

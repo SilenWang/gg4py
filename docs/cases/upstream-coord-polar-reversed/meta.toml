@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "scale-limits"]
+ci = true
+title = "上游快照：reversed polar coords"
+source = "upstream:tests/testthat/_snaps/coord-polar/reversed-polar-coords.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：vdiffr 快照原样纳入；`coord_radial(reverse = \"thetar\")` 同时反转 theta 与 r。"

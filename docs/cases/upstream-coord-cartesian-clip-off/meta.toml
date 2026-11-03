@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-cartesian", "annotation-text"]
+ci = true
+title = "上游快照：clip turned off, both 'inside' and 'outside' visible"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`clip = "off"` 后，面板外的文字也要画出来。'

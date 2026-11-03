@@ -25,12 +25,11 @@ from ggcore.geom.base import (
     GeomRenderer,
     alpha_colour,
     flip_data,
-    npc_values,
     row_slice,
     table_column,
     table_numeric,
 )
-from ggcore.grobs import g_tree, null_grob, polyline_grob
+from ggcore.grobs import g_tree, null_grob, polyline_grob, segments_grob
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
@@ -46,6 +45,94 @@ def _keep_mid_true(complete: np.ndarray) -> np.ndarray:
     keep = np.zeros(complete.size, dtype=bool)
     keep[first:last] = True
     return keep
+
+
+def _lty(value: Any) -> Any:
+    """`gpar.lty`：数值（含 numpy 浮点）折成 int，样式名原样。"""
+    if isinstance(value, str):
+        return value
+    return int(value)
+
+
+def _munch_path(
+    panel: Any,
+    xs: np.ndarray,
+    ys: np.ndarray,
+    groups: np.ndarray,
+    *,
+    segment_length: float = 0.01,
+) -> tuple[np.ndarray, np.ndarray, list[int], np.ndarray]:
+    """`coord_munch()` 的 path 版本：`(px, py, run_id, source_row)`。
+
+    分组按 `group` 的**取值**（上游 `GeomPath$draw_panel()` 先
+    `data[order(data$group), ]`），不是按连续段——`group` 交错出现的路径
+    （`geom-path-groups`）也要各连各的。
+
+    非线性坐标（极坐标 / 径向 / 非 identity 的 `coord_trans`）下每条边按
+    `segment_length` 细分；每个细分点的样式取**该边的起点行**（上游
+    `munch_data()` 的 `aes_df <- data[id, ...]`），`source_row` 就是那个行号。
+    线性坐标不细分，`source_row` 是原行号。
+
+    `run_id` 在组切换与缺失值处递增，直接喂给 `polyline_grob(id=)`。
+    """
+    xs = np.asarray(xs, dtype=np.float64)
+    ys = np.asarray(ys, dtype=np.float64)
+    keys = groups.tolist()
+    unique: list[Any] = []
+    for key in keys:
+        if key not in unique:
+            unique.append(key)
+    linear = bool(getattr(panel, "is_linear", True))
+    x_span = 0.0 if linear else float(panel.x_range[1]) - float(panel.x_range[0])
+    y_span = 0.0 if linear else float(panel.y_range[1]) - float(panel.y_range[0])
+    out_x: list[float] = []
+    out_y: list[float] = []
+    out_run: list[int] = []
+    out_src: list[int] = []
+    run = 0
+    for key in unique:
+        rows = [index for index, value in enumerate(keys) if value == key]
+        run += 1
+        previous: int | None = None
+        for row in rows:
+            x1 = float(xs[row])
+            y1 = float(ys[row])
+            if previous is None:
+                out_x.append(x1)
+                out_y.append(y1)
+                out_run.append(run)
+                out_src.append(row)
+                previous = row
+                continue
+            x0 = float(xs[previous])
+            y0 = float(ys[previous])
+            if not all(math.isfinite(value) for value in (x0, y0, x1, y1)):
+                # 缺失值留成断点（同一个 run 里的 `id` 断开，grid 的 NA 断线语义），
+                # 不在这里新开 run——否则一条线会被拆成多个 polyline grob。
+                out_x.append(x1)
+                out_y.append(y1)
+                out_run.append(run)
+                out_src.append(row)
+                previous = row
+                continue
+            if linear:
+                out_x.append(x1)
+                out_y.append(y1)
+                out_run.append(run)
+                out_src.append(previous)
+            else:
+                distance = math.hypot((x1 - x0) / x_span, (y1 - y0) / y_span)
+                steps = max(1, math.ceil(distance / float(segment_length)))
+                for step in range(1, steps + 1):
+                    ratio = step / steps
+                    out_x.append(x0 + (x1 - x0) * ratio)
+                    out_y.append(y0 + (y1 - y0) * ratio)
+                    out_run.append(run)
+                    out_src.append(previous)
+            previous = row
+        run += 1
+    px, py = panel.project_xy(np.asarray(out_x), np.asarray(out_y))
+    return np.asarray(px), np.asarray(py), out_run, np.asarray(out_src, dtype=int)
 
 
 class PathRenderer(GeomRenderer):
@@ -102,8 +189,8 @@ class PathRenderer(GeomRenderer):
             else False
         )
         data = flip_data(data, flipped)
-        x = npc_values(panel, data, "x", "x")
-        y = npc_values(panel, data, "y", "y")
+        xs_data = table_numeric(data, "x")
+        ys_data = table_numeric(data, "y")
         groups = _group_key(data)
         colours = _values(data, "colour", "black")
         linewidth = table_numeric(data, "linewidth", default=0.5)
@@ -113,33 +200,92 @@ class PathRenderer(GeomRenderer):
         linejoin = str(build.params.get("linejoin", "round"))
         linemitre = float(build.params.get("linemitre", 10.0))
 
+        # `coord_munch()`：非线性坐标下每条边走细分，细分点的样式取该边起点行。
+        px, py, run_ids, source = _munch_path(panel, xs_data, ys_data, groups)
+        run_array = np.asarray(run_ids, dtype=int)
+
         grobs: list[Any] = []
-        for key in _keys(groups):
-            rows = np.flatnonzero(groups == key)
+        for run in np.unique(run_array):
+            rows = np.flatnonzero(run_array == run)
             if rows.size < 2:
                 continue
-            xs, ys, ids = _break_at_na(x[rows], y[rows])
+            xs, ys, ids = _break_at_na(px[rows], py[rows])
             if xs.size < 2:
                 continue
-            first = rows[0]
-            grobs.append(
-                polyline_grob(
-                    unit(xs.tolist(), "native"),
-                    unit(ys.tolist(), "native"),
-                    id=ids,
-                    default_units="native",
-                    gp=gpar(
-                        col=alpha_colour(colours[first], alpha[first]),
-                        lwd=float(linewidth[first]) * POINT_PER_MM,
-                        lty=int(linetype[first])
-                        if not isinstance(linetype[first], str)
-                        else linetype[first],
-                        lineend=lineend,
-                        linejoin=linejoin,
-                        linemitre=linemitre,
-                    ),
+            # `_break_at_na` 丢掉 NA 点后，样式来源行要跟着重排。
+            finite = np.isfinite(px[rows]) & np.isfinite(py[rows])
+            style_rows = source[rows][finite]
+            if style_rows.size == 0:
+                continue
+            # 样式去重：`style_rows` 是逐点的来源行，不是样式集合（一条线上的
+            # 10 个点仍可能是同一种样式，早先按行数判断会误走逐段分支）。
+            styles = list(
+                dict.fromkeys(
+                    (
+                        alpha_colour(colours[int(row)], alpha[int(row)]),
+                        float(linewidth[int(row)]),
+                        _lty(linetype[int(row)]),
+                    )
+                    for row in np.unique(style_rows)
                 )
             )
+            if len(styles) == 1:
+                # 整条线样式一致：一条折线（R 的 `polylineGrob` 分支）。
+                colour, width, type_ = styles[0]
+                grobs.append(
+                    polyline_grob(
+                        unit(xs.tolist(), "native"),
+                        unit(ys.tolist(), "native"),
+                        id=ids,
+                        default_units="native",
+                        gp=gpar(
+                            col=colour,
+                            lwd=width * POINT_PER_MM,
+                            lty=type_,
+                            lineend=lineend,
+                            linejoin=linejoin,
+                            linemitre=linemitre,
+                        ),
+                    )
+                )
+                continue
+            # 样式沿线变化：逐段画（R 的 `segmentsGrob` 分支，取段起点行）。
+            # R 在 linetype 也变化时直接 abort；这里按 (colour, lwd, lty) 分桶画，
+            # 视觉结果与逐段 `segmentsGrob()` 相同。
+            seg_source = style_rows[:-1]
+            x0 = xs[:-1]
+            y0 = ys[:-1]
+            x1 = xs[1:]
+            y1 = ys[1:]
+            # `gpar()` 只收标量样式，所以按 (colour, lwd, lty) 分组，每组一个
+            # `segmentsGrob`（R 用一个矢量化的 `segmentsGrob` 表达同一件事）。
+            buckets: dict[tuple[Any, float, Any], list[int]] = {}
+            for index, row in enumerate(seg_source):
+                style = (
+                    alpha_colour(colours[int(row)], alpha[int(row)]),
+                    float(linewidth[int(row)]) * POINT_PER_MM,
+                    _lty(linetype[int(row)]),
+                )
+                buckets.setdefault(style, []).append(index)
+            for (colour, width, type_), indices in buckets.items():
+                pick = np.asarray(indices, dtype=int)
+                grobs.append(
+                    segments_grob(
+                        unit(x0[pick].tolist(), "native"),
+                        unit(y0[pick].tolist(), "native"),
+                        unit(x1[pick].tolist(), "native"),
+                        unit(y1[pick].tolist(), "native"),
+                        default_units="native",
+                        gp=gpar(
+                            col=colour,
+                            lwd=width,
+                            lty=type_,
+                            lineend=lineend,
+                            linejoin=linejoin,
+                            linemitre=linemitre,
+                        ),
+                    )
+                )
         if not grobs:
             return null_grob(name=f"geom_{self.name}")
         if len(grobs) == 1:

@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-cartesian", "scale-limits"]
+ci = true
+title = "上游快照：expand range"
+source = "upstream:tests/testthat/_snaps/coord-cartesian/expand-range.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`coord_cartesian(xlim, ylim)` 覆盖面板范围；`mtcars` 全量内联。"

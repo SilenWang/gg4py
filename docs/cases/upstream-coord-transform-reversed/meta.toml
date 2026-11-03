@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-trans", "scale-log10"]
+ci = true
+title = "上游快照：reversed transformed coords"
+source = "upstream:tests/testthat/_snaps/coord-transform/reversed-transformed-coords.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`coord_transform(x, y, xlim, ylim, expand = FALSE, reverse = "xy")`。'

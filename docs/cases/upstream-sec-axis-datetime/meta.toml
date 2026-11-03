@@ -1,0 +1,7 @@
+family = "scale"
+features = ["coord-sec-axis", "scale-date"]
+ci = true
+title = "上游快照：sec_axis, datetime scale"
+source = "upstream:tests/testthat/_snaps/sec-axis/sec-axis-datetime-scale.svg"
+tolerance = { png = 0.02 }
+notes = 'SIL-793：`date_breaks = "2 hours"` + `dup_axis(~ . - 8 * 60 * 60)`。'

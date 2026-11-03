@@ -334,7 +334,38 @@ def _text_row_cm(theme: ResolvedTheme, name: str, text: str | None) -> tuple[flo
     return text_line_cm(float(element.size or 0.0)) + mt + mb, element
 
 
+_UNSET_TITLE: Any = object()
+
+
+def _scale_axis_title(build: PlotBuild, aesthetic: str) -> Any:
+    """位置标度上的显式 `name=`（`_UNSET_TITLE` = 没给，交给下一级）。
+
+    R 的轴标题是 `guide$title %|W% scale$name %|W% plot$labels` 三级链：
+    `scale_x_continuous(name = "Unit A")` 覆盖映射名，`name = NULL` 则**去掉**
+    标题（不是回落到映射名）。`scale_*()` 的 `name` 参数在 gg4py 里只喂给图例，
+    这里补上轴这一侧。
+    """
+    scales = getattr(build, "scales", None)
+    getter = getattr(scales, "scale", None)
+    if getter is None:
+        return _UNSET_TITLE
+    scale = getter(aesthetic)
+    if scale is None:
+        return _UNSET_TITLE
+    has_param = getattr(scale, "_has_param", None)
+    param = getattr(scale, "_param", None)
+    if has_param is None or param is None or not has_param("name"):
+        return _UNSET_TITLE
+    try:
+        return param("name")
+    except TypeError:  # pragma: no cover - 自定义标度子类可能没有 name 参数
+        return _UNSET_TITLE
+
+
 def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
+    explicit = _scale_axis_title(build, aesthetic)
+    if explicit is not _UNSET_TITLE:
+        return None if explicit is None else str(explicit)
     labels = getattr(build, "labels", {}) or {}
     if aesthetic in labels:
         value = labels[aesthetic]
@@ -477,8 +508,13 @@ def plot_layout(
         guide_x = guide_for(build, "x")
         guide_y = guide_for(build, "y")
         if params.polar is not None:
-            # θ 标签画在面板里，但 R 的 `axis-b` 行仍在（刻度 + 标签行高）。
-            x_axis = max(x_axis, polar_axis_row_cm(theme))
+            # θ 标签画在面板里，但 `axis-b` 行不一定在：
+            # - `coord_polar()`：上游 `render_axis_h()` 给 `draw_axis(NA, "", "bottom")`，
+            #   空标签也占一行（刻度 + 文字行高）；
+            # - `coord_radial()`：`r.axis.inside` 为真时 `render_axis_h()` 是零 grob，
+            #   底部不占行（θ 标签完全在面板里）。
+            if not params.polar.radial or not params.polar.r_axis_inside:
+                x_axis = max(x_axis, polar_axis_row_cm(theme))
         if params.polar is None:
             guide_ticks_x = axis_guide_ticks(
                 _panel_scale(build, panel, params.scale_key("bottom")),
@@ -1135,10 +1171,10 @@ def _polar_grid_grobs(
             ys[0::2], ys[1::2] = y0, y1
             grobs.append(
                 segments_grob(
-                    xs.tolist(),
-                    ys.tolist(),
-                    xs.tolist(),
-                    ys.tolist(),
+                    xs[0::2].tolist(),
+                    ys[0::2].tolist(),
+                    xs[1::2].tolist(),
+                    ys[1::2].tolist(),
                     default_units="npc",
                     gp=_grid_gpar(theta_element, colour),
                     name=f"panel.grid.{kind}.{polar.theta_axis}",

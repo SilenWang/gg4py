@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-flip", "coord-sec-axis", "guide-axis"]
+ci = true
+title = "上游快照：turning off secondary title with coord_flip"
+source = "upstream:tests/testthat/_snaps/coord-flip/turning-off-secondary-title-with-coord-flip.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-793：`coord_flip()` 后次轴在右侧，`guide_axis(title = NULL)` 去标题。"
