@@ -4,17 +4,15 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**151**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**160**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **137** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
+- 已纳管：**177**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**134**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **111** 条（M3 开工前归零） / `m3` **23** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `geom-violin` | m2-closeout | 14 | 0 | 14 |
 | `guide-axis` | m2-closeout | 23 | 10 | 13 |
-| `geom-raster` | m2-closeout | 12 | 0 | 12 |
 | `coord-polar` | m2-closeout | 11 | 0 | 11 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
@@ -49,10 +47,12 @@
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `position-stack` | m2-closeout | 1 | 0 | 1 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
+| `geom-raster` | m2-closeout | 12 | 12 | 0 |
+| `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
-| **合计** | — | 311 | 151 | 160 |
+| **合计** | — | 311 | 177 | 134 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -97,6 +97,32 @@
 | `geom-dotplot/stack-up.svg` | `upstream-geom-dotplot-stack-up` |
 | `geom-dotplot/stackratio-1-5.svg` | `upstream-geom-dotplot-stackratio-1-5` |
 | `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg` | `upstream-geom-dotplot-variable-linetype-size` |
+| `geom-raster/1-x-3-just-0-0.svg` | `upstream-geom-raster-1-x-3-just-0-0` |
+| `geom-raster/1-x-3-set-limits.svg` | `upstream-geom-raster-1-x-3-set-limits` |
+| `geom-raster/1-x-3.svg` | `upstream-geom-raster-1-x-3` |
+| `geom-raster/3-x-1-just-0-0.svg` | `upstream-geom-raster-3-x-1-just-0-0` |
+| `geom-raster/3-x-1-set-limits.svg` | `upstream-geom-raster-3-x-1-set-limits` |
+| `geom-raster/3-x-1.svg` | `upstream-geom-raster-3-x-1` |
+| `geom-raster/3-x-2-just-0-0.svg` | `upstream-geom-raster-3-x-2-just-0-0` |
+| `geom-raster/3-x-2-set-limits.svg` | `upstream-geom-raster-3-x-2-set-limits` |
+| `geom-raster/3-x-2.svg` | `upstream-geom-raster-3-x-2` |
+| `geom-raster/discrete-positions.svg` | `upstream-geom-raster-discrete-positions` |
+| `geom-raster/irregular-categorical.svg` | `upstream-geom-raster-irregular-categorical` |
+| `geom-raster/rectangle-fallback.svg` | `upstream-geom-raster-rectangle-fallback` |
+| `geom-violin/basic.svg` | `upstream-geom-violin-basic` |
+| `geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg` | `upstream-geom-violin-continuous-x-axis-many-groups` |
+| `geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg` | `upstream-geom-violin-continuous-x-axis-single-group` |
+| `geom-violin/coord-flip.svg` | `upstream-geom-violin-coord-flip` |
+| `geom-violin/coord-polar.svg` | `upstream-geom-violin-coord-polar` |
+| `geom-violin/dodging-and-coord-flip.svg` | `upstream-geom-violin-dodging-and-coord-flip` |
+| `geom-violin/dodging.svg` | `upstream-geom-violin-dodging` |
+| `geom-violin/grouping-on-x-and-fill-dodge-width-0-5.svg` | `upstream-geom-violin-grouping-on-x-and-fill-dodge-width` |
+| `geom-violin/grouping-on-x-and-fill.svg` | `upstream-geom-violin-grouping-on-x-and-fill` |
+| `geom-violin/narrower-width-5.svg` | `upstream-geom-violin-narrower-width` |
+| `geom-violin/scale-area-to-sample-size-c-is-smaller.svg` | `upstream-geom-violin-scale-area-to-sample-size` |
+| `geom-violin/styled-quantiles.svg` | `upstream-geom-violin-styled-quantiles` |
+| `geom-violin/with-smaller-bandwidth-and-points.svg` | `upstream-geom-violin-with-smaller-bandwidth-and-points` |
+| `geom-violin/with-tails-and-points.svg` | `upstream-geom-violin-with-tails-and-points` |
 | `guide-axis/axis-guides-basic.svg` | `upstream-guide-axis-axis-guides-basic` |
 | `guide-axis/axis-guides-negative-rotation.svg` | `upstream-guide-axis-axis-guides-negative-rotation` |
 | `guide-axis/axis-guides-positive-rotation.svg` | `upstream-guide-axis-axis-guides-positive-rotation` |
@@ -493,27 +519,6 @@ munched polygon（`coord_munch` 后的闭合多边形）未复刻。
 
 </details>
 
-### `geom-raster` — 12 条 · SIL-715 · m2-closeout
-
-`geom_raster()` 的 just / limits / 离散轴组合（12 条）未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `geom-raster/1-x-3-just-0-0.svg`
-- `geom-raster/1-x-3-set-limits.svg`
-- `geom-raster/1-x-3.svg`
-- `geom-raster/3-x-1-just-0-0.svg`
-- `geom-raster/3-x-1-set-limits.svg`
-- `geom-raster/3-x-1.svg`
-- `geom-raster/3-x-2-just-0-0.svg`
-- `geom-raster/3-x-2-set-limits.svg`
-- `geom-raster/3-x-2.svg`
-- `geom-raster/discrete-positions.svg`
-- `geom-raster/irregular-categorical.svg`
-- `geom-raster/rectangle-fallback.svg`
-
-</details>
-
 ### `geom-sf` — 10 条 · SIL-715 · m3
 
 空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-column 解析。
@@ -551,29 +556,6 @@ plotmath 表达式标签（`expression()`）未支持。
 <details><summary>快照</summary>
 
 - `geom-text/geom-text-with-expressions.svg`
-
-</details>
-
-### `geom-violin` — 14 条 · SIL-715 · m2-closeout
-
-`geom_violin()` 的 dodge / quantile / scale=area（14 条）未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `geom-violin/basic.svg`
-- `geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg`
-- `geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg`
-- `geom-violin/coord-flip.svg`
-- `geom-violin/coord-polar.svg`
-- `geom-violin/dodging-and-coord-flip.svg`
-- `geom-violin/dodging.svg`
-- `geom-violin/grouping-on-x-and-fill-dodge-width-0-5.svg`
-- `geom-violin/grouping-on-x-and-fill.svg`
-- `geom-violin/narrower-width-5.svg`
-- `geom-violin/scale-area-to-sample-size-c-is-smaller.svg`
-- `geom-violin/styled-quantiles.svg`
-- `geom-violin/with-smaller-bandwidth-and-points.svg`
-- `geom-violin/with-tails-and-points.svg`
 
 </details>
 

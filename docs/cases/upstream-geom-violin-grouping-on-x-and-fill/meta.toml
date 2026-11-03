@@ -1,0 +1,7 @@
+family = "geom-violin"
+features = ["aes-mapping", "aes-grouping", "position-dodge"]
+ci = true
+title = "上游快照：grouping on x and fill"
+source = "upstream:tests/testthat/_snaps/geom-violin/grouping-on-x-and-fill.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-794：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。"

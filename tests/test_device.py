@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import os
 import re
@@ -244,6 +245,56 @@ def test_raster_blob_is_decoded() -> None:
     ir_scene = ir.Scene(root=root, size=(100.0, 100.0), blobs=ir.BlobTable({bid: blob}))
     colours = png_pixels(SkiaRasterDevice(100, 100).render(ir_scene))
     assert colours[50, 50, 1] > 100  # 绿色通道来自位图，不是白底
+
+
+def test_svg_raster_keeps_the_bitmap_intact_and_scales_by_cell() -> None:
+    """SVG 的 `<image>` 必须是完整不透明的 PNG，并按 svglite 的口径标注。
+
+    skia 的 `SVGCanvas` 会在大位图上把重编码写坏（实测下半截全透明，SIL-794）；
+    svglite 另外写 `preserveAspectRatio='none'` + `image-rendering='pixelated'`，
+    少一个，3×1 的 raster 会被按原始长宽比塞进目标框，或者被 resvg 平滑糊掉。
+    像素尺寸是「每格 ceil(目标/格数)」：80pt 宽、3 列 → 27×3 = 81 px。
+    """
+    ramp = np.linspace(0, 255, 3, dtype=np.uint8)
+    pixels = np.dstack(
+        [
+            np.tile(ramp, (1, 1)),
+            np.full((1, 3), 40, dtype=np.uint8),
+            np.full((1, 3), 200, dtype=np.uint8),
+            np.full((1, 3), 255, dtype=np.uint8),
+        ]
+    )
+    image = skia.Image.fromarray(np.ascontiguousarray(pixels), colorType=skia.kRGBA_8888_ColorType)
+    data = bytes(image.encodeToData(skia.kPNG, 100).bytes())
+    blob = ir.Blob(data, "image/png")
+    bid = ir.blob_id(data, "image/png")
+    node = ir.Node(
+        NodeKind.RASTER,
+        params={"blob": bid, "width": 3, "height": 1, "interpolate": False},
+        bufs={"rect": f32([[10.0, 10.0, 90.0, 90.0]])},
+    )
+    root = ir.Node(
+        NodeKind.VIEWPORT,
+        params={"transform": (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)},
+        bufs={"clip_rect": f32([[0.0, 0.0, 100.0, 100.0]])},
+        children=(node,),
+    )
+    ir_scene = ir.Scene(root=root, size=(100.0, 100.0), blobs=ir.BlobTable({bid: blob}))
+    svg = SkiaSvgDevice(*ir_scene.size).render(ir_scene).decode("utf-8")
+
+    match = re.search(
+        r"<image\b[^>]*xlink:href=['\"]data:image/png;base64,([A-Za-z0-9+/=]+)['\"]", svg
+    )
+    assert match is not None
+    tag = svg[match.start() : svg.index(">", match.start())]
+    assert "preserveAspectRatio='none'" in tag
+    assert "image-rendering='pixelated'" in tag
+
+    embedded = skia.Image.MakeFromEncoded(base64.b64decode(match.group(1)))
+    assert embedded is not None
+    assert (embedded.width(), embedded.height()) == (81, 80)
+    alpha = np.asarray(embedded.toarray())[:, :, 3]
+    assert int(alpha.min()) == 255  # 没有透明缺口（skia 自己编码时下半截是透明的）
 
 
 def test_fixed_metrics_scene_still_renders() -> None:

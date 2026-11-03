@@ -2448,7 +2448,15 @@ def specs() -> list[dict[str, Any]]:
         for spec in _theme_specs() + _guide_specs() + _dotplot_specs()
         if spec["slug"] not in skip
     ]
-    return base + _G1A_SPECS + _G6_SPECS + _THEME_MISC_SPECS + _G1B_SPECS
+    return (
+        base
+        + _G1A_SPECS
+        + _G6_SPECS
+        + _THEME_MISC_SPECS
+        + _G1B_SPECS
+        + _violin_specs()
+        + _raster_specs()
+    )
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。
@@ -7378,6 +7386,614 @@ notes = "SIL-790：vdiffr 快照原样纳入；标题是 doppelganger 名。"
 """,
     },
 ]
+
+#: G4（SIL-794）：`geom-violin` 14 条 + `geom-raster` 12 条。
+#:
+#: 两个簇的图都来自 `test-geom-violin.R` / `test-geom-raster.R` 的
+#: `expect_doppelganger()`，口径是 vdiffr 的默认（`theme_test()`、10 × 8 in）。
+#: violin 的数据是 `set.seed(111)` 之后**连续**抽的两段 `rnorm(90)`——第二段接着
+#: 第一段的 RNG 流，不能重新播种；raster 的数据是确定的。
+_VIOLIN_Y1 = [
+    0.2352207116136979,
+    -0.33073587162669138,
+    -0.31162382397876148,
+    -2.3023456584293767,
+    -0.17087604461386502,
+    0.14027822510323076,
+    -1.4974266555651168,
+    -1.010188419051379,
+    -0.94847560495244698,
+    -0.49396221723510808,
+    -0.17367412797058035,
+    -0.40659878004065225,
+    1.8456362638070769,
+    0.39405410997450147,
+    0.7975285012615172,
+    -1.5666653601855778,
+    -0.085851008822606156,
+    -0.35913948123778322,
+    -1.1936089665637317,
+    0.3641867370222206,
+    0.36166245158827537,
+    0.3469643701135664,
+    0.18973652668927543,
+    -0.15957680553877868,
+    0.32654923843186656,
+    0.5982542023934897,
+    -1.8415343000624469,
+    2.7180555995417524,
+    0.19124439045729366,
+    -1.3012960652783192,
+    -3.1132173012951165,
+    -0.94135739527933993,
+    1.4002587816673546,
+    -1.6204700283490798,
+    -2.265995957106016,
+    1.1629935891806336,
+    -0.11615504069648808,
+    0.33425600937476491,
+    -0.62085810636913807,
+    -1.3098449084808674,
+    -1.1757260417049971,
+    -1.1212155328138087,
+    -1.3619044836547853,
+    0.48112457846871437,
+    0.74197162553291085,
+    0.027824625215327498,
+    0.33137971081842127,
+    0.64411413199137724,
+    2.4856615614379654,
+    1.9599817076962347,
+    0.19166338489197002,
+    1.5525442721051541,
+    0.914242286889689,
+    0.35862537480139478,
+    0.175095636090836,
+    -0.84726776895397149,
+    0.97823165740086415,
+    1.8058682591488724,
+    0.12291480235291645,
+    -0.1297720262758997,
+    -0.21642865914933687,
+    1.4464781673502374,
+    0.40970980155600101,
+    0.91091657198872822,
+    1.4303581665751275,
+    -0.38129195562227353,
+    0.20230717688131547,
+    -0.80619919408145113,
+    0.29463418370697519,
+    1.4048830831206927,
+    1.0237668464541809,
+    0.47612606448547196,
+    -0.67033032989887575,
+    0.15923432120867573,
+    -0.38271538313402881,
+    0.9357625932445246,
+    -0.63153226774163385,
+    -0.098306077478636358,
+    1.0319849831198364,
+    0.3878084294579055,
+    -1.2561293133373184,
+    -0.7869527300902347,
+    0.42981154866788385,
+    -0.37641621920596979,
+    -1.2162290663652151,
+    1.0292785141184106,
+    0.43039699902490719,
+    -1.2455740200933809,
+    -0.60272848648728317,
+    0.66006938738224785,
+]
+
+_VIOLIN_Y2 = [
+    2.0507495261136075,
+    0.49080817881842581,
+    -1.7314794187800149,
+    0.71088365940818043,
+    0.013822911462220842,
+    -1.4010415973662063,
+    1.2591236654416733,
+    -0.12747751837564192,
+    -0.72938651365146534,
+    -1.2113613602100406,
+    0.59961974484182734,
+    -1.1603295272202521,
+    0.43909343443560167,
+    0.20485373663196663,
+    -0.69918134010149835,
+    -0.92662567667307771,
+    -1.0134823752407285,
+    0.6049870597715532,
+    1.734400132788088,
+    -0.3498505306375837,
+    1.1991855088291656,
+    1.0239009980506748,
+    -0.046275149345726269,
+    1.3865084257746001,
+    -2.1952727189392696,
+    -0.12755691295972088,
+    -1.3169968418775473,
+    -1.426935140776123,
+    0.87944163077744786,
+    0.3939915750615513,
+    0.68892548380832375,
+    2.3537165014781198,
+    -1.0150976714256845,
+    0.29097752030343998,
+    1.5653260791163035,
+    -0.8471183683926844,
+    1.3276601582188632,
+    0.47704633129749491,
+    0.1852509367019981,
+    0.25329488826917751,
+    2.5922273505980837,
+    1.0743469927976015,
+    -1.5969018923284333,
+    -0.087588596342839956,
+    0.36076759047357126,
+    -0.87995998139024934,
+    -3.323334964637354,
+    -0.46751545310407377,
+    0.43154026568606418,
+    -0.60398945383959857,
+    0.67444669272786928,
+    0.63592053581511487,
+    -0.61297038759660016,
+    0.41489134542087347,
+    0.87734337263099016,
+    0.021157582615034556,
+    1.8103832947141232,
+    -0.45209570417603312,
+    -0.12512398552467086,
+    0.76680041643095487,
+    -0.091520260917946933,
+    -1.8743058094967706,
+    -0.66416201764243754,
+    0.20341281786445098,
+    -2.5944433933631905,
+    -0.093733931432688405,
+    -0.42731991750985981,
+    0.44297927707369894,
+    -1.1878079253766662,
+    0.62642547340094923,
+    0.36164660142629207,
+    -0.47296057907429301,
+    0.94489370229113456,
+    0.90640224753217669,
+    0.47177370465355117,
+    0.38949993045205211,
+    0.52194026734166332,
+    0.90445283980168634,
+    1.6967909263582432,
+    -0.88433743533715903,
+    0.85648970146977699,
+    0.1749424505741527,
+    -0.39850496200257007,
+    0.27520256239410407,
+    -1.2687187990691433,
+    -0.010081328985713329,
+    0.65340172450247769,
+    0.098579979494000658,
+    0.90261694132495107,
+    -0.51989749588921874,
+]
+
+
+def _violin_data_source() -> str:
+    return "\n".join(
+        [
+            f"Y1 = {_literal(_VIOLIN_Y1)}",
+            f"Y2 = {_literal(_VIOLIN_Y2)}",
+            "",
+            '_X = ["A", "B", "C"] * 30',
+            '# R: dat[dat$x != "C" | c(TRUE, FALSE), ] —— C 组只留一半（30 → 15 行）。',
+            '_KEEP = [index for index in range(90) if _X[index] != "C" or index % 2 == 0]',
+            "DAT = {",
+            '    "x": [_X[index] for index in _KEEP],',
+            '    "y": [Y1[index] for index in _KEEP],',
+            "    # R: as.numeric(x)：离散水平 1/2/3，三组等量 → 连续轴上的中心落在 2.0。",
+            '    "xn": [float("ABC".index(_X[index]) + 1) for index in _KEEP],',
+            '    "foo": ["foo"] * len(_KEEP),',
+            "}",
+            "DAT2 = {",
+            '    "x": _X,',
+            '    "y": Y2,',
+            '    "g": ["e", "f"] * 45,',
+            '    "foo": ["foo"] * 90,',
+            "}",
+        ]
+    )
+
+
+def _violin_source(*, table: str, mapping: str, layers: list[str], title: str) -> str:
+    body = "\n".join(f"        + {layer}" for layer in layers)
+    optional = [
+        name
+        for name in ("coord_flip", "coord_polar", "geom_point", "position_dodge")
+        if f"{name}(" in body
+    ]
+    names = sorted(["aes", "geom_violin", "ggplot", "labs", *optional])
+    return (
+        "\n".join(
+            [
+                "from ggcore.plot import (",
+                *[f"    {name}," for name in names],
+                ")",
+                "from ggcore.theme import theme_test",
+                "from ggio.frame import to_column_table",
+                "",
+                _violin_data_source(),
+                "",
+                "",
+                "def build():",
+                "    p = (",
+                f"        ggplot(to_column_table({table}), {mapping})",
+                body,
+                "        + theme_test()",
+                f'        + labs(title="{title}")',
+                "    )",
+                '    return {"plot": p, "size": [10, 8]}',
+            ]
+        )
+        + "\n"
+    )
+
+
+def _violin_specs() -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+
+    def add(
+        slug: str,
+        snapshot: str,
+        title: str,
+        mapping: str,
+        layers: list[str],
+        features: list[str],
+        *,
+        table: str = "DAT",
+    ) -> None:
+        specs.append(
+            {
+                "slug": slug,
+                "snapshot": f"geom-violin/{snapshot}.svg",
+                "title": title,
+                "family": "geom-violin",
+                "features": features,
+                "notes": (
+                    "SIL-794：vdiffr 快照原样纳入；标题是 doppelganger 名，"
+                    "主题是 vdiffr 的 theme_test()。"
+                ),
+                "source": _violin_source(table=table, mapping=mapping, layers=layers, title=title),
+            }
+        )
+
+    add(
+        "upstream-geom-violin-basic",
+        "basic",
+        "basic",
+        'aes(x="x", y="y")',
+        ["geom_violin()"],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-scale-area-to-sample-size",
+        "scale-area-to-sample-size-c-is-smaller",
+        "scale area to sample size (C is smaller)",
+        'aes(x="x", y="y")',
+        ['geom_violin(scale="count")'],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-narrower-width",
+        "narrower-width-5",
+        "narrower (width=.5)",
+        'aes(x="x", y="y")',
+        ["geom_violin(width=0.5)"],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-with-tails-and-points",
+        "with-tails-and-points",
+        "with tails and points",
+        'aes(x="x", y="y")',
+        ["geom_violin(trim=False)", "geom_point(shape=21)"],
+        ["aes-mapping", "stat-ydensity", "shape-aes"],
+    )
+    add(
+        "upstream-geom-violin-with-smaller-bandwidth-and-points",
+        "with-smaller-bandwidth-and-points",
+        "with smaller bandwidth and points",
+        'aes(x="x", y="y")',
+        ["geom_violin(adjust=0.3)", "geom_point(shape=21)"],
+        ["aes-mapping", "stat-ydensity", "shape-aes"],
+    )
+    add(
+        "upstream-geom-violin-dodging",
+        "dodging",
+        "dodging",
+        'aes(x="foo", y="y", fill="x")',
+        ["geom_violin()"],
+        ["aes-mapping", "aes-grouping", "position-dodge"],
+    )
+    add(
+        "upstream-geom-violin-coord-polar",
+        "coord-polar",
+        "coord_polar",
+        'aes(x="x", y="y")',
+        ["geom_violin()", "coord_polar()"],
+        ["aes-mapping", "coord-polar"],
+    )
+    add(
+        "upstream-geom-violin-coord-flip",
+        "coord-flip",
+        "coord_flip",
+        'aes(x="x", y="y")',
+        ["geom_violin()", "coord_flip()"],
+        ["aes-mapping", "coord-flip"],
+    )
+    add(
+        "upstream-geom-violin-dodging-and-coord-flip",
+        "dodging-and-coord-flip",
+        "dodging and coord_flip",
+        'aes(x="foo", y="y", fill="x")',
+        ["geom_violin()", "coord_flip()"],
+        ["aes-mapping", "aes-grouping", "position-dodge", "coord-flip"],
+    )
+    add(
+        "upstream-geom-violin-continuous-x-axis-many-groups",
+        "continuous-x-axis-many-groups-center-should-be-at-2-0",
+        "continuous x axis, many groups (center should be at 2.0)",
+        'aes(x="xn", y="y")',
+        ["geom_violin()"],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-continuous-x-axis-single-group",
+        "continuous-x-axis-single-group-center-should-be-at-1-0",
+        "continuous x axis, single group (center should be at 1.0)",
+        'aes(x=1, y="y")',
+        ["geom_violin()"],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-styled-quantiles",
+        "styled-quantiles",
+        "styled quantiles",
+        'aes(x="x", y="y")',
+        [
+            "geom_violin(**{"
+            '"quantile.colour": "red", '
+            '"quantile.linetype": "dotted", '
+            '"quantile.linewidth": 2})'
+        ],
+        ["aes-mapping", "stat-ydensity"],
+    )
+    add(
+        "upstream-geom-violin-grouping-on-x-and-fill",
+        "grouping-on-x-and-fill",
+        "grouping on x and fill",
+        'aes(x="x", y="y", fill="g")',
+        ["geom_violin()"],
+        ["aes-mapping", "aes-grouping", "position-dodge"],
+        table="DAT2",
+    )
+    add(
+        "upstream-geom-violin-grouping-on-x-and-fill-dodge-width",
+        "grouping-on-x-and-fill-dodge-width-0-5",
+        "grouping on x and fill, dodge width = 0.5",
+        'aes(x="x", y="y", fill="g")',
+        ["geom_violin(position=position_dodge(width=0.5))"],
+        ["aes-mapping", "aes-grouping", "position-dodge"],
+        table="DAT2",
+    )
+    return specs
+
+
+def _raster_source(
+    *,
+    data: str,
+    layers: list[str],
+    title: str,
+    ordered_fill: bool = False,
+    fill_label: str | None = None,
+) -> str:
+    body = "\n".join(f"        + {layer}" for layer in layers)
+    optional = [
+        name
+        for name in ("coord_polar", "geom_point", "scale_x_continuous", "scale_y_continuous")
+        if f"{name}(" in body
+    ]
+    names = sorted(["aes", "geom_raster", "ggplot", "labs", *optional])
+    # `interaction(x, y)` 的水平顺序是 x 变化最快（A.C / B.C / A.D / B.D），不是
+    # 字典序；这条 case 用显式的 categorical 列把等级顺序钉成 R 的那一份。
+    header: list[str] = []
+    if ordered_fill:
+        header.extend(["import numpy as np", "", "from ggcore.data import Column, ColumnTable"])
+    header.extend(
+        [
+            "from ggcore.plot import (",
+            *[f"    {name}," for name in names],
+            ")",
+            "from ggcore.theme import theme_test",
+            "from ggio.frame import to_column_table",
+        ]
+    )
+    return (
+        "\n".join(
+            [
+                *header,
+                "",
+                data,
+                "",
+                "",
+                "def build():",
+                "    p = (",
+                '        ggplot(to_column_table(DATA), aes(x="x", y="y", fill="z"))',
+                body,
+                "        + theme_test()",
+                (
+                    f'        + labs(title="{title}")'
+                    if fill_label is None
+                    else f'        + labs(title="{title}", fill="{fill_label}")'
+                ),
+                "    )",
+                '    return {"plot": p, "size": [10, 8]}',
+            ]
+        )
+        + "\n"
+    )
+
+
+#: `test-geom-raster.R` 的三份小矩阵（3×2 / 1×3 / 3×1，行序 = R 的 `data_frame`）。
+_RASTER_MATRIX_32 = (
+    "DATA = {\n"
+    '    "x": [-1.0, -1.0, -1.0, 1.0, 1.0, 1.0],\n'
+    '    "y": [-1.0, 0.0, 1.0, -1.0, 0.0, 1.0],\n'
+    '    "z": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],\n'
+    "}"
+)
+_RASTER_MATRIX_13 = (
+    'DATA = {\n    "x": [-1.0, 0.0, 1.0],\n    "y": [0.0, 0.0, 0.0],\n    "z": [1.0, 2.0, 3.0],\n}'
+)
+_RASTER_MATRIX_31 = (
+    'DATA = {\n    "x": [0.0, 0.0, 0.0],\n    "y": [-1.0, 0.0, 1.0],\n    "z": [1.0, 2.0, 3.0],\n}'
+)
+_RASTER_IRREGULAR = (
+    "# R: expand.grid(x = 1:10, y = 1:10) —— 第一个变量 x 变化最快。\n"
+    "_X = [value for _ in range(10) for value in range(1, 11)]\n"
+    "_Y = [value for value in range(1, 11) for _ in range(10)]\n"
+    "_COL = []\n"
+    "for _x, _y in zip(_X, _Y, strict=True):\n"
+    "    _value = (_x + _y) % 2\n"
+    "    if (_x == 5 and _value == 1) or (_y == 5 and _value == 0):\n"
+    "        _COL.append(None)\n"
+    "    else:\n"
+    "        _COL.append(str(_value))\n"
+    'DATA = {"x": _X, "y": _Y, "z": _COL}'
+)
+_RASTER_DISCRETE = (
+    "# R: expand.grid(x = c('A', 'B'), y = c('C', 'D'))，fill = interaction(x, y)。\n"
+    "# interaction() 的水平顺序是 x 变化最快，所以等级是 A.C / B.C / A.D / B.D。\n"
+    '_LEVELS = ("A.C", "B.C", "A.D", "B.D")\n'
+    "DATA = ColumnTable(\n"
+    "    [\n"
+    '        ("x", Column("str", np.array(["A", "B", "A", "B"]))),\n'
+    '        ("y", Column("str", np.array(["C", "C", "D", "D"]))),\n'
+    '        ("z", Column("categorical", np.array([0, 1, 2, 3], dtype=np.int32),'
+    " levels=_LEVELS)),\n"
+    "    ]\n"
+    ")"
+)
+
+
+def _raster_specs() -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+
+    def add(
+        slug: str,
+        snapshot: str,
+        title: str,
+        data: str,
+        layers: list[str],
+        features: list[str],
+        *,
+        fill: str = 'fill="z"',
+        ordered_fill: bool = False,
+        fill_label: str | None = None,
+    ) -> None:
+        source = _raster_source(
+            data=data,
+            layers=layers,
+            title=title,
+            ordered_fill=ordered_fill,
+            fill_label=fill_label,
+        )
+        source = source.replace('aes(x="x", y="y", fill="z")', f'aes(x="x", y="y", {fill})')
+        specs.append(
+            {
+                "slug": slug,
+                "snapshot": f"geom-raster/{snapshot}.svg",
+                "title": title,
+                "family": "geom-raster",
+                "features": features,
+                "notes": (
+                    "SIL-794：vdiffr 快照原样纳入；标题是 doppelganger 名，"
+                    "主题是 vdiffr 的 theme_test()。"
+                ),
+                "source": source,
+            }
+        )
+
+    points = ["geom_raster()", 'geom_point(colour="red")']
+    for slug, snapshot, title, matrix in (
+        ("3-x-2", "3-x-2", "3 x 2", _RASTER_MATRIX_32),
+        ("1-x-3", "1-x-3", "1 x 3", _RASTER_MATRIX_13),
+        ("3-x-1", "3-x-1", "3 x 1", _RASTER_MATRIX_31),
+    ):
+        add(
+            f"upstream-geom-raster-{slug}",
+            snapshot,
+            title,
+            matrix,
+            points,
+            ["aes-mapping"],
+        )
+        add(
+            f"upstream-geom-raster-{slug}-set-limits",
+            f"{snapshot}-set-limits",
+            f"{title}, set limits",
+            matrix,
+            [
+                *points,
+                "scale_x_continuous(limits=(-2, 2))",
+                "scale_y_continuous(limits=(-2, 2))",
+            ],
+            ["aes-mapping", "scale-limits"],
+        )
+        add(
+            f"upstream-geom-raster-{slug}-just-0-0",
+            f"{snapshot}-just-0-0",
+            f"{title}, just = (0, 0)",
+            matrix,
+            ["geom_raster(hjust=0, vjust=0)", 'geom_point(colour="red")'],
+            ["aes-mapping"],
+        )
+
+    add(
+        "upstream-geom-raster-rectangle-fallback",
+        "rectangle-fallback",
+        "rectangle fallback",
+        (
+            "# 非线性的 coord_polar() 下 geom_raster 降级成矩形（R 侧 suppressMessages）。\n"
+            'DATA = {"x": [1.0, 2.0, 1.0, 2.0], "y": [1.0, 1.0, 2.0, 2.0],'
+            ' "z": ["A", "B", "C", "D"]}'
+        ),
+        ["geom_raster()", "coord_polar()"],
+        ["aes-mapping", "coord-polar", "scale-discrete"],
+    )
+    add(
+        "upstream-geom-raster-irregular-categorical",
+        "irregular-categorical",
+        "irregular categorical",
+        _RASTER_IRREGULAR,
+        ["geom_raster()"],
+        ["aes-mapping", "scale-discrete"],
+        fill='fill="z"',
+        fill_label="factor(col)",
+    )
+    add(
+        "upstream-geom-raster-discrete-positions",
+        "discrete-positions",
+        "discrete positions",
+        _RASTER_DISCRETE,
+        ["geom_raster()"],
+        ["aes-mapping", "scale-discrete"],
+        ordered_fill=True,
+        fill_label="interaction(x, y)",
+    )
+    return specs
+
 
 _PLOT_NAMES = (
     "aes",

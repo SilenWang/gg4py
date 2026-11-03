@@ -1,0 +1,7 @@
+family = "geom-violin"
+features = ["aes-mapping", "stat-ydensity"]
+ci = true
+title = "上游快照：continuous x axis, many groups (center should be at 2.0)"
+source = "upstream:tests/testthat/_snaps/geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-794：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。"
