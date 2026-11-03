@@ -512,23 +512,24 @@ test_bin_2d_boundary_defaults_to_zero` 钉住。
 
 ### 10.6 geom 侧（build 级）
 
-2D 族的六个 geom（`tile` / `hex` / `contour` / `contour_filled` /
-`density_2d` / `density_2d_filled`）在 `src/ggcore/geom/stat2d.py` 里只有
+2D 族的六个 geom 里，`geom_tile` 已由 SIL-737 实现绘制（`src/ggcore/geom/rect.py`
+的 `TileRenderer`，默认 `fill = grey20` / `linewidth = 0.2`，带
+`docs/cases/geom-tile`）。其余 5 个（`hex` / `contour` / `contour_filled` /
+`density_2d` / `density_2d_filled`）在 `src/ggcore/geom/stat2d.py` 里仍然只有
 **build 级**实现：
 
-- `geom_tile` 的 `setup_data()` 派生 `xmin/xmax/ymin/ymax` 并去掉 `width/height`
-  （`bin_2d` / `summary_2d` 的列序靠它）；
 - `contour` / `density_2d` 沿用 stat 给的行序（`GeomPath` 不排序，只有
   `geom_line` 会按 `(PANEL, group, x)` 重排）；
-- `draw()` 明确报 `GeomError` 并点名**绘制归属任务**：`geom_tile` → SIL-737
-  （M2-S2 geom 长尾 A，已带 `docs/cases/geom-tile` 三文件 case），其余 5 个
-  （`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled`）
-  → SIL-735（M2-S2 geom 长尾 B · 2D 族）。
+- `draw()` 明确报 `GeomError` 并点名**绘制归属任务**：`hex` / `contour` /
+  `contour_filled` / `density_2d` / `density_2d_filled` → SIL-735（M2-S2 geom
+  长尾 B · 2D 族）。
+- `geom_tile` 的 `setup_data()`（派生 `xmin/xmax/ymin/ymax` 并去掉 `width/height`，
+  `bin_2d` / `summary_2d` 的列序靠它）随绘制一起搬到了 `geom/rect.py`。
 
-所以本任务的「端到端 case」是 **build 级**：`ggplot() + stat_*()` 走完整条
+所以 `stat_2d` 侧的「端到端 case」是 **build 级**：`ggplot() + stat_*()` 走完整条
 `ggplot_build()` 流水线，`$data` 的统计列完整（`tests/test_stat_2d_r_parity.py`
 §4 的 `test_every_2d_stat_has_an_end_to_end_case`）。SVG 快照 case 随绘制落地补：
-`tile` 在 SIL-737，其余 5 个在 SIL-735。
+`tile` 已在 SIL-737，其余 5 个在 SIL-735。
 
 ### 10.7 验收
 
@@ -551,7 +552,7 @@ pixi run check                                 # 全量门禁（含 gate:imports
 
 | 能力 | 现状 | 去向 |
 | --- | --- | --- |
-| 2D geom 的绘制 | `draw()` 报 `GeomError` 并点名归属：`tile` → SIL-737，其余 5 个 → SIL-735；build 级完整 | SIL-737 / SIL-735 |
+| 2D geom 的绘制 | `geom_tile` 已绘制（SIL-737）；其余 5 个 `draw()` 报 `GeomError` 并点名 SIL-735；build 级完整 | SIL-735 |
 | contour 顶点拓扑 | contourpy 与 isoband 不同（鞍点 / 环拆分） | 按层级对拍，不逐顶点比 |
 | `level == max(z)` 的退化线 | isoband 给重合点，contourpy 不给 | 记录为几何差异 |
 | `stat_contour(breaks = <函数>)` | `BuildError` 点名 | 后续 |

@@ -22,7 +22,7 @@ import pytest
 from ggcore import ir, registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
-from ggcore.geom import GeomError, registered_renderers, renderer_for
+from ggcore.geom import GeomError, build_only_renderers, registered_renderers, renderer_for
 from ggcore.geom.scene import scene_from_build, scene_from_plot
 from ggcore.plot import aes, ggplot
 
@@ -99,10 +99,36 @@ def _clips(ir_scene) -> list[tuple[float, float, float, float]]:
     return rects
 
 
+#: 注册表里有、但**绘制**仍归后续任务的 geom：`{geom 名: 归属任务}`。
+#:
+#: `registered_renderers()` 的含义是「已实现绘制」（`test_digest_plots_cover_every_geom`
+#: 真要逐张画出来），所以不能把 build-only 的桩塞进去。覆盖用「可绘制 ∪ 本表」
+#: 表达：注册表集合 == 渲染器集合 ∪ allowlist。**只减不增**——SIL-735 落地时从
+#: 这里删条目（同时渲染器会从 `BUILD_ONLY_RENDERERS` 移到 `GEOM_RENDERERS`，
+#: 测试要求两边逐项相等）。SIL-735 收口后本表为空，机制保留：新注册一个没有
+#: `draw()` 的 geom 必须在这里点名归属，否则下面的集合相等断言会红。
+BUILD_ONLY_ALLOWLIST: dict[str, str] = {}
+
+
 def test_renderer_registry_covers_every_registered_geom() -> None:
     # M2-S2：注册表里的每一个 geom 都必须有绘制实现（49 个 = M1-7 的 9 个 +
     # 长尾 A 的 20 个 + 长尾 B 的 20 个）。两边顺序一致，缺一个就红。
     assert registered_renderers() == registry.registered("geom")
+    # 集合**相等**而不是子集：注册表多出一个既不可绘制、也没登记的 geom 就红
+    # （#61 建立的回归保护）。SIL-735 收口后 allowlist 已清空。
+    rendered = set(registered_renderers())
+    allowlisted = set(BUILD_ONLY_ALLOWLIST)
+    assert allowlisted == set()
+    assert rendered | allowlisted == set(registry.registered("geom"))
+    # 两边不重叠：能画的 geom 不该挂在 allowlist 上。
+    assert not rendered & allowlisted
+    # allowlist 与 build-only 渲染器逐项相等：条目搬进 `GEOM_RENDERERS` 时必须
+    # 同步删掉，否则这里红。
+    assert set(build_only_renderers()) == allowlisted
+    # 每个 allowlist 条目的 `draw()` 必须点名自己的归属任务。
+    for name, followup in BUILD_ONLY_ALLOWLIST.items():
+        with pytest.raises(GeomError, match=followup):
+            renderer_for(name).draw(None, None, None, None, None, None)
     assert renderer_for("col").name == "col"
     assert renderer_for("violin").name == "violin"
     with pytest.raises(GeomError, match="没有绘制实现"):

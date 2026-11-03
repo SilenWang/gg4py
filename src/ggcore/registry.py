@@ -663,6 +663,10 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             ("x|width|xmin|xmax", "y|height|ymin|ymax"),
             _RECT_DEFAULTS,
         ),
+        # `geom_tile` 的绘制由 SIL-737 落地。上游 `GeomTile$default_aes` 是
+        # `fill = col_mix(ink, paper, 0.2)`（grey20）、`linewidth = 0.4 * borderwidth`
+        # （0.2），与 M2-6 的 build-only 桩（SIL-735 口径、grey92）不同：绘制实现
+        # 以本条为准，桩由它取代。
         "tile": GeomSpec(
             ("x", "y"),
             {

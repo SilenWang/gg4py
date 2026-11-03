@@ -20,6 +20,7 @@ M1-7 把 `Geom.draw()` 从 `NotImplementedError` 做成真绘制：9 个 geom �
 | `src/ggcore/geom/polygon.py` | `polygon` / `ribbon` / `step`（M2-S2） |
 | `src/ggcore/geom/interval.py` | `linerange` / `errorbar` / `errorbarh` / `pointrange` / `crossbar` |
 | `src/ggcore/geom/annotation.py` | `blank` / `rug` / `map`（`map` 只做最小可用） |
+| `src/ggcore/geom/stat2d.py` | 2D 族里仍只有 build 级的 5 个（`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled`），`draw()` 点名 SIL-735（M2-6） |
 | `src/ggcore/arrow.py` | `grid::arrow()` 的对等物 + 箭翼几何（`head_geometry`） |
 
 ## 1. 契约
@@ -191,7 +192,8 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 | 轴标签的 `check.overlap`（重叠时删标签） | 不删 | 后续（`axis.text` 的 `check.overlap`） |
 | boxplot 的 `outliers` 列表列 | `ColumnTable` 没有 list kind；`stat_boxplot` 产 `str` 文本（`c(20)` / `c()`），绘制层解析它 | 加 list kind 时再改（见 `stat.md` §4） |
 | 2D / 分布族的 stat | `stat_bin_2d` / `stat_bin_hex` / `stat_summary_2d` / `stat_summary_hex` / `stat_contour(_filled)` / `stat_density_2d(_filled)` 由 M2-6（SIL-732 / SIL-736）落地，见 `stat.md`；geom 的默认 stat 名照上游登记 | 已实现 |
-| 2D 族的 6 个 geom | 绘制已落地：`tile` 在 M2-S2 长尾 A（SIL-737），`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled` 在长尾 B（SIL-735）；`BUILD_ONLY_RENDERERS` 只留给仍未实现绘制的名字 | — |
+| 2D 族的 6 个 geom | 绘制已落地：`tile` 在 M2-S2 长尾 A（SIL-737），`hex` / `contour` / `contour_filled` / `density_2d` / `density_2d_filled` 在长尾 B（SIL-735）；`BUILD_ONLY_RENDERERS` 只留给仍未实现绘制的名字（当前为空） | — |
+| `geom_tile` 的绘制口径 | 已落地（`ggcore/geom/rect.py`）：默认 `fill = grey20` / `linewidth = 0.2`（上游 `col_mix(ink, paper, 0.2)` / `0.4 * borderwidth`），带 `docs/cases/geom-tile` | SIL-737（完成） |
 
 主题色（`fill = "grey35"` 等语义名）在 `build.data` 里仍是语义名，绘制期的
 `fill_alpha()` 会按 `col2rgb()` 折算 RGB；与 R 的 `#595959FF` 在像素上一致。

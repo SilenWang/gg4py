@@ -30,6 +30,12 @@ EXPECTED = {
         "spoke",
         "rect",
         "tile",
+        # M2-6：2D 族的 build-only 部分（tile 已转成可绘制，见上）
+        "hex",
+        "contour",
+        "contour_filled",
+        "density_2d",
+        "density_2d_filled",
         "raster",
         "polygon",
         "ribbon",

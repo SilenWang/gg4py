@@ -26,6 +26,7 @@ from ggcore import registry
 from ggcore.build import BuildWarning, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.geom import build_only_renderers, renderer_for
+from ggcore.geom.scene import scene_from_plot
 from ggcore.plot import aes, ggplot
 
 REPO = Path(__file__).resolve().parents[1]
@@ -494,6 +495,31 @@ def test_2d_geoms_are_drawn_after_the_long_tail_merge() -> None:
         assert renderer_for(name).name == name
 
 
+def _walk(scene) -> list:
+    """场景树的所有节点（前序）。"""
+    out: list = []
+
+    def visit(node) -> None:
+        out.append(node)
+        for child in node.children:
+            visit(child)
+
+    visit(scene.root)
+    return out
+
+
+def test_geom_tile_is_drawable() -> None:
+    # 反向事实：`geom_tile` 能真的画出来（1×1 的方块 → 一个 `rect` 叶子），
+    # 不再抛「绘制实现尚未落地」。
+    plot = (
+        ggplot(_table({"x": [0.5], "y": [0.5]}), aes(x="x", y="y"))
+        + registry.geom_tile()
+        + registry.theme_void()
+    )
+    kinds = [node.kind.value for node in _walk(scene_from_plot(plot, width_in=4.0, height_in=3.0))]
+    assert "rect" in kinds
+
+
 def test_density2d_contour_false_returns_the_grid() -> None:
     built = _built("density2d_grid")
     assert built.nrows == 400  # n = 20 ²
@@ -521,9 +547,9 @@ def test_bin_2d_counts_follow_the_weight_aesthetic() -> None:
 
 #: 8 个 2D stat → 代表 case + 该族必须出现的统计列。
 #:
-#: M2-6 的 2D geom 只有 build 级实现（绘制归 SIL-737 的 `tile` 与 SIL-735 的其余
-#: 5 个），所以端到端 case 的判据是「`ggplot() + stat_*()` 能走完整条
-#: ggplot_build 流水线，且 `$data` 的统计列完整」；SVG 快照 case 等 geom 绘制
+#: M2-6 的 2D geom 里 `tile` 已由 SIL-737 实现绘制，其余 5 个仍是 build 级
+#: （绘制归 SIL-735）；端到端 case 的判据因此是「`ggplot() + stat_*()` 能走完整
+#: 条 ggplot_build 流水线，且 `$data` 的统计列完整」；SVG 快照 case 等 geom 绘制
 #: 落地后补（见 docs/notes/stat.md §10）。
 END_TO_END: dict[str, tuple[str, frozenset[str]]] = {
     "bin_2d": ("bin2d_binwidth", frozenset({"count", "ncount", "density", "ndensity"})),
