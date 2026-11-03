@@ -71,8 +71,29 @@ __all__ = [
     "resolve_theme",
     "theme",
     "theme_bw",
+    "theme_classic",
+    "theme_dark",
+    "theme_get",
+    "theme_gray",
     "theme_grey",
+    "theme_light",
+    "theme_linedraw",
     "theme_minimal",
+    "theme_replace",
+    "theme_set",
+    "theme_sub_axis",
+    "theme_sub_axis_bottom",
+    "theme_sub_axis_left",
+    "theme_sub_axis_right",
+    "theme_sub_axis_top",
+    "theme_sub_axis_x",
+    "theme_sub_axis_y",
+    "theme_sub_legend",
+    "theme_sub_panel",
+    "theme_sub_plot",
+    "theme_sub_strip",
+    "theme_test",
+    "theme_update",
     "theme_void",
 ]
 
@@ -245,6 +266,51 @@ def _check_bool(name: str, value: Any) -> None:
         raise ThemeError(f"{name} 必须是 True/False，得到 {type(value).__name__}")
 
 
+def _check_str(name: str, value: Any) -> None:
+    if value is not None and not isinstance(value, str):
+        raise ThemeError(f"{name} 必须是字符串，得到 {type(value).__name__}")
+
+
+#: R 的 `linetype` 名字（grid 的 `lty` 取值）。0–6 是数字写法；
+#: 8 位十六进制串（`"#FF00FF00"`）是 R 4.x 的「自定义虚线模式」。
+_LINETYPE_NAMES = frozenset(
+    {"blank", "solid", "dashed", "dotted", "dotdash", "longdash", "twodash"}
+)
+
+
+def _check_linetype(name: str, value: Any) -> None:
+    if value is None:
+        return
+    if isinstance(value, numbers.Integral) and not isinstance(value, bool):
+        if 0 <= int(value) <= 6:
+            return
+        raise ThemeError(f"{name} 必须是 0–6 或线型名，得到 {value!r}")
+    if isinstance(value, str):
+        if value in _LINETYPE_NAMES:
+            return
+        if len(value) == 9 and value.startswith("#") and _is_hex(value[1:]):
+            return
+        raise ThemeError(f"{name} 必须是线型名（{', '.join(sorted(_LINETYPE_NAMES))}）或 #RRGGBBAA")
+    raise ThemeError(f"{name} 必须是整数或线型名，得到 {type(value).__name__}")
+
+
+def _is_hex(value: str) -> bool:
+    return all(char in "0123456789abcdefABCDEF" for char in value)
+
+
+def _check_shape(name: str, value: Any) -> None:
+    """`shape` / `pointshape`：R 的 `pch`，0–25 的整数或单个字符。"""
+    if value is None:
+        return
+    if isinstance(value, numbers.Integral) and not isinstance(value, bool):
+        if 0 <= int(value) <= 25:
+            return
+        raise ThemeError(f"{name} 必须是 0–25 的 pch，得到 {value!r}")
+    if isinstance(value, str) and len(value) == 1:
+        return
+    raise ThemeError(f"{name} 必须是 0–25 的整数或单个字符，得到 {value!r}")
+
+
 def _check_font_axis(name: str, value: Any) -> None:
     """`fontweight` / `fontwidth`：只校验类型，取值留给字体栈。
 
@@ -280,6 +346,7 @@ def element_text(
     """文本元素。`family` / `face` / `size` / `colour` … 未给的从父元素继承。"""
     if color is not None:
         colour = color
+    _check_str("family", family)
     if face is not None and face not in ("plain", "italic", "bold", "bold.italic"):
         raise ThemeError(f"face 必须是 plain/italic/bold/bold.italic，得到 {face!r}")
     _check_bool("italic", italic)
@@ -287,6 +354,7 @@ def element_text(
     _check_font_axis("fontwidth", fontwidth)
     _check_size("size", size)
     _check_colour("colour", colour)
+    _check_bool("debug", debug)
     for name, value in (
         ("hjust", hjust),
         ("vjust", vjust),
@@ -337,6 +405,8 @@ def element_line(
     _check_colour("colour", colour)
     _check_colour("arrow_fill", arrow_fill)
     _check_size("linewidth", linewidth)
+    _check_linetype("linetype", linetype)
+    _check_bool("arrow", arrow)
     if lineend is not None and lineend not in ("round", "butt", "square"):
         raise ThemeError(f"lineend 必须是 round/butt/square，得到 {lineend!r}")
     if linejoin is not None and linejoin not in ("round", "mitre", "bevel"):
@@ -368,6 +438,7 @@ def element_rect(
     _check_colour("fill", fill)
     _check_colour("colour", colour)
     _check_size("linewidth", linewidth)
+    _check_linetype("linetype", linetype)
     if linejoin is not None and linejoin not in ("round", "mitre", "bevel"):
         raise ThemeError(f"linejoin 必须是 round/mitre/bevel，得到 {linejoin!r}")
     return ElementRect(
@@ -395,6 +466,9 @@ def element_polygon(
     _check_colour("fill", fill)
     _check_colour("colour", colour)
     _check_size("linewidth", linewidth)
+    _check_linetype("linetype", linetype)
+    if linejoin is not None and linejoin not in ("round", "mitre", "bevel"):
+        raise ThemeError(f"linejoin 必须是 round/mitre/bevel，得到 {linejoin!r}")
     return ElementPolygon(
         fill=fill,
         colour=colour,
@@ -419,6 +493,7 @@ def element_point(
         colour = color
     _check_colour("colour", colour)
     _check_colour("fill", fill)
+    _check_shape("shape", shape)
     _check_size("size", size)
     _check_size("stroke", stroke)
     return ElementPoint(
@@ -451,8 +526,12 @@ def element_geom(
         _check_colour(name, value)
     _check_size("linewidth", linewidth)
     _check_size("borderwidth", borderwidth)
+    _check_linetype("linetype", linetype)
+    _check_linetype("bordertype", bordertype)
+    _check_str("family", family)
     _check_size("fontsize", fontsize)
     _check_size("pointsize", pointsize)
+    _check_shape("pointshape", pointshape)
     return ElementGeom(
         ink=ink,
         paper=paper,
@@ -947,24 +1026,82 @@ def _resolve_root_rels(value: Any, root_values: Mapping[str, Any], name: str) ->
     return replace(value, **updates) if updates else value
 
 
+_ROOT_NAMES = ("text", "line", "rect", "point", "polygon", "geom")
+
+_base_theme_cache: Theme | None = None
+
+
+def _base_theme() -> Theme:
+    """`ggplot_global$theme_default` 的对应物：包内置的 `theme_grey()`。
+
+    它只用来补齐根元素缺失的字段（见 :func:`_fill_root_defaults`），与
+    `theme_get()`（用户可改的全局默认）不是一回事。
+    """
+    global _base_theme_cache
+    if _base_theme_cache is None:
+        _base_theme_cache = theme_grey()
+    return _base_theme_cache
+
+
+def _fill_root_defaults(name: str, value: Any) -> Any:
+    """没有父元素的根元素：用内置 `theme_grey()` 的同名元素补齐 `None` 字段。
+
+    对应 `calc_element()` 里 `pnames` 为 NULL 那一支：它把剩下的 null 属性
+    与 `ggplot_global$theme_default[[element]]` 合并（`theme_test()` 的 `geom`
+    没写 `bordertype`，解析值因此是 1，正是这一步）。删掉的根（值为 `None`）
+    与 `element_blank()` 不走这里——R 侧同样直接返回。
+    """
+    if not isinstance(value, Element):
+        return value
+    default = _base_theme().elements.get(name)
+    if not isinstance(default, Element) or type(default) is not type(value):
+        return value
+    updates: dict[str, Any] = {}
+    for element_field in fields(value):
+        if element_field.name == "inherit_blank":
+            continue
+        if getattr(value, element_field.name) is None:
+            updates[element_field.name] = getattr(default, element_field.name)
+    return replace(value, **updates) if updates else value
+
+
 def _resolve_one(
     theme: Theme,
     name: str,
-    cache: dict[str, Any],
+    cache: dict[tuple[str, bool], Any],
     root_values: Mapping[str, Any],
+    skip_blank: bool = False,
 ) -> Any:
-    if name in cache:
-        return cache[name]
+    """`calc_element()` 的 Python 版：沿元素树自下而上合并。
+
+    `skip_blank` 对应 `calc_element(skip_blank=)`：子元素 `inherit.blank=FALSE`
+    时，blank 父元素被跳过、继续向更上层找默认值（`theme_classic()` 的
+    `axis.line.x` 就是这样从 `line` 拿到颜色与线宽的）。缓存键带上这个标记，
+    同一个元素在两种模式下各算一次。
+    """
+    key = (name, skip_blank)
+    if key in cache:
+        return cache[key]
     node = ELEMENT_TREE[name]
     value = theme.elements.get(name)
     if isinstance(value, ElementBlank):
-        cache[name] = value
-        return value
+        if not skip_blank:
+            cache[key] = value
+            return value
+        value = None
+    child_skip = skip_blank or (
+        value is not None and not (isinstance(value, Element) and value.inherit_blank)
+    )
+    if not node.parents:
+        value = _fill_root_defaults(name, value)
     for parent_name in node.parents:
-        value = _combine(value, _resolve_one(theme, parent_name, cache, root_values))
+        value = _combine(
+            value,
+            _resolve_one(theme, parent_name, cache, root_values, child_skip),
+        )
     value = _resolve_root_rels(value, root_values, name)
     resolved = _resolve_value(value)
-    cache[name] = resolved
+    cache[key] = resolved
     return resolved
 
 
@@ -1017,15 +1154,19 @@ class ResolvedTheme:
 
 
 def resolve_theme(theme: Theme, metrics: Metrics | None = None) -> ResolvedTheme:
-    """把主题解析成具体值；局部主题以 `theme_grey()` 为底。"""
+    """把主题解析成具体值；局部主题以 `theme_get()` 为底。
+
+    `theme_get()` 的初值是 `theme_grey()`，`theme_set()` 之后是新的全局默认
+    （对应上游 `calc_element(element, plot_theme(plot))` 里 `theme_get()` 的
+    位置）。
+    """
     if not isinstance(theme, Theme):
         raise TypeError(f"resolve_theme() 需要 Theme，得到 {type(theme).__name__}")
-    base = theme if theme.complete else merge_theme(theme_grey(), theme)
-    defaults = theme_grey(base_size=base.base_size)
-    root_values = {
-        name: defaults.elements.get(name)
-        for name in ("text", "line", "rect", "point", "polygon", "geom")
-    }
+    base = theme if theme.complete else merge_theme(theme_get(), theme)
+    # 根元素 `rel()` 的折算基准始终取 `theme_grey(base_size)`：与上游把根
+    # `rel` 留到渲染期「相对 base_size」的口径一致，不受某个主题把根元素写成
+    # rel 的影响（否则 1.5 × 0.8 会被折两次）。
+    root_values = theme_grey(base_size=base.base_size).elements
     cache: dict[str, Any] = {}
     resolved = {name: _resolve_one(base, name, cache, root_values) for name in ELEMENT_TREE}
     return ResolvedTheme(elements=frozen_mapping(resolved), metrics=metrics, theme=base)
@@ -1068,10 +1209,28 @@ def _complete(name: str, elements: Mapping[str, Any], base_size: float = 11.0) -
     )
 
 
-def _replace(base: Theme, name: str, updates: Mapping[str, Any]) -> Theme:
+def _replace(
+    base: Theme,
+    name: str,
+    updates: Mapping[str, Any],
+    *,
+    complete: bool = True,
+) -> Theme:
+    """`base %+replace% theme(...)`：整份替换同名元素，不合并字段。
+
+    `complete` 对应上游 `theme(..., complete = TRUE)`：四个内置主题族
+    （`theme_bw()` 起）都是 `theme_grey() %+replace% theme(..., complete=TRUE)`，
+    换进来的元素因此带 `inherit.blank=TRUE`。`theme_replace()` 走的是不带
+    `complete` 的 `theme(...)`，换进来的元素保持构造值 `inherit.blank=FALSE`
+    （R/theme-current.R: `replace_theme <- function(...) set_theme(get_theme()
+    %+replace% theme(...))`）——此时 base 的旧元素原样保留它们自己的标记。
+    """
     elements = dict(base.elements)
-    elements.update(updates)
-    return _complete(name, elements, base_size=base.base_size)
+    if complete:
+        elements.update({key: _inherit_blank(value) for key, value in updates.items()})
+    else:
+        elements.update(updates)
+    return Theme(name=name, elements=elements, complete=True, base_size=base.base_size)
 
 
 def theme_grey(
@@ -1372,7 +1531,12 @@ def theme_void(
         "legend.frame": element_blank(),
         "legend.box.background": element_blank(),
         "strip.clip": "on",
-        "strip.text": element_text(size=rel(0.8)),
+        # R 4.0.3 的 theme_void()：strip 文字 margin = 0、angle = 0（不是 theme_grey
+        # 的 -90°）。facet-grid-ab 的右 strip 列宽因此是 stringWidth("u")≈4.89pt，
+        # 而不是行高——SIL-715 #8 的对拍口径。
+        "strip.text": element_text(size=rel(0.8), margin=margin_auto(0), angle=0),
+        "strip.text.x": element_text(angle=0),
+        "strip.text.y": element_text(angle=0),
         "strip.switch.pad.grid": rel(0.5),
         "strip.switch.pad.wrap": rel(0.5),
         "strip.background": element_blank(),
@@ -1400,3 +1564,757 @@ def theme_void(
         "plot.background": element_rect(),
     }
     return _complete("void", elements, base_size=base_size)
+
+
+# ---------------------------------------------------------------------------
+# 其余完整主题（4.0.3 的 theme-defaults.R；全部是 `%+replace%` 的派生）
+# ---------------------------------------------------------------------------
+
+
+def theme_linedraw(
+    base_size: float = 11,
+    base_family: str = "",
+    header_family: str | None = None,
+    base_line_size: float | None = None,
+    base_rect_size: float | None = None,
+    ink: str = "black",
+    paper: str = "white",
+    accent: str = "#3366FF",
+) -> Theme:
+    """`theme_linedraw()`：`theme_bw()` 的纯黑线条变体（网格线是实黑）。"""
+    base = theme_bw(
+        base_size=base_size,
+        base_family=base_family,
+        header_family=header_family,
+        base_line_size=base_line_size,
+        base_rect_size=base_rect_size,
+        ink=ink,
+        paper=paper,
+        accent=accent,
+    )
+    half_line = base_size / 2
+    return _replace(
+        base,
+        "linedraw",
+        {
+            "axis.text": element_text(colour=ink, size=rel(0.8)),
+            "axis.ticks": element_line(colour=ink, linewidth=rel(0.5)),
+            "panel.border": element_rect(colour=ink, linewidth=rel(1)),
+            "panel.grid": element_line(colour=ink),
+            "panel.grid.major": element_line(linewidth=rel(0.1)),
+            "panel.grid.minor": element_line(linewidth=rel(0.05)),
+            "strip.background": element_rect(fill=ink),
+            "strip.text": element_text(
+                colour=paper,
+                size=rel(0.8),
+                margin=margin_auto(0.8 * half_line),
+            ),
+        },
+    )
+
+
+def theme_light(
+    base_size: float = 11,
+    base_family: str = "",
+    header_family: str | None = None,
+    base_line_size: float | None = None,
+    base_rect_size: float | None = None,
+    ink: str = "black",
+    paper: str = "white",
+    accent: str = "#3366FF",
+) -> Theme:
+    """`theme_light()`：白底 + 浅灰网格/边框。"""
+    base = theme_grey(
+        base_size=base_size,
+        base_family=base_family,
+        header_family=header_family,
+        base_line_size=base_line_size,
+        base_rect_size=base_rect_size,
+        ink=ink,
+        paper=paper,
+        accent=accent,
+    )
+    half_line = base_size / 2
+    return _replace(
+        base,
+        "light",
+        {
+            "panel.background": element_rect(fill=paper, colour=NA),
+            "panel.border": element_rect(colour=_mix_colour(ink, paper, 0.702), linewidth=rel(1)),
+            "panel.grid": element_line(colour=_mix_colour(ink, paper, 0.871)),
+            "panel.grid.major": element_line(linewidth=rel(0.5)),
+            "panel.grid.minor": element_line(linewidth=rel(0.25)),
+            "axis.ticks": element_line(colour=_mix_colour(ink, paper, 0.702), linewidth=rel(0.5)),
+            "strip.background": element_rect(fill=_mix_colour(ink, paper, 0.702), colour=NA),
+            "strip.text": element_text(
+                colour=paper,
+                size=rel(0.8),
+                margin=margin_auto(0.8 * half_line),
+            ),
+        },
+    )
+
+
+def theme_dark(
+    base_size: float = 11,
+    base_family: str = "",
+    header_family: str | None = None,
+    base_line_size: float | None = None,
+    base_rect_size: float | None = None,
+    ink: str = "black",
+    paper: str = "white",
+    accent: str = "#3366FF",
+) -> Theme:
+    """`theme_dark()`：灰面板 + 深灰网格（深色背景上的点图）。"""
+    base = theme_grey(
+        base_size=base_size,
+        base_family=base_family,
+        header_family=header_family,
+        base_line_size=base_line_size,
+        base_rect_size=base_rect_size,
+        ink=ink,
+        paper=paper,
+        accent=accent,
+    )
+    half_line = base_size / 2
+    return _replace(
+        base,
+        "dark",
+        {
+            "panel.background": element_rect(fill=_mix_colour(ink, paper, 0.499), colour=NA),
+            "panel.grid": element_line(colour=_mix_colour(ink, paper, 0.42)),
+            "panel.grid.major": element_line(linewidth=rel(0.5)),
+            "panel.grid.minor": element_line(linewidth=rel(0.25)),
+            "axis.ticks": element_line(colour=_mix_colour(ink, paper, 0.2), linewidth=rel(0.5)),
+            "strip.background": element_rect(fill=_mix_colour(ink, paper, 0.15), colour=NA),
+            "strip.text": element_text(
+                colour=_mix_colour(ink, paper, 0.899),
+                size=rel(0.8),
+                margin=margin_auto(0.8 * half_line),
+            ),
+        },
+    )
+
+
+def theme_classic(
+    base_size: float = 11,
+    base_family: str = "",
+    header_family: str | None = None,
+    base_line_size: float | None = None,
+    base_rect_size: float | None = None,
+    ink: str = "black",
+    paper: str = "white",
+    accent: str = "#3366FF",
+) -> Theme:
+    """`theme_classic()`：只有轴线、没有网格与边框的经典风格。"""
+    base = theme_bw(
+        base_size=base_size,
+        base_family=base_family,
+        header_family=header_family,
+        base_line_size=base_line_size,
+        base_rect_size=base_rect_size,
+        ink=ink,
+        paper=paper,
+        accent=accent,
+    )
+    return _replace(
+        base,
+        "classic",
+        {
+            "panel.border": element_blank(),
+            "panel.grid": element_blank(),
+            "axis.text": element_text(size=rel(0.8)),
+            "axis.line": element_line(lineend="square"),
+            "axis.ticks": element_line(),
+            "strip.background": element_rect(linewidth=rel(2)),
+        },
+    )
+
+
+def theme_test(
+    base_size: float = 11,
+    base_family: str = "",
+    header_family: str | None = None,
+    base_line_size: float | None = None,
+    base_rect_size: float | None = None,
+    ink: str = "black",
+    paper: str = "white",
+    accent: str = "#3366FF",
+) -> Theme:
+    """`theme_test()`：白底 + 面板边框、无网格（上游是独立定义，不派生）。"""
+    if base_line_size is None:
+        base_line_size = base_size / 22
+    if base_rect_size is None:
+        base_rect_size = base_size / 22
+    half_line = base_size / 2
+    elements: dict[str, Any] = {
+        "line": element_line(
+            colour=ink,
+            linewidth=base_line_size,
+            linetype=1,
+            lineend="butt",
+            linejoin="round",
+        ),
+        "rect": element_rect(
+            fill=paper,
+            colour=ink,
+            linewidth=base_rect_size,
+            linetype=1,
+            linejoin="round",
+        ),
+        "text": element_text(
+            family=base_family,
+            face="plain",
+            colour=ink,
+            size=base_size,
+            lineheight=0.9,
+            hjust=0.5,
+            vjust=0.5,
+            angle=0,
+            margin=margin(),
+            debug=False,
+        ),
+        "point": element_point(
+            colour=ink,
+            shape=19,
+            fill=paper,
+            size=(base_size / 11) * 1.5,
+            stroke=base_line_size,
+        ),
+        "polygon": element_polygon(
+            fill=paper,
+            colour=ink,
+            linewidth=base_rect_size,
+            linetype=1,
+            linejoin="round",
+        ),
+        "title": element_text(family=header_family),
+        "spacing": unit(half_line, "pt"),
+        "margins": margin_auto(half_line),
+        "geom": element_geom(
+            ink=ink,
+            paper=paper,
+            accent=accent,
+            linewidth=base_line_size,
+            borderwidth=base_line_size,
+            family=base_family,
+            fontsize=base_size,
+            linetype=1,
+            pointsize=(base_size / 11) * 1.5,
+            pointshape=19,
+        ),
+        "axis.line": element_blank(),
+        "axis.text": element_text(size=rel(0.8), colour=_mix_colour(ink, paper, 0.302)),
+        "axis.text.x": element_text(margin=margin(t=0.8 * half_line / 2), vjust=1),
+        "axis.text.x.top": element_text(margin=margin(b=0.8 * half_line / 2), vjust=0),
+        "axis.text.y": element_text(margin=margin(r=0.8 * half_line / 2), hjust=1),
+        "axis.text.y.right": element_text(margin=margin(l=0.8 * half_line / 2), hjust=0),
+        "axis.ticks": element_line(colour=_mix_colour(ink, paper, 0.2)),
+        "axis.ticks.length": rel(0.5),
+        "axis.minor.ticks.length": rel(0.75),
+        "axis.title.x": element_text(margin=margin(t=half_line / 2), vjust=1),
+        "axis.title.x.top": element_text(margin=margin(b=half_line / 2), vjust=0),
+        "axis.title.y": element_text(angle=90, margin=margin(r=half_line / 2), vjust=1),
+        "axis.title.y.right": element_text(angle=-90, margin=margin(l=half_line / 2), vjust=1),
+        "legend.background": element_rect(colour=NA),
+        "legend.spacing": rel(2),
+        "legend.margin": margin_auto(0, unit="cm"),
+        "legend.key.size": unit(1.2, "lines"),
+        "legend.text": element_text(size=rel(0.8)),
+        "legend.title": element_text(hjust=0),
+        "legend.ticks.length": rel(0.2),
+        "legend.position": "right",
+        "legend.justification": "center",
+        "legend.box.margin": margin_auto(0, unit="cm"),
+        "legend.box.background": element_blank(),
+        "legend.box.spacing": rel(2),
+        "panel.background": element_rect(fill=paper, colour=NA),
+        "panel.border": element_rect(colour=_mix_colour(ink, paper, 0.2)),
+        "panel.grid.major": element_blank(),
+        "panel.grid.minor": element_blank(),
+        "panel.ontop": False,
+        "strip.background": element_rect(
+            fill=_mix_colour(ink, paper, 0.85), colour=_mix_colour(ink, paper, 0.2)
+        ),
+        "strip.clip": "on",
+        "strip.text": element_text(
+            colour=_mix_colour(ink, paper, 0.1),
+            size=rel(0.8),
+            margin=margin_auto(0.8 * half_line),
+        ),
+        "strip.text.y": element_text(angle=-90),
+        "strip.text.y.left": element_text(angle=90),
+        "strip.placement": "inside",
+        "strip.switch.pad.grid": rel(0.5),
+        "strip.switch.pad.wrap": rel(0.5),
+        "plot.background": element_rect(colour=paper),
+        "plot.title": element_text(
+            size=rel(1.2),
+            hjust=0,
+            vjust=1,
+            margin=margin(b=half_line),
+        ),
+        "plot.title.position": "panel",
+        "plot.subtitle": element_text(hjust=0, vjust=1, margin=margin(b=half_line)),
+        "plot.caption": element_text(
+            size=rel(0.8),
+            hjust=1,
+            vjust=1,
+            margin=margin(t=half_line),
+        ),
+        "plot.caption.position": "panel",
+        "plot.tag": element_text(size=rel(1.2), hjust=0.5, vjust=0.5),
+        "plot.tag.position": "topleft",
+    }
+    return _complete("test", elements, base_size=base_size)
+
+
+#: `theme_gray()` 是 `theme_grey()` 的美式拼写别名（上游两者同一个函数体）。
+theme_gray = theme_grey
+
+
+# ---------------------------------------------------------------------------
+# 全局默认主题：theme_set / theme_get / theme_update / theme_replace
+# ---------------------------------------------------------------------------
+
+_theme_default: Theme | None = None
+
+
+def theme_get() -> Theme:
+    """当前全局默认主题（`ggplot()` 的默认主题、局部主题的合并底）。
+
+    初值是 `theme_grey()`；`theme_set()` 之后整份换掉。
+    """
+    global _theme_default
+    if _theme_default is None:
+        _theme_default = theme_grey()
+    return _theme_default
+
+
+def theme_set(new: Any = _UNSET) -> Theme:
+    """设置全局默认主题，返回旧值（对应 R 的不可见返回值）。
+
+    上游 4.0.3 是 `set_theme(new = NULL)`，函数体第一行 `new <- new %||%
+    ggplot_global$theme_default`：**无参（或传 `None`）时重置为内置默认
+    `theme_grey()`**，不是「读当前值」（读当前值用 `theme_get()`）。
+
+    - 无参 / `None` → 重置为 `theme_grey()`，返回旧主题；
+    - 传入的主题必须是完整主题（`complete=True`），否则报 `ThemeError`
+      （对应上游的 "must be called with a complete theme"）。
+    """
+    global _theme_default
+    old = theme_get()
+    if new is _UNSET or new is None:
+        _theme_default = theme_grey()
+        return old
+    if not isinstance(new, Theme):
+        raise TypeError(f"theme_set() 需要 Theme，得到 {type(new).__name__}")
+    if not new.complete:
+        raise ThemeError("theme_set() 只能接受完整主题（例如 theme_grey() / theme_bw()）")
+    _theme_default = new
+    return old
+
+
+def theme_update(**elements: Any) -> Theme:
+    """在当前默认主题上按元素合并（`%+%` 语义），返回旧值。"""
+    old = theme_get()
+    theme_set(merge_theme(old, theme(**elements)))
+    return old
+
+
+def theme_replace(**elements: Any) -> Theme:
+    """在当前默认主题上按元素整份替换（`%+replace%` 语义），返回旧值。
+
+    上游是 `set_theme(get_theme() %+replace% theme(...))`：`theme(...)` 不带
+    `complete`，换进来的元素保留 `inherit.blank=FALSE`，只有 base 里的旧元素
+    继续带 `inherit.blank=TRUE`。
+    """
+    old = theme_get()
+    theme_set(_replace(old, old.name, elements, complete=False))
+    return old
+
+
+# ---------------------------------------------------------------------------
+# 4.0 的 theme_sub_*（按前缀 + 后缀拼元素名，等价于带前缀的 theme()）
+# ---------------------------------------------------------------------------
+
+
+def _subtheme(prefix: str, suffix: str, values: Mapping[str, Any]) -> Theme:
+    """把 `title=…` 这类简写拼成 `axis.title.x` 再交给 `theme()`。
+
+    `_UNSET` 表示「没给这个参数」，`None` 表示「删除这个元素」（与 R 里
+    `axis.text = NULL` 一致）。未知元素名仍由 `theme()` 报错。
+    """
+    elements: dict[str, Any] = {}
+    for name, value in values.items():
+        if value is _UNSET:
+            continue
+        elements[f"{prefix}{name.replace('_', '.')}{suffix}"] = value
+    return theme(**elements)
+
+
+def theme_sub_axis(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis()`：`axis.title` / `axis.text` / … 的简写。"""
+    return _subtheme(
+        "axis.",
+        "",
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def _axis_subtheme(suffix: str, minor_ticks: Any, values: Mapping[str, Any]) -> Theme:
+    payload = dict(values)
+    payload["minor_ticks"] = minor_ticks
+    return _subtheme("axis.", suffix, payload)
+
+
+def theme_sub_axis_x(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_x()`：x 轴的六个元素（`axis.*.x`）。"""
+    return _subtheme(
+        "axis.",
+        ".x",
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_axis_y(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_y()`：y 轴的六个元素（`axis.*.y`）。"""
+    return _subtheme(
+        "axis.",
+        ".y",
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_axis_top(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_top()`：顶部 x 轴（`axis.*.x.top`）。"""
+    return _axis_subtheme(
+        ".x.top",
+        minor_ticks,
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_axis_bottom(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_bottom()`：底部 x 轴（`axis.*.x.bottom`）。"""
+    return _axis_subtheme(
+        ".x.bottom",
+        minor_ticks,
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_axis_left(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_left()`：左侧 y 轴（`axis.*.y.left`）。"""
+    return _axis_subtheme(
+        ".y.left",
+        minor_ticks,
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_axis_right(
+    title: Any = _UNSET,
+    text: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    line: Any = _UNSET,
+    minor_ticks: Any = _UNSET,
+    minor_ticks_length: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_axis_right()`：右侧 y 轴（`axis.*.y.right`）。"""
+    return _axis_subtheme(
+        ".y.right",
+        minor_ticks,
+        {
+            "title": title,
+            "text": text,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "line": line,
+            "minor_ticks_length": minor_ticks_length,
+        },
+    )
+
+
+def theme_sub_legend(
+    text: Any = _UNSET,
+    text_position: Any = _UNSET,
+    title: Any = _UNSET,
+    title_position: Any = _UNSET,
+    background: Any = _UNSET,
+    frame: Any = _UNSET,
+    ticks: Any = _UNSET,
+    ticks_length: Any = _UNSET,
+    axis_line: Any = _UNSET,
+    spacing: Any = _UNSET,
+    spacing_x: Any = _UNSET,
+    spacing_y: Any = _UNSET,
+    margin: Any = _UNSET,
+    key: Any = _UNSET,
+    key_size: Any = _UNSET,
+    key_height: Any = _UNSET,
+    key_width: Any = _UNSET,
+    key_spacing: Any = _UNSET,
+    key_spacing_x: Any = _UNSET,
+    key_spacing_y: Any = _UNSET,
+    key_justification: Any = _UNSET,
+    byrow: Any = _UNSET,
+    position: Any = _UNSET,
+    direction: Any = _UNSET,
+    location: Any = _UNSET,
+    position_inside: Any = _UNSET,
+    justification: Any = _UNSET,
+    justification_top: Any = _UNSET,
+    justification_bottom: Any = _UNSET,
+    justification_left: Any = _UNSET,
+    justification_right: Any = _UNSET,
+    justification_inside: Any = _UNSET,
+    box: Any = _UNSET,
+    box_just: Any = _UNSET,
+    box_margin: Any = _UNSET,
+    box_background: Any = _UNSET,
+    box_spacing: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_legend()`：所有 `legend.*` 元素的简写。"""
+    return _subtheme(
+        "legend.",
+        "",
+        {
+            "text": text,
+            "text_position": text_position,
+            "title": title,
+            "title_position": title_position,
+            "background": background,
+            "frame": frame,
+            "ticks": ticks,
+            "ticks_length": ticks_length,
+            "axis_line": axis_line,
+            "spacing": spacing,
+            "spacing_x": spacing_x,
+            "spacing_y": spacing_y,
+            "margin": margin,
+            "key": key,
+            "key_size": key_size,
+            "key_height": key_height,
+            "key_width": key_width,
+            "key_spacing": key_spacing,
+            "key_spacing_x": key_spacing_x,
+            "key_spacing_y": key_spacing_y,
+            "key_justification": key_justification,
+            "byrow": byrow,
+            "position": position,
+            "direction": direction,
+            "location": location,
+            "position_inside": position_inside,
+            "justification": justification,
+            "justification_top": justification_top,
+            "justification_bottom": justification_bottom,
+            "justification_left": justification_left,
+            "justification_right": justification_right,
+            "justification_inside": justification_inside,
+            "box": box,
+            "box_just": box_just,
+            "box_margin": box_margin,
+            "box_background": box_background,
+            "box_spacing": box_spacing,
+        },
+    )
+
+
+def theme_sub_panel(
+    background: Any = _UNSET,
+    border: Any = _UNSET,
+    widths: Any = _UNSET,
+    heights: Any = _UNSET,
+    spacing: Any = _UNSET,
+    spacing_x: Any = _UNSET,
+    spacing_y: Any = _UNSET,
+    grid: Any = _UNSET,
+    grid_major: Any = _UNSET,
+    grid_minor: Any = _UNSET,
+    grid_major_x: Any = _UNSET,
+    grid_major_y: Any = _UNSET,
+    grid_minor_x: Any = _UNSET,
+    grid_minor_y: Any = _UNSET,
+    ontop: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_panel()`：所有 `panel.*` 元素的简写。"""
+    return _subtheme(
+        "panel.",
+        "",
+        {
+            "background": background,
+            "border": border,
+            "widths": widths,
+            "heights": heights,
+            "spacing": spacing,
+            "spacing_x": spacing_x,
+            "spacing_y": spacing_y,
+            "grid": grid,
+            "grid_major": grid_major,
+            "grid_minor": grid_minor,
+            "grid_major_x": grid_major_x,
+            "grid_major_y": grid_major_y,
+            "grid_minor_x": grid_minor_x,
+            "grid_minor_y": grid_minor_y,
+            "ontop": ontop,
+        },
+    )
+
+
+def theme_sub_plot(
+    background: Any = _UNSET,
+    title: Any = _UNSET,
+    title_position: Any = _UNSET,
+    subtitle: Any = _UNSET,
+    caption: Any = _UNSET,
+    caption_position: Any = _UNSET,
+    tag: Any = _UNSET,
+    tag_position: Any = _UNSET,
+    tag_location: Any = _UNSET,
+    margin: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_plot()`：所有 `plot.*` 元素的简写。"""
+    return _subtheme(
+        "plot.",
+        "",
+        {
+            "background": background,
+            "title": title,
+            "title_position": title_position,
+            "subtitle": subtitle,
+            "caption": caption,
+            "caption_position": caption_position,
+            "tag": tag,
+            "tag_position": tag_position,
+            "tag_location": tag_location,
+            "margin": margin,
+        },
+    )
+
+
+def theme_sub_strip(
+    background: Any = _UNSET,
+    background_x: Any = _UNSET,
+    background_y: Any = _UNSET,
+    clip: Any = _UNSET,
+    placement: Any = _UNSET,
+    text: Any = _UNSET,
+    text_x: Any = _UNSET,
+    text_x_bottom: Any = _UNSET,
+    text_x_top: Any = _UNSET,
+    text_y: Any = _UNSET,
+    text_y_left: Any = _UNSET,
+    text_y_right: Any = _UNSET,
+    switch_pad_grid: Any = _UNSET,
+    switch_pad_wrap: Any = _UNSET,
+) -> Theme:
+    """`theme_sub_strip()`：所有 `strip.*` 元素的简写。"""
+    return _subtheme(
+        "strip.",
+        "",
+        {
+            "background": background,
+            "background_x": background_x,
+            "background_y": background_y,
+            "clip": clip,
+            "placement": placement,
+            "text": text,
+            "text_x": text_x,
+            "text_x_bottom": text_x_bottom,
+            "text_x_top": text_x_top,
+            "text_y": text_y,
+            "text_y_left": text_y_left,
+            "text_y_right": text_y_right,
+            "switch_pad_grid": switch_pad_grid,
+            "switch_pad_wrap": switch_pad_wrap,
+        },
+    )

@@ -111,6 +111,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # M1-5 等比例验证：2×2 合成 panel → PNG / SVG，量面板像素宽高比
 # （ratio=1 / ratio=2 / 不写 coord_fixed 的对照）。产物进 .coord-aspect/（不入库）。
 "cases:coord" = "PYTHONPATH=src python tools/cases/coord_aspect_cases.py"
+# M2-5：theme 文档的两个派生区块（注册的主题 + 逐元素解析值）。
+# 改了主题数值或注册表就重跑；`--check` 挂进 `check` 守新鲜度。
+"docs:theme" = "PYTHONPATH=src python tools/docs/theme_doc.py"
+"docs:theme:check" = "PYTHONPATH=src python tools/docs/theme_doc.py --check"
+
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 
@@ -267,4 +272,5 @@ check = { depends-on = [
   "gate:pyodide:selftest",
   "gate:cbor",
   "cases:matrix:check",
+  "docs:theme:check",
 ] }
