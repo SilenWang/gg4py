@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "facet-grid", "free-space", "rotation"]
+ci = true
+title = "上游快照：align facet labels, facets vertical"
+source = "upstream:tests/testthat/_snaps/guide-axis/align-facet-labels-facets-vertical.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-817：38 个离散水平按 `levels(reorder(model, hwy))` 落成 categorical 列（`_fixtures.factor_column`），`space = free` 的行高按逐面板范围差分配；x 轴标题在 panel 列并集上居中（不含 strip 列）。实测 1.61% / 0.16%。"

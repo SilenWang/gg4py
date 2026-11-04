@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**256**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**55**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **20** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
+- 已纳管：**257**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**54**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **17** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -14,7 +14,7 @@
 | --- | --- | ---: | ---: | ---: |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
-| `guide-axis` | m2-closeout | 23 | 15 | 8 |
+| `guide-axis` | m2-closeout | 23 | 16 | 7 |
 | `theme` | m2-closeout | 39 | 32 | 7 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
@@ -52,7 +52,7 @@
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 256 | 55 |
+| **合计** | — | 311 | 257 | 54 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -175,6 +175,7 @@
 | `geom-violin/styled-quantiles.svg` | `upstream-geom-violin-styled-quantiles` |
 | `geom-violin/with-smaller-bandwidth-and-points.svg` | `upstream-geom-violin-with-smaller-bandwidth-and-points` |
 | `geom-violin/with-tails-and-points.svg` | `upstream-geom-violin-with-tails-and-points` |
+| `guide-axis/align-facet-labels-facets-vertical.svg` | `upstream-guide-axis-align-facet-labels-vertical` |
 | `guide-axis/axis-guides-basic.svg` | `upstream-guide-axis-axis-guides-basic` |
 | `guide-axis/axis-guides-negative-rotation.svg` | `upstream-guide-axis-axis-guides-negative-rotation` |
 | `guide-axis/axis-guides-positive-rotation.svg` | `upstream-guide-axis-axis-guides-positive-rotation` |
@@ -480,67 +481,17 @@ SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reorder(model, hwy)` 的38 个离散水平（均值序已按 R 的 `levels(reorder())` 写死）在逐面板 y 轴带里错位，属 G7 的`facet-` 簇口径，不在轴 guide 这一簇。
+SIL-817 复核：同 `axis-guides-check-overlap`，是 `test_draw_axis(10, labels = comma(b * 1e9), n.dodge = 2)` 的裸轴 gtable。`n.dodge = 2` 的分行逻辑（`_grid_shape()` + `_visible_labels()`）已能跑，缺的是「不经过 ggplot 版面」的渲染入口。
 
 <details><summary>快照</summary>
 
-- `guide-axis/align-facet-labels-facets-horizontal.svg`
+- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
 
 </details>
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇。
-
-<details><summary>快照</summary>
-
-- `guide-axis/align-facet-labels-facets-vertical.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 未纳管：`label_math()` 的 plotmath 标签 + 负长度的 `axis.ticks.length.x.top` 已能画，但 `axis.minor.ticks.length.y.right = 5cm` 会把次轴带撑到 5cm，R 的 gtable 与我们的轴带宽度分配不一致（实测 >10%）。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guides-with-minor-ticks.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 未纳管：`transform_compose(transform_log10(), transform_reverse())` 与`coord_transform(x = transform_pseudo_log())` 两个变换都还没有（`scales.py` / `coord.py`把 pseudo_log 记在 M3-2），logticks 本身已能画。
-
-<details><summary>快照</summary>
-
-- `guide-axis/logtick-axes-with-customisation.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-810 仍未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「未做」——`polar_axis_grobs()` 对 `guide_axis_stack` 直接抛 ValueError（两层 theta 轴要在半径上推第二圈 `stack_offset`）。与 `guide-axis-theta-with-angle` 同一个 radial 版面缺口，归 G9 的 coord_radial 版面。
-
-<details><summary>快照</summary>
-
-- `guide-axis/stacked-radial-axes.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-810 实测 28.1%：`coord_radial()` 的版面口径未复刻——R 的面板是整页高度的正方形（575.61×575.61，标题/轴标题画在面板内），本仓仍按 plot.title / axis.title 行收缩到 528.3×528.3，于是整张图同心圆半径差 8%。卡在「radial 的 full-bleed 面板 + 轴标题内嵌」。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-810：`check_overlap` 的标签保留集合（1/3/5/7/10/12/15/17/20）与面板 36/28.8 的 5% 边距都已对齐；实测图级 3.62%、均值 0.45%，差在 20 个 10 位标签的字形落点（R 的 `titleGrob` 与我们的 text grob 在 sub-pixel 上不同）。卡在「长标签的字形/亚像素口径」。
+SIL-817 复核：这条快照不是 ggplot 对象，而是 `test_draw_axis()` 用 `draw_axis()` 拼四条轴再放进 `gtable(widths = c(0.05, 0.9, 0.05) npc)` 直接 `plot()` 的**裸 gtable**；三文件 case 只接 plot 规格，所以任何 plot 近似（SIL-810 用 20 个断点的面板试过）都多出 36pt/28.8pt 的面板边距。实测近似图 3.62% / 0.45%。卡点与 `all-legend-keys` 同一个：case 契约要先支持「plot.py 返回 gtable / grob」。
 
 <details><summary>快照</summary>
 
@@ -550,17 +501,57 @@ SIL-810：`check_overlap` 的标签保留集合（1/3/5/7/10/12/15/17/20）与�
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-SIL-810：`n.dodge = 2` 的分行与面板边距已对齐；实测图级 3.72%、均值 0.65%，同 `check overlap`，差在长标签的字形/亚像素落点。
+SIL-817 实测 2.05% / 0.27%（阈值 2% / 1%，差 0.05 个点）。版面已经对齐：15 行面板高 34.78 / 45.65 / 13.04…（= `diff(y.range)` 的 null 权重）、38 个 y 标签、plot/axis 标题位置与 R 逐点相同；8522 个差异像素里 2400 px 是 4 条面板边框的 1 px 落点——本仓 y 轴带宽 115.4418pt vs R 115.47pt（最长标签 `land cruiser wagon 4wd` 的 HarfBuzz 宽度差 0.028pt），0.002–0.03pt 的偏移把 resvg 对 1.07pt 描边的整行覆盖率从 0.75 翻到 0.56（灰度 103 vs 141）。卡在「文本度量与 svglite 对齐到 0.01pt」，不是版面公式。
 
 <details><summary>快照</summary>
 
-- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
+- `guide-axis/align-facet-labels-facets-horizontal.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+SIL-817 实测 48.97% / 4.82%：`coord_radial()` 的 full-bleed 版面未复刻——R 的面板是整页的正方形（575.61×575.61：`plot.title` 与两条 axis title 都画在面板内、不占 gtable 行），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩（528.3×528.3，另加 `inner.radius = 0.5` 的环），同心圆半径与 theta 标签的锚点因此整体差 8%–9%。卡在 `plot_layout()` 对 radial 的「面板 = 整页 − 图例」口径 + `guide_axis_theta(angle=)` 的锚点随角度旋转。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+SIL-817 实测仍然报错：`ValueError: guide_axis_theta 暂不支持与 guide_axis_stack 叠放`（`src/ggcore/axis_guide.py:1163` 的 `polar_axis_grobs()`）。R 的径向叠放是两层 theta 轴沿半径各占一圈（`guide_axis_stack("axis_theta", guide_axis_theta(cap = "both"))` 进 `guides(theta=, theta.sec=)`），需要 radial 版的 `stack_offset`（直角坐标由 G8 的 `axis_guide_stack` 累加轴带完成），与 `coord-polar` 剩下 4 条同属 `docs/notes/guide.md` §8.5 的 radial 轴体系。
+
+<details><summary>快照</summary>
+
+- `guide-axis/stacked-radial-axes.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m3
+
+SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x 轴标签是 `label_math()`（`10` 用 8.80px、指数用 6.16px 两次落字，见快照 `guides-with-minor-ticks.svg` 的 8 段 text），本仓所有 text 走一条 shaping，画不出上下标；plotmath 已在 SIL-786 由 00b6d04 整块移交 M3。次轴带本身（`axis.minor.ticks.length.y.right = 5cm` 撑开 `axis-r` 列）已经算对，等 plotmath 落地后可直接复测。按 SIL-817 约束作为新能力整条移交 m3。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guides-with-minor-ticks.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m3
+
+SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。
+
+<details><summary>快照</summary>
+
+- `guide-axis/logtick-axes-with-customisation.svg`
 
 </details>
 
 ### `guide-legend` — 1 条 · SIL-715 · m2-closeout
 
-SIL-810：key 尺寸已按 `size` 标度撑开、`legend.key.justification` 的逐键尺寸也已接上（10.5% → 3.72%，均值 0.97% → 1.50%）。剩下的是两张图例的先后顺序：R 的 `Guides$build()` 按 `order_<rlang::hash>` 排序（drat 的 hash 小于 factor(cyl)），本仓按 `GUIDE_AESTHETICS` 顺序（colour 在前）。卡在「rlang::hash 的字节级复刻」。
+SIL-817 实测 3.72% / 1.49%。顺序可以显式对齐（R 没写 `order`，`Guides$build()` 因此按 `order_<rlang::hash>` 排：drat 在前；case 里写成 `guides(size = guide_legend(order = 1), colour = guide_legend(order = 2))` 后降到 2.66% / 1.04%）。剩下的 0.66% / 0.04% 是 `size` 图例的**逐键高度**：R 的三行是 0.6096 / 1.3037 / 1.6389cm（随点径撑开，点 3/4/5 映射到 `range = c(0, 20)`），本仓三行等高（整摞图例 226pt vs R 277pt）；`_key_dimensions()` 只按标度值算 key 宽高，没把点径（`stroke` 外的直径）计入行高。卡在「逐键行高 = max(key 尺寸, 点径 + 2×stroke)」。
 
 <details><summary>快照</summary>
 
@@ -570,7 +561,7 @@ SIL-810：key 尺寸已按 `size` 标度撑开、`legend.key.justification` 的�
 
 ### `guides` — 1 条 · SIL-715 · m2-closeout
 
-SIL-810：无图层版面已修（面板回到 plot.margin 内区，10.4% → 5.13%，均值 0.80%）。剩下的差在 `guide_custom()` 的内容尺寸：R 量的是 grob 本身（circleGrob r = 1cm → 2cm 宽高），本仓 `_custom_layout()` 没有 grob 测量，退回 `legend.key.size`（17.28pt vs 56.69pt），图例高 38.1pt vs 76.4pt、标题列宽也随角度没互换。卡在「custom guide 的 grob 包围盒测量 + 旋转标题尺寸」
+SIL-817 实测 5.13% / 0.80%：无图层版面已对（SIL-810），圆也画对了（IR 里 1 个 circle，圆心 (673.6, 296.65) 与 R 的 (680.69, 296.65) 之差就是图例框偏移），差在 `_custom_layout()` 的盒子尺寸——R 用 `grobWidth()` / `grobHeight()`（circleGrob r = 1cm → 2cm），逐列 [0.193 外边距, 0.557 旋转标题列, 2 内容, 0.193]，逐行 [0.193, 0.154, 2, 0.154, 0.193]（标题转 90° 后高 2.31cm，撑开上下各 0.154cm）；本仓退回 `legend.key.size`，图例框 2.89×1.34cm vs R 2.94×2.69cm，面板因此宽 1.1pt、网格线整列错位。卡在「`guide_custom()` 的 grob 包围盒测量（circle / rect / text / gtable / null）+ 标题列按 `angle` 交换宽高」。
 
 <details><summary>快照</summary>
 

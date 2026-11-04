@@ -24,6 +24,9 @@ docs/spike/e1_coldstart/static/
 .gate-metrics/
 # `pixi run cases:matrix` 的运行时报告（红绿 + 差多少），每次重跑覆盖，不入库
 .cases-matrix/
+# G10a（SIL-817）的临时量尺产物：`tools/upstream/g10_measure.py` 把候选 plot.py
+# 复制成三文件 case 跑 render/diff，产物落在 .g10/（不入库）
+.g10/
 # `pixi run snapshots:fetch` 按 pin 拉下来的 ggplot2 源码包与解压目录（清单入库，
 # SVG 本体按需拉取；处置见 tools/upstream/snapshots.toml）
 .upstream-gg/
