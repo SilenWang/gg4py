@@ -329,12 +329,18 @@ def axis_guide_from_component(component: Any) -> AxisGuide | None:
 
 
 def guide_for(build: Any, aesthetic: str) -> AxisGuide | None:
-    """`PlotBuild.guides` 里该美学的轴 guide；没有就是 None（默认轴）。"""
+    """该美学的轴 guide：`guides()` 优先，其次标度的 `guide=`，都没有用默认轴。"""
     guides = getattr(build, "guides", None) or {}
     for key, component in guides.items():
         owner = getattr(component, "aesthetic", None)
         if owner == aesthetic or (key == aesthetic and owner in (None, aesthetic)):
             return axis_guide_from_component(component)
+    scales = getattr(build, "scales", None)
+    scale = scales.scale(aesthetic) if scales is not None else None
+    params = getattr(scale, "params", None) or {}
+    component = params.get("guide")
+    if component is not None:
+        return axis_guide_from_component(component)
     return None
 
 

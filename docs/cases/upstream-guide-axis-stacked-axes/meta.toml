@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "axis-stack"]
+ci = true
+title = "上游快照：stacked axes"
+source = "upstream:tests/testthat/_snaps/guide-axis/stacked-axes.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-810（G8）：vdiffr 快照原样纳入；标题是 doppelganger 名。"

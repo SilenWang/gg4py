@@ -10,7 +10,8 @@ IR 的六阶段流水线是 M1-3，`Geom.draw()` 的实现是 M1-7。
   可以在 `p + q` 的克隆之间安全共享；
 - `Layer.params` 存几何参数（`size=3`、`bins=30` 等）的原始值，交给后续阶段
   解释，这里不校验；
-- `show_legend=None` 表示「自动」（对应 ggplot2 的 `NA`）。
+- `show_legend=None` 表示「自动」（对应 ggplot2 的 `NA`）；也可以给逐美学的
+  `Mapping[str, bool | None]`（`{"colour": None, "alpha": False}`）。
 """
 
 from __future__ import annotations
@@ -227,7 +228,7 @@ class Layer:
     data: Any = None
     params: dict[str, Any] = field(default_factory=dict)
     inherit_aes: bool = True
-    show_legend: bool | None = None
+    show_legend: bool | Mapping[str, bool | None] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "mapping", as_aes(self.mapping))

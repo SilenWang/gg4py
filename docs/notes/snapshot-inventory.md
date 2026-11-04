@@ -4,36 +4,36 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**242**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**69**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **34** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
+- 已纳管：**252**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**59**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **24** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `guide-axis` | m2-closeout | 23 | 10 | 13 |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
+| `guide-axis` | m2-closeout | 23 | 15 | 8 |
 | `theme` | m2-closeout | 39 | 31 | 8 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
-| `draw-key` | m2-closeout | 6 | 2 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `facet-labels` | m2-closeout | 2 | 0 | 2 |
 | `geom-hex` | m2-closeout | 3 | 1 | 2 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
-| `guide-legend` | m2-closeout | 7 | 5 | 2 |
 | `facet-` | m2-closeout | 4 | 3 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
+| `guide-legend` | m2-closeout | 7 | 6 | 1 |
 | `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
+| `draw-key` | m2-closeout | 6 | 6 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
 | `geom-boxplot` | m2-closeout | 3 | 3 | 0 |
 | `geom-curve` | m2-closeout | 2 | 2 | 0 |
@@ -52,7 +52,7 @@
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 242 | 69 |
+| **合计** | — | 311 | 252 | 59 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -82,8 +82,12 @@
 | `coord-transform/basic-coord-transform-plot.svg` | `upstream-coord-transform-basic` |
 | `coord-transform/reversed-transformed-coords.svg` | `upstream-coord-transform-reversed` |
 | `coord-transform/sec-axis-with-coord-transform.svg` | `upstream-coord-transform-sec-axis` |
+| `draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg` | `upstream-draw-key-appropriate-colour` |
+| `draw-key/circle-glyphs-of-2cm-size.svg` | `upstream-draw-key-circle-2cm` |
 | `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
 | `draw-key/horizontal-linerange-and-pointrange.svg` | `upstream-draw-key-horizontal-linerange-pointrange` |
+| `draw-key/rectangle-and-dotplot-key-glyphs.svg` | `upstream-draw-key-rect-dotplot` |
+| `draw-key/time-series-and-polygon-key-glyphs.svg` | `upstream-draw-key-timeseries-polygon` |
 | `facet-/facet-grid-with-omitted-inner-axis-labels.svg` | `upstream-facet-facet-grid-with-omitted-inner-axis-labels` |
 | `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
 | `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
@@ -173,14 +177,20 @@
 | `guide-axis/axis-guides-positive-rotation.svg` | `upstream-guide-axis-axis-guides-positive-rotation` |
 | `guide-axis/axis-guides-vertical-negative-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-negative-rotation` |
 | `guide-axis/axis-guides-vertical-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-rotation` |
+| `guide-axis/axis-guides-with-capped-ends.svg` | `upstream-guide-axis-capped-ends` |
 | `guide-axis/axis-guides-zero-breaks.svg` | `upstream-guide-axis-axis-guides-zero-breaks` |
 | `guide-axis/axis-guides-zero-rotation.svg` | `upstream-guide-axis-axis-guides-zero-rotation` |
+| `guide-axis/guide-axis-customization.svg` | `upstream-guide-axis-customization` |
+| `guide-axis/guide-axis-theta-in-cartesian-coordinates.svg` | `upstream-guide-axis-theta-cartesian` |
 | `guide-axis/guide-titles-with-coord-transform.svg` | `upstream-guide-axis-guide-titles-with-coord-transform` |
+| `guide-axis/guides-specified-in-guides.svg` | `upstream-guide-axis-guides-specified` |
 | `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
+| `guide-axis/stacked-axes.svg` | `upstream-guide-axis-stacked-axes` |
 | `guide-axis/thick-axis-lines.svg` | `upstream-guide-axis-thick-axis-lines` |
 | `guide-colorbar/combined-colour-and-fill-aesthetics.svg` | `upstream-guide-colorbar-combined-aesthetics` |
 | `guide-colorbar/customized-colorbar.svg` | `upstream-guide-colorbar-customized` |
 | `guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg` | `upstream-guide-colorbar-white-to-red` |
+| `guide-legend/enlarged-guides.svg` | `upstream-guide-legend-enlarged-guides` |
 | `guide-legend/horizontal-legend-direction.svg` | `upstream-guide-legend-horizontal-direction` |
 | `guide-legend/left-aligned-legend-key.svg` | `upstream-guide-legend-left-aligned-key` |
 | `guide-legend/legend-byrow-true.svg` | `upstream-guide-legend-byrow-true` |
@@ -385,46 +395,6 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 </details>
 
-### `draw-key` — 1 条 · SIL-715 · m2-closeout
-
-依赖 `geom_point(show.legend = c(colour = NA, alpha = FALSE))` 这种逐美学 show.legend 写法，本仓的 `show_legend` 只有布尔。
-
-<details><summary>快照</summary>
-
-- `draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg`
-
-</details>
-
-### `draw-key` — 1 条 · SIL-715 · m2-closeout
-
-依赖 `key_glyph = 'timeseries'` / 'polygon'`；同上。
-
-<details><summary>快照</summary>
-
-- `draw-key/time-series-and-polygon-key-glyphs.svg`
-
-</details>
-
-### `draw-key` — 1 条 · SIL-715 · m2-closeout
-
-依赖 `key_glyph = draw_key_rect` / `draw_key_dotplot`；本仓的图例 key 只走 `Geom.draw()`，没有 `key_glyph`。
-
-<details><summary>快照</summary>
-
-- `draw-key/rectangle-and-dotplot-key-glyphs.svg`
-
-</details>
-
-### `draw-key` — 1 条 · SIL-715 · m2-closeout
-
-依赖 `key_glyph` 自定义函数 + grob 上的 `width` / `height` 属性（2cm key 撑开图例）；本仓还没有 `key_glyph` 覆盖点。
-
-<details><summary>快照</summary>
-
-- `draw-key/circle-glyphs-of-2cm-size.svg`
-
-</details>
-
 ### `facet-` — 1 条 · SIL-715 · m2-closeout
 
 SIL-796：`axes = "all"` + `axis.labels = "margins"` 已接上（case `upstream-facet-facet-wrap-with-omitted-inner-axis-labels`），但 `facet_wrap` 每行插轴带后 gtable 的 null 行把 strip 与面板之间的 5.46pt 轴带分配成 2.72pt，第二行 strip 上移 2.74pt（图级 2.92%，均值 0.65%）。卡在 `facet_table()` 的 `heights` 与 `facet_table.panel_boxes()` 的 null 行分配口径，不是阈值问题。
@@ -536,16 +506,6 @@ SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-G1b 实测 15%：`guide_axis_stack()` 的两层轴能画（间距 = 主轴刻度长），但叠放后的**轴带宽度**仍按单层算，R 按 `guide_axis_stack` 的 measured gtable 累加。
-
-<details><summary>快照</summary>
-
-- `guide-axis/stacked-axes.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
 G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reorder(model, hwy)` 的38 个离散水平（均值序已按 R 的 `levels(reorder())` 写死）在逐面板 y 轴带里错位，属 G7 的`facet-` 簇口径，不在轴 guide 这一簇。
 
 <details><summary>快照</summary>
@@ -561,76 +521,6 @@ G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇�
 <details><summary>快照</summary>
 
 - `guide-axis/align-facet-labels-facets-vertical.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 2.22%（阈值 2%）：同上——次轴的 `n.dodge` 两条标签行 + R 的空标题行未进版式，面板顶边差 17.3pt；差 0.22 个百分点，不是阈值问题。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guides-specified-in-guides.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 3.05%：`n.dodge = 2` 的竖轴标签在 R 里占两列（26.7pt），本仓的 `plot_layout` 仍按一列（14.7pt）留位，面板左边界差 12pt。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-customization.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 3.49%：`check_overlap` 的**标签保留集合**已和上游一致（1/3/5/7/10/12/15/17/20），剩下的是 R 把整组轴当 grid 单元画时的字形/轴线半像素差；再调就到阈值内但会改 `guide_axis` 的公共排版。
-
-<details><summary>快照</summary>
-
-- `guide-axis/axis-guides-check-overlap.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 3.58%：`n.dodge = 2` 的分行位置对，差在长标签（10 位数字）在面板边缘的半像素落点。
-
-<details><summary>快照</summary>
-
-- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 54.9%：`coord_radial()` 下的 `guide_axis_theta(angle=)` 标签锚点（R 的`flip_text_angle()` + 半径 0.45）与我们的极坐标轴差异仍大，见 `docs/notes/coord.md` §12。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 7.65%：`cap=` 的轴线端点已对，但 R 在次轴（top/right）上方额外留了一行空轴标题（17.3pt，`xlab-t` 空行），本仓的版式不占这一行，面板顶边因此高 17.3pt。
-
-<details><summary>快照</summary>
-
-- `guide-axis/axis-guides-with-capped-ends.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-G1b 实测 8.71%：直角坐标下的 `axis_theta` 四条轴能画（颜色分开），但 R 的 theta 轴在笛卡尔坐标里退化成带角度的普通轴，标签锚点不同于 `axis_theta` 的极坐标口径。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-theta-in-cartesian-coordinates.svg`
 
 </details>
 
@@ -656,7 +546,7 @@ G1b 未纳管：`transform_compose(transform_log10(), transform_reverse())` 与`
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-G1b 未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「报 ValueError / 未做」，两层 theta 轴要在半径上推第二圈（`stack_offset`）。
+SIL-810 仍未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「未做」——`polar_axis_grobs()` 对 `guide_axis_stack` 直接抛 ValueError（两层 theta 轴要在半径上推第二圈 `stack_offset`）。与 `guide-axis-theta-with-angle` 同一个 radial 版面缺口，归 G9 的 coord_radial 版面。
 
 <details><summary>快照</summary>
 
@@ -664,19 +554,39 @@ G1b 未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/note
 
 </details>
 
-### `guide-legend` — 1 条 · SIL-715 · m2-closeout
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key 的宽高报回 gtable（17.28pt → 34.02pt），我们固定用 `legend.key.size`（图级 8.1%）。卡在「复数 size 撑开 key 格」这条测量链。
+SIL-810 实测 28.1%：`coord_radial()` 的版面口径未复刻——R 的面板是整页高度的正方形（575.61×575.61，标题/轴标题画在面板内），本仓仍按 plot.title / axis.title 行收缩到 528.3×528.3，于是整张图同心圆半径差 8%。卡在「radial 的 full-bleed 面板 + 轴标题内嵌」。
 
 <details><summary>快照</summary>
 
-- `guide-legend/enlarged-guides.svg`
+- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+SIL-810：`check_overlap` 的标签保留集合（1/3/5/7/10/12/15/17/20）与面板 36/28.8 的 5% 边距都已对齐；实测图级 3.62%、均值 0.45%，差在 20 个 10 位标签的字形落点（R 的 `titleGrob` 与我们的 text grob 在 sub-pixel 上不同）。卡在「长标签的字形/亚像素口径」。
+
+<details><summary>快照</summary>
+
+- `guide-axis/axis-guides-check-overlap.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m2-closeout
+
+SIL-810：`n.dodge = 2` 的分行与面板边距已对齐；实测图级 3.72%、均值 0.65%，同 `check overlap`，差在长标签的字形/亚像素落点。
+
+<details><summary>快照</summary>
+
+- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
 
 </details>
 
 ### `guide-legend` — 1 条 · SIL-715 · m2-closeout
 
-同上（key 格要按 `size` 标度撑开）+ 多行标签下 `legend.key.justification` 的对齐（图级 10.5%）。
+SIL-810：key 尺寸已按 `size` 标度撑开、`legend.key.justification` 的逐键尺寸也已接上（10.5% → 3.72%，均值 0.97% → 1.50%）。剩下的是两张图例的先后顺序：R 的 `Guides$build()` 按 `order_<rlang::hash>` 排序（drat 的 hash 小于 factor(cyl)），本仓按 `GUIDE_AESTHETICS` 顺序（colour 在前）。卡在「rlang::hash 的字节级复刻」。
 
 <details><summary>快照</summary>
 
@@ -686,7 +596,7 @@ key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key
 
 ### `guides` — 1 条 · SIL-715 · m2-closeout
 
-空图（没有图层）的版面口径未复刻：R 的 `ggplot()` 没有轴占位，面板直接铺满 plot.margin 内区；我们仍按轴 / 标题占位，面板左边界差 22pt（图级 10.4%）。要先改「无图层 → 无轴占位」这条版式规则。
+SIL-810：无图层版面已修（面板回到 plot.margin 内区，10.4% → 5.13%，均值 0.80%）。剩下的差在 `guide_custom()` 的内容尺寸：R 量的是 grob 本身（circleGrob r = 1cm → 2cm 宽高），本仓 `_custom_layout()` 没有 grob 测量，退回 `legend.key.size`（17.28pt vs 56.69pt），图例高 38.1pt vs 76.4pt、标题列宽也随角度没互换。卡在「custom guide 的 grob 包围盒测量 + 旋转标题尺寸」
 
 <details><summary>快照</summary>
 

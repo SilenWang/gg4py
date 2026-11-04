@@ -4811,9 +4811,92 @@ def specs() -> list[dict[str, Any]]:
         + _G6_SPECS
         + _THEME_MISC_SPECS
         + _G1B_SPECS
+        + _g8_specs()
         + _violin_specs()
         + _raster_specs()
     )
+
+
+#: SIL-810（G8）：guide/legend 尾款里转绿的 10 条。正文放在
+#: `tools/upstream/g8_cases/<slug>.py`（每条是一份完整的 `plot.py`，与本表其余
+#: 内联字面量同口径；拆成文件只为不让这张 10k 行的表再长 1k 行）。
+_G8_CASES = (
+    (
+        "upstream-draw-key-timeseries-polygon",
+        "draw-key/time-series-and-polygon-key-glyphs.svg",
+        "time series and polygon key glyphs",
+        ["draw-key", "key-glyph"],
+    ),
+    (
+        "upstream-draw-key-rect-dotplot",
+        "draw-key/rectangle-and-dotplot-key-glyphs.svg",
+        "rectangle and dotplot key glyphs",
+        ["draw-key", "key-glyph"],
+    ),
+    (
+        "upstream-draw-key-circle-2cm",
+        "draw-key/circle-glyphs-of-2cm-size.svg",
+        "circle glyphs of 2cm size",
+        ["draw-key", "key-glyph"],
+    ),
+    (
+        "upstream-draw-key-appropriate-colour",
+        "draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg",
+        "appropriate colour key with alpha key as lines",
+        ["draw-key", "show-legend-named"],
+    ),
+    (
+        "upstream-guide-legend-enlarged-guides",
+        "guide-legend/enlarged-guides.svg",
+        "enlarged guides",
+        ["guide-legend", "key-size"],
+    ),
+    (
+        "upstream-guide-axis-customization",
+        "guide-axis/guide-axis-customization.svg",
+        "guide_axis() customization",
+        ["guide-axis", "n-dodge"],
+    ),
+    (
+        "upstream-guide-axis-guides-specified",
+        "guide-axis/guides-specified-in-guides.svg",
+        "guides specified in guides()",
+        ["guide-axis", "n-dodge"],
+    ),
+    (
+        "upstream-guide-axis-capped-ends",
+        "guide-axis/axis-guides-with-capped-ends.svg",
+        "axis guides with capped ends",
+        ["guide-axis", "cap"],
+    ),
+    (
+        "upstream-guide-axis-stacked-axes",
+        "guide-axis/stacked-axes.svg",
+        "stacked axes",
+        ["guide-axis", "axis-stack"],
+    ),
+    (
+        "upstream-guide-axis-theta-cartesian",
+        "guide-axis/guide-axis-theta-in-cartesian-coordinates.svg",
+        "guide_axis_theta in cartesian coordinates",
+        ["guide-axis", "axis-theta"],
+    ),
+)
+
+
+def _g8_specs() -> list[dict[str, Any]]:
+    root = ROOT / "tools" / "upstream" / "g8_cases"
+    return [
+        {
+            "slug": slug,
+            "snapshot": snapshot,
+            "title": title,
+            "features": features,
+            "source": (root / f"{slug}.py").read_text(encoding="utf-8"),
+            "notes": "SIL-810（G8）：vdiffr 快照原样纳入；标题是 doppelganger 名。",
+        }
+        for slug, snapshot, title, features in _G8_CASES
+    ]
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。

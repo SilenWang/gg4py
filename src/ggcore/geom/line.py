@@ -252,7 +252,10 @@ class PathRenderer(GeomRenderer):
             # 样式沿线变化：逐段画（R 的 `segmentsGrob` 分支，取段起点行）。
             # R 在 linetype 也变化时直接 abort；这里按 (colour, lwd, lty) 分桶画，
             # 视觉结果与逐段 `segmentsGrob()` 相同。
-            seg_source = style_rows[:-1]
+            # 每个点的 `source` 是**该点所在边**的起点行；段 i（点 i → i+1）的
+            # 样式取终点记录的起点行，即 `style_rows[1:]`。用 `[:-1]` 会把上一段
+            # 的样式带到下一段（线宽随 x 变化的折线整条都被第一段的宽度画粗）。
+            seg_source = style_rows[1:]
             x0 = xs[:-1]
             y0 = ys[:-1]
             x1 = xs[1:]
