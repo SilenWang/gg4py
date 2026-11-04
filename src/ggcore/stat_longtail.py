@@ -1155,8 +1155,21 @@ def _repeat_constant(column: Column, value: Any, nrows: int) -> Column:
     if column.kind == "str":
         return _str_column([str(value)] * nrows)
     if column.kind == "categorical":
+        # `_column_values()` 对 categorical 返回的是 **level 字符串**（不是 code），
+        # 所以这里要回查 levels 拿下标；直接 `int(value)` 会在分类数据上抛
+        # ValueError（SIL-806 复审抓到的回归）。
+        levels = tuple(column.levels or ())
+        if value is None or value not in levels:
+            return Column(
+                "categorical",
+                np.full(nrows, -1, dtype=np.int32),
+                levels=column.levels,
+                na_mask=np.ones(nrows, dtype=bool),
+            )
         return Column(
-            "categorical", np.full(nrows, int(value), dtype=np.int32), levels=column.levels
+            "categorical",
+            np.full(nrows, levels.index(value), dtype=np.int32),
+            levels=column.levels,
         )
     if column.kind == "bool":
         return _bool_column([bool(value)] * nrows)
