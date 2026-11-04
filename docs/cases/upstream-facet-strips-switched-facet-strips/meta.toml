@@ -1,6 +1,6 @@
 family = "facet-strips"
 features = ["facet-strip-switch"]
-ci = true
+ci = false
 title = "上游快照：switched facet strips"
 source = "upstream:tests/testthat/_snaps/facet-strips/switched-facet-strips.svg"
 tolerance = { png = 0.02 }

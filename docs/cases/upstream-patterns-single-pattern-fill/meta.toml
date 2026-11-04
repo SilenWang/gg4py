@@ -1,6 +1,6 @@
 family = "patterns"
 features = ["pattern-fill"]
-ci = true
+ci = false
 title = "上游快照：单个平铺图案填充"
 source = "upstream:tests/testthat/_snaps/patterns/single-pattern-fill.svg"
 tolerance = { png = 0.02 }

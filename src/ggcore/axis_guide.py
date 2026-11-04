@@ -1012,14 +1012,6 @@ def axis_guide_grobs(
             # 锚点换成对面那一侧的口径（R 的 `measure_grobs()` 用 spacer 吸收
             # 负刻度，轴线 / 刻度 / 文字保持在面板边界内的同一侧）。
             hjust, vjust = _anchor(layer.angle, _OPPOSITE_SIDE[side])
-        # `axis.text.*` 的 hjust / vjust 是显式覆盖（R `label_angle_heuristic()`
-        # 只在两者为 NULL 时才按角度推锚点，见 #5820 的 outside-justified 快照）。
-        hjust_override = getattr(element, "hjust", None)
-        if hjust_override is not None:
-            hjust = float(hjust_override)
-        vjust_override = getattr(element, "vjust", None)
-        if vjust_override is not None:
-            vjust = float(vjust_override)
         # 刻度线：同一档（major / minor / long / mid / short）合成一个 segments
         # grob（R 的 `grobTree(major, minor)` 同构；逐个 mark 画会把面板内的
         # 线段拆成多个 grob，`tests/test_panel_grid.py` 的计数口径也会跟着变）。
