@@ -569,16 +569,18 @@ case = "upstream-draw-key-horizontal-linerange-pointrange"
 
 # ---------------------------------------------------------------------------
 # SIL-788（G1a）剩下 8 条的单条归口：卡点写在这里，能力补齐后改这里。
+# SIL-820 收口：6 条已纳管（gtable 契约 / 逐键行高 / guide_custom 包围盒 /
+# 1px 描边的 mm→pt），剩 2 条 radial 版面的原因与估工写在各自条目上。
 # ---------------------------------------------------------------------------
 
 [snapshots."guides/stylised-guide-custom.svg"]
-reason = "SIL-817 实测 5.13% / 0.80%：无图层版面已对（SIL-810），圆也画对了（IR 里 1 个 circle，圆心 (673.6, 296.65) 与 R 的 (680.69, 296.65) 之差就是图例框偏移），差在 `_custom_layout()` 的盒子尺寸——R 用 `grobWidth()` / `grobHeight()`（circleGrob r = 1cm → 2cm），逐列 [0.193 外边距, 0.557 旋转标题列, 2 内容, 0.193]，逐行 [0.193, 0.154, 2, 0.154, 0.193]（标题转 90° 后高 2.31cm，撑开上下各 0.154cm）；本仓退回 `legend.key.size`，图例框 2.89×1.34cm vs R 2.94×2.69cm，面板因此宽 1.1pt、网格线整列错位。卡在「`guide_custom()` 的 grob 包围盒测量（circle / rect / text / gtable / null）+ 标题列按 `angle` 交换宽高」。"
+case = "upstream-guides-stylised-guide-custom"
 
 [snapshots."guide-legend/enlarged-guides.svg"]
 case = "upstream-guide-legend-enlarged-guides"
 
 [snapshots."guide-legend/legend-key-justification.svg"]
-reason = "SIL-817 实测 3.72% / 1.49%。顺序可以显式对齐（R 没写 `order`，`Guides$build()` 因此按 `order_<rlang::hash>` 排：drat 在前；case 里写成 `guides(size = guide_legend(order = 1), colour = guide_legend(order = 2))` 后降到 2.66% / 1.04%）。剩下的 0.66% / 0.04% 是 `size` 图例的**逐键高度**：R 的三行是 0.6096 / 1.3037 / 1.6389cm（随点径撑开，点 3/4/5 映射到 `range = c(0, 20)`），本仓三行等高（整摞图例 226pt vs R 277pt）；`_key_dimensions()` 只按标度值算 key 宽高，没把点径（`stroke` 外的直径）计入行高。卡在「逐键行高 = max(key 尺寸, 点径 + 2×stroke)」。"
+case = "upstream-guide-legend-key-justification"
 
 [snapshots."draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg"]
 case = "upstream-draw-key-appropriate-colour"
@@ -593,7 +595,7 @@ case = "upstream-draw-key-rect-dotplot"
 case = "upstream-draw-key-timeseries-polygon"
 
 [snapshots."legend-draw/all-legend-keys.svg"]
-reason = "这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。"
+case = "upstream-legend-draw-all-keys"
 # --- geom-dotplot（SIL-787）：35 条按 test-geom-dotplot.R 的 doppelganger 复刻 ---
 
 [snapshots."geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg"]
@@ -737,10 +739,10 @@ case = "upstream-guide-axis-position-guide-titles"
 case = "upstream-guide-axis-guide-titles-with-coord-transform"
 
 [snapshots."guide-axis/axis-guides-check-overlap.svg"]
-reason = "SIL-817 复核：这条快照不是 ggplot 对象，而是 `test_draw_axis()` 用 `draw_axis()` 拼四条轴再放进 `gtable(widths = c(0.05, 0.9, 0.05) npc)` 直接 `plot()` 的**裸 gtable**；三文件 case 只接 plot 规格，所以任何 plot 近似（SIL-810 用 20 个断点的面板试过）都多出 36pt/28.8pt 的面板边距。实测近似图 3.62% / 0.45%。卡点与 `all-legend-keys` 同一个：case 契约要先支持「plot.py 返回 gtable / grob」。"
+case = "upstream-guide-axis-check-overlap"
 
 [snapshots."guide-axis/axis-guides-text-dodged-into-rows-cols.svg"]
-reason = "SIL-817 复核：同 `axis-guides-check-overlap`，是 `test_draw_axis(10, labels = comma(b * 1e9), n.dodge = 2)` 的裸轴 gtable。`n.dodge = 2` 的分行逻辑（`_grid_shape()` + `_visible_labels()`）已能跑，缺的是「不经过 ggplot 版面」的渲染入口。"
+case = "upstream-guide-axis-text-dodged"
 
 [snapshots."guide-axis/axis-guides-with-capped-ends.svg"]
 case = "upstream-guide-axis-capped-ends"
@@ -759,7 +761,7 @@ reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x
 case = "upstream-guide-axis-stacked-axes"
 
 [snapshots."guide-axis/stacked-radial-axes.svg"]
-reason = "SIL-817 实测仍然报错：`ValueError: guide_axis_theta 暂不支持与 guide_axis_stack 叠放`（`src/ggcore/axis_guide.py:1163` 的 `polar_axis_grobs()`）。R 的径向叠放是两层 theta 轴沿半径各占一圈（`guide_axis_stack(\"axis_theta\", guide_axis_theta(cap = \"both\"))` 进 `guides(theta=, theta.sec=)`），需要 radial 版的 `stack_offset`（直角坐标由 G8 的 `axis_guide_stack` 累加轴带完成），与 `coord-polar` 剩下 4 条同属 `docs/notes/guide.md` §8.5 的 radial 轴体系。"
+reason = "SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
 owner = "m3"
@@ -769,10 +771,10 @@ reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guid
 case = "upstream-guide-axis-theta-cartesian"
 
 [snapshots."guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"]
-reason = "SIL-817 实测 48.97% / 4.82%：`coord_radial()` 的 full-bleed 版面未复刻——R 的面板是整页的正方形（575.61×575.61：`plot.title` 与两条 axis title 都画在面板内、不占 gtable 行），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩（528.3×528.3，另加 `inner.radius = 0.5` 的环），同心圆半径与 theta 标签的锚点因此整体差 8%–9%。卡在 `plot_layout()` 对 radial 的「面板 = 整页 − 图例」口径 + `guide_axis_theta(angle=)` 的锚点随角度旋转。"
+reason = "SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。"
 
 [snapshots."guide-axis/align-facet-labels-facets-horizontal.svg"]
-reason = "SIL-817 实测 2.05% / 0.27%（阈值 2% / 1%，差 0.05 个点）。版面已经对齐：15 行面板高 34.78 / 45.65 / 13.04…（= `diff(y.range)` 的 null 权重）、38 个 y 标签、plot/axis 标题位置与 R 逐点相同；8522 个差异像素里 2400 px 是 4 条面板边框的 1 px 落点——本仓 y 轴带宽 115.4418pt vs R 115.47pt（最长标签 `land cruiser wagon 4wd` 的 HarfBuzz 宽度差 0.028pt），0.002–0.03pt 的偏移把 resvg 对 1.07pt 描边的整行覆盖率从 0.75 翻到 0.56（灰度 103 vs 141）。卡在「文本度量与 svglite 对齐到 0.01pt」，不是版面公式。"
+case = "upstream-guide-axis-align-facet-labels-horizontal"
 
 [snapshots."guide-axis/align-facet-labels-facets-vertical.svg"]
 case = "upstream-guide-axis-align-facet-labels-vertical"

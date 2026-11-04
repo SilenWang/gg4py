@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "gtable"]
+ci = true
+title = "上游快照：axis guides, text dodged into rows/cols"
+source = "upstream:tests/testthat/_snaps/guide-axis/axis-guides-text-dodged-into-rows-cols.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：裸 gtable 快照（`draw_axis(n.dodge = 2)` + `plot(gt)`），走 `{\"gtable\": …}` 契约；标题是 doppelganger 名。"

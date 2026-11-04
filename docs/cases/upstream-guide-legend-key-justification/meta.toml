@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend", "size-aes", "multiline"]
+ci = true
+title = "上游快照：legend key justification"
+source = "upstream:tests/testthat/_snaps/guide-legend/legend-key-justification.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：`size` 图例逐键行高（`pal_area()` 的 sqrt 映射 → (size+linewidth)/10 cm），`colour` 图例逐键行高按多行标签的块高；标题是 doppelganger 名。"

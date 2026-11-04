@@ -159,4 +159,6 @@ features = [
   # facet 长尾标签：在 M2-3 的 case 里先用上了，这里补登记（矩阵不再点名）。
   "facet-margins",
   "facet-space-free",
+  # SIL-820：裸 gtable 入口（`{"gtable": …}` 契约，`plot(gt)` 那种快照）。
+  "gtable",
 ]

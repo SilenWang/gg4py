@@ -30,7 +30,7 @@ R 的 pdf 设备用 Helvetica 的回退度量（0.959em），本仓用 svglite �
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -52,7 +52,9 @@ __all__ = [
     "axis_guide_from_component",
     "axis_guide_grobs",
     "axis_guide_ticks",
+    "axis_line_grobs",
     "axis_line_range",
+    "draw_axis",
     "guide_axis",
     "guide_axis_logticks",
     "guide_axis_stack",
@@ -64,6 +66,9 @@ __all__ = [
 
 #: `title=waiver()` 的对等物（轴 guide 的标题不参与绘制，保留以便转写）。
 AUTO: Any = object()
+
+#: ggplot2 的 `.pt`：主题的 `linewidth`（mm）→ `lwd`（pt）用 72.27，不是 72。
+_POINT_PER_MM = 72.27 / 25.4
 
 _AXIS_NAMES = ("axis", "axis_logticks", "axis_stack", "stacked_axis", "axis_theta", "none")
 
@@ -936,7 +941,7 @@ def _tick_line(theme: ResolvedTheme, side: str, mark: AxisMark) -> tuple[str, fl
     colour = paint(element.colour)
     if colour is None:
         return None
-    width = float(element.linewidth or 0.0) * 72.0 / 25.4
+    width = float(element.linewidth or 0.0) * _POINT_PER_MM
     return colour, width, int(element.linetype or 1)
 
 
@@ -1102,6 +1107,140 @@ def axis_guide_grobs(
                     name=f"{name}.text-{layer_index}",
                 )
             )
+    return grobs
+
+
+def axis_line_grobs(
+    theme: ResolvedTheme,
+    box: CellBox,
+    *,
+    name: str = "axis-line",
+    ranges: Mapping[str, tuple[float, float] | None] | None = None,
+    sides: Sequence[str] = ("bottom", "left"),
+) -> list[Any]:
+    """`axis.line.x` / `axis.line.y`；`ranges` 给 `cap=` 裁出的端点（npc 0..1）。
+
+    R 的轴线是 guide 的 decor（`GuideAxis$extract_decor()`），`cap=` 会把它收到
+    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。`sides` 决定画哪
+    几条：主轴总有 bottom / left，有次轴时再加 top / right（R 里次轴自己的 guide
+    也带 decor）。
+
+    搬到这里（原先是 `geom/scene.py` 的私有函数）是因为 `draw_axis()` 也要画轴线：
+    两处走同一份实现，`caps` 的口径才不会各改一份。
+    """
+    from ggcore.axis import paint
+    from ggcore.grobs import segments_grob
+    from ggcore.viewport import gpar
+
+    ranges = ranges or {}
+    elements = {
+        "bottom": ("axis.line.x.bottom", "axis.line.x"),
+        "top": ("axis.line.x.top", "axis.line.x"),
+        "left": ("axis.line.y.left", "axis.line.y"),
+        "right": ("axis.line.y.right", "axis.line.y"),
+    }
+    grobs: list[Any] = []
+    for side in sides:
+        element = None
+        for element_name in elements[side]:
+            element = theme.get(element_name)
+            if element is not None:
+                break
+        colour = paint(getattr(element, "colour", None))
+        if colour is None:
+            continue
+        lwd = float(getattr(element, "linewidth", None) or 0.0) * _POINT_PER_MM
+        low, high = ranges.get(side) or (0.0, 1.0)
+        if high - low <= 1e-12:
+            continue
+        if side == "bottom":
+            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm
+            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm
+        elif side == "top":
+            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm + box.height_cm
+            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm + box.height_cm
+        elif side == "left":
+            x0, y0 = box.x_cm, box.y_cm + low * box.height_cm
+            x1, y1 = box.x_cm, box.y_cm + high * box.height_cm
+        else:
+            x0, y0 = box.right, box.y_cm + low * box.height_cm
+            x1, y1 = box.right, box.y_cm + high * box.height_cm
+        grobs.append(
+            segments_grob(
+                x0,
+                y0,
+                x1,
+                y1,
+                default_units="cm",
+                gp=gpar(col=colour, lwd=lwd),
+                name=f"{name}-{side}",
+            )
+        )
+    return grobs
+
+
+def draw_axis(
+    theme: ResolvedTheme,
+    side: str,
+    positions: Sequence[float],
+    labels: Sequence[str],
+    *,
+    box: CellBox,
+    check_overlap: bool = False,
+    angle: float | None = None,
+    n_dodge: int = 1,
+    metrics: Any = None,
+    name: str = "axis",
+) -> list[Any]:
+    """R 的 `draw_axis()`：不经过 ggplot 版面，把一条轴画进 `box`。
+
+    `positions` 是 npc（0..1，R 里 `draw_axis(seq_len(n) / (n + 1), ...)` 直接就是
+    分数）；`labels` 与之一一对应。返回「轴线 + 刻度 + 标签」的 grob 列表，坐标是
+    `box` 所在视口的 cm（y 向上），可以直接放进 gtable 单元格或 `gTree`。
+
+    与 `axis_guide_ticks()` 的区别只在输入：那边从 scale / params 推出断点，
+    这边收现成的断点与标签——R 的 `draw_axis()` 就是给 `coord_map()` 这类
+    「没有 ggplot_build 产物」的场景用的，也是上游 `test_draw_axis()` 的快照入口。
+
+    方位口径照 R 的 `GuideAxis$assemble_drawing()`：`side` 描述的是**这条轴贴着
+    哪条边、刻度朝哪边伸**，不是「画在单元格的哪个角」。`side="top"` 的轴贴单元格
+    的**下**沿、刻度向上伸（真实版式里它的单元格就在面板上方，下沿即面板边界），
+    `"bottom"` 反之；`"left"` / `"right"` 同理。所以这里把盒子在垂直于轴的尺寸上
+    压成 0、挪到对应的那条边，再交给同一个 :func:`axis_guide_grobs`。
+    """
+    guides = AxisGuide(check_overlap=bool(check_overlap), n_dodge=int(n_dodge))
+    element = _text_element(theme, side)
+    resolved_angle = _normal_angle(angle if angle is not None else getattr(element, "angle", None))
+    major = _major_length(theme, side)
+    ticks = AxisGuideTicks(
+        side,
+        tuple(
+            AxisLabel(float(position), str(label))
+            for position, label in zip(positions, labels, strict=True)
+        ),
+        tuple(AxisMark(float(position), major, "major") for position in positions),
+        angle=resolved_angle,
+        check_overlap=bool(check_overlap),
+        n_dodge=int(n_dodge),
+    )
+    if side in ("top", "bottom"):
+        # 沿轴方向的尺寸（宽）留着：标签位置与 check.overlap 都要用它。
+        edge = box.y_cm if side == "top" else box.y_cm + box.height_cm
+        anchor = CellBox(box.t, box.l, box.b, box.r, box.x_cm, edge, box.width_cm, 0.0)
+    else:
+        edge = box.right if side == "left" else box.x_cm
+        anchor = CellBox(box.t, box.l, box.b, box.r, edge, box.y_cm, 0.0, box.height_cm)
+    grobs = axis_line_grobs(theme, anchor, name=f"{name}-line", sides=(side,))
+    grobs.extend(
+        axis_guide_grobs(
+            theme,
+            ticks,
+            anchor,
+            guides,
+            metrics=metrics,
+            name=name,
+        )
+    )
     return grobs
 
 

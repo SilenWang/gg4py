@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "facet-grid", "facet-free", "facet-space-free"]
+ci = true
+title = "上游快照：align facet labels, facets horizontal"
+source = "upstream:tests/testthat/_snaps/guide-axis/align-facet-labels-facets-horizontal.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：版面公式已对齐（面板行高 = `diff(y.range)` 的 null 权重）；剩 1.9% 是文本度量与 1px 描边的抗锯齿，`linewidth` 的 mm→pt 改用 R 的 72.27 后从 2.05% 降到 1.91%。标题是 doppelganger 名。"

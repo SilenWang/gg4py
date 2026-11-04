@@ -1,0 +1,7 @@
+family = "guide"
+features = ["draw-key", "key-glyph", "gtable"]
+ci = true
+title = "上游快照：all legend keys"
+source = "upstream:tests/testthat/_snaps/legend-draw/all-legend-keys.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：17 枚 `draw_key_*` 拼成 4×5 的裸 gtable；`draw_key_smooth()` 的 `se` 缺省在本仓按 True 画带（R 的 `isTRUE(params$se)` 在 `params = list()` 下不画），差 0.37%。"

@@ -74,6 +74,16 @@ def build():
 （R 里 `grid.newpage(); grid.draw(g)`），整页一个视口、直接画 grob。典型是
 `theme/point-elements` / `theme/polygon-elements` 这种 `element_grob()` 快照。
 
+`{"gtable": <gtable>, "size": [...]}`：同样不走 ggplot 管线，但画的是**裸 gtable**
+（R 里 `plot(gt)`）。典型是 `guide-axis/axis-guides-check-overlap`（`draw_axis()`
+拼轴 + `gtable()`）与 `legend-draw/all-legend-keys`（17 枚 `draw_key_*` 拼网格）；
+`ggcore.axis_guide.draw_axis()` 是 R `draw_axis()` 的移植，轴线 / 刻度 / 标签一把画
+进给定的 `CellBox`。
+
+`build(metrics=None)`：`build()` 声明了 `metrics` 参数时，渲染入口会把设备的字体
+度量传进来（`pixi run render` 传 `ShaperMetrics()`）。只在「版面要按真实字宽算」
+时才需要——比如 `draw_axis(check_overlap=True)`；不声明参数的 case 行为不变。
+
 M0-9 的最小适配层（只有老 case 用，`ggcore.plotspec` 直接画，不过语法层）：
 
 ```python
@@ -92,6 +102,7 @@ def build():
 | --- | --- | --- |
 | `plot` | 三选一 | 带非空 `layers` 的 ggplot 对象（语法层形态） |
 | `grob` | 三选一 | 一个 grid grob（裸 grob 快照，见 `theme/point-elements`） |
+| `gtable` | 三选一 | 一张 gtable（裸 gtable 快照，见 `guide-axis/axis-guides-check-overlap`） |
 | `data` | 二选一 | 非空映射（DataFrame-like 也行）；不要在这里读文件 |
 | `layers` | 二选一 | 非空数组，每项是 dict 且 `geom` 是非空字符串 |
 | `mapping` | 否 | 若给，必须是 dict |

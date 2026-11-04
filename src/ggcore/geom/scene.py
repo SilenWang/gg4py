@@ -30,7 +30,7 @@ page viewport（整页，plot.background）
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -54,6 +54,7 @@ from ggcore.axis_guide import (
     axis_guide_extent,
     axis_guide_grobs,
     axis_guide_ticks,
+    axis_line_grobs,
     axis_line_range,
     guide_for,
     polar_axis_grobs,
@@ -62,6 +63,7 @@ from ggcore.build import _STAT_DEFAULT_AES, LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
 from ggcore.data import ColumnTable
 from ggcore.facet import FacetStrip, FacetTable, StripPart
+from ggcore.geom.base import POINT_PER_MM
 from ggcore.grobs import (
     NullGrob,
     ZeroGrob,
@@ -94,7 +96,6 @@ from ggcore.theme import (
     element_grob,
     resolve_theme,
 )
-from ggcore.units import BIGPOINTS_PER_INCH as PT_PER_INCH
 from ggcore.units import CM_PER_INCH, UnitContext, unit
 from ggcore.viewport import NA, Device, ViewportTree, gpar, viewport
 
@@ -1820,7 +1821,7 @@ def _axis_grobs(
         )
         if line_sides:
             grobs.extend(
-                _axis_line_grobs(
+                axis_line_grobs(
                     theme,
                     cell,
                     name=f"axis-line-{panel}",
@@ -1926,70 +1927,6 @@ def _axis_grobs(
                 )
                 if grob is not None:
                     grobs.append(grob)
-    return grobs
-
-
-def _axis_line_grobs(
-    theme: ResolvedTheme,
-    box: CellBox,
-    *,
-    name: str,
-    ranges: Mapping[str, tuple[float, float] | None] | None = None,
-    sides: Sequence[str] = ("bottom", "left"),
-) -> list[Any]:
-    """`axis.line.x` / `axis.line.y`；`ranges` 给 `cap=` 裁出的端点（npc 0..1）。
-
-    R 的轴线是 guide 的 decor（`GuideAxis$extract_decor()`），`cap=` 会把它收到
-    最外一根刻度（`upper` / `lower` / `both`）；`None` = 整条边。`sides` 决定画哪
-    几条：主轴总有 bottom / left，有次轴时再加 top / right（R 里次轴自己的 guide
-    也带 decor）。
-    """
-    from ggcore.grobs import segments_grob
-
-    ranges = ranges or {}
-    elements = {
-        "bottom": ("axis.line.x.bottom", "axis.line.x"),
-        "top": ("axis.line.x.top", "axis.line.x"),
-        "left": ("axis.line.y.left", "axis.line.y"),
-        "right": ("axis.line.y.right", "axis.line.y"),
-    }
-    grobs: list[Any] = []
-    for side in sides:
-        element = None
-        for element_name in elements[side]:
-            element = theme.get(element_name)
-            if element is not None:
-                break
-        colour = paint(getattr(element, "colour", None))
-        if colour is None:
-            continue
-        lwd = _mm_to_pt(getattr(element, "linewidth", None))
-        low, high = ranges.get(side) or (0.0, 1.0)
-        if high - low <= 1e-12:
-            continue
-        if side == "bottom":
-            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm
-            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm
-        elif side == "top":
-            x0, y0 = box.x_cm + low * box.width_cm, box.y_cm + box.height_cm
-            x1, y1 = box.x_cm + high * box.width_cm, box.y_cm + box.height_cm
-        elif side == "left":
-            x0, y0 = box.x_cm, box.y_cm + low * box.height_cm
-            x1, y1 = box.x_cm, box.y_cm + high * box.height_cm
-        else:
-            x0, y0 = box.right, box.y_cm + low * box.height_cm
-            x1, y1 = box.right, box.y_cm + high * box.height_cm
-        grobs.append(
-            segments_grob(
-                x0,
-                y0,
-                x1,
-                y1,
-                default_units="cm",
-                gp=gpar(col=colour, lwd=lwd),
-                name=f"{name}-{side}",
-            )
-        )
     return grobs
 
 
@@ -2122,11 +2059,16 @@ def _paint(value: Any) -> str | None:
 
 
 def _mm_to_pt(value: Any) -> float:
-    """主题的 `linewidth`（mm）→ gpar 的 `lwd`（pt）。"""
+    """主题的 `linewidth`（mm）→ gpar 的 `lwd`（pt）。
+
+    用 R 的 `.pt = 72.27/25.4`（`geom/base.POINT_PER_MM` 同一个常数），不是
+    72/25.4：svglite 写进 SVG 的 `stroke-width` 是 `linewidth * .pt`，差 0.4%
+    就够让 1 px 边框的覆盖率翻一档（SIL-820 的 `align-facet-labels`）。
+    """
     if value is None:
         return 0.0
     try:
-        return float(value) * PT_PER_INCH / 25.4
+        return float(value) * POINT_PER_MM
     except (TypeError, ValueError):
         return 0.0
 
