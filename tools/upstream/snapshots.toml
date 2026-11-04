@@ -761,6 +761,7 @@ reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x
 case = "upstream-guide-axis-stacked-axes"
 
 [snapshots."guide-axis/stacked-radial-axes.svg"]
+owner = "m3"
 reason = "SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
@@ -771,6 +772,7 @@ reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guid
 case = "upstream-guide-axis-theta-cartesian"
 
 [snapshots."guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"]
+owner = "m3"
 reason = "SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。"
 
 [snapshots."guide-axis/align-facet-labels-facets-horizontal.svg"]
