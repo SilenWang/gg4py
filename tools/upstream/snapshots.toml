@@ -944,5 +944,64 @@ reason = "SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec
 owner = "m3"
 reason = 'SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。'
 
+# SIL-796（G7b 小簇 B：版面 / 标签 / 图案）：
+# labels 6、facet- 3（左对齐两条 + facet_grid 省略内轴标签）、facet-layout 1 纳管；
+# `facet_*` 的另一条与 facet-labels / facet-strips 的单条卡点写在下面。
+[snapshots."labels/defaults.svg"]
+case = "upstream-labels-defaults"
+
+[snapshots."labels/tag-in-margin.svg"]
+case = "upstream-labels-tag-in-margin"
+
+[snapshots."labels/tag-in-panel-as-character.svg"]
+case = "upstream-labels-tag-in-panel-as-character"
+
+[snapshots."labels/tag-in-panel-as-numeric.svg"]
+case = "upstream-labels-tag-in-panel-as-numeric"
+
+[snapshots."labels/tag-in-plot-as-character.svg"]
+case = "upstream-labels-tag-in-plot-as-character"
+
+[snapshots."labels/tag-in-plot-as-numeric.svg"]
+case = "upstream-labels-tag-in-plot-as-numeric"
+
+[snapshots."facet-/left-justified-facet-labels-with-margins.svg"]
+case = "upstream-facet-left-justified-facet-labels-with-margins"
+
+[snapshots."facet-/left-justified-rotated-facet-labels-with-margins.svg"]
+case = "upstream-facet-left-justified-rotated-facet-labels-with-margins"
+
+[snapshots."facet-/facet-grid-with-omitted-inner-axis-labels.svg"]
+case = "upstream-facet-facet-grid-with-omitted-inner-axis-labels"
+
+[snapshots."facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg"]
+case = "upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout"
+
+[snapshots."facet-/facet-wrap-with-omitted-inner-axis-labels.svg"]
+reason = "SIL-796：`axes = \"all\"` + `axis.labels = \"margins\"` 已接上（case `upstream-facet-facet-wrap-with-omitted-inner-axis-labels`），但 `facet_wrap` 每行插轴带后 gtable 的 null 行把 strip 与面板之间的 5.46pt 轴带分配成 2.72pt，第二行 strip 上移 2.74pt（图级 2.92%，均值 0.65%）。卡在 `facet_table()` 的 `heights` 与 `facet_table.panel_boxes()` 的 null 行分配口径，不是阈值问题。"
+
+[snapshots."facet-labels/outside-justified-labels.svg"]
+reason = "SIL-796：`axis.text.*` 的 hjust / vjust 已接到轴标签锚点（`_anchor()` 之后的显式覆盖），但 `scales = \"free\"` × 多行轴标签（`\"X\\nX\\nX\\nX\\nX\"`）的外侧对齐仍差 15.5%：free 面板的轴带宽度按每面板标签单独量，R 的 `outside` 口径要求四边标签基线跨面板统一。卡在「自由标度 × 多行标签的跨面板对齐」。"
+
 [snapshots."facet-labels/parsed-facet-labels.svg"]
 owner = "m3"
+reason = "SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。"
+
+[snapshots."facet-strips/switched-facet-strips.svg"]
+reason = "SIL-796：`facet_grid(switch = \"both\")` 未实现——strip 仍固定在顶部 / 右侧，未换到底部 / 左侧，y strip 文本也未按换边翻转（图级 12.7%）。卡在 `facet_table()` 的 strip 放置位置与 `strip.text.y` 的角度翻转。"
+
+# patterns 4 条：现有 `TilePatternSpec.resolve()` 按**单节点包围盒**折 npc，
+# 而 R 的 `pattern()` 内容坐标是**整个图层包围盒**的 npc（`userSpaceOnUse`），
+# 且 tile 锚点取图层 bbox 中心；单条 reason 写明各自卡点。
+[snapshots."patterns/single-pattern-fill.svg"]
+reason = "SIL-796：`geom_col(fill = pattern(...))` 已能渲染（`tile_pattern()` 走 IR `TilePattern`），但相位差 31%——`TilePatternSpec.resolve()` 用单节点 bbox 折 npc，R 的 `pattern()` 内容按**图层 bbox** 的 npc（`userSpaceOnUse`）并锚在图层中心；单根 bar 的 bbox 让每根柱的图案各从自身左下角起算。卡在「图案内容坐标系 = 图层包围盒」。"
+
+[snapshots."patterns/pattern-fills-no-alpha.svg"]
+reason = "SIL-796：同 `single-pattern-fill`——`linearGradient(group = FALSE)` / `radialGradient(group = FALSE)` 与 `pattern()` 的混合列表已能经 `fill=` 传进 geom，但渐变端点 / 图案相位按单节点 bbox 折，R 按图层 bbox。卡在「图层级填充包围盒」。"
+
+[snapshots."patterns/pattern-fills-with-alpha.svg"]
+reason = "SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4, 0.2)` 在 R 里走 `grid::GridMask`（svglite 写 `<mask style='mask-type:alpha'>`）；IR 没有 mask 节点，`alpha_colour()` 对 FillSpec 也不折 alpha（只接受颜色串）。要先给 IR / 两个设备加 alpha mask 原语。"
+
+[snapshots."patterns/pattern-fills-through-scale.svg"]
+reason = "SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。"
+

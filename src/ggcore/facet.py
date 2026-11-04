@@ -85,6 +85,8 @@ FREE_SCALES: Mapping[str, tuple[bool, bool]] = {
 
 #: `facet_wrap(dir=)` 的 8 个方向（4.0.3 把 `h` / `v` 先折成其中四个）。
 _WRAP_DIRS = ("lt", "tl", "lb", "bl", "rt", "tr", "rb", "br")
+#: `facet_*(axes=)` / `axis.labels=` 的取值（R 4.0.3）。
+_AXES_KEYS = ("margins", "all_x", "all_y", "all")
 
 
 class FacetError(ValueError):
@@ -598,8 +600,37 @@ class FacetBase:
     drop: bool = True
     labeller: Any = "label_value"
     kind: str = "null"
+    #: `facet_*(axes=)`：`"margins"` 只在外边缘画轴，`"all_x"` / `"all_y"` /
+    #: `"all"` 把对应方向的轴也画到内面板（R 4.0.3 的 `draw_axes`）。
+    axes: str = "margins"
+    #: `facet_*(axis.labels=)`：内面板的轴是否带标签（R 的 `censor_labels()`）。
+    axis_labels: str = "all"
 
     # -- 参数 ---------------------------------------------------------------
+
+    @property
+    def draw_axes(self) -> tuple[bool, bool]:
+        """`(x, y)`：该方向是否在所有面板画轴（R `draw_axes`）。"""
+        key = str(self.axes)
+        if key not in _AXES_KEYS:
+            raise FacetError(f"axes 只能是 {', '.join(_AXES_KEYS)}，收到 {self.axes!r}")
+        return (key in ("all_x", "all"), key in ("all_y", "all"))
+
+    @property
+    def draw_axis_labels(self) -> tuple[bool, bool]:
+        """`(x, y)`：内面板的轴是否画标签（R `axis_labels`）。
+
+        `axes = "margins"` 时没有内面板轴，两项都按 True（边缘轴照常带标签）；
+        否则由 `axis_labels` 决定内面板是否带标签。
+        """
+        key = str(self.axis_labels)
+        if key not in _AXES_KEYS:
+            raise FacetError(f"axis.labels 只能是 {', '.join(_AXES_KEYS)}，收到 {key!r}")
+        draw = self.draw_axes
+        return (
+            not draw[0] or key in ("all_x", "all"),
+            not draw[1] or key in ("all_y", "all"),
+        )
 
     @property
     def free_x(self) -> bool:
@@ -865,6 +896,8 @@ class FacetWrap(FacetBase):
     as_table: bool = True
     strip_position: str = "top"
     space: str = "fixed"
+    axes: str = "margins"
+    axis_labels: str = "all"
     kind: str = "wrap"
 
     def __post_init__(self) -> None:
@@ -926,6 +959,8 @@ class FacetGrid(FacetBase):
     as_table: bool = True
     space: str = "fixed"
     margins: bool | tuple[str, ...] = False
+    axes: str = "margins"
+    axis_labels: str = "all"
     kind: str = "grid"
 
     def __post_init__(self) -> None:
@@ -1294,6 +1329,8 @@ def facet_from_component(component: Facet | FacetBase | None) -> FacetBase:
             as_table=as_table,
             strip_position=str(_param(params, "strip_position", "strip.position", default="top")),
             space=str(params.get("space", "fixed")),
+            axes=str(params.get("axes", "margins")),
+            axis_labels=str(_param(params, "axis_labels", "axis.labels", default="all")),
         )
     if name == "grid":
         as_table = bool(_param(params, "as_table", "as.table", default=True))
@@ -1306,6 +1343,8 @@ def facet_from_component(component: Facet | FacetBase | None) -> FacetBase:
             as_table=as_table,
             space=str(params.get("space", "fixed")),
             margins=params.get("margins", False),
+            axes=str(params.get("axes", "margins")),
+            axis_labels=str(_param(params, "axis_labels", "axis.labels", default="all")),
         )
     raise FacetError(f"分面 {name!r} 尚未实现（已实现：null / wrap / grid）")
 
@@ -1430,6 +1469,8 @@ def facet_table(
     *,
     aspect: float | None = None,
     right_inside: bool = False,
+    axis_x_cm: float = 0.0,
+    axis_y_cm: float = 0.0,
 ) -> FacetTable:
     """布局 → 面板 gtable（panel 行列 + strip + panel.spacing）。
 
@@ -1545,27 +1586,36 @@ def facet_table(
     strip_each_row = bool(top_names) and facet.kind == "wrap" and not outside_top
 
     widths: list[Unit] = []
+    panel_col_index: dict[int, int] = {}
+    draw_axes = getattr(facet, "draw_axes", (False, False))
     for col in range(1, ncol + 1):
         if col > 1:
             widths.append(spacing_x)
         widths.append(unit(width_weights[col - 1], "null"))
+        panel_col_index[col] = len(widths)
+        # `axes = "all_y"`：每列右侧插一条 y 轴带（R `weave_axes()` 的列间轴）。
+        if draw_axes[1] and col < ncol and axis_y_cm > 0:
+            widths.append(unit(axis_y_cm, "cm"))
     heights: list[Unit] = []
+    panel_row_index: dict[int, int] = {}
     for row in range(1, nrow + 1):
         if row > 1:
             heights.append(spacing_y)
         if strip_each_row or (top_names and not outside_top and row == 1):
             heights.append(unit(strip_h, "cm"))
         heights.append(unit(height_weights[row - 1], "null"))
+        panel_row_index[row] = len(heights)
+        # `axes = "all_x"`：每行下方插一条 x 轴带（R `weave_axes()` 的行间轴）。
+        if draw_axes[0] and row < nrow and axis_x_cm > 0:
+            heights.append(unit(axis_x_cm, "cm"))
     if right_names and not outside_right:
         widths.append(unit(strip_w, "cm"))
 
     def _row(row: int) -> int:
-        base = 2 if (top_names and not outside_top) else 1
-        stride = 2 + (1 if strip_each_row else 0)
-        return base + stride * (row - 1)
+        return panel_row_index[row]
 
     def _col(col: int) -> int:
-        return 2 * col - 1
+        return panel_col_index[col]
 
     placements: list[Placement] = []
     grobs: list[_Grob] = []

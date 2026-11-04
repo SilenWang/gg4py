@@ -1,0 +1,7 @@
+family = "facet-strips"
+features = ["facet-strip-switch"]
+ci = false
+title = "上游快照：switched facet strips"
+source = "upstream:tests/testthat/_snaps/facet-strips/switched-facet-strips.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：卡点见 tools/upstream/snapshots.toml（switch 换边未实现）。"

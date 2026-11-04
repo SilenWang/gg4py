@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-facet-wrap-with-omitted-inner-axis-labels"]
+ci = false
+title = "上游快照：facet-wrap-with-omitted-inner-axis-labels"
+source = "upstream:tests/testthat/_snaps/facet-/facet-wrap-with-omitted-inner-axis-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：facet 快照逐条复刻。"

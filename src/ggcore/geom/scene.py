@@ -46,6 +46,8 @@ from ggcore.axis import (
     paint,
     polar_axis_row_cm,
     text_line_cm,
+    text_width_cm,
+    tick_length_cm,
 )
 from ggcore.axis_guide import (
     AUTO,
@@ -197,6 +199,12 @@ class PlotLayout:
     #: 与它在页面上的矩形，二者一一对应。
     legend_box_layouts: tuple[Any, ...] = ()
     legend_box_origins: tuple[Box, ...] = ()
+    #: `labs(tag =)` 的锚点（0 尺寸 Box，`x_cm` / `y_cm` 是文字锚点）。
+    #: `plot.tag.location` 决定它相对哪块区域定位（margin / panel / plot）。
+    tag: Box | None = None
+    tag_text: str | None = None
+    #: `plot.tag` 的解析后元素（渲染时取字号 / 颜色 / 字体）。
+    tag_element: Any = None
 
     @property
     def legend_width_cm(self) -> float:
@@ -299,6 +307,7 @@ def scene_from_build(
     grobs.extend(_strip_grobs(table, theme, layout, metrics))
     grobs.extend(_axis_grobs(prepared, theme, layout, metrics))
     grobs.extend(_legend_grobs(prepared, theme, layout, metrics))
+    grobs.extend(_tag_grobs(layout))
     return scene(grobs, tree).to_ir_scene()
 
 
@@ -360,6 +369,100 @@ def _scale_axis_title(build: PlotBuild, aesthetic: str) -> Any:
         return param("name")
     except TypeError:  # pragma: no cover - 自定义标度子类可能没有 name 参数
         return _UNSET_TITLE
+
+
+#: `plot.tag.position` 的字符串写法 → `(top, left, right, bottom)`（R `table_add_tag()`）。
+_TAG_POSITIONS: Mapping[str, tuple[bool, bool, bool, bool]] = {
+    "topleft": (True, True, False, False),
+    "top": (True, False, False, False),
+    "topright": (True, False, True, False),
+    "left": (False, True, False, False),
+    "right": (False, False, True, False),
+    "bottomleft": (False, True, False, True),
+    "bottom": (False, False, False, True),
+    "bottomright": (False, False, True, True),
+}
+
+
+def _tag_size(theme: ResolvedTheme, text: str | None, metrics: Any) -> tuple[float, float, Any]:
+    """`labs(tag=)` 的（宽, 高）cm；没有标签或元素是 blank 时给 0。
+
+    高走 `text_line_cm()`（R `stringHeight` 的 0.955em 口径），宽走真实度量
+    （`metrics.strwidth`）。R 的 `element_grob()` 把 margin 也算进 tag 尺寸；这里
+    只用文字本体——`plot.tag` 缺省没有 margin，量级差在 1pt 内。
+    """
+    element = theme.get("plot.tag")
+    if text is None or not isinstance(element, ElementText):
+        return 0.0, 0.0, element
+    size = float(element.size or 11.0)
+    width = text_width_cm(text, size, metrics, element.family or "")
+    return width, text_line_cm(size), element
+
+
+def _tag_position(theme: ResolvedTheme) -> tuple[bool, bool, bool, bool] | tuple[float, float]:
+    """`plot.tag.position` → 四边布尔（字符位置）或 `(x, y)` npc（数值位置）。"""
+    value = theme.get("plot.tag.position")
+    if value is None:
+        value = "topleft"
+    if isinstance(value, str):
+        if value not in _TAG_POSITIONS:
+            raise ValueError(
+                f"plot.tag.position 只能是 {', '.join(_TAG_POSITIONS)} 或 c(x, y)，收到 {value!r}"
+            )
+        return _TAG_POSITIONS[value]
+    try:
+        items = [float(item) for item in value]  # type: ignore[union-attr]
+    except TypeError as exc:
+        raise ValueError(f"plot.tag.position 无法解析：{value!r}") from exc
+    if len(items) != 2:
+        raise ValueError(f"plot.tag.position 的数值形式需要 c(x, y)，收到 {value!r}")
+    return (items[0], items[1])
+
+
+def _tag_anchor(
+    position: tuple[bool, bool, bool, bool] | tuple[float, float],
+    *,
+    location: str,
+    inner: Box,
+    panel_area: Box,
+    width_cm: float,
+    height_cm: float,
+    hjust: float,
+    vjust: float,
+) -> tuple[float, float]:
+    """tag 的文字锚点（页面 cm）。R `table_add_tag()` 的位置解析。
+
+    `location = "margin"` 时 tag 放在 `plot.margin` 的对应边（调用方已把那条边
+    扩到 tag 尺寸）；`"plot"` 用 `plot.margin` 内区，`"panel"` 用面板区。
+    """
+    if location == "margin":
+        top, left, right, bottom = position  # type: ignore[misc]
+        # 带区：只在该边的那一格；corner（topleft 等）是左带 × 顶带的交。
+        cell_x = inner.x_cm - width_cm if left else (inner.right if right else inner.x_cm)
+        cell_w = width_cm if (left or right) else inner.width_cm
+        cell_y = inner.y_cm - height_cm if bottom else (inner.top if top else inner.y_cm)
+        cell_h = height_cm if (top or bottom) else inner.height_cm
+        x = cell_x + ((1.0 - hjust) * width_cm if (left or right) else hjust * cell_w)
+        y = cell_y + ((1.0 - vjust) * height_cm if (top or bottom) else vjust * cell_h)
+        return x, y
+    area = panel_area if location == "panel" else inner
+    if not isinstance(position, tuple) or len(position) != 4:
+        x_npc, y_npc = position  # type: ignore[misc]
+        return area.x_cm + x_npc * area.width_cm, area.y_cm + y_npc * area.height_cm
+    top, left, right, bottom = position
+    if left:
+        x = area.x_cm + (1.0 - hjust) * width_cm
+    elif right:
+        x = area.right - (1.0 - hjust) * width_cm
+    else:
+        x = area.x_cm + hjust * area.width_cm
+    if top:
+        y = area.top - (1.0 - vjust) * height_cm
+    elif bottom:
+        y = area.y_cm + (1.0 - vjust) * height_cm
+    else:
+        y = area.y_cm + vjust * area.height_cm
+    return x, y
 
 
 def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
@@ -452,7 +555,33 @@ def plot_layout(
     theme = _theme_of(build)
     width_cm = float(width_in) * CM_PER_INCH
     height_cm = float(height_in) * CM_PER_INCH
+    # `labs(tag=)`：R 的 `table_add_tag()` 会把 `plot.margin` 的对应边扩到 tag
+    # 尺寸，再按 `plot.tag.location` 把 tag 放进 margin / plot / panel。这里先
+    # 算尺寸与位置写法，扩完 margin 再算其余版式。
+    tag_text = _label_text(build, "tag")
+    tag_w, tag_h, tag_element = _tag_size(theme, tag_text, metrics)
+    tag_position = _tag_position(theme)
+    tag_numeric = not isinstance(tag_position[0], bool)
+    tag_location = str(theme.get("plot.tag.location") or ("plot" if tag_numeric else "margin"))
+    tag_has_label = (
+        tag_text is not None and tag_w > 0 and tag_h > 0 and isinstance(tag_element, ElementText)
+    )
+    if tag_has_label and tag_numeric and tag_location == "margin":
+        raise ValueError(
+            "plot.tag.position 的数值形式不能与 plot.tag.location = 'margin' 同用"
+            "（R 也报错：margin 里的 tag 只能按边定位）"
+        )
     top, bottom, right, left = _plot_margin(theme)
+    if tag_has_label and tag_location == "margin":
+        tag_top, tag_left, tag_right, tag_bottom = tag_position  # type: ignore[misc]
+        if tag_top:
+            top += tag_h
+        if tag_bottom:
+            bottom += tag_h
+        if tag_left:
+            left += tag_w
+        if tag_right:
+            right += tag_w
     inner = Box(left, bottom, width_cm - left - right, height_cm - top - bottom)
     if inner.width_cm <= 0 or inner.height_cm <= 0:
         raise ValueError(
@@ -620,7 +749,12 @@ def plot_layout(
     content_top -= top_extent
     content_bottom += bottom_extent
 
-    table = build.facet_table(metrics=metrics, right_inside=secondary_y)
+    table = build.facet_table(
+        metrics=metrics,
+        right_inside=secondary_y,
+        axis_x_cm=(2.0 * tick_length_cm(theme, "bottom") if _draw_axes(build)[0] else 0.0),
+        axis_y_cm=(2.0 * tick_length_cm(theme, "left") if _draw_axes(build)[1] else 0.0),
+    )
     # `strip.placement = "outside"`：strip 放到轴的外侧（R 的 `attach_strips()`
     # 里 shift=2）。没有轴的一侧两者视觉等价，这里只在「外侧」时把 strip 块
     # 从面板区里让出来，画在轴带之外。
@@ -749,6 +883,22 @@ def plot_layout(
             )
     legend_boxes = [box for box in legend_boxes if box is not None]
 
+    tag_box = None
+    if tag_has_label and isinstance(tag_element, ElementText):
+        tag_hjust = float(tag_element.hjust) if tag_element.hjust is not None else 0.5
+        tag_vjust = float(tag_element.vjust) if tag_element.vjust is not None else 0.5
+        tag_x, tag_y = _tag_anchor(
+            tag_position,
+            location=tag_location,
+            inner=inner,
+            panel_area=panel_area,
+            width_cm=tag_w,
+            height_cm=tag_h,
+            hjust=tag_hjust,
+            vjust=tag_vjust,
+        )
+        tag_box = Box(tag_x, tag_y, 0.0, 0.0)
+
     return PlotLayout(
         width_cm=width_cm,
         height_cm=height_cm,
@@ -782,6 +932,9 @@ def plot_layout(
         secondary_y=secondary_y,
         top_strip_band=top_strip_band,
         right_strip_band=right_strip_band,
+        tag=tag_box,
+        tag_text=tag_text if tag_box is not None else None,
+        tag_element=tag_element if tag_box is not None else None,
     )
 
 
@@ -1302,6 +1455,27 @@ def _text_row_grobs(theme: ResolvedTheme, layout: PlotLayout, which: str) -> lis
     ]
 
 
+def _tag_grobs(layout: PlotLayout) -> list[Any]:
+    """`labs(tag=)` 的标签文字（R `table_add_tag()` 的 grob）。"""
+    element = layout.tag_element
+    if layout.tag is None or not layout.tag_text or not isinstance(element, ElementText):
+        return []
+    hjust = float(element.hjust) if element.hjust is not None else 0.5
+    vjust = float(element.vjust) if element.vjust is not None else 0.5
+    return [
+        text_grob(
+            layout.tag_text,
+            layout.tag.x_cm,
+            layout.tag.y_cm,
+            hjust=hjust,
+            vjust=vjust,
+            default_units="cm",
+            gp=_text_gpar(element),
+            name="tag",
+        )
+    ]
+
+
 def _text_gpar(element: ElementText) -> gpar:
     return gpar(
         col=paint(element.colour) or "black",
@@ -1365,6 +1539,44 @@ def _secondary_ticks(build: PlotBuild, scale: Any, params: Any, side: str, aesth
     return axis_ticks(scale, params, side, secondary=secondary)
 
 
+def _draw_axes(build: PlotBuild) -> tuple[bool, bool]:
+    """`facet_*(axes=)` 的 `(x, y)`（R 的 `draw_axes`）；无分面时全 False。"""
+    facet = getattr(build, "facet", None)
+    if facet is None or getattr(facet, "kind", "null") == "null":
+        return (False, False)
+    return tuple(getattr(facet, "draw_axes", (False, False)))  # type: ignore[return-value]
+
+
+def _axis_visible(build: PlotBuild, panel: int, side: str) -> tuple[bool, bool]:
+    """`(画这条轴, 画它的标签)`。
+
+    口径照 R 4.0.3 的 `attach_axes()` + `censor_labels()`：
+
+    - `axes = "margins"`：只有外边缘面板画轴（每列最底 / 最顶的 x 轴，每行最左 /
+      最右的 y 轴）；
+    - `axes = "all_x" / "all"`：所有面板都画轴；`axis.labels = "margins"` 时只有
+      边缘面板带标签（内面板只留刻度），否则内面板也带标签。
+    """
+    facet = getattr(build, "facet", None)
+    layout = getattr(build, "layout", None)
+    if facet is None or layout is None or getattr(facet, "kind", "null") == "null":
+        return True, True
+    draw = _draw_axes(build)
+    labels = tuple(getattr(facet, "draw_axis_labels", (True, True)))
+    row, col = int(layout.row_of(panel)), int(layout.col_of(panel))
+    if side in ("bottom", "top"):
+        rows = [int(layout.row_of(item)) for item in layout.panels_in_col(col)] or [row]
+        margin = row == (max(rows) if side == "bottom" else min(rows))
+        if not draw[0]:
+            return margin, margin
+        return True, True if labels[0] else margin
+    cols = [int(layout.col_of(item)) for item in layout.panels_in_row(row)] or [col]
+    margin = col == (min(cols) if side == "left" else max(cols))
+    if not draw[1]:
+        return margin, margin
+    return True, True if labels[1] else margin
+
+
 def _axis_grobs(
     build: PlotBuild,
     theme: ResolvedTheme,
@@ -1387,22 +1599,46 @@ def _axis_grobs(
         scale_right = _panel_scale(build, panel, params.scale_key("right"))
         ticks_x = axis_ticks(scale_bottom, params, "bottom")
         ticks_y = axis_ticks(scale_left, params, "left")
-        gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
-        gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
-        grobs.extend(
-            axis_guide_grobs(theme, gx, cell, guide_x, metrics=metrics, name=f"axis-x-{panel}")
-        )
-        grobs.extend(
-            axis_guide_grobs(theme, gy, cell, guide_y, metrics=metrics, name=f"axis-y-{panel}")
-        )
+        draw_bottom, label_bottom = _axis_visible(build, panel, "bottom")
+        draw_left, label_left = _axis_visible(build, panel, "left")
+        gx = None
+        gy = None
+        if draw_bottom:
+            gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
+            grobs.extend(
+                axis_guide_grobs(
+                    theme,
+                    gx,
+                    cell,
+                    guide_x,
+                    metrics=metrics,
+                    name=f"axis-x-{panel}",
+                    draw_labels=label_bottom,
+                )
+            )
+        if draw_left:
+            gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
+            grobs.extend(
+                axis_guide_grobs(
+                    theme,
+                    gy,
+                    cell,
+                    guide_y,
+                    metrics=metrics,
+                    name=f"axis-y-{panel}",
+                    draw_labels=label_left,
+                )
+            )
         # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推；
         # guide 优先级与主轴一致：`guides(x.sec = ...)` → `dup_axis(guide = ...)`
         # → 默认 `guide_axis()`（R 的 `scale$secondary.axis$guide`）。
         guide_top = secondary_axis_guide(build, "x", scale_top)
         guide_right = secondary_axis_guide(build, "y", scale_right)
+        draw_top, label_top = _axis_visible(build, panel, "top")
+        draw_right, label_right = _axis_visible(build, panel, "right")
         gx_top = None
         gy_right = None
-        if has_secondary_axis(build, "x", scale_top):
+        if has_secondary_axis(build, "x", scale_top) and draw_top:
             gx_top = axis_guide_ticks(
                 scale_top,
                 params,
@@ -1420,9 +1656,10 @@ def _axis_grobs(
                     guide_top,
                     metrics=metrics,
                     name=f"axis-x-sec-{panel}",
+                    draw_labels=label_top,
                 )
             )
-        if has_secondary_axis(build, "y", scale_right):
+        if has_secondary_axis(build, "y", scale_right) and draw_right:
             gy_right = axis_guide_ticks(
                 scale_right,
                 params,
@@ -1440,29 +1677,32 @@ def _axis_grobs(
                     guide_right,
                     metrics=metrics,
                     name=f"axis-y-sec-{panel}",
+                    draw_labels=label_right,
                 )
             )
-        grobs.extend(
-            _axis_line_grobs(
-                theme,
-                cell,
-                name=f"axis-line-{panel}",
-                ranges={
-                    "bottom": axis_line_range(guide_x, gx),
-                    "left": axis_line_range(guide_y, gy),
-                    "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
-                    "right": axis_line_range(guide_right, gy_right)
-                    if gy_right is not None
-                    else None,
-                },
-                sides=(
-                    "bottom",
-                    "left",
-                    *(("top",) if gx_top is not None else ()),
-                    *(("right",) if gy_right is not None else ()),
-                ),
-            )
+        line_sides = (
+            *(("bottom",) if draw_bottom else ()),
+            *(("left",) if draw_left else ()),
+            *(("top",) if gx_top is not None else ()),
+            *(("right",) if gy_right is not None else ()),
         )
+        if line_sides:
+            grobs.extend(
+                _axis_line_grobs(
+                    theme,
+                    cell,
+                    name=f"axis-line-{panel}",
+                    ranges={
+                        "bottom": axis_line_range(guide_x, gx) if gx is not None else None,
+                        "left": axis_line_range(guide_y, gy) if gy is not None else None,
+                        "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
+                        "right": axis_line_range(guide_right, gy_right)
+                        if gy_right is not None
+                        else None,
+                    },
+                    sides=line_sides,
+                )
+            )
         for annotation in getattr(build, "annotations", ()) or ():
             from ggcore.annotations import logticks_grobs
 
@@ -1818,7 +2058,9 @@ def _strip_box(
         height_cm=area.height_cm,
         sizes=sizes,
     )
-    return Box(area.x_cm + cell.x_cm, area.y_cm + cell.y_cm, cell.width_cm, cell.height_cm)
+    x = area.x_cm + cell.x_cm
+    y = area.y_cm + cell.y_cm
+    return Box(x, y, cell.width_cm, cell.height_cm)
 
 
 def _row_of(layout: Any, panel: int) -> int:

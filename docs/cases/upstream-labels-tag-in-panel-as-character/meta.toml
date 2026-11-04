@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-panel"]
+ci = true
+title = "上游快照：tag 在面板右上角"
+source = "upstream:tests/testthat/_snaps/labels/tag-in-panel-as-character.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`plot.tag.position = \"topright\"` + `plot.tag.location = \"panel\"`。"

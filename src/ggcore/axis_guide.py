@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -872,6 +872,12 @@ def _overlap_order(n: int) -> list[int]:
     return order
 
 
+def _without_labels(ticks: AxisGuideTicks) -> AxisGuideTicks:
+    """把一条轴（含叠放子轴）的标签清空，只留刻度。"""
+    children = tuple(_without_labels(child) for child in ticks.children)
+    return replace(ticks, labels=(), children=children)
+
+
 def _visible_labels(
     ticks: AxisGuideTicks, element: Any, metrics: Any, *, axis_length_cm: float
 ) -> list[tuple[AxisLabel, int]]:
@@ -934,12 +940,20 @@ def axis_guide_grobs(
     *,
     metrics: Any = None,
     name: str = "axis",
+    draw_labels: bool = True,
 ) -> list[Any]:
-    """一条轴的刻度线 + 标签（页面 cm 坐标，y 向上）。"""
+    """一条轴的刻度线 + 标签（页面 cm 坐标，y 向上）。
+
+    `draw_labels=False` 只去掉标签（刻度 / 轴线照画）：`facet_grid(axes = "all",
+    axis.labels = "margins")` 的内面板走这条口径（R 的 `censor_labels()` 把
+    内面板的 `draw_labels` 置空，轴带本身仍留刻度位置）。
+    """
     from ggcore.axis import font_int, margin_sides_cm, paint
     from ggcore.grobs import segments_grob, text_grob
     from ggcore.viewport import gpar
 
+    if not draw_labels:
+        ticks = _without_labels(ticks)
     element = _text_element(theme, ticks.side)
     horizontal = _horizontal(ticks.side)
     side = ticks.side

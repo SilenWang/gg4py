@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-plot"]
+ci = true
+title = "上游快照：tag 在整张图内的 npc 位置"
+source = "upstream:tests/testthat/_snaps/labels/tag-in-plot-as-numeric.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`plot.tag.position = c(0.05, 0.05)` + `plot.tag.location = \"plot\"`。"

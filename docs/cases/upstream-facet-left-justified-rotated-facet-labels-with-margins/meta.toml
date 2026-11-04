@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-left-justified-rotated-facet-labels-with-margins"]
+ci = true
+title = "上游快照：left-justified-rotated-facet-labels-with-margins"
+source = "upstream:tests/testthat/_snaps/facet-/left-justified-rotated-facet-labels-with-margins.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：facet 快照逐条复刻。"

@@ -1,0 +1,941 @@
+# 上游 v4.0.3 的 311 份 SVG 快照逐条处置（SIL-745）。
+#
+# - `[snapshots."<path>"] case = "<slug>"`：已复刻成三文件 case，expected.svg 与
+#   上游快照逐字节相同（`pixi run snapshots:check` 校验 sha256）。
+# - 其余按 `[groups."<第一段目录名>"]` 归口：`issue` + 原因。原因写的是**这一类**
+#   缺什么能力，不是「还没做」；换 pin 或补上能力时改这里，不要改生成物。
+#
+# 缺口池统一是 SIL-715（M2 缺口池），M3 的空间 / 交互能力在原因里点名。
+#
+# `owner` 两档（SIL-786）：
+#   m2-closeout — 「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零；
+#   m3          — 真 M3 新能力（geom_sf / coord_sf / coord_map / annotate / 版面组合），
+#                 移交 M3 但不许无主留在台账里。
+# 单条 `[snapshots."..."]` 未写 owner 时继承所属簇的 owner。
+
+[groups.aes]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`aes()` 的 stat 侧参数（`stat_count(width=)` / `aes(alpha=)`）在我们的语法层没有逐条复刻。"
+
+[groups.annotate]
+issue = "SIL-715"
+owner = "m3"
+reason = "`annotate()` 的边框与线段共形（`annotation_borders()` / `annotation_segment()`）未复刻。"
+
+[groups."coord-cartesian"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-793 已把 5 条全部纳管：`mtcars` 夹具按 R 4.5.3 的 `datasets::mtcars` 逐值内联（32×11），expand / contract / reverse / clip 三态各一条。"
+
+[groups."coord-flip"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-793 已纳管：`coord_flip()` + `dup_axis(guide = guide_axis(title = NULL))` 的右侧次轴（`mtcars` 夹具同 `coord-cartesian`）。"
+
+[groups."coord-map"]
+issue = "SIL-715"
+owner = "m3"
+reason = "`coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。"
+
+[groups."coord-polar"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-793 纳管 7 条（同心圆 / 圆弧螺旋 / 玫瑰 / racetrack 两条 / 次轴 / reversed）；剩 4 条是 `coord_radial()` 的轴体系：`guide_axis_theta()` 的逐 guide 主题、`axis.line.theta` / `axis.line.r` 的绘制、`r.axis.inside = c(90, 225)` 的两个角度、`rotate.angle = TRUE`（见单条 reason）。"
+
+[groups."coord-transform"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-793 已把 3 条全部纳管：log10 / log2 的 `coord_transform()`、反向组合、以及两侧次轴（`sec_axis(~ log2(.))` + `dup_axis()`）。"
+
+[groups."coord_sf"]
+issue = "SIL-715"
+owner = "m3"
+reason = "空间坐标（`coord_sf`）的 graticule / crs 归 M3-2。"
+
+[groups."draw-key"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-788 纳管 2 条（水平 boxplot/crossbar、水平 linerange/pointrange）；剩 4 条都要 `key_glyph` 覆盖点（timeseries / polygon / rect / dotplot / 自定义函数），本仓的图例 key 只走 `Geom.draw()`（单条 reason 见下）。"
+
+[groups."facet-"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "省略内轴标签 / 左对齐 strip 的分面布局口径未复刻（SIL-715 #7 的组合矩阵在 M2-S3 另做）。"
+
+[groups."facet-labels"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`labeller` 的 plotmath 解析与 outside 对齐未复刻。"
+
+[groups."facet-layout"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "非表格布局（`facet_grid` 缺行/列）的轴定位未复刻。"
+
+[groups."facet-strips"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`facet_wrap(switch=)` 的 strip 换边未复刻。"
+
+[groups."geom-boxplot"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "箱线图自定义样式 / 异常值颜色 / staples 未逐条复刻。"
+
+[groups."geom-curve"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`geom_curve()` 的翻转（`coord_flip`）未复刻。"
+
+[groups."geom-dotplot"]
+issue = "SIL-787"
+owner = "m2-closeout"
+reason = "dotplot 的 35 条已全部纳管（SIL-787）；新增快照先落到本组再补 case。"
+
+[groups."geom-hex"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`geom_hex()` 与极坐标 / 变换轴组合未复刻。"
+
+[groups."geom-hline-vline-abline"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "hline/vline/abline 在极坐标与 map 坐标下的曲线化未复刻（M3-2 空间 + 极坐标裁剪）。"
+
+[groups."geom-label"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`geom_label()` 的线段参数（`label.size` / `label.padding` 与线段共形）未复刻。"
+
+[groups."geom-path"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "path 的绘制顺序与 NA 线型未逐条复刻。"
+
+[groups."geom-polygon"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "munched polygon（`coord_munch` 后的闭合多边形）未复刻。"
+
+[groups."geom-raster"]
+issue = "SIL-794"
+owner = "m2-closeout"
+reason = "geom_raster 的 12 条已全部纳管（SIL-794）；新增快照先落到本组再补 case。"
+
+[groups."geom-sf"]
+issue = "SIL-715"
+owner = "m3"
+reason = "空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-column 解析。"
+
+[groups."geom-smooth"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`geom_smooth()` 的 ribbon 开关未逐条复刻。"
+
+[groups."geom-text"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "plotmath 表达式标签（`expression()`）未支持。"
+
+[groups."geom-violin"]
+issue = "SIL-794"
+owner = "m2-closeout"
+reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先落到本组再补 case。"
+
+[groups."guide-axis"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "轴 guide 的「叠放 / 次刻度 / logtick / 极坐标 theta」长尾未逐条复刻；10 条已纳管成 case（见下面的 `[snapshots]`），逐条卡点写在各自的 reason 上。"
+
+[groups."guide-colorbar"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-788 已全部纳管（白→红 / 自定义刻度与框架 / colour+fill 合并）。"
+
+[groups."guide-legend"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-788 纳管 5 条（方向 / 键间距 / byrow / 左对齐键）；剩 `enlarged-guides` 与 `legend-key-justification`，卡在 key 尺寸随 `size` / `linewidth` 标度撑开（单条 reason 见下）。"
+
+[groups.guides]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-788 纳管 27 条（图例方位 / padding / inside / '标题与文字间距 / 分箱与分段色条边界 / 逐 guide 主题 / 旧 S3 guide）；剩下 `stylised-guide-custom` 一条，卡在无图层空图的版面口径（单条 reason 见下）。"
+
+[groups.labels]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`plot.tag.location`（margin / panel / plot）目前只在主题元素树里，渲染器还没消费；补齐后再纳管 6 条。"
+
+[groups."legend-draw"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "这条快照是把 17 个 `draw_key_*` 拼成 gtable 后画的，不是 ggplot 对象；三文件 case 够不到，要先有 `key_glyph` 才能用图例复现。"
+
+[groups.patterns]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。"
+
+[groups."position-stack"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`position_stack()` 的 area 堆叠未复刻。"
+
+[groups.scale_date]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-790 已全部纳管（8 条）：日期默认断点（`pretty.Date()`）、`date_breaks` / `breaks_width` / `label_date`；数据按 R 的 `set.seed(321)` 导出。"
+
+[groups."scales-breaks-labels"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-790 已全部纳管（13 条）：断点 / 标签函数 / 空图例 / log2 与 exp 变换 / 函数形态 limits。"
+
+[groups."sec-axis"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-793 已把 7 条全部纳管：division / 幂变换 / 单调性 / skew（`breaks = derive()`）/ datetime / 独立变换（`transform_probability`）/ 自定义 `new_transform()`。"
+
+[groups."stat-align"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`stat_align()` 的两段面积 cliff / pos-neg 未复刻。"
+
+[groups."stat-sum"]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "`stat_sum()` 的 crossbar 汇总未复刻。"
+
+[groups.theme]
+issue = "SIL-715"
+owner = "m2-closeout"
+reason = "SIL-792 把 18 条纳管（8 套主题 + 3 个 `base_size = 33` 变体 + spacing / margins / 刻度长度 / 四边轴样式 / aspect.ratio 六条 / 标题与注脚对齐 / strip 与旋转标签 / 横向图例间距）；剩 8 条按缺口单列在下面。"
+
+[snapshots."theme/theme-bw.svg"]
+case = "upstream-theme-bw"
+
+[snapshots."theme/theme-classic.svg"]
+case = "upstream-theme-classic"
+
+[snapshots."theme/theme-dark.svg"]
+case = "upstream-theme-dark"
+
+[snapshots."theme/theme-dark-large.svg"]
+case = "upstream-theme-dark-large"
+
+[snapshots."theme/theme-minimal.svg"]
+case = "upstream-theme-minimal"
+
+[snapshots."theme/theme-minimal-large.svg"]
+case = "upstream-theme-minimal-large"
+
+[snapshots."theme/theme-gray.svg"]
+case = "upstream-theme-gray"
+
+[snapshots."theme/theme-gray-large.svg"]
+case = "upstream-theme-gray-large"
+
+[snapshots."theme/theme-light.svg"]
+case = "upstream-theme-light"
+
+[snapshots."theme/theme-light-large.svg"]
+case = "upstream-theme-light-large"
+
+[snapshots."theme/theme-void.svg"]
+case = "upstream-theme-void"
+
+[snapshots."theme/theme-void-large.svg"]
+case = "upstream-theme-void-large"
+
+[snapshots."theme/theme-linedraw.svg"]
+case = "upstream-theme-linedraw"
+
+[snapshots."theme/theme-bw-large.svg"]
+case = "upstream-theme-bw-large"
+
+[snapshots."theme/theme-classic-large.svg"]
+case = "upstream-theme-classic-large"
+
+[snapshots."theme/theme-linedraw-large.svg"]
+case = "upstream-theme-linedraw-large"
+
+[snapshots."theme/strip-styling.svg"]
+case = "upstream-theme-strip-styling"
+
+[snapshots."theme/rotated-x-axis-tick-labels.svg"]
+case = "upstream-theme-rotated-x-axis-tick-labels"
+
+[snapshots."theme/titles-aligned-to-entire-plot.svg"]
+case = "upstream-theme-titles-aligned-to-entire-plot"
+
+[snapshots."theme/caption-aligned-to-entire-plot.svg"]
+case = "upstream-theme-caption-aligned-to-entire-plot"
+
+[snapshots."theme/large-spacing.svg"]
+case = "upstream-theme-large-spacing"
+
+[snapshots."theme/large-margins.svg"]
+case = "upstream-theme-large-margins"
+
+[snapshots."theme/ticks-length.svg"]
+case = "upstream-theme-ticks-length"
+
+[snapshots."theme/axes-styling.svg"]
+case = "upstream-theme-axes-styling"
+
+[snapshots."theme/height-is-3-times-width.svg"]
+case = "upstream-theme-height-is-3-times-width"
+
+[snapshots."theme/width-is-3-times-height.svg"]
+case = "upstream-theme-width-is-3-times-height"
+
+[snapshots."theme/height-is-3-times-width-2-wrap-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-wrap-facets"
+
+[snapshots."theme/height-is-3-times-width-2-column-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-column-facets"
+
+[snapshots."theme/height-is-3-times-width-2-row-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2-row-facets"
+
+[snapshots."theme/height-is-3-times-width-2x2-facets.svg"]
+case = "upstream-theme-height-is-3-times-width-2x2-facets"
+
+[snapshots."theme/horizontal-legends-placed-apart.svg"]
+case = "upstream-theme-horizontal-legends-placed-apart"
+
+[snapshots."theme/theme-with-inverted-colours.svg"]
+reason = "`plot.tag` 还没有渲染（R 的 `table_add_tag()` 会为 tag 单开一行），所以整页版式比上游少一行；色板与面板背景已对。修好 tag 后重测，预期进档。"
+
+[snapshots."theme/legends-at-all-sides-with-justification.svg"]
+reason = "需要 `mtcars` 完整夹具（`hp` / `gear` / `wt` 三列本仓还没有内联），且用 `legend.location = 'plot'` 把图例挂在整页而不是面板行；`legend.justification.<side>` 已实现。"
+
+[snapshots."theme/stretched-vertical-legends.svg"]
+reason = "`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。"
+
+[snapshots."theme/stretched-horizontal-legends.svg"]
+reason = "同 `stretched-vertical-legends`：`legend.key.width` 的 `null` 单位未实现。"
+
+[snapshots."theme/vertical-legends-placed-apart.svg"]
+reason = "`legend.spacing.y = unit(1, 'null')` 要在 guide-box 内分配剩余高度；本仓的 `legend_box_layout()` 只按固定 cm 累加（横向的 `spacing.x` 版`horizontal-legends-placed-apart` 已纳管）。"
+
+[snapshots."theme/custom-strip-elements-can-render.svg"]
+reason = "上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。"
+
+[snapshots."theme/point-elements.svg"]
+reason = "`element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。"
+
+[snapshots."theme/polygon-elements.svg"]
+reason = "`element_polygon()` 的 `element_grob()` 渲染（两段 `id` 的 pathgrob），同 `point-elements`，是裸 grob 快照。"
+[snapshots."guides/facet-grid-legend-on-left.svg"]
+case = "upstream-guides-facet-grid-legend-left"
+
+[snapshots."guides/facet-grid-legend-on-bottom.svg"]
+case = "upstream-guides-facet-grid-legend-bottom"
+
+[snapshots."guides/facet-grid-legend-on-right.svg"]
+case = "upstream-guides-facet-grid-legend-right"
+
+[snapshots."guides/facet-grid-legend-on-top.svg"]
+case = "upstream-guides-facet-grid-legend-top"
+
+[snapshots."guides/facet-wrap-legend-on-left.svg"]
+case = "upstream-guides-facet-wrap-legend-left"
+
+[snapshots."guides/facet-wrap-legend-on-bottom.svg"]
+case = "upstream-guides-facet-wrap-legend-bottom"
+
+[snapshots."guides/facet-wrap-legend-on-right.svg"]
+case = "upstream-guides-facet-wrap-legend-right"
+
+[snapshots."guides/facet-wrap-legend-on-top.svg"]
+case = "upstream-guides-facet-wrap-legend-top"
+
+# ---------------------------------------------------------------------------
+# SIL-790（G6 scales）：`scales-breaks-labels` 13 + `scale_date` 8 两簇全部复刻成
+# 三文件 case。复刻表在 `tools/upstream/import_snapshot_cases.py` 的 `_G6_SPECS`，
+# 目录与 expected.svg 由 `pixi run snapshots:import` 生成。
+# ---------------------------------------------------------------------------
+
+[snapshots."scales-breaks-labels/character.svg"]
+case = "upstream-scales-character"
+
+[snapshots."scales-breaks-labels/date.svg"]
+case = "upstream-scales-date"
+
+[snapshots."scales-breaks-labels/functional-limits.svg"]
+case = "upstream-scales-functional-limits"
+
+[snapshots."scales-breaks-labels/no-alpha-breaks-no-legend.svg"]
+case = "upstream-scales-no-alpha-breaks"
+
+[snapshots."scales-breaks-labels/no-colour-breaks-no-legend.svg"]
+case = "upstream-scales-no-colour-breaks"
+
+[snapshots."scales-breaks-labels/no-fill-breaks-no-legend.svg"]
+case = "upstream-scales-no-fill-breaks"
+
+[snapshots."scales-breaks-labels/no-size-breaks-no-legend.svg"]
+case = "upstream-scales-no-size-breaks"
+
+[snapshots."scales-breaks-labels/no-x-breaks.svg"]
+case = "upstream-scales-no-x-breaks"
+
+[snapshots."scales-breaks-labels/no-y-breaks.svg"]
+case = "upstream-scales-no-y-breaks"
+
+[snapshots."scales-breaks-labels/numeric.svg"]
+case = "upstream-scales-numeric"
+
+[snapshots."scales-breaks-labels/numeric-exp.svg"]
+case = "upstream-scales-numeric-exp"
+
+[snapshots."scales-breaks-labels/numeric-log.svg"]
+case = "upstream-scales-numeric-log"
+
+[snapshots."scales-breaks-labels/numeric-polar.svg"]
+case = "upstream-scales-numeric-polar"
+
+[snapshots."scale_date/dates-along-x-default-breaks.svg"]
+case = "upstream-scale-date-dates-along-x-default-breaks"
+
+[snapshots."scale_date/dates-along-y-default-breaks.svg"]
+case = "upstream-scale-date-dates-along-y-default-breaks"
+
+[snapshots."scale_date/scale-x-date-breaks-3-weeks.svg"]
+case = "upstream-scale-date-scale-x-date-breaks-3-weeks"
+
+[snapshots."scale_date/scale-x-date-breaks-breaks-width-2-weeks.svg"]
+case = "upstream-scale-date-scale-x-date-breaks-breaks-width-2-weeks"
+
+[snapshots."scale_date/scale-x-date-labels-label-date-m-d.svg"]
+case = "upstream-scale-date-scale-x-date-labels-label-date-m-d"
+
+[snapshots."scale_date/scale-x-date-labels-label-date-w-week.svg"]
+case = "upstream-scale-date-scale-x-date-labels-label-date-w-week"
+
+[snapshots."scale_date/scale-y-date-breaks-3-weeks.svg"]
+case = "upstream-scale-date-scale-y-date-breaks-3-weeks"
+
+[snapshots."scale_date/scale-y-date-breaks-breaks-width-2-weeks.svg"]
+case = "upstream-scale-date-scale-y-date-breaks-breaks-width-2-weeks"
+
+# ---------------------------------------------------------------------------
+# SIL-788（G1a guides-legend）：图例侧 46 条已复刻成三文件 case。
+# 复刻表在 tools/upstream/import_snapshot_cases.py 的 `_G1A_SPECS`，
+# 目录与 expected.svg 由 `pixi run snapshots:import` 生成。
+# ---------------------------------------------------------------------------
+
+[snapshots."guides/legend-on-left.svg"]
+case = "upstream-guides-legend-on-left"
+
+[snapshots."guides/legend-on-right.svg"]
+case = "upstream-guides-legend-on-right"
+
+[snapshots."guides/legend-on-top.svg"]
+case = "upstream-guides-legend-on-top"
+
+[snapshots."guides/legend-on-bottom.svg"]
+case = "upstream-guides-legend-on-bottom"
+
+[snapshots."guides/padding-in-legend-box.svg"]
+case = "upstream-guides-padding-in-legend-box"
+
+[snapshots."guides/legend-inside-plot-centered.svg"]
+case = "upstream-guides-legend-inside-plot-centered"
+
+[snapshots."guides/legend-inside-plot-bottom-left.svg"]
+case = "upstream-guides-legend-inside-plot-bottom-left"
+
+[snapshots."guides/legend-inside-plot-top-right.svg"]
+case = "upstream-guides-legend-inside-plot-top-right"
+
+[snapshots."guides/legend-inside-plot-bottom-left-of-legend-at-center.svg"]
+case = "upstream-guides-legend-inside-plot-bottom-left-of-legend-at-center"
+
+[snapshots."guides/legend-inside-plot-multiple-positions.svg"]
+case = "upstream-guides-legend-inside-plot-multiple-positions"
+
+[snapshots."guides/multi-line-guide-title-works.svg"]
+case = "upstream-guides-multi-line-guide-title"
+
+[snapshots."guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg"]
+case = "upstream-guides-vertical-gap-1cm-title-guide"
+
+[snapshots."guides/horizontal-gap-of-1cm-between-guide-and-guide-text.svg"]
+case = "upstream-guides-horizontal-gap-1cm-guide-text"
+
+[snapshots."guides/guide-title-and-text-positioning-and-alignment-via-themes.svg"]
+case = "upstream-guides-title-text-positioning-alignment"
+
+[snapshots."guides/rotated-guide-titles-and-labels.svg"]
+case = "upstream-guides-rotated-guide-titles-labels"
+
+[snapshots."guides/legends-with-all-title-justifications.svg"]
+case = "upstream-guides-legends-all-title-justifications"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins.svg"]
+case = "upstream-guides-guide-bins-coinciding-1"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins-2.svg"]
+case = "upstream-guides-guide-bins-coinciding-2"
+
+[snapshots."guides/guide-bins-understands-coinciding-limits-and-bins-3.svg"]
+case = "upstream-guides-guide-bins-coinciding-3"
+
+[snapshots."guides/guide-bins-sets-labels-when-limits-is-in-breaks.svg"]
+case = "upstream-guides-guide-bins-labels-limits-in-breaks"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-1"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins-2.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-2"
+
+[snapshots."guides/guide-colorsteps-understands-coinciding-limits-and-bins-3.svg"]
+case = "upstream-guides-guide-colorsteps-coinciding-3"
+
+[snapshots."guides/guide-colorsteps-sets-labels-when-limits-is-in-breaks.svg"]
+case = "upstream-guides-guide-colorsteps-labels-limits-in-breaks"
+
+[snapshots."guides/guide-bins-looks-as-it-should.svg"]
+case = "upstream-guides-guide-bins-looks-as-it-should"
+
+[snapshots."guides/guide-bins-can-show-limits.svg"]
+case = "upstream-guides-guide-bins-show-limits"
+
+[snapshots."guides/guide-bins-can-show-arrows.svg"]
+case = "upstream-guides-guide-bins-show-arrows"
+
+[snapshots."guides/guide-bins-can-remove-axis.svg"]
+case = "upstream-guides-guide-bins-remove-axis"
+
+[snapshots."guides/guide-bins-work-horizontally.svg"]
+case = "upstream-guides-guide-bins-work-horizontally"
+
+[snapshots."guides/guide-coloursteps-looks-as-it-should.svg"]
+case = "upstream-guides-guide-coloursteps-looks-as-it-should"
+
+[snapshots."guides/guide-coloursteps-can-show-limits.svg"]
+case = "upstream-guides-guide-coloursteps-show-limits"
+
+[snapshots."guides/guide-coloursteps-can-have-bins-relative-to-binsize.svg"]
+case = "upstream-guides-guide-coloursteps-binsize"
+
+[snapshots."guides/guide-bins-can-show-ticks-and-transparancy.svg"]
+case = "upstream-guides-guide-bins-ticks-transparency"
+
+[snapshots."guides/reversed-guide-bins.svg"]
+case = "upstream-guides-reversed-guide-bins"
+
+[snapshots."guides/guide-custom-with-void-theme.svg"]
+case = "upstream-guides-guide-custom-with-void-theme"
+
+[snapshots."guides/old-s3-guide-drawing-a-circle.svg"]
+case = "upstream-guides-old-s3-guide-circle"
+
+[snapshots."guide-legend/vertical-legend-direction.svg"]
+case = "upstream-guide-legend-vertical-direction"
+
+[snapshots."guide-legend/horizontal-legend-direction.svg"]
+case = "upstream-guide-legend-horizontal-direction"
+
+[snapshots."guide-legend/legend-with-widely-spaced-keys.svg"]
+case = "upstream-guide-legend-widely-spaced-keys"
+
+[snapshots."guide-legend/left-aligned-legend-key.svg"]
+case = "upstream-guide-legend-left-aligned-key"
+
+[snapshots."guide-legend/legend-byrow-true.svg"]
+case = "upstream-guide-legend-byrow-true"
+
+[snapshots."guide-colorbar/white-to-red-colorbar-white-ticks-no-frame.svg"]
+case = "upstream-guide-colorbar-white-to-red"
+
+[snapshots."guide-colorbar/customized-colorbar.svg"]
+case = "upstream-guide-colorbar-customized"
+
+[snapshots."guide-colorbar/combined-colour-and-fill-aesthetics.svg"]
+case = "upstream-guide-colorbar-combined-aesthetics"
+
+[snapshots."draw-key/horizontal-boxplot-and-crossbar.svg"]
+case = "upstream-draw-key-horizontal-boxplot-crossbar"
+
+[snapshots."draw-key/horizontal-linerange-and-pointrange.svg"]
+case = "upstream-draw-key-horizontal-linerange-pointrange"
+
+# ---------------------------------------------------------------------------
+# SIL-788（G1a）剩下 8 条的单条归口：卡点写在这里，能力补齐后改这里。
+# ---------------------------------------------------------------------------
+
+[snapshots."guides/stylised-guide-custom.svg"]
+reason = "空图（没有图层）的版面口径未复刻：R 的 `ggplot()` 没有轴占位，面板直接铺满 plot.margin 内区；我们仍按轴 / 标题占位，面板左边界差 22pt（图级 10.4%）。要先改「无图层 → 无轴占位」这条版式规则。"
+
+[snapshots."guide-legend/enlarged-guides.svg"]
+reason = "key 尺寸没跟着 `size` / `linewidth` 标度走：R 的 `draw_key` 会把 key 的宽高报回 gtable（17.28pt → 34.02pt），我们固定用 `legend.key.size`（图级 8.1%）。卡在「复数 size 撑开 key 格」这条测量链。"
+
+[snapshots."guide-legend/legend-key-justification.svg"]
+reason = "同上（key 格要按 `size` 标度撑开）+ 多行标签下 `legend.key.justification` 的对齐（图级 10.5%）。"
+
+[snapshots."draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg"]
+reason = "依赖 `geom_point(show.legend = c(colour = NA, alpha = FALSE))` 这种逐美学 show.legend 写法，本仓的 `show_legend` 只有布尔。"
+
+[snapshots."draw-key/circle-glyphs-of-2cm-size.svg"]
+reason = "依赖 `key_glyph` 自定义函数 + grob 上的 `width` / `height` 属性（2cm key 撑开图例）；本仓还没有 `key_glyph` 覆盖点。"
+
+[snapshots."draw-key/rectangle-and-dotplot-key-glyphs.svg"]
+reason = "依赖 `key_glyph = draw_key_rect` / `draw_key_dotplot`；本仓的图例 key 只走 `Geom.draw()`，没有 `key_glyph`。"
+
+[snapshots."draw-key/time-series-and-polygon-key-glyphs.svg"]
+reason = "依赖 `key_glyph = 'timeseries'` / 'polygon'`；同上。"
+
+[snapshots."legend-draw/all-legend-keys.svg"]
+reason = "这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。"
+# --- geom-dotplot（SIL-787）：35 条按 test-geom-dotplot.R 的 doppelganger 复刻 ---
+
+[snapshots."geom-dotplot/basic-dotplot-with-dot-density-binning-binwidth-4.svg"]
+case = "upstream-geom-dotplot-basic-dotdensity"
+
+[snapshots."geom-dotplot/histodot-binning-equal-bin-spacing.svg"]
+case = "upstream-geom-dotplot-histodot"
+
+[snapshots."geom-dotplot/dots-stacked-closer-stackratio-5-fill-white.svg"]
+case = "upstream-geom-dotplot-stackratio-half"
+
+[snapshots."geom-dotplot/larger-dots-dotsize-1-5-fill-white.svg"]
+case = "upstream-geom-dotplot-dotsize-large"
+
+[snapshots."geom-dotplot/stack-up.svg"]
+case = "upstream-geom-dotplot-stack-up"
+
+[snapshots."geom-dotplot/stack-up-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-up-coord-flip"
+
+[snapshots."geom-dotplot/stack-down.svg"]
+case = "upstream-geom-dotplot-stack-down"
+
+[snapshots."geom-dotplot/stack-down-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-down-coord-flip"
+
+[snapshots."geom-dotplot/stack-center.svg"]
+case = "upstream-geom-dotplot-stack-center"
+
+[snapshots."geom-dotplot/stack-center-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-center-coord-flip"
+
+[snapshots."geom-dotplot/stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-stack-centerwhole"
+
+[snapshots."geom-dotplot/stack-centerwhole-with-coord-flip.svg"]
+case = "upstream-geom-dotplot-stack-centerwhole-coord-flip"
+
+[snapshots."geom-dotplot/multiple-groups-bins-not-aligned.svg"]
+case = "upstream-geom-dotplot-multiple-groups-bins-not-aligned"
+
+[snapshots."geom-dotplot/multiple-groups-bins-aligned.svg"]
+case = "upstream-geom-dotplot-multiple-groups-bins-aligned"
+
+[snapshots."geom-dotplot/bin-along-y-stack-center.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-center"
+
+[snapshots."geom-dotplot/bin-along-y-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-along-y-stack-centerwhole-histodot.svg"]
+case = "upstream-geom-dotplot-bin-along-y-stack-centerwhole-histodot"
+
+[snapshots."geom-dotplot/bin-x-three-y-groups-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-x-three-y-groups-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-stack-centerwhole.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-stack-centerwhole"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-bins-aligned-across-groups.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-across-groups"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-bins-aligned-coord-flip.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-bins-aligned-coord-flip"
+
+[snapshots."geom-dotplot/bin-y-dodged.svg"]
+case = "upstream-geom-dotplot-bin-y-dodged"
+
+[snapshots."geom-dotplot/bin-y-dodged-coord-flip.svg"]
+case = "upstream-geom-dotplot-bin-y-dodged-coord-flip"
+
+[snapshots."geom-dotplot/bin-y-three-x-groups-fill-and-dodge.svg"]
+case = "upstream-geom-dotplot-bin-y-three-x-groups-fill-and-dodge"
+
+[snapshots."geom-dotplot/bin-y-continous-x-axis-grouping-by-x.svg"]
+case = "upstream-geom-dotplot-bin-y-continuous-x-grouping-by-x"
+
+[snapshots."geom-dotplot/bin-y-continous-x-axis-single-x-group.svg"]
+case = "upstream-geom-dotplot-bin-y-continuous-x-single-group"
+
+[snapshots."geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg"]
+case = "upstream-geom-dotplot-variable-linetype-size"
+
+[snapshots."geom-dotplot/3-stackgroups-dot-density-with-aligned-bins.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-dotdensity-aligned"
+
+[snapshots."geom-dotplot/3-stackgroups-histodot.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-histodot"
+
+[snapshots."geom-dotplot/3-stackgroups-bin-y-histodot.svg"]
+case = "upstream-geom-dotplot-3-stackgroups-bin-y-histodot"
+
+[snapshots."geom-dotplot/bin-y-dodging-3-stackgroups-histodot.svg"]
+case = "upstream-geom-dotplot-bin-y-dodging-3-stackgroups-histodot"
+
+[snapshots."geom-dotplot/facets-3-groups-histodot-stackgroups.svg"]
+case = "upstream-geom-dotplot-facets-3-groups-histodot-stackgroups"
+
+[snapshots."geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg"]
+case = "upstream-geom-dotplot-2-na-dotdensity"
+
+[snapshots."geom-dotplot/2-na-values-bin-along-y-stack-center.svg"]
+case = "upstream-geom-dotplot-2-na-bin-along-y"
+
+[snapshots."geom-dotplot/stackratio-1-5.svg"]
+case = "upstream-geom-dotplot-stackratio-1-5"
+
+# ---------------------------------------------------------------------------
+# SIL-791（G1b guide-axis）：10 条纳管成 case，其余 13 条保留 gap。
+# case 正文在 tools/upstream/import_snapshot_cases.py 的 `_G1B_SPECS`。
+# ---------------------------------------------------------------------------
+
+[snapshots."guide-axis/axis-guides-basic.svg"]
+case = "upstream-guide-axis-axis-guides-basic"
+
+[snapshots."guide-axis/axis-guides-zero-breaks.svg"]
+case = "upstream-guide-axis-axis-guides-zero-breaks"
+
+[snapshots."guide-axis/axis-guides-zero-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-zero-rotation"
+
+[snapshots."guide-axis/axis-guides-positive-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-positive-rotation"
+
+[snapshots."guide-axis/axis-guides-negative-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-negative-rotation"
+
+[snapshots."guide-axis/axis-guides-vertical-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-vertical-rotation"
+
+[snapshots."guide-axis/axis-guides-vertical-negative-rotation.svg"]
+case = "upstream-guide-axis-axis-guides-vertical-negative-rotation"
+
+[snapshots."guide-axis/thick-axis-lines.svg"]
+case = "upstream-guide-axis-thick-axis-lines"
+
+[snapshots."guide-axis/position-guide-titles.svg"]
+case = "upstream-guide-axis-position-guide-titles"
+
+[snapshots."guide-axis/guide-titles-with-coord-transform.svg"]
+case = "upstream-guide-axis-guide-titles-with-coord-transform"
+
+[snapshots."guide-axis/axis-guides-check-overlap.svg"]
+reason = "G1b 实测 3.49%：`check_overlap` 的**标签保留集合**已和上游一致（1/3/5/7/10/12/15/17/20），剩下的是 R 把整组轴当 grid 单元画时的字形/轴线半像素差；再调就到阈值内但会改 `guide_axis` 的公共排版。"
+
+[snapshots."guide-axis/axis-guides-text-dodged-into-rows-cols.svg"]
+reason = "G1b 实测 3.58%：`n.dodge = 2` 的分行位置对，差在长标签（10 位数字）在面板边缘的半像素落点。"
+
+[snapshots."guide-axis/axis-guides-with-capped-ends.svg"]
+reason = "G1b 实测 7.65%：`cap=` 的轴线端点已对，但 R 在次轴（top/right）上方额外留了一行空轴标题（17.3pt，`xlab-t` 空行），本仓的版式不占这一行，面板顶边因此高 17.3pt。"
+
+[snapshots."guide-axis/guide-axis-customization.svg"]
+reason = "G1b 实测 3.05%：`n.dodge = 2` 的竖轴标签在 R 里占两列（26.7pt），本仓的 `plot_layout` 仍按一列（14.7pt）留位，面板左边界差 12pt。"
+
+[snapshots."guide-axis/guides-specified-in-guides.svg"]
+reason = "G1b 实测 2.22%（阈值 2%）：同上——次轴的 `n.dodge` 两条标签行 + R 的空标题行未进版式，面板顶边差 17.3pt；差 0.22 个百分点，不是阈值问题。"
+
+[snapshots."guide-axis/guides-with-minor-ticks.svg"]
+reason = "G1b 未纳管：`label_math()` 的 plotmath 标签 + 负长度的 `axis.ticks.length.x.top` 已能画，但 `axis.minor.ticks.length.y.right = 5cm` 会把次轴带撑到 5cm，R 的 gtable 与我们的轴带宽度分配不一致（实测 >10%）。"
+
+[snapshots."guide-axis/stacked-axes.svg"]
+reason = "G1b 实测 15%：`guide_axis_stack()` 的两层轴能画（间距 = 主轴刻度长），但叠放后的**轴带宽度**仍按单层算，R 按 `guide_axis_stack` 的 measured gtable 累加。"
+
+[snapshots."guide-axis/stacked-radial-axes.svg"]
+reason = "G1b 未纳管：径向坐标下的 `r.sec` / `theta.sec` 叠放仍是 `docs/notes/guide.md` §8.5 记的「报 ValueError / 未做」，两层 theta 轴要在半径上推第二圈（`stack_offset`）。"
+
+[snapshots."guide-axis/logtick-axes-with-customisation.svg"]
+reason = "G1b 未纳管：`transform_compose(transform_log10(), transform_reverse())` 与`coord_transform(x = transform_pseudo_log())` 两个变换都还没有（`scales.py` / `coord.py`把 pseudo_log 记在 M3-2），logticks 本身已能画。"
+
+[snapshots."guide-axis/guide-axis-theta-in-cartesian-coordinates.svg"]
+reason = "G1b 实测 8.71%：直角坐标下的 `axis_theta` 四条轴能画（颜色分开），但 R 的 theta 轴在笛卡尔坐标里退化成带角度的普通轴，标签锚点不同于 `axis_theta` 的极坐标口径。"
+
+[snapshots."guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"]
+reason = "G1b 实测 54.9%：`coord_radial()` 下的 `guide_axis_theta(angle=)` 标签锚点（R 的`flip_text_angle()` + 半径 0.45）与我们的极坐标轴差异仍大，见 `docs/notes/coord.md` §12。"
+
+[snapshots."guide-axis/align-facet-labels-facets-horizontal.svg"]
+reason = "G1b 实测 17.3%：`facet_grid(rows=, scales/space = 'free')` + `reorder(model, hwy)` 的38 个离散水平（均值序已按 R 的 `levels(reorder())` 写死）在逐面板 y 轴带里错位，属 G7 的`facet-` 簇口径，不在轴 guide 这一簇。"
+
+[snapshots."guide-axis/align-facet-labels-facets-vertical.svg"]
+reason = "G1b 实测 17.5%：同上（横向分面 + 90° 标签），同属 `facet-` 簇。"
+# --- G4（SIL-794）：geom-violin 14 条 -----------------------------------------
+
+[snapshots."geom-violin/basic.svg"]
+case = "upstream-geom-violin-basic"
+
+[snapshots."geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg"]
+case = "upstream-geom-violin-continuous-x-axis-many-groups"
+
+[snapshots."geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg"]
+case = "upstream-geom-violin-continuous-x-axis-single-group"
+
+[snapshots."geom-violin/coord-flip.svg"]
+case = "upstream-geom-violin-coord-flip"
+
+[snapshots."geom-violin/coord-polar.svg"]
+case = "upstream-geom-violin-coord-polar"
+
+[snapshots."geom-violin/dodging-and-coord-flip.svg"]
+case = "upstream-geom-violin-dodging-and-coord-flip"
+
+[snapshots."geom-violin/dodging.svg"]
+case = "upstream-geom-violin-dodging"
+
+[snapshots."geom-violin/grouping-on-x-and-fill-dodge-width-0-5.svg"]
+case = "upstream-geom-violin-grouping-on-x-and-fill-dodge-width"
+
+[snapshots."geom-violin/grouping-on-x-and-fill.svg"]
+case = "upstream-geom-violin-grouping-on-x-and-fill"
+
+[snapshots."geom-violin/narrower-width-5.svg"]
+case = "upstream-geom-violin-narrower-width"
+
+[snapshots."geom-violin/scale-area-to-sample-size-c-is-smaller.svg"]
+case = "upstream-geom-violin-scale-area-to-sample-size"
+
+[snapshots."geom-violin/styled-quantiles.svg"]
+case = "upstream-geom-violin-styled-quantiles"
+
+[snapshots."geom-violin/with-smaller-bandwidth-and-points.svg"]
+case = "upstream-geom-violin-with-smaller-bandwidth-and-points"
+
+[snapshots."geom-violin/with-tails-and-points.svg"]
+case = "upstream-geom-violin-with-tails-and-points"
+
+# --- G4（SIL-794）：geom-raster 12 条 ----------------------------------------
+
+[snapshots."geom-raster/1-x-3-just-0-0.svg"]
+case = "upstream-geom-raster-1-x-3-just-0-0"
+
+[snapshots."geom-raster/1-x-3-set-limits.svg"]
+case = "upstream-geom-raster-1-x-3-set-limits"
+
+[snapshots."geom-raster/1-x-3.svg"]
+case = "upstream-geom-raster-1-x-3"
+
+[snapshots."geom-raster/3-x-1-just-0-0.svg"]
+case = "upstream-geom-raster-3-x-1-just-0-0"
+
+[snapshots."geom-raster/3-x-1-set-limits.svg"]
+case = "upstream-geom-raster-3-x-1-set-limits"
+
+[snapshots."geom-raster/3-x-1.svg"]
+case = "upstream-geom-raster-3-x-1"
+
+[snapshots."geom-raster/3-x-2-just-0-0.svg"]
+case = "upstream-geom-raster-3-x-2-just-0-0"
+
+[snapshots."geom-raster/3-x-2-set-limits.svg"]
+case = "upstream-geom-raster-3-x-2-set-limits"
+
+[snapshots."geom-raster/3-x-2.svg"]
+case = "upstream-geom-raster-3-x-2"
+
+[snapshots."geom-raster/discrete-positions.svg"]
+case = "upstream-geom-raster-discrete-positions"
+
+[snapshots."geom-raster/irregular-categorical.svg"]
+case = "upstream-geom-raster-irregular-categorical"
+
+[snapshots."geom-raster/rectangle-fallback.svg"]
+case = "upstream-geom-raster-rectangle-fallback"
+
+# --- G5（SIL-793）：coord 族 27 条的处置 ---------------------------
+
+[snapshots."coord-cartesian/expand-range.svg"]
+case = "upstream-coord-cartesian-expand-range"
+
+[snapshots."coord-cartesian/contract-range.svg"]
+case = "upstream-coord-cartesian-contract-range"
+
+[snapshots."coord-cartesian/reversed-cartesian-coords.svg"]
+case = "upstream-coord-cartesian-reversed"
+
+[snapshots."coord-cartesian/clip-on-by-default-only-inside-visible.svg"]
+case = "upstream-coord-cartesian-clip-on"
+
+[snapshots."coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg"]
+case = "upstream-coord-cartesian-clip-off"
+
+[snapshots."coord-flip/turning-off-secondary-title-with-coord-flip.svg"]
+case = "upstream-coord-flip-sec-title"
+
+[snapshots."coord-transform/basic-coord-transform-plot.svg"]
+case = "upstream-coord-transform-basic"
+
+[snapshots."coord-transform/reversed-transformed-coords.svg"]
+case = "upstream-coord-transform-reversed"
+
+[snapshots."coord-transform/sec-axis-with-coord-transform.svg"]
+case = "upstream-coord-transform-sec-axis"
+
+[snapshots."sec-axis/sec-axis-with-division.svg"]
+case = "upstream-sec-axis-with-division"
+
+[snapshots."sec-axis/sec-axis-sec-power-transform.svg"]
+case = "upstream-sec-axis-power"
+
+[snapshots."sec-axis/sec-axis-monotonicity-test.svg"]
+case = "upstream-sec-axis-monotonicity"
+
+[snapshots."sec-axis/sec-axis-skewed-transform.svg"]
+case = "upstream-sec-axis-skewed"
+
+[snapshots."sec-axis/sec-axis-datetime-scale.svg"]
+case = "upstream-sec-axis-datetime"
+
+[snapshots."sec-axis/sec-axis-independent-transformations.svg"]
+case = "upstream-sec-axis-independent"
+
+[snapshots."sec-axis/sec-axis-custom-transform.svg"]
+case = "upstream-sec-axis-custom"
+
+[snapshots."coord-polar/three-concentric-circles.svg"]
+case = "upstream-coord-polar-three-circles"
+
+[snapshots."coord-polar/rays-circular-arcs-and-spiral-arcs.svg"]
+case = "upstream-coord-polar-rays"
+
+[snapshots."coord-polar/rose-plot-with-has-equal-spacing.svg"]
+case = "upstream-coord-polar-rose"
+
+[snapshots."coord-polar/racetrack-plot-closed-and-no-center-hole.svg"]
+case = "upstream-coord-polar-racetrack-no-hole"
+
+[snapshots."coord-polar/racetrack-plot-closed-and-has-center-hole.svg"]
+case = "upstream-coord-polar-racetrack-hole"
+
+[snapshots."coord-polar/secondary-axis-ticks-and-labels.svg"]
+case = "upstream-coord-polar-sec-axis"
+
+[snapshots."coord-polar/reversed-polar-coords.svg"]
+case = "upstream-coord-polar-reversed"
+
+# 未纳管的 4 条（`coord_radial()` 的轴体系，卡点见各条 reason）
+
+[snapshots."coord-polar/bottom-half-circle-with-rotated-text.svg"]
+reason = "SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。"
+
+[snapshots."coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"]
+reason = 'SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。'
+
+[snapshots."coord-polar/inner-radius-with-all-axes.svg"]
+reason = "SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。"
+
+[snapshots."coord-polar/partial-with-all-axes.svg"]
+reason = 'SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。'

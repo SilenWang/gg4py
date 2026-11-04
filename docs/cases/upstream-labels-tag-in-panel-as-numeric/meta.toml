@@ -1,0 +1,7 @@
+family = "labels"
+features = ["plot-tag", "tag-panel"]
+ci = true
+title = "上游快照：tag 在面板内的 npc 位置"
+source = "upstream:tests/testthat/_snaps/labels/tag-in-panel-as-numeric.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-796：`plot.tag.position = c(0.25, 0.25)` + `plot.tag.location = \"panel\"`。"
