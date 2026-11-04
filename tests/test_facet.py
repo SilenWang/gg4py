@@ -24,7 +24,7 @@ from ggcore.axis import sec_axis
 from ggcore.build import BuildError, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
-from ggcore.geom.scene import plot_layout
+from ggcore.geom.scene import axis_title_area, plot_layout
 from ggcore.plot import ggplot
 from ggcore.theme import element_blank, element_rect, element_text, resolve_theme, theme
 from ggcore.units import unit
@@ -1014,3 +1014,23 @@ def test_grid_switch_moves_strips_to_the_bottom_and_left() -> None:
     theme_ = resolve_theme(switched.theme)
     assert float(theme_.get("strip.text.y.left").angle) == pytest.approx(90.0)
     assert float(theme_.get("strip.text.y").angle) == pytest.approx(-90.0)
+
+
+def test_axis_titles_span_panel_cells_not_strips() -> None:
+    """SIL-817：行 strip 自带一列，xlab / ylab 的中心不能把它算进去。
+
+    R 的 xlab / ylab 行只跨 panel 列 / 行；`facet_grid(rows = ...)` 的 strip 在
+    右侧时，用 `panel_area` 居中会把 x 标题右移半个 strip 宽（上游快照
+    `align-facet-labels-facets-horizontal` 实测 27pt）。
+    """
+    build = build_plot(base_plot() + registry.facet_grid(("a", "b")))
+    layout = plot_layout(build, width_in=6.0, height_in=4.0)
+    area = axis_title_area(layout)
+    table = build.facet_table()
+    assert table.strip_width_cm > 0
+    assert area.right < layout.panel_area.right - table.strip_width_cm * 0.5
+    boxes = list(layout.panel_boxes.values())
+    assert area.x_cm == pytest.approx(min(box.x_cm for box in boxes))
+    assert area.right == pytest.approx(max(box.right for box in boxes))
+    assert area.y_cm == pytest.approx(min(box.y_cm for box in boxes))
+    assert area.top == pytest.approx(max(box.top for box in boxes))

@@ -4831,6 +4831,7 @@ def specs() -> list[dict[str, Any]]:
         + _raster_specs()
         + _hex_specs()
         + _FACET_SPECS
+        + _G10_SPECS
         + _theme_g9_specs()
     )
 
@@ -5265,6 +5266,72 @@ _FACET_SPECS: list[dict[str, Any]] = [
         ),
         ci=False,
     ),
+]
+
+
+#: G10a（SIL-817）：`guide-axis` 簇收口里已经复刻成三文件 case 的条目。
+#:
+#: `align facet labels, facets vertical` 的关键不是版面系数，而是**轴序**：
+#: R 的 `reorder(model, hwy)` 只改 factor 的 levels，`facet_grid(scales = "free",
+#: space = "free")` 仍逐面板收缩范围。写成 `scale_x_discrete(limits = …)` 会把
+#: 每个面板钉到全部 38 个水平，`space = "free"` 因此失效（实测 13.04% → 1.61%）。
+_G10_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-guide-axis-align-facet-labels-vertical",
+        "snapshot": "guide-axis/align-facet-labels-facets-vertical.svg",
+        "title": "align facet labels, facets vertical",
+        "features": ["guide-axis", "facet-grid", "free-space", "rotation"],
+        "notes": (
+            "SIL-817：38 个离散水平按 `levels(reorder(model, hwy))` 落成 categorical "
+            "列（`_fixtures.factor_column`），`space = free` 的行高按逐面板范围差分配；"
+            "x 轴标题在 panel 列并集上居中（不含 strip 列）。实测 1.61% / 0.16%。"
+        ),
+        "source": r'''"""上游快照复刻：align facet labels, facets vertical。
+
+源：guide-axis/align-facet-labels-facets-vertical.svg
+（vdiffr 名 "align facet labels, facets vertical"）。
+
+R：
+
+    ggplot(mpg, aes(reorder(model, hwy), hwy)) +
+      geom_point() +
+      facet_grid(. ~ manufacturer, scales = "free", space = "free") +
+      theme_test() +
+      theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+`mpg` 的 manufacturer / model / hwy 三列与 `levels(reorder(model, hwy))` 的 38 个
+水平在 `tools/upstream/fixtures/mpg_models.json`（R 4.5.3 逐值导出）。
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from _fixtures import factor_column, mpg_model_levels, mpg_models, replace_column
+
+from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs
+from ggcore.theme import element_text, theme, theme_test
+from ggio.frame import to_column_table
+
+DATA = mpg_models
+TABLE = replace_column(
+    to_column_table(DATA), "model", factor_column(DATA["model"], mpg_model_levels)
+)
+
+
+def build():
+    p = (
+        ggplot(TABLE, aes(x="model", y="hwy"))
+        + geom_point()
+        + facet_grid(cols="manufacturer", scales="free", space="free")
+        + theme_test()
+        + theme(**{"axis.text.x": element_text(angle=90, hjust=1, vjust=0.5)})
+        + labs(title="align facet labels, facets vertical", x="reorder(model, hwy)")
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+    },
 ]
 
 

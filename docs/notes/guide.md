@@ -229,7 +229,10 @@ R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里
   `axis.title.*` 的 margin 与行高，全部走 `resolve_theme()`；轴标题旋转 90° 时
   外向尺寸是行高而不是文字宽度。
 - **位置**：x 轴在面板底边下方、y 轴在面板左边左侧；分面时每个面板各自一套
-  （`scales = "free"` 时断点也各自取），轴标题整块面板区只画一份。
+  （`scales = "free"` 时断点也各自取），轴标题整块面板区只画一份。轴标题的
+  摆放区是 **panel 单元格的并集**，不是 `panel_area`：`facet_grid` 的 strip
+  自带一行 / 一列，标题的中心不能把它算进去（SIL-817：行 strip 在右侧时，
+  拿 `panel_area` 居中会把 x 标题右推半个 strip 宽；`axis_title_area()`）。
 - `axis.line` / `axis.line.x` / `axis.line.y` 若解析成 `element_line()` 就画一条
   沿面板边的线（默认 `element_blank()`，不画）。
 
@@ -483,13 +486,15 @@ R 4.0.3 里 `guides(x.sec = guide_axis(...))` 会画一条**恒等**的次轴（
 ### 12.4 尚未对等（8 条）
 
 SIL-810 收掉了 `n.dodge` 进版式、`guide_axis_stack` 逐层累加、`cap=` 与直角
-坐标 `axis_theta`（共 5 条快照转绿）。剩下 8 条：
+坐标 `axis_theta`（共 5 条快照转绿）。SIL-817 收掉 `align facet labels,
+facets vertical`（1.61%：行 strip 右侧时轴标题的居中区、`reorder()` 只改
+factor levels 不改标度 limits）。剩下 7 条：
 
 | 卡点 | 影响 |
 | --- | --- |
-| `label_math()` 的 plotmath 标签 + 5cm 的次轴刻度长 | `guides with minor ticks` |
-| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×575.61、轴标题画在面板内） | `guide_axis_theta with angle`（28.1%）、`stacked radial axes` |
+| `label_math()` 的 plotmath 标签（次轴 5cm 刻度长已算对） | `guides with minor ticks`（移交 m3） |
+| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×575.61、轴标题画在面板内） | `guide_axis_theta with angle`（SIL-817 实测 48.97%） |
 | `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | `stacked radial axes`（现在直接抛 ValueError） |
-| `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation` |
-| `check_overlap` + 长标签的亚像素落点（保留集合已与 R 一致） | `check overlap`（3.62%）、`text dodged`（3.72%） |
-| 分面 + `reorder()` 的 38 个离散水平的逐面板 y 轴带 | 两条 `align facet labels`，属 G7 的 `facet-` 簇 |
+| `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation`（移交 m3） |
+| 裸 gtable 快照（`draw_axis()` 拼四条轴后 `plot()`）：三文件 case 只接 plot 规格 | `check overlap`、`text dodged`（近似图 3.62% / 3.72%）、`all legend keys` |
+| 长标签的亚像素落点（版面系数已对齐：15 个面板高、38 个 y 标签、标题位置逐点相同） | `align facet labels, facets horizontal`（2.05%，差 4 条面板边框的 1 px 落点） |

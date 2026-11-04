@@ -99,6 +99,7 @@ __all__ = [
     "DEFAULT_WIDTH_IN",
     "Box",
     "PlotLayout",
+    "axis_title_area",
     "plot_layout",
     "scene_from_build",
     "scene_from_plot",
@@ -213,6 +214,23 @@ class PlotLayout:
     @property
     def legend_height_cm(self) -> float:
         return sum(box.height_cm for box in self.legend_boxes)
+
+
+def axis_title_area(layout: PlotLayout) -> Box:
+    """轴标题（xlab / ylab）的横向 / 纵向落点区：**panel 单元格的并集**。
+
+    R 的 xlab / ylab 行只跨 panel 列 / 行；`facet_grid` 的行 strip 自带一列、
+    列 strip 自带一行，标题的中心不能把 strip 算进去（SIL-817：行 strip 在右侧
+    时 x 标题会右移半个 strip 宽）。没有面板时退回整个 `panel_area`。
+    """
+    area = layout.panel_area
+    if not layout.panel_boxes:
+        return area
+    left = min(box.x_cm for box in layout.panel_boxes.values())
+    right = max(box.right for box in layout.panel_boxes.values())
+    bottom = min(box.y_cm for box in layout.panel_boxes.values())
+    top = max(box.top for box in layout.panel_boxes.values())
+    return Box(left, bottom, right - left, top - bottom)
 
 
 def scene_from_plot(
@@ -1763,7 +1781,7 @@ def _axis_grobs(
                     name=f"axis-theta-{panel}",
                 )
             )
-    area = layout.panel_area
+    area = axis_title_area(layout)
     if x_title:
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
         grob = axis_title_grob(
