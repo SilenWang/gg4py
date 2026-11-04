@@ -1,0 +1,7 @@
+family = "geom-hline"
+features = ["aes-mapping", "coord-cartesian"]
+ci = true
+title = "cartesian lines intersect mid-bars"
+source = "upstream:tests/testthat/_snaps/geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：笛卡尔坐标下三条参考线穿过柱心 / 半高。"

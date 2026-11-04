@@ -963,12 +963,19 @@ def _split_by(values: np.ndarray) -> list[np.ndarray]:
 
 
 def _stat_summary(table: ColumnTable, params: Mapping[str, Any], *, flipped: bool) -> ColumnTable:
-    """`StatSummary$compute_panel()`：按 `(group, x)` 汇总。"""
+    """`StatSummary$compute_panel()`：按 `(group, x)` 汇总。
+
+    上游把「每个 `(group, x)` 切片内取值唯一」的列一并带回来
+    （`summarise_by_x()` 里的 `dapply(..., uniquecols)`），不是看整张表是否唯一
+    ——所以 `colour = factor(vs)` 这种**组内恒定、组间不同**的列必须留下，
+    否则图例 / 分组着色会在汇总后丢掉。
+    """
     summary = _summary_callable(params, "summary")
     work = _flip_table(table) if flipped else table
     groups = np.asarray(work.column("group").values).astype(np.int64)
     x_values = _numeric(work.column("x"))
     frames: list[list[tuple[str, Column]]] = []
+    carried: list[list[tuple[str, Any]]] = []
     for group_id in np.unique(groups):
         group_rows = np.flatnonzero(groups == group_id)
         for rows in _split_by(x_values[group_rows]):
@@ -981,6 +988,7 @@ def _stat_summary(table: ColumnTable, params: Mapping[str, Any], *, flipped: boo
             ]
             frame.extend(_summary_columns(output))
             frames.append(frame)
+            carried.append(_unique_columns(work, picked))
     if not frames:
         return _EMPTY
     names = [name for name, _ in frames[0]]
@@ -991,13 +999,37 @@ def _stat_summary(table: ColumnTable, params: Mapping[str, Any], *, flipped: boo
     for name, column in _items(work):
         if name in names:
             continue
-        values = _column_values(column)
-        if len({_freeze(value) for value in values.tolist()}) > 1:
+        values = [entry.get(name, _MISSING) for entry in carried]
+        if any(value is _MISSING for value in values):
             continue
-        columns.append((name, _repeat_constant(column, values[0], len(frames))))
+        columns.append((name, _repeat_constant_per_row(column, values)))
     columns.append(("flipped_aes", _bool_column([flipped] * len(frames))))
     result = ColumnTable(columns)
     return _flip_table(result) if flipped else result
+
+
+#: `_unique_columns()` 里「这一切片没有该列 / 取值不唯一」的哨兵。
+_MISSING: Any = object()
+
+
+def _unique_columns(table: ColumnTable, rows: np.ndarray) -> dict[str, Any]:
+    """一个 `(group, x)` 切片里取值唯一的列（R 的 `uniquecols()`）。"""
+    out: dict[str, Any] = {}
+    for name, column in _items(table):
+        values = _column_values(column)
+        present = [values[row] for row in rows.tolist()]
+        if not present:
+            continue
+        first = _freeze(present[0])
+        if all(_freeze(value) == first for value in present):
+            out[name] = present[0]
+    return out
+
+
+def _repeat_constant_per_row(column: Column, values: Sequence[Any]) -> Column:
+    """逐切片恒定的取值 → 展开成 `len(values)` 行（每个切片取自己的值）。"""
+    parts = [_repeat_constant(column, value, 1) for value in values]
+    return _concat(parts)
 
 
 def _stat_summary_bin(
@@ -1123,8 +1155,21 @@ def _repeat_constant(column: Column, value: Any, nrows: int) -> Column:
     if column.kind == "str":
         return _str_column([str(value)] * nrows)
     if column.kind == "categorical":
+        # `_column_values()` 对 categorical 返回的是 **level 字符串**（不是 code），
+        # 所以这里要回查 levels 拿下标；直接 `int(value)` 会在分类数据上抛
+        # ValueError（SIL-806 复审抓到的回归）。
+        levels = tuple(column.levels or ())
+        if value is None or value not in levels:
+            return Column(
+                "categorical",
+                np.full(nrows, -1, dtype=np.int32),
+                levels=column.levels,
+                na_mask=np.ones(nrows, dtype=bool),
+            )
         return Column(
-            "categorical", np.full(nrows, int(value), dtype=np.int32), levels=column.levels
+            "categorical",
+            np.full(nrows, levels.index(value), dtype=np.int32),
+            levels=column.levels,
         )
     if column.kind == "bool":
         return _bool_column([bool(value)] * nrows)

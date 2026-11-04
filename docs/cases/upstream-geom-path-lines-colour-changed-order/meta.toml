@@ -1,0 +1,6 @@
+family = "geom-path"
+features = ["aes-mapping", "aes-grouping", "sort-order", "colour-aes"]
+ci = true
+title = "lines, colour, changed order, should have same appearance"
+source = "upstream:tests/testthat/_snaps/geom-path/lines-colour-changed-order-should-have-same-appearance.svg"
+notes = "SIL-795：colour 映射 + 行序打乱，外观与上一条相同。"

@@ -1,0 +1,7 @@
+family = "geom-label"
+features = ["aes-mapping", "colour-aes", "label-background", "line-type", "scale-size"]
+ci = true
+title = "geom_label with line parameters"
+source = "upstream:tests/testthat/_snaps/geom-label/geom-label-with-line-parameters.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`border.colour` / `text.colour` / 虚线框与 `scale_linewidth(range=)`。"

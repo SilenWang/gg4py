@@ -1,0 +1,7 @@
+family = "geom-boxplot"
+features = ["aes-mapping", "colour-aes", "stat-boxplot"]
+ci = true
+title = "outlier colours"
+source = "upstream:tests/testthat/_snaps/geom-boxplot/outlier-colours.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`outlier.size = 5` 的离群点。"

@@ -1,0 +1,7 @@
+family = "geom-bar"
+features = ["aes-mapping", "stat-count"]
+ci = true
+title = "stat='count', width=0.5"
+source = "upstream:tests/testthat/_snaps/aes/stat-count-width-0-5.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_bar(stat=\"count\" width=0.5)` 的柱宽 / 计数语义。"

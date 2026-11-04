@@ -321,7 +321,10 @@ M2-6 的 14 个 stat 在 `src/ggcore/stat_longtail.py`，派发仍从
 - `fun.args` 是映射，作为额外关键字参数传给汇总函数；点号参数在 Python 里也
   可以写成下划线（`fun_data` / `fun_min` / `fun_max` / `fun_args`）。
 - `stat_summary` 按 `(group, x)` 汇总，x 升序；输出
-  `x, group, y, ymin, ymax` + 组内恒定列 + `flipped_aes`。
+  `x, group, y, ymin, ymax` + 组内恒定列 + `flipped_aes`。**「组内恒定」按每个
+  `(group, x)` 切片判**（上游 `summarise_by_x()` 的 `dapply(..., uniquecols)`），
+  所以 `colour = factor(vs)` 这种组间不同、组内一致的列会带进汇总结果——否则
+  `geom_smooth(stat = "summary")` 的折线 / 带子会丢分组着色（SIL-795）。
 - `stat_summary_bin` 先按 `bins` / `binwidth` / `breaks`（与 `stat_bin` 同一套
   `_compute_bins()`）分箱，`bin` 列是 R 的 `cut()` 区间文本（`dig.lab = 3`
   起跳，格式与 `formatC()` 一致），`x` 取箱中心、`width` 取箱宽。

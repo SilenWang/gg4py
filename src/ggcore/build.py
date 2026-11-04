@@ -41,6 +41,7 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 from __future__ import annotations
 
 import ast
+import math
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
@@ -718,14 +719,19 @@ def _aes_params(layer: Layer) -> dict[str, Any]:
 
 
 def _value_column(value: Any, nrows: int) -> Column:
-    """层参数的取值 → 列：标量 / 长度 1 广播，长度 n 逐行，`None` 整列缺失。"""
+    """层参数的取值 → 列：标量 / 长度 1 广播，长度 n 逐行，`None` 整列缺失。
+
+    `NaN` 也算缺失：R 的 `geom_path(linetype = NA)` 走 `Geom$use_defaults()`
+    把 `NA` 写进已有的 `linetype` 列，绘制期 `handle_na()` 再按
+    `non_missing_aes` 把整行删掉（`test-geom-path.R` 的 "NA linetype"）。
+    """
     if value is None:
         return _default_column(None, nrows)
     if isinstance(value, (bool, np.bool_, str)):
         return _default_column(value, nrows)
     if isinstance(value, (int, float, np.integer, np.floating)):
         # R 的 aes 参数是 double（`geom_point(size = 3)` 的 size 是 3，不是 3L）。
-        return Column("float", np.full(nrows, float(value)))
+        return _float_column_or_missing(float(value), nrows)
     array = np.asarray(value)
     if array.ndim == 0:
         return _default_column(array.item(), nrows)
@@ -822,6 +828,13 @@ def _width(layer: Layer, table: ColumnTable) -> np.ndarray | float:
     if "width" in layer.params:
         return float(layer.params["width"])
     return float(layer.geom.default_aes.get("width", 0.9))
+
+
+def _float_column_or_missing(value: float, nrows: int) -> Column:
+    """标量 double → 列；`NaN` 落成整列缺失（R 的 `NA_real_`）。"""
+    if math.isnan(value):
+        return Column("float", np.zeros(nrows), na_mask=np.ones(nrows, dtype=bool))
+    return Column("float", np.full(nrows, value))
 
 
 def _default_column(value: Any, nrows: int) -> Column:

@@ -1,0 +1,7 @@
+family = "geom-polygon"
+features = ["aes-mapping", "aes-grouping", "coord-polar"]
+ci = true
+title = "open and closed munched polygons"
+source = "upstream:tests/testthat/_snaps/geom-polygon/open-and-closed-munched-polygons.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`coord_munch(is_closed=)` 的闭合 / 不闭合两条磨后多边形。"

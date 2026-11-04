@@ -16,7 +16,7 @@
 [groups.aes]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`aes()` 的 stat 侧参数（`stat_count(width=)` / `aes(alpha=)`）在我们的语法层没有逐条复刻。"
+reason = "SIL-795 已全部纳管 6 条：`geom_bar(stat=\"identity\"|\"count\", width=)` 的柱宽语义与 `I()` 恒等色 / 透明度。其中 `col <- runif`、`stat_count` 的 `prop` 列沿用既有实现。"
 
 [groups.annotate]
 issue = "SIL-715"
@@ -81,12 +81,12 @@ reason = "`facet_wrap(switch=)` 的 strip 换边未复刻。"
 [groups."geom-boxplot"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "箱线图自定义样式 / 异常值颜色 / staples 未逐条复刻。"
+reason = "SIL-795 已全部纳管 3 条：`staplewidth`（须帽两段 + `staple.*`）、`outlier.size`、以及 `whisker.linetype` / `median.colour` / `box.colour` 的逐元素 gp 覆盖。"
 
 [groups."geom-curve"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`geom_curve()` 的翻转（`coord_flip`）未复刻。"
+reason = "SIL-795 已全部纳管 2 条：`geom_curve(arrow = arrow())` 与配 `scale_y_reverse()` 的翻转（R 侧 doppelganger 叫 flipped，实现是反向 y 标度而不是 `coord_flip()`）。"
 
 [groups."geom-dotplot"]
 issue = "SIL-787"
@@ -96,27 +96,27 @@ reason = "dotplot 的 35 条已全部纳管（SIL-787）；新增快照先落到
 [groups."geom-hex"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`geom_hex()` 与极坐标 / 变换轴组合未复刻。"
+reason = "SIL-795 纳管 1 条（`binwidth = c(0.1, 0.1)` 的单箱）；剩 2 条与极坐标 / 变换轴组合，卡在「stat 之后重训位置标度」这一流水线口径（单条 reason 见下）。画法已按上游改成逐顶点 `coord$transform()`（不做 `coord_munch()` 细分）。"
 
 [groups."geom-hline-vline-abline"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "hline/vline/abline 在极坐标与 map 坐标下的曲线化未复刻（M3-2 空间 + 极坐标裁剪）。"
+reason = "SIL-795 纳管 3 条（cartesian / flipped / polar：极坐标下参考线被 munch 成圆弧）；剩 2 条 map 投影（mercator / azequalarea）要 `coord_map()` 的投影核，归 M3-2（单条 reason 见下）。"
 
 [groups."geom-label"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`geom_label()` 的线段参数（`label.size` / `label.padding` 与线段共形）未复刻。"
+reason = "SIL-795 已纳管 1 条：`border.colour` / `text.colour` 与虚线框（`linetype`）、`scale_linewidth(range =)` 的逐行线宽都走通了。"
 
 [groups."geom-path"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "path 的绘制顺序与 NA 线型未逐条复刻。"
+reason = "SIL-795 已全部纳管 5 条：分组排序（换行序外观不变）、`colour = item` 的默认色板、以及 `linetype = NA` 的删行。"
 
 [groups."geom-polygon"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "munched polygon（`coord_munch` 后的闭合多边形）未复刻。"
+reason = "SIL-795 已全部纳管 2 条：`group`/`subgroup` 两个闭合多边形，以及极坐标 `coord_munch(is_closed =)` 的闭合 / 不闭合对照。"
 
 [groups."geom-raster"]
 issue = "SIL-794"
@@ -131,12 +131,12 @@ reason = "空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-col
 [groups."geom-smooth"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`geom_smooth()` 的 ribbon 开关未逐条复刻。"
+reason = "SIL-795 已全部纳管 2 条：`geom_smooth(stat = \"summary\", fun.data = mean_se)` 的带子开 / 关（`se = FALSE`）。根因是 `stat_summary` 没把组内恒定的 `colour`/`fill` 带回汇总结果。"
 
 [groups."geom-text"]
 issue = "SIL-715"
 owner = "m3"
-reason = "plotmath 表达式标签（`expression()`）未支持。"
+reason = "SIL-795 未纳管 1 条：plotmath 表达式排版（`expression()`）未支持，逐 glyph 的希腊字母 / 上下标 / 根号笔画都要 R 的 plotmath 引擎（单条 reason 见下）。"
 
 [groups."geom-violin"]
 issue = "SIL-794"
@@ -181,7 +181,7 @@ reason = "pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器�
 [groups."position-stack"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`position_stack()` 的 area 堆叠未复刻。"
+reason = "SIL-795 已纳管 1 条：`geom_area(stat = \"identity\")` 的默认堆叠（含正负分开堆）。"
 
 [groups.scale_date]
 issue = "SIL-715"
@@ -201,12 +201,12 @@ reason = "SIL-793 已把 7 条全部纳管：division / 幂变换 / 单调性 / 
 [groups."stat-align"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`stat_align()` 的两段面积 cliff / pos-neg 未复刻。"
+reason = "SIL-795 已全部纳管 3 条：普通两段对齐、cliff（同一 x 重复点）、以及正负 y 的对齐。"
 
 [groups."stat-sum"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`stat_sum()` 的 crossbar 汇总未复刻。"
+reason = "SIL-795 已全部纳管 3 条（名字是 `stat_sum`，快照实际来自 `stat_summary()`）：分组均值折线与两组 `geom = \"crossbar\"`。"
 
 [groups.theme]
 issue = "SIL-715"
@@ -1005,3 +1005,127 @@ reason = "SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8,
 [snapshots."patterns/pattern-fills-through-scale.svg"]
 reason = "SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。"
 
+# ---------------------------------------------------------------------------
+# G7a（SIL-795）：小簇 A 的 37 条几何 / stat 快照
+#
+# 32 条已纳管（逐字节快照 + 三文件 case，`cases:matrix` 跑渲染与像素对拍）；
+# 剩 5 条是真实能力缺口，逐条 reason 见本节末尾：
+#   - `geom-hex` 的 2 条（极坐标 / sqrt 轴）：卡在「stat 之后重训位置标度」的口径
+#   - `geom-hline-vline-abline` 的 2 条 map 投影（mercator / azequalarea）
+#   - `geom-text` 的 1 条 plotmath 表达式排版
+# ---------------------------------------------------------------------------
+
+[snapshots."aes/alpha-set-in-alpha.svg"]
+case = "upstream-aes-alpha-set-in-alpha"
+
+[snapshots."aes/alpha-set-in-colour.svg"]
+case = "upstream-aes-alpha-set-in-colour"
+
+[snapshots."aes/stat-count-width-0-5.svg"]
+case = "upstream-aes-stat-count-width"
+
+[snapshots."aes/stat-count.svg"]
+case = "upstream-aes-stat-count"
+
+[snapshots."aes/stat-identity-width-0-5.svg"]
+case = "upstream-aes-stat-identity-width"
+
+[snapshots."aes/stat-identity.svg"]
+case = "upstream-aes-stat-identity"
+
+[snapshots."geom-boxplot/customised-style.svg"]
+case = "upstream-geom-boxplot-customised-style"
+
+[snapshots."geom-boxplot/outlier-colours.svg"]
+case = "upstream-geom-boxplot-outlier-colours"
+
+[snapshots."geom-boxplot/staples.svg"]
+case = "upstream-geom-boxplot-staples"
+
+[snapshots."geom-curve/flipped-geom-curve.svg"]
+case = "upstream-geom-curve-flipped"
+
+[snapshots."geom-curve/standard-geom-curve.svg"]
+case = "upstream-geom-curve-standard"
+
+[snapshots."geom-hex/hex-bin-plot-in-polar-coordinates.svg"]
+reason = 'SIL-795 未纳管：`geom_hex()` + `coord_polar()` 实测 6.9%（门槛 2%）。画法已按上游改成逐顶点 `coord$transform()`，剩余差异来自面板范围——R 4.0.3 在 `layout$reset_scales()` 之后**用 stat 之后的数据重训位置标度**（`plot-build.R` 的第二次 `train_position()`），所以 `geom_hex` 的 x/y range 是六边形中心的范围（`displ` 1.53..6.93），而本仓两段训练是累加的（首段含原始数据 1.6..7.0）。改成「重训」会连带改变 bar / path 等已纳管快照的成图（试过：`aes-stat-count` 从 0.5% 掉到 14.6%），属于流水线级改动，留待单独立项。'
+
+[snapshots."geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg"]
+reason = 'SIL-795 未纳管：同 `hex bin plot in polar coordinates`——同一处「stat 之后重训位置标度」的差异（实测 12.1%，`coord_transform(y = "sqrt")` 只是把偏差放大）。六边形分箱、计数与颜色本身已与 R 逐值相同（111 个 bin 的 x/y/count/density/fill 全等），差的只是面板范围。'
+
+[snapshots."geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg"]
+case = "upstream-geom-hex-single-bin"
+
+[snapshots."geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg"]
+case = "upstream-geom-hline-vline-cartesian"
+
+[snapshots."geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg"]
+case = "upstream-geom-hline-vline-flipped"
+
+[snapshots."geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg"]
+case = "upstream-geom-hline-vline-polar"
+
+[snapshots."geom-label/geom-label-with-line-parameters.svg"]
+case = "upstream-geom-label-line-parameters"
+
+[snapshots."geom-path/lines-changed-order-should-have-same-appearance.svg"]
+case = "upstream-geom-path-lines-changed-order"
+
+[snapshots."geom-path/lines-colour-changed-order-should-have-same-appearance.svg"]
+case = "upstream-geom-path-lines-colour-changed-order"
+
+[snapshots."geom-path/lines-colour.svg"]
+case = "upstream-geom-path-lines-colour"
+
+[snapshots."geom-path/lines.svg"]
+case = "upstream-geom-path-lines"
+
+[snapshots."geom-path/na-linetype.svg"]
+case = "upstream-geom-path-na-linetype"
+
+[snapshots."geom-polygon/basic-polygon-plot.svg"]
+case = "upstream-geom-polygon-basic"
+
+[snapshots."geom-polygon/open-and-closed-munched-polygons.svg"]
+case = "upstream-geom-polygon-munched"
+
+[snapshots."geom-smooth/ribbon-turned-off-in-geom-smooth.svg"]
+case = "upstream-geom-smooth-ribbon-off"
+
+[snapshots."geom-smooth/ribbon-turned-on-in-geom-smooth.svg"]
+case = "upstream-geom-smooth-ribbon-on"
+
+[snapshots."position-stack/area-stacking.svg"]
+case = "upstream-position-stack-area"
+
+[snapshots."stat-align/align-two-areas-with-cliff.svg"]
+case = "upstream-stat-align-areas-cliff"
+
+[snapshots."stat-align/align-two-areas-with-pos-neg-y.svg"]
+case = "upstream-stat-align-areas-pos-neg"
+
+[snapshots."stat-align/align-two-areas.svg"]
+case = "upstream-stat-align-areas"
+
+[snapshots."stat-sum/summary-with-color-and-lines.svg"]
+case = "upstream-stat-summary-colour-lines"
+
+[snapshots."stat-sum/summary-with-crossbars-manual-grouping.svg"]
+case = "upstream-stat-summary-crossbars-grouped"
+
+[snapshots."stat-sum/summary-with-crossbars-no-grouping.svg"]
+case = "upstream-stat-summary-crossbars"
+
+# 未纳管的 5 条（卡点见各条 reason；hex 两条在上面的分组里已按路径单列）
+
+[snapshots."geom-hline-vline-abline/lines-curved-in-azequalarea.svg"]
+owner = "m3"
+reason = 'SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。'
+
+[snapshots."geom-hline-vline-abline/straight-lines-in-mercator.svg"]
+owner = "m3"
+reason = 'SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。'
+
+[snapshots."geom-text/geom-text-with-expressions.svg"]
+reason = 'SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 plotmath 排版（希腊字母 + 上下标 + 根号笔画，逐 glyph 定位、字号 0.7 倍、根号是 path）。本仓的文本层只吃纯文本，没有 plotmath 解析与排版，`geom_text()` 也没有 `parse = TRUE`。'

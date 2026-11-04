@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "stat-summary", "aes-grouping"]
+ci = true
+title = "summary with crossbars, manual grouping"
+source = "upstream:tests/testthat/_snaps/stat-sum/summary-with-crossbars-manual-grouping.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：交叉线 + 显式 `group = cyl`（结果与不分组相同，是为了锁住行为）。"

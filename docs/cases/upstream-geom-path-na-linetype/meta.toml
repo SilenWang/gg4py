@@ -1,0 +1,7 @@
+family = "geom-path"
+features = ["line-type", "na-removal"]
+ci = true
+title = "上游快照：NA linetype"
+source = "upstream:tests/testthat/_snaps/geom-path/na-linetype.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：linetype=NA 的行被丢弃（R 侧同时发 warning），只剩轴与面板。"

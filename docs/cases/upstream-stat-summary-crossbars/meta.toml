@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "stat-summary"]
+ci = true
+title = "summary with crossbars, no grouping"
+source = "upstream:tests/testthat/_snaps/stat-sum/summary-with-crossbars-no-grouping.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`stat_summary(fun.data = mean_se, geom = \"crossbar\")`。"

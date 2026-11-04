@@ -594,7 +594,12 @@ class HexRenderer(GeomRenderer):
                 for ox, oy in zip(offsets_x, offsets_y, strict=True):
                     poly_x.append(float(x[index]) + ox)
                     poly_y.append(float(y[index]) + oy)
-            px, py, ids = munch_xy(panel, poly_x, poly_y, [0] * len(poly_x), closed=True)
+            # 上游 `GeomHex$draw_group()` 用的是 `coord$transform()`（**逐个顶点**
+            # 投影，不做 `coord_munch()` 的细分）：六边形的边在非线性坐标下仍是
+            # 直线，而不是弧。`id.lengths = rep.int(6, n)` 也说明每个六边形是
+            # 独立的多边形。
+            px, py = panel.project_xy(np.asarray(poly_x), np.asarray(poly_y))
+            ids = [(position // 6) + 1 for position in range(len(poly_x))]
             polygons.append(
                 polygon_grob(
                     px.tolist(),

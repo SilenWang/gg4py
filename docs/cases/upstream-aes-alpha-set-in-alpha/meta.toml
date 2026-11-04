@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "colour-aes", "alpha-aes"]
+ci = true
+title = "Alpha set in alpha"
+source = "upstream:tests/testthat/_snaps/aes/alpha-set-in-alpha.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：恒等标度下的颜色 / 透明度（Alpha set in alpha）。"

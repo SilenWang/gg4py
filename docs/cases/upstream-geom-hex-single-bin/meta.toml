@@ -1,0 +1,7 @@
+family = "geom-hex"
+features = ["aes-mapping", "bin-hex"]
+ci = true
+title = "single hex bin with width and height of 0.1"
+source = "upstream:tests/testthat/_snaps/geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`binwidth = c(0.1, 0.1)` 的单个六边形 + 显式 `coord_cartesian` limits。"

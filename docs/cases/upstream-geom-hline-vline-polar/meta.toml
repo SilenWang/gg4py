@@ -1,0 +1,7 @@
+family = "geom-hline"
+features = ["aes-mapping", "coord-polar"]
+ci = true
+title = "polar lines intersect mid-bars"
+source = "upstream:tests/testthat/_snaps/geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：极坐标下三条参考线被 munch 成圆弧（hline/abline 是圆、vline 是射线）。"

@@ -1,0 +1,7 @@
+family = "geom-point"
+features = ["aes-mapping", "colour-aes", "stat-summary"]
+ci = true
+title = "summary with color and lines"
+source = "upstream:tests/testthat/_snaps/stat-sum/summary-with-color-and-lines.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`stat_summary(fun = mean, geom = \"line\")` 的分组均值折线。"

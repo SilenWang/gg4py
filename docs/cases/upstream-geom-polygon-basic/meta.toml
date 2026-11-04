@@ -1,0 +1,7 @@
+family = "geom-polygon"
+features = ["aes-mapping", "aes-grouping"]
+ci = true
+title = "basic polygon plot"
+source = "upstream:tests/testthat/_snaps/geom-polygon/basic-polygon-plot.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：group/subgroup 两个闭合多边形（group 1 的 8 行拆成两个 subgroup）。"

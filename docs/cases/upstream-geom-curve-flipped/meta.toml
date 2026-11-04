@@ -1,0 +1,7 @@
+family = "geom-curve"
+features = ["aes-mapping", "coord-flip"]
+ci = true
+title = "flipped geom_curve"
+source = "upstream:tests/testthat/_snaps/geom-curve/flipped-geom-curve.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-795：`geom_curve(arrow = arrow())` 的 y 轴反转。"

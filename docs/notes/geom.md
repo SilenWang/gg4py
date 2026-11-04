@@ -179,7 +179,7 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 | `geom_crossbar(notch)` / 缺口 | 无 IR 表达 → `GeomError` | 后续 |
 | `geom_map` 的投影 / 地图数据 | 只做「map 表 + map_id」的最小可用 | 归 M3-2 |
 | `geom_boxplot(notch = TRUE)` | 无 IR 表达（缺口多边形）→ `GeomError` | 后续 |
-| `geom_boxplot(staplewidth != 0)` | 无 IR 表达（须帽）→ `GeomError` | 后续 |
+| `geom_boxplot(staplewidth != 0)` | 已实现（SIL-795）：须帽是两条 `segments`，宽度 = 箱宽 × `staplewidth`；`whisker.* / staple.* / median.* / box.* / outlier.*` 的逐元素 gp 覆盖同上游 | 无 |
 | 逐点 `size` / 逐点 `pch` | IR 的 `points.size` / `pch` 是标量；绘制层按 `(pch,size)` 分组画多个节点 | 视觉等价，节点数更多 |
 | 逐行 `angle` / `hjust` / `vjust`（text） | IR 的 text 参数是单值；按 `(hjust, vjust, angle)` 分组画多个 text grob | 视觉等价，节点数更多 |
 | `geom_label` 的圆角（`label.r`） | IR 没有 roundrect 节点 → 方角矩形（默认 0.15 lines ≈ 2pt）；`angle != 0` 时背景随 box + text 一起旋转（SIL-765） | 后续 IR schema 扩展 |

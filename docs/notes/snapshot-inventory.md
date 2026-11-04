@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**210**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**101**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **68** 条（M3 开工前归零） / `m3` **33** 条（移交 M3）
+- 已纳管：**242**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**69**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **34** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -16,43 +16,43 @@
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `theme` | m2-closeout | 39 | 31 | 8 |
-| `aes` | m2-closeout | 6 | 0 | 6 |
-| `geom-hline-vline-abline` | m2-closeout | 5 | 0 | 5 |
-| `geom-path` | m2-closeout | 5 | 0 | 5 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `draw-key` | m2-closeout | 6 | 2 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
-| `geom-boxplot` | m2-closeout | 3 | 0 | 3 |
-| `geom-hex` | m2-closeout | 3 | 0 | 3 |
-| `stat-align` | m2-closeout | 3 | 0 | 3 |
-| `stat-sum` | m2-closeout | 3 | 0 | 3 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `facet-labels` | m2-closeout | 2 | 0 | 2 |
-| `geom-curve` | m2-closeout | 2 | 0 | 2 |
-| `geom-polygon` | m2-closeout | 2 | 0 | 2 |
-| `geom-smooth` | m2-closeout | 2 | 0 | 2 |
+| `geom-hex` | m2-closeout | 3 | 1 | 2 |
+| `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
 | `guide-legend` | m2-closeout | 7 | 5 | 2 |
 | `facet-` | m2-closeout | 4 | 3 | 1 |
 | `facet-strips` | m2-closeout | 1 | 0 | 1 |
-| `geom-label` | m2-closeout | 1 | 0 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
-| `position-stack` | m2-closeout | 1 | 0 | 1 |
+| `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
+| `geom-boxplot` | m2-closeout | 3 | 3 | 0 |
+| `geom-curve` | m2-closeout | 2 | 2 | 0 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
+| `geom-label` | m2-closeout | 1 | 1 | 0 |
+| `geom-path` | m2-closeout | 5 | 5 | 0 |
+| `geom-polygon` | m2-closeout | 2 | 2 | 0 |
 | `geom-raster` | m2-closeout | 12 | 12 | 0 |
+| `geom-smooth` | m2-closeout | 2 | 2 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `labels` | m2-closeout | 6 | 6 | 0 |
+| `position-stack` | m2-closeout | 1 | 1 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
-| **合计** | — | 311 | 210 | 101 |
+| `stat-align` | m2-closeout | 3 | 3 | 0 |
+| `stat-sum` | m2-closeout | 3 | 3 | 0 |
+| **合计** | — | 311 | 242 | 69 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -60,6 +60,12 @@
 
 | 快照 | case |
 | --- | --- |
+| `aes/alpha-set-in-alpha.svg` | `upstream-aes-alpha-set-in-alpha` |
+| `aes/alpha-set-in-colour.svg` | `upstream-aes-alpha-set-in-colour` |
+| `aes/stat-count-width-0-5.svg` | `upstream-aes-stat-count-width` |
+| `aes/stat-count.svg` | `upstream-aes-stat-count` |
+| `aes/stat-identity-width-0-5.svg` | `upstream-aes-stat-identity-width` |
+| `aes/stat-identity.svg` | `upstream-aes-stat-identity` |
 | `coord-cartesian/clip-on-by-default-only-inside-visible.svg` | `upstream-coord-cartesian-clip-on` |
 | `coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg` | `upstream-coord-cartesian-clip-off` |
 | `coord-cartesian/contract-range.svg` | `upstream-coord-cartesian-contract-range` |
@@ -82,6 +88,11 @@
 | `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
 | `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
 | `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg` | `upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout` |
+| `geom-boxplot/customised-style.svg` | `upstream-geom-boxplot-customised-style` |
+| `geom-boxplot/outlier-colours.svg` | `upstream-geom-boxplot-outlier-colours` |
+| `geom-boxplot/staples.svg` | `upstream-geom-boxplot-staples` |
+| `geom-curve/flipped-geom-curve.svg` | `upstream-geom-curve-flipped` |
+| `geom-curve/standard-geom-curve.svg` | `upstream-geom-curve-standard` |
 | `geom-dotplot/2-na-values-bin-along-y-stack-center.svg` | `upstream-geom-dotplot-2-na-bin-along-y` |
 | `geom-dotplot/2-na-values-dot-density-binning-binwidth-4.svg` | `upstream-geom-dotplot-2-na-dotdensity` |
 | `geom-dotplot/3-stackgroups-bin-y-histodot.svg` | `upstream-geom-dotplot-3-stackgroups-bin-y-histodot` |
@@ -117,6 +128,18 @@
 | `geom-dotplot/stack-up.svg` | `upstream-geom-dotplot-stack-up` |
 | `geom-dotplot/stackratio-1-5.svg` | `upstream-geom-dotplot-stackratio-1-5` |
 | `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg` | `upstream-geom-dotplot-variable-linetype-size` |
+| `geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg` | `upstream-geom-hex-single-bin` |
+| `geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-cartesian` |
+| `geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-flipped` |
+| `geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-polar` |
+| `geom-label/geom-label-with-line-parameters.svg` | `upstream-geom-label-line-parameters` |
+| `geom-path/lines-changed-order-should-have-same-appearance.svg` | `upstream-geom-path-lines-changed-order` |
+| `geom-path/lines-colour-changed-order-should-have-same-appearance.svg` | `upstream-geom-path-lines-colour-changed-order` |
+| `geom-path/lines-colour.svg` | `upstream-geom-path-lines-colour` |
+| `geom-path/lines.svg` | `upstream-geom-path-lines` |
+| `geom-path/na-linetype.svg` | `upstream-geom-path-na-linetype` |
+| `geom-polygon/basic-polygon-plot.svg` | `upstream-geom-polygon-basic` |
+| `geom-polygon/open-and-closed-munched-polygons.svg` | `upstream-geom-polygon-munched` |
 | `geom-raster/1-x-3-just-0-0.svg` | `upstream-geom-raster-1-x-3-just-0-0` |
 | `geom-raster/1-x-3-set-limits.svg` | `upstream-geom-raster-1-x-3-set-limits` |
 | `geom-raster/1-x-3.svg` | `upstream-geom-raster-1-x-3` |
@@ -129,6 +152,8 @@
 | `geom-raster/discrete-positions.svg` | `upstream-geom-raster-discrete-positions` |
 | `geom-raster/irregular-categorical.svg` | `upstream-geom-raster-irregular-categorical` |
 | `geom-raster/rectangle-fallback.svg` | `upstream-geom-raster-rectangle-fallback` |
+| `geom-smooth/ribbon-turned-off-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-off` |
+| `geom-smooth/ribbon-turned-on-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-on` |
 | `geom-violin/basic.svg` | `upstream-geom-violin-basic` |
 | `geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg` | `upstream-geom-violin-continuous-x-axis-many-groups` |
 | `geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg` | `upstream-geom-violin-continuous-x-axis-single-group` |
@@ -211,6 +236,7 @@
 | `labels/tag-in-panel-as-numeric.svg` | `upstream-labels-tag-in-panel-as-numeric` |
 | `labels/tag-in-plot-as-character.svg` | `upstream-labels-tag-in-plot-as-character` |
 | `labels/tag-in-plot-as-numeric.svg` | `upstream-labels-tag-in-plot-as-numeric` |
+| `position-stack/area-stacking.svg` | `upstream-position-stack-area` |
 | `scale_date/dates-along-x-default-breaks.svg` | `upstream-scale-date-dates-along-x-default-breaks` |
 | `scale_date/dates-along-y-default-breaks.svg` | `upstream-scale-date-dates-along-y-default-breaks` |
 | `scale_date/scale-x-date-breaks-3-weeks.svg` | `upstream-scale-date-scale-x-date-breaks-3-weeks` |
@@ -239,6 +265,12 @@
 | `sec-axis/sec-axis-sec-power-transform.svg` | `upstream-sec-axis-power` |
 | `sec-axis/sec-axis-skewed-transform.svg` | `upstream-sec-axis-skewed` |
 | `sec-axis/sec-axis-with-division.svg` | `upstream-sec-axis-with-division` |
+| `stat-align/align-two-areas-with-cliff.svg` | `upstream-stat-align-areas-cliff` |
+| `stat-align/align-two-areas-with-pos-neg-y.svg` | `upstream-stat-align-areas-pos-neg` |
+| `stat-align/align-two-areas.svg` | `upstream-stat-align-areas` |
+| `stat-sum/summary-with-color-and-lines.svg` | `upstream-stat-summary-colour-lines` |
+| `stat-sum/summary-with-crossbars-manual-grouping.svg` | `upstream-stat-summary-crossbars-grouped` |
+| `stat-sum/summary-with-crossbars-no-grouping.svg` | `upstream-stat-summary-crossbars` |
 | `theme/axes-styling.svg` | `upstream-theme-axes-styling` |
 | `theme/caption-aligned-to-entire-plot.svg` | `upstream-theme-caption-aligned-to-entire-plot` |
 | `theme/height-is-3-times-width-2-column-facets.svg` | `upstream-theme-height-is-3-times-width-2-column-facets` |
@@ -272,21 +304,6 @@
 | `theme/width-is-3-times-height.svg` | `upstream-theme-width-is-3-times-height` |
 
 ## 已知缺口
-
-### `aes` — 6 条 · SIL-715 · m2-closeout
-
-`aes()` 的 stat 侧参数（`stat_count(width=)` / `aes(alpha=)`）在我们的语法层没有逐条复刻。
-
-<details><summary>快照</summary>
-
-- `aes/alpha-set-in-alpha.svg`
-- `aes/alpha-set-in-colour.svg`
-- `aes/stat-count-width-0-5.svg`
-- `aes/stat-count.svg`
-- `aes/stat-identity-width-0-5.svg`
-- `aes/stat-identity.svg`
-
-</details>
 
 ### `annotate` — 2 条 · SIL-715 · m3
 
@@ -448,87 +465,43 @@ SIL-796：`facet_grid(switch = "both")` 未实现——strip 仍固定在顶部 
 
 </details>
 
-### `geom-boxplot` — 3 条 · SIL-715 · m2-closeout
+### `geom-hex` — 1 条 · SIL-715 · m2-closeout
 
-箱线图自定义样式 / 异常值颜色 / staples 未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `geom-boxplot/customised-style.svg`
-- `geom-boxplot/outlier-colours.svg`
-- `geom-boxplot/staples.svg`
-
-</details>
-
-### `geom-curve` — 2 条 · SIL-715 · m2-closeout
-
-`geom_curve()` 的翻转（`coord_flip`）未复刻。
-
-<details><summary>快照</summary>
-
-- `geom-curve/flipped-geom-curve.svg`
-- `geom-curve/standard-geom-curve.svg`
-
-</details>
-
-### `geom-hex` — 3 条 · SIL-715 · m2-closeout
-
-`geom_hex()` 与极坐标 / 变换轴组合未复刻。
+SIL-795 未纳管：`geom_hex()` + `coord_polar()` 实测 6.9%（门槛 2%）。画法已按上游改成逐顶点 `coord$transform()`，剩余差异来自面板范围——R 4.0.3 在 `layout$reset_scales()` 之后**用 stat 之后的数据重训位置标度**（`plot-build.R` 的第二次 `train_position()`），所以 `geom_hex` 的 x/y range 是六边形中心的范围（`displ` 1.53..6.93），而本仓两段训练是累加的（首段含原始数据 1.6..7.0）。改成「重训」会连带改变 bar / path 等已纳管快照的成图（试过：`aes-stat-count` 从 0.5% 掉到 14.6%），属于流水线级改动，留待单独立项。
 
 <details><summary>快照</summary>
 
 - `geom-hex/hex-bin-plot-in-polar-coordinates.svg`
+
+</details>
+
+### `geom-hex` — 1 条 · SIL-715 · m2-closeout
+
+SIL-795 未纳管：同 `hex bin plot in polar coordinates`——同一处「stat 之后重训位置标度」的差异（实测 12.1%，`coord_transform(y = "sqrt")` 只是把偏差放大）。六边形分箱、计数与颜色本身已与 R 逐值相同（111 个 bin 的 x/y/count/density/fill 全等），差的只是面板范围。
+
+<details><summary>快照</summary>
+
 - `geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg`
-- `geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg`
 
 </details>
 
-### `geom-hline-vline-abline` — 5 条 · SIL-715 · m2-closeout
+### `geom-hline-vline-abline` — 1 条 · SIL-715 · m3
 
-hline/vline/abline 在极坐标与 map 坐标下的曲线化未复刻（M3-2 空间 + 极坐标裁剪）。
+SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。
 
 <details><summary>快照</summary>
 
-- `geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg`
-- `geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg`
 - `geom-hline-vline-abline/lines-curved-in-azequalarea.svg`
-- `geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg`
+
+</details>
+
+### `geom-hline-vline-abline` — 1 条 · SIL-715 · m3
+
+SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。
+
+<details><summary>快照</summary>
+
 - `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>
-
-### `geom-label` — 1 条 · SIL-715 · m2-closeout
-
-`geom_label()` 的线段参数（`label.size` / `label.padding` 与线段共形）未复刻。
-
-<details><summary>快照</summary>
-
-- `geom-label/geom-label-with-line-parameters.svg`
-
-</details>
-
-### `geom-path` — 5 条 · SIL-715 · m2-closeout
-
-path 的绘制顺序与 NA 线型未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `geom-path/lines-changed-order-should-have-same-appearance.svg`
-- `geom-path/lines-colour-changed-order-should-have-same-appearance.svg`
-- `geom-path/lines-colour.svg`
-- `geom-path/lines.svg`
-- `geom-path/na-linetype.svg`
-
-</details>
-
-### `geom-polygon` — 2 条 · SIL-715 · m2-closeout
-
-munched polygon（`coord_munch` 后的闭合多边形）未复刻。
-
-<details><summary>快照</summary>
-
-- `geom-polygon/basic-polygon-plot.svg`
-- `geom-polygon/open-and-closed-munched-polygons.svg`
 
 </details>
 
@@ -551,20 +524,9 @@ munched polygon（`coord_munch` 后的闭合多边形）未复刻。
 
 </details>
 
-### `geom-smooth` — 2 条 · SIL-715 · m2-closeout
-
-`geom_smooth()` 的 ribbon 开关未逐条复刻。
-
-<details><summary>快照</summary>
-
-- `geom-smooth/ribbon-turned-off-in-geom-smooth.svg`
-- `geom-smooth/ribbon-turned-on-in-geom-smooth.svg`
-
-</details>
-
 ### `geom-text` — 1 条 · SIL-715 · m3
 
-plotmath 表达式标签（`expression()`）未支持。
+SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 plotmath 排版（希腊字母 + 上下标 + 根号笔画，逐 glyph 定位、字号 0.7 倍、根号是 path）。本仓的文本层只吃纯文本，没有 plotmath 解析与排版，`geom_text()` 也没有 `parse = TRUE`。
 
 <details><summary>快照</summary>
 
@@ -779,40 +741,6 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 <details><summary>快照</summary>
 
 - `patterns/pattern-fills-with-alpha.svg`
-
-</details>
-
-### `position-stack` — 1 条 · SIL-715 · m2-closeout
-
-`position_stack()` 的 area 堆叠未复刻。
-
-<details><summary>快照</summary>
-
-- `position-stack/area-stacking.svg`
-
-</details>
-
-### `stat-align` — 3 条 · SIL-715 · m2-closeout
-
-`stat_align()` 的两段面积 cliff / pos-neg 未复刻。
-
-<details><summary>快照</summary>
-
-- `stat-align/align-two-areas-with-cliff.svg`
-- `stat-align/align-two-areas-with-pos-neg-y.svg`
-- `stat-align/align-two-areas.svg`
-
-</details>
-
-### `stat-sum` — 3 条 · SIL-715 · m2-closeout
-
-`stat_sum()` 的 crossbar 汇总未复刻。
-
-<details><summary>快照</summary>
-
-- `stat-sum/summary-with-color-and-lines.svg`
-- `stat-sum/summary-with-crossbars-manual-grouping.svg`
-- `stat-sum/summary-with-crossbars-no-grouping.svg`
 
 </details>
 
