@@ -498,3 +498,23 @@ factor levels 不改标度 limits）。剩下 7 条：
 | `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation`（移交 m3） |
 | 裸 gtable 快照（`draw_axis()` 拼四条轴后 `plot()`）：三文件 case 只接 plot 规格 | `check overlap`、`text dodged`（近似图 3.62% / 3.72%）、`all legend keys` |
 | 长标签的亚像素落点（版面系数已对齐：15 个面板高、38 个 y 标签、标题位置逐点相同） | `align facet labels, facets horizontal`（2.05%，差 4 条面板边框的 1 px 落点） |
+
+### 12.5 SIL-816：stretchy key 与逐边 justification
+
+- **stretchy key**：`legend.key.height / width = unit(1, "null")` 不再换算成 0
+  报错。`_key_size()` 把纯 `null` 记成权重（`_null_weight()`），`legend_layout()`
+  按 `stretch_h / stretch_w` 把剩余尺寸摊给这些行 / 列；行高就是那个 `null`
+  （标签高度不进行高），所以两张 stretchy 图例的**绝对部分**相等、最终一样高。
+  外层 `plot_layout()` 在 panel 行 / 列尺寸算出来之后重排一遍：`guide-box` 在
+  left / right 上占 panel 行高、top / bottom 上占 panel 列宽，剩余按 null 权重
+  分给每张图例（R 的 `redistribute_null_units()`）。
+- **null 间隔**：`legend.spacing.y / x = unit(1, "null")` 由 `legend_box_layout()`
+  在盒内分配（`target_height / target_width`），图例被推成贴顶 / 贴底。
+- **逐边 justification**：`legend.justification.<side>` 决定 guide-box 贴哪个角
+  （默认 0.5 = 居中）；`legend.location = "plot"` 时参照区从 panel 行 / 列换成
+  整个绘图区内区。
+- **guide-box 背景**盖住 `legend.box.margin`（R 先 `gtable_add_padding()` 再放
+  background），不再只盖图例矩形的并集。
+- **guide 顺序**：R 按 `order` + 内容 hash 排序；我们的 `_sort_key` 是
+  `order` + 美学序号 + 名字。同方位多图例且顺序有差时，case 里显式 `order=`
+  钉住（`stretched-vertical-legends` / `stretched-horizontal-legends`）。

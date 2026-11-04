@@ -1372,3 +1372,56 @@ def test_stat_default_aesthetics_produce_a_guide() -> None:
     built = build_plot(plot)
     kinds = [(type(item.guide).__name__, item.title) for item in build_guides(built)]
     assert kinds == [("GuideColourbar", "count")]
+
+
+# ---------------------------------------------------------------------------
+# stretchy key / null 间距（SIL-816）
+# ---------------------------------------------------------------------------
+
+
+def test_stretchy_legend_keys_split_the_guide_box_height() -> None:
+    """`legend.key.height = unit(1, "null")`：两张图例平分 guide-box 的剩余高度。
+
+    R 的 `redistribute_null_units()` 只把**绝对部分**留给各图例，null 部分按权重
+    摊；两张 null 权重都是 1 的图例因此一样高（stretched-vertical-legends）。
+    """
+    from ggcore.units import unit
+
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="y", shape="h"))
+        + registry.geom_point()
+        + guides(
+            colour=guide_colourbar(theme=make_theme(**{"legend.key.height": unit(1.0, "null")})),
+            shape=guide_legend(theme=make_theme(**{"legend.key.height": unit(1 / 3, "null")})),
+        )
+    )
+    build = build_plot(plot)
+    result = plot_layout(build, width_in=10, height_in=8, metrics=METRICS)
+    assert len(result.legend_boxes) == 2
+    first, second = result.legend_boxes
+    assert first.height_cm == pytest.approx(second.height_cm, rel=1e-6)
+    # guide-box 占满 panel 行高。
+    assert result.legend_box_layouts[0].height_cm == pytest.approx(
+        result.panel_area.height_cm, rel=1e-6
+    )
+
+
+def test_null_legend_spacing_pushes_legends_apart() -> None:
+    """`legend.spacing.y = unit(1, "null")` 让间隔吃掉 guide-box 的剩余高度。"""
+    from ggcore.units import unit
+
+    plot = (
+        ggplot(data(), aes(x="x", y="y", colour="y", shape="h"))
+        + registry.geom_point()
+        + make_theme(**{"legend.spacing.y": unit(1.0, "null")})
+    )
+    build = build_plot(plot)
+    result = plot_layout(build, width_in=10, height_in=8, metrics=METRICS)
+    box = result.legend_box_layouts[0]
+    assert box.height_cm == pytest.approx(result.panel_area.height_cm, rel=1e-6)
+    first, second = result.legend_boxes
+    origin = result.legend_box_origins[0]
+    # 第一张贴盒顶、第二张贴盒底，中间全被 null 间隔吃掉。
+    assert first.y_cm + first.height_cm == pytest.approx(origin.y_cm + box.height_cm, abs=1e-6)
+    assert second.y_cm == pytest.approx(origin.y_cm, abs=1e-6)
+    assert first.y_cm - (second.y_cm + second.height_cm) > 5.0

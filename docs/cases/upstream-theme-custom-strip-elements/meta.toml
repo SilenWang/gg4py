@@ -1,0 +1,7 @@
+family = "theme"
+features = ["element-grob", "facet-strip"]
+ci = true
+title = "上游快照：custom strip elements can render"
+source = "upstream:tests/testthat/_snaps/theme/custom-strip-elements-can-render.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-816：`element_grob()` 扩展协议（`ElementText` 子类覆写 `grob()`），strip 占位按 grob 尺寸量。"

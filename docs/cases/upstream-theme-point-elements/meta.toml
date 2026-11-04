@@ -1,0 +1,7 @@
+family = "theme"
+features = ["element-grob"]
+ci = true
+title = "上游快照：point elements"
+source = "upstream:tests/testthat/_snaps/theme/point-elements.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-816：`element_grob(element_point)`（pch = 21 + 逐点 fill），裸 grob 快照。"

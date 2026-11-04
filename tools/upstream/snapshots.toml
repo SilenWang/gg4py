@@ -61,12 +61,12 @@ reason = "SIL-810 已把 6 条全部纳管：`key_glyph=`（名称 / `draw_key_*
 [groups."facet-"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "SIL-796 纳管 3 条（左对齐两条 + facet_grid 省略内轴标签）；SIL-811 把 facet_wrap 的顶部轴标签挪到 strip 之外后仍差 2.55% / 0.53%（单条 reason 见下）。"
+reason = "SIL-796 纳管 3 条（左对齐两条 + facet_grid 省略内轴标签）；SIL-816 把 `facet_wrap` 的省略内轴标签转到 1.30%（strip / 轴与面板复用同一张 facet gtable 后对齐），4 条全部纳管。"
 
 [groups."facet-labels"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "SIL-811 剩 2 条：`outside-justified-labels` 的跨面板外侧对齐（自由标度 × 多行标签）与 `label_parsed` 的 plotmath（后者归 m3）。"
+reason = "SIL-816 纳管 `outside-justified-labels`（多行轴标签的轴带按整块量，15.5% → 0.40%）；`label_parsed` 的 plotmath 归 m3。"
 
 [groups."facet-layout"]
 issue = "SIL-715"
@@ -211,7 +211,7 @@ reason = "SIL-795 已全部纳管 3 条（名字是 `stat_sum`，快照实际来
 [groups.theme]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "SIL-792 纳管 18 条；SIL-811 又纳管 `theme-with-inverted-colours`（`ink` / `paper` 反转 + `labs(tag=)`）；剩 7 条按缺口单列在下面（stretchy key / null 间距 3 条、裸 grob 2 条、S7 自定义 strip 1 条、五方位图例 1 条）。"
+reason = "SIL-792 纳管 18 条；SIL-811 又纳管 `theme-with-inverted-colours`（`ink` / `paper` 反转 + `labs(tag=)`）；SIL-816 把最后 7 条全部纳管——stretchy key / null 间距 3 条（`legend.key.height/width` 与 `legend.spacing.y` 的 null 分配）、裸 grob 2 条（`element_grob()` + `{\"grob\": …}` 规格）、S7 自定义 strip 1 条（`grob()` 覆写协议）、五方位图例 1 条（guide-box 的逐边 justification 与 `legend.location = \"plot\"`）。"
 
 [snapshots."theme/theme-bw.svg"]
 case = "upstream-theme-bw"
@@ -310,27 +310,25 @@ case = "upstream-theme-horizontal-legends-placed-apart"
 case = "upstream-theme-inverted-colours"
 
 [snapshots."theme/legends-at-all-sides-with-justification.svg"]
-reason = "SIL-811 未纳管（case `upstream-theme-legends-all-sides` 登记为 `ci = false`）：实测 3.10% / 1.28%。`mtcars` 七列夹具已内联，`legend.location = \"plot\"` 与逐边 `legend.justification.<side>` 已接上；差的是同一层同时映射 `colour` / `fill`（数值列 → 连续 fill）/ `shape` / `size` / `alpha` 时点层画不出来（图例只出标题、无键），属多重非位置标度的绘制链。"
+case = "upstream-theme-legends-all-sides"
 
 [snapshots."theme/stretched-vertical-legends.svg"]
-reason = "`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。"
+case = "upstream-theme-stretched-vertical-legends"
 
 [snapshots."theme/stretched-horizontal-legends.svg"]
-reason = "同 `stretched-vertical-legends`：`legend.key.width` 的 `null` 单位未实现。"
+case = "upstream-theme-stretched-horizontal-legends"
 
 [snapshots."theme/vertical-legends-placed-apart.svg"]
-reason = "`legend.spacing.y = unit(1, 'null')` 要在 guide-box 内分配剩余高度；本仓的 `legend_box_layout()` 只按固定 cm 累加（横向的 `spacing.x` 版`horizontal-legends-placed-apart` 已纳管）。"
+case = "upstream-theme-vertical-legends-placed-apart"
 
 [snapshots."theme/custom-strip-elements-can-render.svg"]
-reason = "上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。"
+case = "upstream-theme-custom-strip-elements"
 
 [snapshots."theme/point-elements.svg"]
-reason = "`element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。"
+case = "upstream-theme-point-elements"
 
 [snapshots."theme/polygon-elements.svg"]
-reason = "`element_polygon()` 的 `element_grob()` 渲染（两段 `id` 的 pathgrob），同 `point-elements`，是裸 grob 快照。"
-[snapshots."guides/facet-grid-legend-on-left.svg"]
-case = "upstream-guides-facet-grid-legend-left"
+case = "upstream-theme-polygon-elements"
 
 [snapshots."guides/facet-grid-legend-on-bottom.svg"]
 case = "upstream-guides-facet-grid-legend-bottom"
@@ -980,10 +978,10 @@ case = "upstream-facet-facet-grid-with-omitted-inner-axis-labels"
 case = "upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout"
 
 [snapshots."facet-/facet-wrap-with-omitted-inner-axis-labels.svg"]
-reason = "SIL-811 未纳管（case `upstream-facet-wrap-omitted-inner-axis-labels` 登记为 `ci = false`）：顶部 / 右侧轴标签已按 R 挪到 strip 之外（2.92% → 2.55%，均值 0.53%），剩下的 2.55% 是行间轴带被 gtable 的 null 行二次扣除——`panel_boxes()` 的分辨高度比表高少 5.48pt，两个面板各矮 2.74pt，第二行的 strip 与面板因此整体上移。卡在 `facet_table.panel_boxes()` 与 `plot_layout()` 谁扣 `x_axis_cm` 的口径，不是阈值问题。"
+case = "upstream-facet-wrap-omitted-inner-axis-labels"
 
 [snapshots."facet-labels/outside-justified-labels.svg"]
-reason = "SIL-796：`axis.text.*` 的 hjust / vjust 已接到轴标签锚点（`_anchor()` 之后的显式覆盖），但 `scales = \"free\"` × 多行轴标签（`\"X\\nX\\nX\\nX\\nX\"`）的外侧对齐仍差 15.5%：free 面板的轴带宽度按每面板标签单独量，R 的 `outside` 口径要求四边标签基线跨面板统一。卡在「自由标度 × 多行标签的跨面板对齐」。"
+case = "upstream-facet-labels-outside-justified-labels"
 
 [snapshots."facet-labels/parsed-facet-labels.svg"]
 owner = "m3"

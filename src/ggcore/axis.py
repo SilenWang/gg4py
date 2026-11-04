@@ -213,6 +213,20 @@ def text_line_cm(size_pt: float) -> float:
     return float(size_pt) * TEXT_LINE_EM * _CM_PER_INCH / _POINTS_PER_INCH
 
 
+def text_block_cm(text: str, size_pt: float, lineheight: float | None = None) -> float:
+    """整块文字的占高（cm）：`(n-1) × 行距 + 单行高`。
+
+    R 的 `textGrob` 把 `\\n` 切成多行，块高 = 首行高 + (n-1) 个行距；行距是
+    `lineheight × 1.2 × fontsize`（`ggskia.text.LINE_PITCH` 同一口径，`axis.text.*`
+    的 `lineheight = 0.9`）。早先按单行量，`"X\\nX\\nX\\nX\\nX"` 这类多行轴标签的
+    轴带高度只有一行的量，面板因此被撑高（SIL-816 的
+    `outside-justified-labels`）。
+    """
+    lines = len(_lines(text)) or 1
+    pitch = float(size_pt) * 1.2 * float(lineheight if lineheight else 1.2)
+    return text_line_cm(size_pt) + (lines - 1) * pitch * _CM_PER_INCH / _POINTS_PER_INCH
+
+
 def _lines(text: str) -> tuple[str, ...]:
     return tuple(str(text).split("\n"))
 

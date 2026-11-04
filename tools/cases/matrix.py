@@ -237,6 +237,22 @@ def validate_plot_spec(spec: Any) -> list[str]:
                 errors.append("`size` 必须是两个正数（英寸）")
         return errors
 
+    if "grob" in spec:
+        # 裸 grob 快照：`{"grob": <grid grob>, "size": [...]}`（`grid.newpage()` +
+        # `grid.draw()` 那种，如 `theme/point-elements`）。只校验它是 grob 形状的对象。
+        grob = spec["grob"]
+        if not hasattr(grob, "kind") and not hasattr(grob, "gps"):
+            errors.append("`grob` 必须是 grid grob（如 `element_grob(...)` 的返回值）")
+        size = spec.get("size")
+        if size is not None:
+            if (
+                not isinstance(size, (list, tuple))
+                or len(size) != 2
+                or any(not isinstance(value, (int, float)) or value <= 0 for value in size)
+            ):
+                errors.append("`size` 必须是两个正数（英寸）")
+        return errors
+
     data = spec.get("data")
     if not isinstance(data, Mapping) or not data:
         errors.append("plot 规格缺 `data`（非空映射：列名 → 数组）")

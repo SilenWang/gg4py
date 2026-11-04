@@ -262,3 +262,21 @@ def test_polar_axis_row_reserves_the_theta_label_row() -> None:
     assert polar_axis_row_cm(theme) == pytest.approx(expected)
     blank = resolve_theme(theme_void())
     assert polar_axis_row_cm(blank) == pytest.approx(tick_length_cm(blank, "bottom"))
+
+
+def test_axis_extent_counts_every_line_of_a_multiline_label() -> None:
+    """多行轴标签的轴带 = 整块高度（SIL-816 的 outside-justified-labels）。
+
+    行距 = `lineheight × 1.2 × fontsize`（`axis.text.*` 的 lineheight = 0.9），
+    块高 = 首行高 + (n-1) 个行距。早先只按单行量，5 行标签的轴带只有一行高，
+    面板被撑高、标签压进 strip。
+    """
+    from ggcore.axis import text_block_cm
+
+    line = text_line_cm(8.8)
+    single = text_block_cm("X", 8.8, 0.9)
+    five = text_block_cm("X\nX\nX\nX\nX", 8.8, 0.9)
+    pitch = 8.8 * 1.2 * 0.9 / 72.0 * 2.54
+    assert single == pytest.approx(line)
+    assert five == pytest.approx(line + 4 * pitch)
+    assert five > 4 * single

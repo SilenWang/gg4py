@@ -1915,7 +1915,14 @@ def _strip_extent(
     左移。这里按真实宽度量。
     """
     element = resolved[element_name]
-    if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
+    if isinstance(element, ElementBlank):
+        return 0.0
+    if not isinstance(element, ElementText) or callable(getattr(element, "grob", None)):
+        # 自定义元素（子类覆盖了 `grob()`）：按 `element_grob()` 画出来的 grob
+        # 量尺寸，与 R 的 `grobWidth()` / `grobHeight()` 同口径
+        # （`custom-strip-elements-can-render` 的 1cm 方块 strip 因此是 1cm 高）。
+        return _element_grob_extent(element, horizontal=horizontal, metrics=metrics, texts=texts)
+    if not isinstance(element, ElementText):
         return 0.0
     size = float(element.size or 0.0)
     # 主题没写 family 时按设备的默认 sans（与 svglite 的 Arimo 同度量）量宽；
@@ -1932,6 +1939,53 @@ def _strip_extent(
     if horizontal:
         return (line if rotated else widest) + ml + mr
     return (widest if rotated else line) + mt + mb
+
+
+def _element_grob_extent(
+    element: Any,
+    *,
+    horizontal: bool,
+    metrics: Any,
+    texts: Sequence[str] = (),
+) -> float:
+    """自定义 strip 元素的占位（cm）：`element_grob()` 的 `width/heightDetails`。
+
+    与 R 的 `_strip_extent` 分支同源——R 量的是 `element_grob()` 返回的 grob
+    本身，而不是文字；所以自定义元素画 1cm 方块时 strip 就正好 1cm 高。
+    """
+    from ggcore.grobs import height_details, width_details
+    from ggcore.theme import element_grob
+    from ggcore.units import convert_height, convert_width
+    from ggcore.viewport import Device, ViewportTree, gpar, viewport
+
+    tree = ViewportTree(Device(7.0, 7.0), metrics=metrics)
+    tree.push(
+        viewport(
+            "page",
+            x=0.5,
+            y=0.5,
+            width=1.0,
+            height=1.0,
+            clip="off",
+            gp=gpar(fontsize=12.0, fontfamily=""),
+        )
+    )
+    node = tree.current
+    labels = [text for text in texts if text] or [""]
+    values: list[float] = []
+    for label in labels:
+        grob = element_grob(element, label=label, x=0.5, y=0.5)
+        if horizontal:
+            unit = width_details(grob, node)
+            values.append(
+                float(np.asarray(convert_width(unit, "cm", ctx=node.unit_context())).sum())
+            )
+        else:
+            unit = height_details(grob, node)
+            values.append(
+                float(np.asarray(convert_height(unit, "cm", ctx=node.unit_context())).sum())
+            )
+    return max(values, default=0.0)
 
 
 def _strip_fill(resolved: ResolvedTheme, element_name: str) -> str | None:

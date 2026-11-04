@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**257**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**54**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **17** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
+- 已纳管：**265**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**46**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **9** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -15,23 +15,22 @@
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `guide-axis` | m2-closeout | 23 | 16 | 7 |
-| `theme` | m2-closeout | 39 | 32 | 7 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
-| `facet-labels` | m2-closeout | 2 | 0 | 2 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
-| `facet-` | m2-closeout | 4 | 3 | 1 |
+| `guides` | m2-closeout | 45 | 43 | 2 |
+| `facet-labels` | m2-closeout | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `guide-legend` | m2-closeout | 7 | 6 | 1 |
-| `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
 | `draw-key` | m2-closeout | 6 | 6 | 0 |
+| `facet-` | m2-closeout | 4 | 4 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
 | `facet-strips` | m2-closeout | 1 | 1 | 0 |
 | `geom-boxplot` | m2-closeout | 3 | 3 | 0 |
@@ -52,7 +51,8 @@
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 257 | 54 |
+| `theme` | m2-closeout | 39 | 39 | 0 |
+| **合计** | — | 311 | 265 | 46 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -89,8 +89,10 @@
 | `draw-key/rectangle-and-dotplot-key-glyphs.svg` | `upstream-draw-key-rect-dotplot` |
 | `draw-key/time-series-and-polygon-key-glyphs.svg` | `upstream-draw-key-timeseries-polygon` |
 | `facet-/facet-grid-with-omitted-inner-axis-labels.svg` | `upstream-facet-facet-grid-with-omitted-inner-axis-labels` |
+| `facet-/facet-wrap-with-omitted-inner-axis-labels.svg` | `upstream-facet-wrap-omitted-inner-axis-labels` |
 | `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
 | `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
+| `facet-labels/outside-justified-labels.svg` | `upstream-facet-labels-outside-justified-labels` |
 | `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg` | `upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout` |
 | `facet-strips/switched-facet-strips.svg` | `upstream-facet-strips-switched` |
 | `geom-boxplot/customised-style.svg` | `upstream-geom-boxplot-customised-style` |
@@ -201,7 +203,6 @@
 | `guide-legend/legend-with-widely-spaced-keys.svg` | `upstream-guide-legend-widely-spaced-keys` |
 | `guide-legend/vertical-legend-direction.svg` | `upstream-guide-legend-vertical-direction` |
 | `guides/facet-grid-legend-on-bottom.svg` | `upstream-guides-facet-grid-legend-bottom` |
-| `guides/facet-grid-legend-on-left.svg` | `upstream-guides-facet-grid-legend-left` |
 | `guides/facet-grid-legend-on-right.svg` | `upstream-guides-facet-grid-legend-right` |
 | `guides/facet-grid-legend-on-top.svg` | `upstream-guides-facet-grid-legend-top` |
 | `guides/facet-wrap-legend-on-bottom.svg` | `upstream-guides-facet-wrap-legend-bottom` |
@@ -287,6 +288,7 @@
 | `stat-sum/summary-with-crossbars-no-grouping.svg` | `upstream-stat-summary-crossbars` |
 | `theme/axes-styling.svg` | `upstream-theme-axes-styling` |
 | `theme/caption-aligned-to-entire-plot.svg` | `upstream-theme-caption-aligned-to-entire-plot` |
+| `theme/custom-strip-elements-can-render.svg` | `upstream-theme-custom-strip-elements` |
 | `theme/height-is-3-times-width-2-column-facets.svg` | `upstream-theme-height-is-3-times-width-2-column-facets` |
 | `theme/height-is-3-times-width-2-row-facets.svg` | `upstream-theme-height-is-3-times-width-2-row-facets` |
 | `theme/height-is-3-times-width-2-wrap-facets.svg` | `upstream-theme-height-is-3-times-width-2-wrap-facets` |
@@ -295,7 +297,12 @@
 | `theme/horizontal-legends-placed-apart.svg` | `upstream-theme-horizontal-legends-placed-apart` |
 | `theme/large-margins.svg` | `upstream-theme-large-margins` |
 | `theme/large-spacing.svg` | `upstream-theme-large-spacing` |
+| `theme/legends-at-all-sides-with-justification.svg` | `upstream-theme-legends-all-sides` |
+| `theme/point-elements.svg` | `upstream-theme-point-elements` |
+| `theme/polygon-elements.svg` | `upstream-theme-polygon-elements` |
 | `theme/rotated-x-axis-tick-labels.svg` | `upstream-theme-rotated-x-axis-tick-labels` |
+| `theme/stretched-horizontal-legends.svg` | `upstream-theme-stretched-horizontal-legends` |
+| `theme/stretched-vertical-legends.svg` | `upstream-theme-stretched-vertical-legends` |
 | `theme/strip-styling.svg` | `upstream-theme-strip-styling` |
 | `theme/theme-bw-large.svg` | `upstream-theme-bw-large` |
 | `theme/theme-bw.svg` | `upstream-theme-bw` |
@@ -316,6 +323,7 @@
 | `theme/theme-with-inverted-colours.svg` | `upstream-theme-inverted-colours` |
 | `theme/ticks-length.svg` | `upstream-theme-ticks-length` |
 | `theme/titles-aligned-to-entire-plot.svg` | `upstream-theme-titles-aligned-to-entire-plot` |
+| `theme/vertical-legends-placed-apart.svg` | `upstream-theme-vertical-legends-placed-apart` |
 | `theme/width-is-3-times-height.svg` | `upstream-theme-width-is-3-times-height` |
 
 ## 已知缺口
@@ -397,26 +405,6 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 - `coord_sf/non-sf-geoms-using-projected-coords.svg`
 - `coord_sf/reversed-sf-coords.svg`
 - `coord_sf/sf-polygons.svg`
-
-</details>
-
-### `facet-` — 1 条 · SIL-715 · m2-closeout
-
-SIL-811 未纳管（case `upstream-facet-wrap-omitted-inner-axis-labels` 登记为 `ci = false`）：顶部 / 右侧轴标签已按 R 挪到 strip 之外（2.92% → 2.55%，均值 0.53%），剩下的 2.55% 是行间轴带被 gtable 的 null 行二次扣除——`panel_boxes()` 的分辨高度比表高少 5.48pt，两个面板各矮 2.74pt，第二行的 strip 与面板因此整体上移。卡在 `facet_table.panel_boxes()` 与 `plot_layout()` 谁扣 `x_axis_cm` 的口径，不是阈值问题。
-
-<details><summary>快照</summary>
-
-- `facet-/facet-wrap-with-omitted-inner-axis-labels.svg`
-
-</details>
-
-### `facet-labels` — 1 条 · SIL-715 · m2-closeout
-
-SIL-796：`axis.text.*` 的 hjust / vjust 已接到轴标签锚点（`_anchor()` 之后的显式覆盖），但 `scales = "free"` × 多行轴标签（`"X\nX\nX\nX\nX"`）的外侧对齐仍差 15.5%：free 面板的轴带宽度按每面板标签单独量，R 的 `outside` 口径要求四边标签基线跨面板统一。卡在「自由标度 × 多行标签的跨面板对齐」。
-
-<details><summary>快照</summary>
-
-- `facet-labels/outside-justified-labels.svg`
 
 </details>
 
@@ -561,6 +549,16 @@ SIL-817 实测 3.72% / 1.49%。顺序可以显式对齐（R 没写 `order`，`Gu
 
 ### `guides` — 1 条 · SIL-715 · m2-closeout
 
+SIL-788 纳管 27 条；SIL-810 又修掉无图层空图的版面（`ggplot()` 不再留轴占位），剩下 `stylised-guide-custom` 一条：SIL-817 实测 5.13% / 0.80%，卡在 `guide_custom()` 的 grob 包围盒测量 + 旋转标题列（单条 reason 见下）。
+
+<details><summary>快照</summary>
+
+- `guides/facet-grid-legend-on-left.svg`
+
+</details>
+
+### `guides` — 1 条 · SIL-715 · m2-closeout
+
 SIL-817 实测 5.13% / 0.80%：无图层版面已对（SIL-810），圆也画对了（IR 里 1 个 circle，圆心 (673.6, 296.65) 与 R 的 (680.69, 296.65) 之差就是图例框偏移），差在 `_custom_layout()` 的盒子尺寸——R 用 `grobWidth()` / `grobHeight()`（circleGrob r = 1cm → 2cm），逐列 [0.193 外边距, 0.557 旋转标题列, 2 内容, 0.193]，逐行 [0.193, 0.154, 2, 0.154, 0.193]（标题转 90° 后高 2.31cm，撑开上下各 0.154cm）；本仓退回 `legend.key.size`，图例框 2.89×1.34cm vs R 2.94×2.69cm，面板因此宽 1.1pt、网格线整列错位。卡在「`guide_custom()` 的 grob 包围盒测量（circle / rect / text / gtable / null）+ 标题列按 `angle` 交换宽高」。
 
 <details><summary>快照</summary>
@@ -616,75 +614,5 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 <details><summary>快照</summary>
 
 - `patterns/pattern-fills-with-alpha.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-SIL-811 未纳管（case `upstream-theme-legends-all-sides` 登记为 `ci = false`）：实测 3.10% / 1.28%。`mtcars` 七列夹具已内联，`legend.location = "plot"` 与逐边 `legend.justification.<side>` 已接上；差的是同一层同时映射 `colour` / `fill`（数值列 → 连续 fill）/ `shape` / `size` / `alpha` 时点层画不出来（图例只出标题、无键），属多重非位置标度的绘制链。
-
-<details><summary>快照</summary>
-
-- `theme/legends-at-all-sides-with-justification.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-`element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。
-
-<details><summary>快照</summary>
-
-- `theme/point-elements.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-`element_polygon()` 的 `element_grob()` 渲染（两段 `id` 的 pathgrob），同 `point-elements`，是裸 grob 快照。
-
-<details><summary>快照</summary>
-
-- `theme/polygon-elements.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。
-
-<details><summary>快照</summary>
-
-- `theme/stretched-vertical-legends.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-`legend.spacing.y = unit(1, 'null')` 要在 guide-box 内分配剩余高度；本仓的 `legend_box_layout()` 只按固定 cm 累加（横向的 `spacing.x` 版`horizontal-legends-placed-apart` 已纳管）。
-
-<details><summary>快照</summary>
-
-- `theme/vertical-legends-placed-apart.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。
-
-<details><summary>快照</summary>
-
-- `theme/custom-strip-elements-can-render.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-同 `stretched-vertical-legends`：`legend.key.width` 的 `null` 单位未实现。
-
-<details><summary>快照</summary>
-
-- `theme/stretched-horizontal-legends.svg`
 
 </details>

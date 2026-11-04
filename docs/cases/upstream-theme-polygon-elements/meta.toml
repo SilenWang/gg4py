@@ -1,0 +1,7 @@
+family = "theme"
+features = ["element-grob"]
+ci = true
+title = "上游快照：polygon elements"
+source = "upstream:tests/testthat/_snaps/theme/polygon-elements.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-816：`element_grob(element_polygon)`（两段 `id` 的 pathgrob），裸 grob 快照。"

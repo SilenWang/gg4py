@@ -1,6 +1,6 @@
 family = "facet"
 features = ["facet-wrap", "axis-labels-margins"]
-ci = false
+ci = true
 title = "上游快照：facet_wrap with omitted inner axis labels"
 source = "upstream:tests/testthat/_snaps/facet-/facet-wrap-with-omitted-inner-axis-labels.svg"
 tolerance = { png = 0.02 }

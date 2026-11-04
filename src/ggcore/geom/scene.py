@@ -79,15 +79,19 @@ from ggcore.guide import (
     GuideError,
     build_guides,
     guide_theme,
+    legend_box_direction,
     legend_box_layout,
+    legend_justification,
     legend_layout,
 )
 from ggcore.theme import (
+    ElementBlank,
     ElementLine,
     ElementRect,
     ElementText,
     ResolvedTheme,
     Theme,
+    element_grob,
     resolve_theme,
 )
 from ggcore.units import BIGPOINTS_PER_INCH as PT_PER_INCH
@@ -206,6 +210,10 @@ class PlotLayout:
     tag_text: str | None = None
     #: `plot.tag` 的解析后元素（渲染时取字号 / 颜色 / 字体）。
     tag_element: Any = None
+    #: 版式实际解析用的 facet gtable（含行间 / 列间轴带）。渲染必须复用这同一张
+    #: 表：另建一张不带 `axis_x_cm` / `axis_y_cm` 的表会让 strip 与轴按错位的
+    #: 行列落点（SIL-816 的 `facet-wrap-with-omitted-inner-axis-labels`）。
+    facet_table: Any = None
 
     @property
     def legend_width_cm(self) -> float:
@@ -265,7 +273,9 @@ def scene_from_build(
     prepared = build if build.metrics is metrics else replace(build, metrics=metrics)
     layout = plot_layout(prepared, width_in=width_in, height_in=height_in, metrics=metrics)
     theme = _theme_of(prepared)
-    table = prepared.facet_table(metrics=metrics)
+    table = layout.facet_table
+    if table is None:  # pragma: no cover - `plot_layout()` 总会给出
+        table = prepared.facet_table(metrics=metrics)
 
     tree = ViewportTree(Device(float(width_in), float(height_in)), metrics=metrics)
     tree.push(
@@ -871,6 +881,64 @@ def plot_layout(
         cols_right = max(box.right for box in panel_boxes.values())
         panel_cols = Box(cols_left, panel_area.y_cm, cols_right - cols_left, panel_area.height_cm)
 
+    # stretchy key（`legend.key.height / width = unit(1, "null")`）：guide-box 在
+    # left / right 上占 panel 行高、top / bottom 上占 panel 列宽，剩余尺寸按
+    # null 权重分回每张图例（R 的 `redistribute_null_units()`）。inside 是覆盖式
+    # 的盒子，不参与这套分配。
+    if legend_layouts:
+        stretched = list(legend_layouts)
+        for key, indices in group_indices.items():
+            side = box_positions[key]
+            if side == "inside":
+                continue
+            direction = legend_box_direction(theme, side)
+            target = panel_rows.height_cm if direction == "vertical" else panel_cols.width_cm
+            box = box_layouts[key]
+            current = box.height_cm if direction == "vertical" else box.width_cm
+            total_null = sum(
+                legend_layouts[index].null_h
+                if direction == "vertical"
+                else legend_layouts[index].null_w
+                for index in indices
+            )
+            if total_null > 0 and target > current + 1e-9:
+                extra = target - current
+                for index in indices:
+                    weight = (
+                        legend_layouts[index].null_h
+                        if direction == "vertical"
+                        else legend_layouts[index].null_w
+                    )
+                    if weight <= 0:
+                        continue
+                    part = extra * weight / total_null
+                    if direction == "vertical":
+                        stretched[index] = legend_layout(
+                            guides[index],
+                            theme,
+                            guide_sides[index],
+                            metrics=metrics,
+                            stretch_h=part,
+                        )
+                    else:
+                        stretched[index] = legend_layout(
+                            guides[index],
+                            theme,
+                            guide_sides[index],
+                            metrics=metrics,
+                            stretch_w=part,
+                        )
+            # 间隔是 null（`legend.spacing.y = unit(1, "null")`）时由盒子自己把
+            # 剩余尺寸摊给间隔，所以这一趟总是带上目标尺寸重排。
+            box_layouts[key] = legend_box_layout(
+                [stretched[index] for index in indices],
+                side,
+                theme,
+                target_height=panel_rows.height_cm,
+                target_width=panel_cols.width_cm,
+            )
+        legend_layouts = tuple(stretched)
+
     legend_boxes: list[Box | None] = [None] * len(guides)
     legend_box_origins: list[Box] = []
     legend_box_layouts: list[Any] = []
@@ -958,6 +1026,7 @@ def plot_layout(
         tag=tag_box,
         tag_text=tag_text if tag_box is not None else None,
         tag_element=tag_element if tag_box is not None else None,
+        facet_table=table,
     )
 
 
@@ -1027,24 +1096,35 @@ def _place_legend_box(
     """
     width = float(box_layout.width_cm)
     height = float(box_layout.height_cm)
+    # `legend.location = "plot"`：guide-box 相对整块绘图区定位（`plot_extent`），
+    # 否则相对 panel 行 / 列；`legend.justification.<position>` 决定贴哪个角。
+    plot_location = str(theme.get("legend.location") or "panel") == "plot"
+    rows = inner if plot_location else panel_rows
+    cols = inner if plot_location else panel_cols
     if position == "right":
         # 贴着 panel 单元格的右边（R 的 guide-box 列紧挨 panel 列），不是页面
         # 内区的右边：等比例面板（`coord_polar()` 的正圆）比内区窄，剩下的
         # 空白留在图例右侧。
-        x = panel_area.right + spacing
-        y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
+        x = (inner.right if plot_location else panel_area.right) + (
+            0.0 if plot_location else spacing
+        )
+        _, yjust = legend_justification(theme, position)
+        y = rows.y_cm + yjust * (rows.height_cm - height)
         return Box(x, y, width, height)
     if position == "left":
-        x = panel_area.x_cm - spacing - width
-        y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
+        x = inner.x_cm if plot_location else panel_area.x_cm - spacing - width
+        _, yjust = legend_justification(theme, position)
+        y = rows.y_cm + yjust * (rows.height_cm - height)
         return Box(x, y, width, height)
     if position == "top":
         y = content_top + spacing
-        x = panel_cols.x_cm + (panel_cols.width_cm - width) / 2.0
+        xjust, _ = legend_justification(theme, position)
+        x = cols.x_cm + xjust * (cols.width_cm - width)
         return Box(x, y, width, height)
     if position == "bottom":
         y = inner.y_cm + caption_cm
-        x = panel_cols.x_cm + (panel_cols.width_cm - width) / 2.0
+        xjust, _ = legend_justification(theme, position)
+        x = cols.x_cm + xjust * (cols.width_cm - width)
         return Box(x, y, width, height)
     # inside
     anchor_x, anchor_y = _inside_position(theme)
@@ -1927,7 +2007,10 @@ def _legend_grobs(
     grobs: list[Any] = []
     box_el = theme.get("legend.box.background")
     if layout.legend_boxes and isinstance(box_el, ElementRect) and paint(box_el.fill) is not None:
-        union = _union(layout.legend_boxes)
+        # guide-box 的矩形含 `legend.box.margin`（R 的 `gtable_add_padding()` 之后
+        # 才加 background，背景整块盖住 margin）。用摆放好的盒矩形，不用图例矩形
+        # 的并集——后者会少掉四周的 box margin（stretched-vertical-legends）。
+        union = _union(layout.legend_box_origins or layout.legend_boxes)
         grobs.append(
             rect_grob(
                 union.x_cm,
@@ -2187,18 +2270,34 @@ def _one_strip(
                         name=f"{name}-clip",
                     )
                 )
-        if not isinstance(element, ElementText) or not part.text:
+        if isinstance(element, ElementText) and not callable(getattr(element, "grob", None)):
+            if not part.text:
+                continue
+            grobs.append(
+                text_grob(
+                    part.text,
+                    unit(part_box.x_cm + part_box.width_cm / 2.0, "cm"),
+                    unit(part_box.y_cm + part_box.height_cm / 2.0, "cm"),
+                    hjust=float(element.hjust if element.hjust is not None else 0.5),
+                    vjust=float(element.vjust if element.vjust is not None else 0.5),
+                    rot=angle,
+                    default_units="cm",
+                    gp=_text_gpar(element),
+                    name=f"{name}.text",
+                )
+            )
             continue
+        if isinstance(element, ElementBlank):
+            continue
+        # 非文字 / 自定义元素：走 `element_grob()` 扩展协议（R 的 S7 泛型），
+        # 元素自己决定画什么（`custom-strip-elements-can-render` 的 1cm 方块）。
         grobs.append(
-            text_grob(
-                part.text,
-                unit(part_box.x_cm + part_box.width_cm / 2.0, "cm"),
-                unit(part_box.y_cm + part_box.height_cm / 2.0, "cm"),
-                hjust=float(element.hjust if element.hjust is not None else 0.5),
-                vjust=float(element.vjust if element.vjust is not None else 0.5),
-                rot=angle,
+            element_grob(
+                element,
+                label=part.text,
+                x=unit(part_box.x_cm + part_box.width_cm / 2.0, "cm"),
+                y=unit(part_box.y_cm + part_box.height_cm / 2.0, "cm"),
                 default_units="cm",
-                gp=_text_gpar(element),
                 name=f"{name}.text",
             )
         )
