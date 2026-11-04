@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**265**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**46**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **9** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
+- 已纳管：**266**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**45**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **8** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -20,10 +20,10 @@
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
-| `guides` | m2-closeout | 45 | 43 | 2 |
 | `facet-labels` | m2-closeout | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `guide-legend` | m2-closeout | 7 | 6 | 1 |
+| `guides` | m2-closeout | 45 | 44 | 1 |
 | `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 265 | 46 |
+| **合计** | — | 311 | 266 | 45 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -203,6 +203,7 @@
 | `guide-legend/legend-with-widely-spaced-keys.svg` | `upstream-guide-legend-widely-spaced-keys` |
 | `guide-legend/vertical-legend-direction.svg` | `upstream-guide-legend-vertical-direction` |
 | `guides/facet-grid-legend-on-bottom.svg` | `upstream-guides-facet-grid-legend-bottom` |
+| `guides/facet-grid-legend-on-left.svg` | `upstream-guides-facet-grid-legend-left` |
 | `guides/facet-grid-legend-on-right.svg` | `upstream-guides-facet-grid-legend-right` |
 | `guides/facet-grid-legend-on-top.svg` | `upstream-guides-facet-grid-legend-top` |
 | `guides/facet-wrap-legend-on-bottom.svg` | `upstream-guides-facet-wrap-legend-bottom` |
@@ -544,16 +545,6 @@ SIL-817 实测 3.72% / 1.49%。顺序可以显式对齐（R 没写 `order`，`Gu
 <details><summary>快照</summary>
 
 - `guide-legend/legend-key-justification.svg`
-
-</details>
-
-### `guides` — 1 条 · SIL-715 · m2-closeout
-
-SIL-788 纳管 27 条；SIL-810 又修掉无图层空图的版面（`ggplot()` 不再留轴占位），剩下 `stylised-guide-custom` 一条：SIL-817 实测 5.13% / 0.80%，卡在 `guide_custom()` 的 grob 包围盒测量 + 旋转标题列（单条 reason 见下）。
-
-<details><summary>快照</summary>
-
-- `guides/facet-grid-legend-on-left.svg`
 
 </details>
 

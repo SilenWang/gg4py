@@ -333,6 +333,9 @@ case = "upstream-theme-polygon-elements"
 [snapshots."guides/facet-grid-legend-on-bottom.svg"]
 case = "upstream-guides-facet-grid-legend-bottom"
 
+[snapshots."guides/facet-grid-legend-on-left.svg"]
+case = "upstream-guides-facet-grid-legend-left"
+
 [snapshots."guides/facet-grid-legend-on-right.svg"]
 case = "upstream-guides-facet-grid-legend-right"
 
