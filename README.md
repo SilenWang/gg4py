@@ -109,3 +109,25 @@ docs/spike/          # M-1 可行性实验与结论
 - aes 表达式口径（字符串解析 / 白名单 / 长度语义 / 自动分组）：`docs/notes/aes.md`
 - 坐标口径账本（面板范围 / expand / clip / 等比例 / 根 native）：`docs/notes/coord.md`
 - 位置调整口径（identity / stack / fill / dodge / dodge2 / jitter / jitterdodge / nudge）：`docs/notes/position.md`
+- 第三方资产盘点：`docs/notes/licenses.md`
+
+## 许可证与归属
+
+本项目（gg4py）是 [ggplot2](https://github.com/tidyverse/ggplot2) **4.0.3** 的
+Python 对等复刻：语义层（`src/ggcore/`）、R 侧参考夹具（`tools/refs/*.R` 的产出）、
+案例参考图（`docs/cases/*/expected.svg`）大量移植或生成自上游。钉住的 commit 是
+`cc1444c10edb87650fbe0cb31d56f0da1a255634`（tag `v4.0.3`，见
+`docs/notes/upstream.md`）。
+
+| | |
+| --- | --- |
+| 上游 | `tidyverse/ggplot2` 4.0.3（commit `cc1444c1`） |
+| 上游许可 | **MIT**（`DESCRIPTION`：`License: MIT + file LICENSE`；版权 `2025 ggplot2 core developer team`） |
+| 本项目许可 | **MIT**（[`LICENSE`](LICENSE)；版权 `2026 Sylens Wong`） |
+| 第三方资产与依赖 | 盘点见 `docs/notes/licenses.md` |
+
+`LICENSE` 里是 MIT 全文，两段版权声明并列（上游一段、本项目一段），没有合并：
+这意味着分发本仓库（含派生的参考图、基线与配置文件）时要同时保留这两行。
+本仓库不含第三方二进制资产（无入库字体、wasm、Pyodide 运行时），字体与浏览器
+资产都是构建期从 pixi / npm 取、`git ls-files` 里看不到——逐项结论与复核命令在
+`docs/notes/licenses.md`。
