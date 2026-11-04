@@ -78,6 +78,7 @@ if TYPE_CHECKING:  # 只用于类型标注，避免 build ↔ plot 的运行时�
 
 __all__ = [
     "STAGES",
+    "STAT_DEFAULT_AES",
     "Aesthetics",
     "BuildError",
     "BuildWarning",
@@ -107,8 +108,34 @@ STAGES: tuple[str, ...] = (
     "finish",
 )
 
-#: 位置美学：只有它们会被离散位置标度编码成 1..n。
-POSITION_AESTHETICS = frozenset({"x", "y", "xmin", "xmax", "ymin", "ymax", "xend", "yend"})
+#: 位置美学（上游 `ggplot_global$x_aes` / `y_aes`）：只有它们会被离散位置标度
+#: 编码成 1..n，也只有它们参与位置标度的训练。
+POSITION_AESTHETICS = frozenset(
+    {
+        "x",
+        "y",
+        "xmin",
+        "xmax",
+        "ymin",
+        "ymax",
+        "xend",
+        "yend",
+        "xintercept",
+        "yintercept",
+        "xmin_final",
+        "xmax_final",
+        "ymin_final",
+        "ymax_final",
+        "xlower",
+        "xmiddle",
+        "xupper",
+        "lower",
+        "middle",
+        "upper",
+        "x0",
+        "y0",
+    }
+)
 
 #: 0 行图层在 ggplot2 里走「空 data frame」路径：这里只留轨迹，不再算后续阶段。
 _EMPTY = ColumnTable()
@@ -116,7 +143,7 @@ _EMPTY = ColumnTable()
 #: stat 自己补的缺省映射（上游 `Stat$default_aes`）：aesthetic → stat 输出列。
 #: `StatCount` / `StatBin` 同时给了 `x` 与 `y`（都指向 `after_stat(count)`）：
 #: 竖向柱补 `y`，横向柱（`flipped_aes`）补 `x`；缺哪个补哪个，顺序不变。
-_STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
+STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
         "count": (("x", "count"), ("y", "count")),
         "bin": (("x", "count"), ("y", "count")),
@@ -146,6 +173,8 @@ _STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
         "ecdf": (("x", "ecdf"), ("y", "ecdf")),
     }
 )
+
+_STAT_DEFAULT_AES = STAT_DEFAULT_AES
 
 #: `geom_*` 里需要在 finish 阶段派生坐标列的几何（上游 `setup_data()`）。
 _BAR_GEOMS = frozenset({"bar", "col", "histogram"})

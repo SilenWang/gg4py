@@ -961,6 +961,9 @@ class FacetGrid(FacetBase):
     margins: bool | tuple[str, ...] = False
     axes: str = "margins"
     axis_labels: str = "all"
+    #: `facet_grid(switch =)`：`"both"` / `"x"` 把列 strip 换到下面，
+    #: `"both"` / `"y"` 把行 strip 换到左边（上游 `attach_strips()`）。
+    switch: str | None = None
     kind: str = "grid"
 
     def __post_init__(self) -> None:
@@ -968,6 +971,8 @@ class FacetGrid(FacetBase):
             raise FacetError(
                 f"space 只能是 'fixed' / 'free' / 'free_x' / 'free_y'，收到 {self.space!r}"
             )
+        if self.switch is not None and self.switch not in ("both", "x", "y"):
+            raise FacetError(f"switch 只能是 'both' / 'x' / 'y' 或 None，收到 {self.switch!r}")
         both = {var.name for var in self.row_vars} & {var.name for var in self.col_vars}
         if both:
             raise FacetError(
@@ -1345,6 +1350,7 @@ def facet_from_component(component: Facet | FacetBase | None) -> FacetBase:
             margins=params.get("margins", False),
             axes=str(params.get("axes", "margins")),
             axis_labels=str(_param(params, "axis_labels", "axis.labels", default="all")),
+            switch=None if params.get("switch") is None else str(params["switch"]),
         )
     raise FacetError(f"分面 {name!r} 尚未实现（已实现：null / wrap / grid）")
 
@@ -1430,6 +1436,11 @@ class FacetTable:
     respect: bool = False
     #: `init_gtable()` 的 `aspect_ratio`（已折进行权重）；`respect=False` 时为 None。
     aspect_ratio: float | None = None
+    #: `"inside"` 的 strip 所在的边（`"top"` / `"right"` / `"bottom"` /
+    #: `"left"`）。轴带要贴着**整张分面表**的外沿画，不是贴着面板本身：换到
+    #: 下方 / 左侧的 strip 把轴推到表外，`axes = "all"` 的顶部 / 右侧轴标签
+    #: 则要越过 strip 行 / 列。
+    inside_strip_sides: tuple[str, ...] = ()
 
     def panel_boxes(
         self,
@@ -1549,8 +1560,17 @@ def facet_table(
             )
         return out
 
-    top_extents = _extents(top_names, top_labels, "strip.text.x", False)
-    right_extents = _extents(right_names, right_labels, "strip.text.y", True)
+    # `facet_grid(switch =)`：列 strip 换到下面、行 strip 换到左边。换边后
+    # 文本元素也换成 `strip.text.x.bottom` / `strip.text.y.left`（R 4.0 起
+    # 按边分元素，y 轴的默认角度是 90 与 -90 的差）。
+    switched = str(getattr(facet, "switch", None) or "") if facet.kind == "grid" else ""
+    top_side = "bottom" if switched in ("both", "x") else "top"
+    right_side = "left" if switched in ("both", "y") else "right"
+    top_element = "strip.text.x.bottom" if top_side == "bottom" else "strip.text.x"
+    right_element = "strip.text.y.left" if right_side == "left" else "strip.text.y"
+
+    top_extents = _extents(top_names, top_labels, top_element, False)
+    right_extents = _extents(right_names, right_labels, right_element, True)
     strip_h = float(sum(top_extents.values()))
     strip_w = float(sum(right_extents.values()))
 
@@ -1578,9 +1598,10 @@ def facet_table(
         # 显式回退 inside（strip 占 gtable 列，落在面板与次轴之间，不重叠）。
         right_placement = "inside"
     # `outside` 的 strip 不占 gtable 行列：它画在轴带之外，空间由整页版式
-    # （`plot_layout()`）另算。
-    outside_top = bool(top_names) and top_placement == "outside"
-    outside_right = bool(right_names) and right_placement == "outside"
+    # （`plot_layout()`）另算。换边的 strip 只做了 inside 版本——`outside`
+    # 的带区在 `plot_layout()` 里只有 top / right 两条，换边时按 inside 画。
+    outside_top = bool(top_names) and top_placement == "outside" and top_side == "top"
+    outside_right = bool(right_names) and right_placement == "outside" and right_side == "right"
 
     # wrap 的每个面板行上方都有一条 strip；grid 的顶部 strip 只有一行。
     strip_each_row = bool(top_names) and facet.kind == "wrap" and not outside_top
@@ -1588,6 +1609,9 @@ def facet_table(
     widths: list[Unit] = []
     panel_col_index: dict[int, int] = {}
     draw_axes = getattr(facet, "draw_axes", (False, False))
+    if right_names and not outside_right and right_side == "left":
+        # 换到左边的 strip 自成一列，在面板列之前（上游 `seam_table(side="left")`）。
+        widths.append(unit(strip_w, "cm"))
     for col in range(1, ncol + 1):
         if col > 1:
             widths.append(spacing_x)
@@ -1601,14 +1625,21 @@ def facet_table(
     for row in range(1, nrow + 1):
         if row > 1:
             heights.append(spacing_y)
-        if strip_each_row or (top_names and not outside_top and row == 1):
+        if top_side == "top" and (strip_each_row or (top_names and not outside_top and row == 1)):
             heights.append(unit(strip_h, "cm"))
         heights.append(unit(height_weights[row - 1], "null"))
         panel_row_index[row] = len(heights)
         # `axes = "all_x"`：每行下方插一条 x 轴带（R `weave_axes()` 的行间轴）。
         if draw_axes[0] and row < nrow and axis_x_cm > 0:
             heights.append(unit(axis_x_cm, "cm"))
-    if right_names and not outside_right:
+        if (
+            top_names
+            and not outside_top
+            and top_side == "bottom"
+            and (strip_each_row or row == nrow)
+        ):
+            heights.append(unit(strip_h, "cm"))
+    if right_names and not outside_right and right_side == "right":
         widths.append(unit(strip_w, "cm"))
 
     def _row(row: int) -> int:
@@ -1636,13 +1667,23 @@ def facet_table(
                 StripPart(name, labels[name], top_fill) for name in top_names if name in labels
             )
             text = "\n".join(part.text for part in parts)
-            strip_name = f"strip-t-{col}-{row}" if facet.kind == "wrap" else f"strip-t-{col}"
+            prefix = "strip-t" if top_side == "top" else "strip-b"
+            strip_name = f"{prefix}-{col}-{row}" if facet.kind == "wrap" else f"{prefix}-{col}"
+            # 换边后 strip 落在面板行的**下方**（`seam_table(side = "bottom")`）。
+            axis_after = bool(draw_axes[0] and row < nrow and axis_x_cm > 0)
+            if top_side == "top":
+                strip_row = top - 1
+            elif facet.kind == "grid":
+                # grid 的列 strip 只有一条，挂在整个分面表的最后一行之下。
+                strip_row = _row(nrow) + 1
+            else:
+                strip_row = top + 1 + int(axis_after)
             if not outside_top:
                 placements.append(
                     Placement(
-                        t=top - 1,
+                        t=strip_row,
                         l=left,
-                        b=top - 1,
+                        b=strip_row,
                         r=left,
                         z=2,
                         clip="off",
@@ -1651,12 +1692,19 @@ def facet_table(
                 )
             if not outside_top:
                 grobs.append(
-                    _Grob("strip", strip_name, text=text, panel=panel, side="top", fill=top_fill)
+                    _Grob(
+                        "strip",
+                        strip_name,
+                        text=text,
+                        panel=panel,
+                        side=top_side,
+                        fill=top_fill,
+                    )
                 )
             strips.append(
                 FacetStrip(
                     name=strip_name,
-                    side="top",
+                    side=top_side,
                     text=text,
                     panel=panel,
                     row=row,
@@ -1668,7 +1716,6 @@ def facet_table(
             )
 
     if right_names:
-        right = len(widths)
         for row in range(1, nrow + 1):
             panels_in_row = layout.panels_in_row(row)
             if not panels_in_row:
@@ -1684,10 +1731,13 @@ def facet_table(
                 if name in labels
             )
             text = "\n".join(part.text for part in parts)
-            name = f"strip-r-{row}"
+            name = f"strip-r-{row}" if right_side == "right" else f"strip-l-{row}"
+            strip_col = len(widths) if right_side == "right" else 1
             t = _row(row)
             if not outside_right:
-                placements.append(Placement(t=t, l=right, b=t, r=right, z=2, clip="off", name=name))
+                placements.append(
+                    Placement(t=t, l=strip_col, b=t, r=strip_col, z=2, clip="off", name=name)
+                )
             if not outside_right:
                 grobs.append(
                     _Grob(
@@ -1695,14 +1745,14 @@ def facet_table(
                         name,
                         text=text,
                         panel=panel,
-                        side="right",
+                        side=right_side,
                         fill=right_fill,
                     )
                 )
             strips.append(
                 FacetStrip(
                     name=name,
-                    side="right",
+                    side=right_side,
                     text=text,
                     panel=panel,
                     row=row,
@@ -1721,6 +1771,14 @@ def facet_table(
         grobs=tuple(grobs),
         layout=tuple(placements),
     )
+    inside_strip_sides = tuple(
+        side
+        for side, names, outside in (
+            (top_side, top_names, outside_top),
+            (right_side, right_names, outside_right),
+        )
+        if names and not outside
+    )
     return FacetTable(
         layout=layout,
         gtable=table,
@@ -1734,6 +1792,7 @@ def facet_table(
         right_placement=right_placement,
         respect=respect,
         aspect_ratio=aspect,
+        inside_strip_sides=inside_strip_sides,
     )
 
 

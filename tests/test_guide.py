@@ -1353,3 +1353,22 @@ def test_rotated_legend_text_swaps_its_footprint() -> None:
     )
     # 竖排图例的行高由 `legend.key.height` 兜底（标签比 key 矮），所以只有列宽变。
     assert upright_layout.width_cm < flat_layout.width_cm
+
+
+def test_stat_default_aesthetics_produce_a_guide() -> None:
+    """`Stat$default_aes` 补的映射也出图例：`geom_hex()` 的 `fill = after_stat(count)`。
+
+    `aes()` 里没有 `fill`，但 `StatBinhex$default_aes` 把它映射到 `count`，
+    上游因此给一张标题为 "count" 的 colourbar（SIL-811）。
+    """
+    data = ColumnTable(
+        [
+            ("x", Column("float", np.array([1.0, 1.05, 2.0, 2.05, 3.0]))),
+            ("y", Column("float", np.array([1.0, 2.0, 1.0, 2.0, 1.5]))),
+        ],
+        nrows=5,
+    )
+    plot = ggplot(data, aes(x="x", y="y")) + registry.geom_hex()
+    built = build_plot(plot)
+    kinds = [(type(item.guide).__name__, item.title) for item in build_guides(built)]
+    assert kinds == [("GuideColourbar", "count")]

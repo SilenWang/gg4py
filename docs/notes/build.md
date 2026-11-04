@@ -157,8 +157,11 @@ compute_aesthetics → compute_stat → map_statistic → compute_position → m
 - `transform_scales()`（新增）= 上游 `scales$transform_df()`：位置数据在训练前
   先做变换（`scale_x_log10()` 的 x 因此在 log10 空间）；
 - **两段训练**：`compute_aesthetics` 之后一次，`compute_position` 之后再一次；
-  第二段用 **positioned** 数据（含 `xmin/xmax/ymin/ymax`），否则柱子的锚点会被
-  stage 5 的 oob censor 成 NA；
+  第二段前先 `ScaleSet.reset()`（上游 `layout$reset_scales()`）：连续位置标度清空
+  范围，再用 **positioned** 数据（含 `xmin/xmax/ymin/ymax` 与箱线图的
+  `ymin_final/ymax_final`）重训，所以面板范围取「画出来的值」——`geom_hex()` 是
+  六边形中心的范围，`geom_boxplot()` 的离群点经 `ymax_final` 仍在范围内。离散位置
+  标度只清 `range_c`（连续部分），离散水平没法从数值列恢复；
 - `map_position()` 只映射位置美学（上游 `layout$map_position()` 的口径）；
 - 阶段 5 `map_scales()` 映射全部美学：位置 → censor（幂等），
   colour / fill / size / shape / alpha → 调色板 / rescale；

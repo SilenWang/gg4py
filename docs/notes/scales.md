@@ -63,9 +63,13 @@ npscales$set_palettes(theme); npscales$train_df(data); data <- npscales$map_df(d
   （连续标度变换到标度空间，离散原样返回；见 `docs/notes/coord.md` §1）；
 - 第一段 `train`：aesthetics 之后；
 - `map_position()` 只映射**位置美学**（上游 `layout$map_position()` 也只碰 x / y）；
-- 第二段 `train`：`compute_position()` 之后，用 **positioned** 数据（含
-  `xmin` / `xmax` / `ymin` / `ymax`）。这一点是必须的：柱子的锚点是
-  `x ± width/2`，不把它们收进范围，stage 5 的 `oob` 会把锚点 censor 成 NA；
+- 第二段 `train`：`compute_position()` 之后，先用 `ScaleSet.reset()` 复现
+  `layout$reset_scales()`（连续位置标度清空范围、离散位置标度只清 `range_c`），
+  再用 **positioned** 数据重训。训练列是上游 `ggplot_global$x_aes` / `y_aes`
+  的全集（`x` / `xmin` / `xmax` / `xend` / `xintercept` / `xmin_final` /
+  `lower` / `middle` / `upper` …），所以 `geom_boxplot()` 的离群点（只存在于
+  `ymax_final`）仍在面板里，而 `geom_hex()` 的面板取六边形中心的范围。柱子的
+  锚点 `x ± width/2` 也靠这一段收进范围，否则 stage 5 的 `oob` 会 censor 成 NA；
 - `map_scales()`（阶段 5）映射**全部**美学：位置 = censor（幂等），
   colour / fill / size / shape / alpha = 调色板 / rescale。
 

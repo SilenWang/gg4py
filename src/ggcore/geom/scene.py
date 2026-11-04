@@ -305,7 +305,7 @@ def scene_from_build(
     grobs.extend(_text_row_grobs(theme, layout, "subtitle"))
     grobs.extend(_text_row_grobs(theme, layout, "caption"))
     grobs.extend(_strip_grobs(table, theme, layout, metrics))
-    grobs.extend(_axis_grobs(prepared, theme, layout, metrics))
+    grobs.extend(_axis_grobs(prepared, theme, layout, metrics, table=table))
     grobs.extend(_legend_grobs(prepared, theme, layout, metrics))
     grobs.extend(_tag_grobs(layout))
     return scene(grobs, tree).to_ir_scene()
@@ -1010,11 +1010,14 @@ def _place_legend_box(
     width = float(box_layout.width_cm)
     height = float(box_layout.height_cm)
     if position == "right":
-        x = inner.right - width
+        # 贴着 panel 单元格的右边（R 的 guide-box 列紧挨 panel 列），不是页面
+        # 内区的右边：等比例面板（`coord_polar()` 的正圆）比内区窄，剩下的
+        # 空白留在图例右侧。
+        x = panel_area.right + spacing
         y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
         return Box(x, y, width, height)
     if position == "left":
-        x = inner.x_cm
+        x = panel_area.x_cm - spacing - width
         y = panel_rows.y_cm + (panel_rows.height_cm - height) / 2.0
         return Box(x, y, width, height)
     if position == "top":
@@ -1587,6 +1590,8 @@ def _axis_grobs(
     theme: ResolvedTheme,
     layout: PlotLayout,
     metrics: Any,
+    *,
+    table: Any = None,
 ) -> list[Any]:
     grobs: list[Any] = []
     guide_x = guide_for(build, "x")
@@ -1597,7 +1602,31 @@ def _axis_grobs(
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover
             continue
-        cell = CellBox(1, 1, 1, 1, box.x_cm, box.y_cm, box.width_cm, box.height_cm)
+        # `switch = "both"`：换到面板下方的 strip 与轴之间、换到左侧的 strip 与
+        # 轴之间都还隔着 strip 行 / 列（R 把轴 seam 在 strip 之外）。轴带贴着
+        # 整张分面表的外沿，不贴面板本身。
+        cell_x, cell_w = box.x_cm, box.width_cm
+        cell_y, cell_h = box.y_cm, box.height_cm
+        inside_sides = getattr(table, "inside_strip_sides", ())
+        if "bottom" in inside_sides:
+            cell_h = box.top - layout.panel_area.y_cm
+            cell_y = layout.panel_area.y_cm
+        if "left" in inside_sides:
+            cell_w = box.right - layout.panel_area.x_cm
+            cell_x = layout.panel_area.x_cm
+        cell = CellBox(1, 1, 1, 1, cell_x, cell_y, cell_w, cell_h)
+        # `axes = "all"` 的顶部 / 右侧轴标签在 strip 之外（R 把 strip 行先
+        # seam 进面板表，轴再 seam 在它外侧）。
+        top_cell = cell
+        if "top" in inside_sides and getattr(table, "strip_height_cm", 0.0):
+            top_cell = CellBox(
+                1, 1, 1, 1, cell_x, cell_y, cell_w, cell_h + float(table.strip_height_cm)
+            )
+        right_cell = cell
+        if "right" in inside_sides and getattr(table, "strip_width_cm", 0.0):
+            right_cell = CellBox(
+                1, 1, 1, 1, cell_x, cell_y, cell_w + float(table.strip_width_cm), cell_h
+            )
         scale_bottom = _panel_scale(build, panel, params.scale_key("bottom"))
         scale_left = _panel_scale(build, panel, params.scale_key("left"))
         scale_top = _panel_scale(build, panel, params.scale_key("top"))
@@ -1657,7 +1686,7 @@ def _axis_grobs(
                 axis_guide_grobs(
                     theme,
                     gx_top,
-                    cell,
+                    top_cell,
                     guide_top,
                     metrics=metrics,
                     name=f"axis-x-sec-{panel}",
@@ -1678,7 +1707,7 @@ def _axis_grobs(
                 axis_guide_grobs(
                     theme,
                     gy_right,
-                    cell,
+                    right_cell,
                     guide_right,
                     metrics=metrics,
                     name=f"axis-y-sec-{panel}",
@@ -2083,17 +2112,26 @@ def _one_strip(
     box = _strip_box(table, strip, layout, area, sizes)
     if box is None:
         return []
-    background_name = "strip.background.y" if strip.side == "right" else "strip.background.x"
+    background_name = (
+        "strip.background.y" if strip.side in ("right", "left") else "strip.background.x"
+    )
     background = theme.get(background_name)
-    element = theme.get("strip.text.y" if strip.side == "right" else "strip.text.x")
+    element = theme.get(
+        {
+            "left": "strip.text.y.left",
+            "right": "strip.text.y",
+            "bottom": "strip.text.x.bottom",
+        }.get(strip.side, "strip.text.x")
+    )
     angle = float(element.angle or 0.0) if isinstance(element, ElementText) else 0.0
     parts = strip.parts or (StripPart("", strip.text, strip.fill),)
     grobs: list[Any] = []
     count = len(parts)
     for index, part in enumerate(parts):
-        if strip.side == "top":
+        if strip.side in ("top", "bottom"):
             # 顶部：parts 自上而下排列，**最后一个变量最靠近面板**
             # （R `weave_tables_row()`：`x + y ~ ...` 时 y 贴着面板、x 在最上）。
+            # `switch = "both"` 换到底部同理：面板在上方，第一个变量贴着面板。
             slot_h = box.height_cm / count
             part_box = Box(box.x_cm, box.y_cm + (count - 1 - index) * slot_h, box.width_cm, slot_h)
         else:

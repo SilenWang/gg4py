@@ -26,7 +26,7 @@ from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
 from ggcore.geom.scene import plot_layout
 from ggcore.plot import ggplot
-from ggcore.theme import element_blank, element_rect, element_text, theme
+from ggcore.theme import element_blank, element_rect, element_text, resolve_theme, theme
 from ggcore.units import unit
 
 
@@ -990,3 +990,27 @@ def test_polar_facet_panels_stay_square_and_strips_sit_above_them() -> None:
         placement = next(row for row in table.gtable.layout if row.name == strip.name)
         panel_top = next(top for panel, top, _, _, _ in table.panels if panel == strip.panel)
         assert placement.t == panel_top - 1
+
+
+def test_grid_switch_moves_strips_to_the_bottom_and_left() -> None:
+    """`facet_grid(switch = "both")`：列 strip 到面板下方、行 strip 到左侧。
+
+    上游 `FacetGrid$attach_strips()` 换边后按边取元素
+    （`strip.text.x.bottom` / `strip.text.y.left`），y strip 的角度从 -90 翻成 90。
+    """
+    switched = build_plot(base_plot() + registry.facet_grid(("a",), ("b",), switch="both"))
+    table = switched.facet_table()
+    sides = {(strip.panel, strip.side) for strip in table.strips}
+    assert "top" not in {side for _, side in sides}
+    assert "right" not in {side for _, side in sides}
+    assert set(table.inside_strip_sides) == {"bottom", "left"}
+    for strip in table.strips:
+        placement = next(row for row in table.gtable.layout if row.name == strip.name)
+        panel_top = next(top for panel, top, _, _, _ in table.panels if panel == strip.panel)
+        if strip.side == "bottom":
+            assert placement.t > panel_top
+        else:
+            assert placement.l == 1
+    theme_ = resolve_theme(switched.theme)
+    assert float(theme_.get("strip.text.y.left").angle) == pytest.approx(90.0)
+    assert float(theme_.get("strip.text.y").angle) == pytest.approx(-90.0)

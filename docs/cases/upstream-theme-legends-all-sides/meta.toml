@@ -1,0 +1,7 @@
+family = "theme"
+features = ["legend-top", "legend-bottom", "legend-left", "legend-right", "legend-inside"]
+ci = false
+title = "上游快照：legends at all sides with justification"
+source = "upstream:tests/testthat/_snaps/theme/legends-at-all-sides-with-justification.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-811：五方位图例 + `legend.location = \"plot\"` 的逐边 justification。`ci = false`（登记不跑）：实测 3.10% / 1.28%——点层没画出来（连续 `alpha` / `fill` / `size` 三套标度同时映射）、图例键与标题也不对。"

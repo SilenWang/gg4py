@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-grid", "strip-switch"]
+ci = true
+title = "上游快照：switched facet strips"
+source = "upstream:tests/testthat/_snaps/facet-strips/switched-facet-strips.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-811：`facet_grid(switch = \"both\")`——列 strip 换到底部、行 strip 换到左边。"

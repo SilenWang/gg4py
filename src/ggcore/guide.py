@@ -60,7 +60,7 @@ from ggcore.axis import (
     text_line_cm,
     text_width_cm,
 )
-from ggcore.build import LayerBuild, PlotBuild
+from ggcore.build import STAT_DEFAULT_AES, LayerBuild, PlotBuild
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import parse_aes
 from ggcore.grobs import NullGrob, ZeroGrob, rect_grob, text_grob
@@ -853,6 +853,12 @@ def _default_title(build: PlotBuild, aesthetic: str) -> str | None:
     for mapping in getattr(build, "raw_mappings", ()):
         if aesthetic in mapping:
             return str(mapping[aesthetic])
+    # `Stat$default_aes` 补的美学用 stat 输出列当标题：`geom_hex()` 的
+    # `fill = after_stat(count)` 图例标题是 "count"，不是 "fill"。
+    for layer in getattr(build, "layers", ()):
+        for name, source in STAT_DEFAULT_AES.get(str(layer.stat), ()):
+            if name == aesthetic:
+                return source
     return aesthetic
 
 
@@ -964,7 +970,20 @@ def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:
         # 的 colour 不再是映射，因此不产生图例键（上游
         # `setup_plot_labels()` 用 `setdiff(names(mapping), names(layer$aes_params))`）。
         return False
-    return aesthetic in _layer_mapping(build, index)
+    if aesthetic in _layer_mapping(build, index):
+        return True
+    # `Stat$default_aes` 补出来的美学不在 `aes()` 里，但确实是映射：
+    # `geom_hex()` 的 `fill = after_stat(count)`（`StatBinhex$default_aes`）
+    # 要出 `count` 的 colourbar。上游 `Guides$setup()` 只看「标度存在」，
+    # 这里的等价条件是「这一层的 stat 自己补了这一列」。
+    return aesthetic in _stat_default_aesthetics(str(layer.stat))
+
+
+def _stat_default_aesthetics(stat: str) -> frozenset[str]:
+    """`Stat$default_aes` 里这个 stat 会补的美学名（`after_stat()` 部分）。"""
+    from ggcore.build import STAT_DEFAULT_AES
+
+    return frozenset(name for name, _source in STAT_DEFAULT_AES.get(stat, ()))
 
 
 def _default_guide(build: PlotBuild, aesthetic: str, scale: Any) -> Guide:

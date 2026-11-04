@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import snapshots  # noqa: E402
 
 CASES = ROOT / "docs" / "cases"
+#: R 内置数据集的逐值导出（`pixi run -e refs` 用 `datasets` / `ggplot2` 生成）。
+#: 只存这里用得到的列；生成出来的 `plot.py` 仍然**内联**数据，case 自包含。
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+
+def fixture(name: str) -> dict[str, Any]:
+    """读 `tools/upstream/fixtures/<name>.json`（R 4.5.3 的逐值导出）。"""
+    return json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8"))
+
+
+def _data_literal(data: Mapping[str, Any]) -> str:
+    """`DATA = {...}`：一行一列，交给 `_ruff_format()` 收尾。"""
+    return "DATA = " + pprint.pformat(dict(data), width=88, sort_dicts=False) + "\n"
+
 
 #: 主题族的公共数据与形状（`test-theme.R` 的 "themes don't change without
 #: acknowledgement" 与 "themes look decent at larger base sizes"）。
@@ -4814,6 +4829,9 @@ def specs() -> list[dict[str, Any]]:
         + _g8_specs()
         + _violin_specs()
         + _raster_specs()
+        + _hex_specs()
+        + _FACET_SPECS
+        + _theme_g9_specs()
     )
 
 
@@ -4897,6 +4915,357 @@ def _g8_specs() -> list[dict[str, Any]]:
         }
         for slug, snapshot, title, features in _G8_CASES
     ]
+
+
+#: G9（SIL-811）：`geom-hex` 剩下 2 条——`stat_bin_hex()` 的六边形分箱本身已经
+#: 与 R 逐值相同，差的是**面板范围**（R 在 `reset_scales()` 之后用 stat 之后的
+#: 数据重训位置标度，见 `src/ggcore/scales.py` 的 `ContinuousScale.reset()`）。
+#: 两条 case 走 `mpg` 夹具，坐标分别是 `coord_transform(y = "sqrt")` /
+#: `coord_polar()`——同一个偏差在两种坐标下的表现。
+_HEX_TEMPLATE = '''\
+"""上游快照复刻：{title}。
+
+源：{snapshot}
+（vdiffr 名 "{title}"）。
+
+R：
+
+    p <- ggplot(mpg, aes(displ, hwy)) + geom_hex()
+    p + {chain_name}
+
+`mpg` 夹具按 R 4.5.3 的 `datasets::mpg` 逐值内联（displ / hwy），不是仿制集。
+主题同其余上游快照：vdiffr 的快照按 `theme_test()` 的版面（见
+`docs/cases/README.md`）。
+"""
+
+{plot_import}
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+{data}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="displ", y="hwy"))
+        + geom_hex()
+        + {chain}
+        + theme_test()
+        + labs(title="{title}")
+    )
+    return {{"plot": p, "size": [10, 8]}}
+'''
+
+
+def _hex_specs() -> list[dict[str, Any]]:
+    mpg = fixture("mpg")
+    data = _data_literal({"displ": mpg["displ"], "hwy": mpg["hwy"]})
+    specs = []
+    for slug, snapshot, title, chain, chain_name, chain_import in (
+        (
+            "upstream-geom-hex-sqrt-y",
+            "geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg",
+            "hex bin plot with sqrt-transformed y",
+            'coord_transform(y="sqrt")',
+            'coord_transform(y = "sqrt")',
+            "from ggcore.plot import aes, coord_transform, geom_hex, ggplot, labs",
+        ),
+        (
+            "upstream-geom-hex-polar",
+            "geom-hex/hex-bin-plot-in-polar-coordinates.svg",
+            "hex bin plot in polar coordinates",
+            "coord_polar()",
+            "coord_polar()",
+            "from ggcore.plot import aes, coord_polar, geom_hex, ggplot, labs",
+        ),
+    ):
+        specs.append(
+            {
+                "slug": slug,
+                "snapshot": snapshot,
+                "title": title,
+                "family": "geom-hex",
+                "features": ["bin-hex", "facet-null", "theme-grey"],
+                "notes": "SIL-811：面板范围取 stat 之后的六边形中心（上游第二次 train_position）。",
+                "source": _HEX_TEMPLATE.format(
+                    title=title,
+                    snapshot=snapshot,
+                    chain=chain,
+                    chain_name=chain_name,
+                    plot_import=chain_import,
+                    data=data,
+                ),
+            }
+        )
+    return specs
+
+
+#: G9（SIL-811）：`theme` 簇剩下的版面条目（`ink` / `paper` + tag、五方位图例）。
+_THEME_INVERTED_SOURCE = '''\
+"""上游快照复刻：theme with inverted colours。
+
+源：theme/theme-with-inverted-colours.svg
+（vdiffr 名 "Theme with inverted colours"）。
+
+R：
+
+    p <- ggplot(mpg, aes(displ, hwy, colour = drv)) + geom_point() +
+      facet_wrap(~"Strip title") +
+      labs(title = "Main title", subtitle = "Subtitle", tag = "A", caption = "Caption")
+    p + theme_gray(ink = "white", paper = "black")
+
+`mpg` 夹具按 R 4.5.3 的 `datasets::mpg` 逐值内联（displ / hwy / drv）。
+"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
+from ggcore.theme import theme_gray
+from ggio.frame import to_column_table
+
+@DATA@
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="displ", y="hwy", colour="drv"))
+        + geom_point()
+        + facet_wrap(["strip"])
+        + labs(title="Main title", subtitle="Subtitle", tag="A", caption="Caption")
+        + theme_gray(ink="white", paper="black")
+    )
+    return {"plot": p, "size": [10, 8]}
+'''
+
+_THEME_ALL_SIDES_SOURCE = '''\
+"""上游快照复刻：legends at all sides with justification。
+
+源：theme/legends-at-all-sides-with-justification.svg
+（vdiffr 名 "legends at all sides with justification"）。
+
+R：
+
+    ggplot(mtcars) +
+      aes(disp, mpg, colour = hp, fill = factor(gear), shape = factor(cyl),
+          size = drat, alpha = wt) +
+      geom_point() +
+      guides(
+        shape = guide_legend(position = "top"),
+        colour = guide_colourbar(position = "bottom"),
+        size = guide_legend(position = "left"),
+        alpha = guide_legend(position = "right"),
+        fill = guide_legend(position = "inside", override.aes = list(shape = 21))
+      ) +
+      theme_test() +
+      theme(
+        legend.justification.top = "left",
+        legend.justification.bottom = c(1, 0),
+        legend.justification.left = c(0, 1),
+        legend.justification.right = "bottom",
+        legend.justification.inside = c(0.75, 0.75),
+        legend.location = "plot"
+      )
+
+`mtcars` 夹具按 R 4.5.3 的 `datasets::mtcars` 逐值内联
+（`tools/upstream/fixtures/mtcars.json`）。
+"""
+
+from ggcore.plot import aes, geom_point, ggplot, guide_colourbar, guide_legend, guides, labs
+from ggcore.theme import theme, theme_test
+from ggio.frame import to_column_table
+
+@DATA@
+
+
+def build():
+    p = (
+        ggplot(
+            to_column_table(DATA),
+            aes(
+                x="disp",
+                y="mpg",
+                colour="hp",
+                fill="gear",
+                shape="cyl",
+                size="drat",
+                alpha="wt",
+            ),
+        )
+        + geom_point()
+        + guides(**{
+            "shape": guide_legend(position="top"),
+            "colour": guide_colourbar(position="bottom"),
+            "size": guide_legend(position="left"),
+            "alpha": guide_legend(position="right"),
+            "fill": guide_legend(position="inside"),
+        })
+        + theme_test()
+        + theme(**{
+            "legend.justification.top": "left",
+            "legend.justification.bottom": (1, 0),
+            "legend.justification.left": (0, 1),
+            "legend.justification.right": "bottom",
+            "legend.justification.inside": (0.75, 0.75),
+            "legend.location": "plot",
+        })
+        + labs(title="legends at all sides with justification")
+    )
+    return {"plot": p, "size": [10, 8]}
+'''
+
+
+def _theme_g9_specs() -> list[dict[str, Any]]:
+    mpg = fixture("mpg")
+    mtcars = fixture("mtcars")
+    inverted = {
+        "displ": mpg["displ"],
+        "hwy": mpg["hwy"],
+        "drv": mpg["drv"],
+        "strip": ["Strip title"] * len(mpg["displ"]),
+    }
+    all_sides = {name: mtcars[name] for name in ("disp", "mpg", "hp", "gear", "cyl", "drat", "wt")}
+    return [
+        {
+            "slug": "upstream-theme-inverted-colours",
+            "snapshot": "theme/theme-with-inverted-colours.svg",
+            "title": "Theme with inverted colours",
+            "family": "theme",
+            "features": ["facet-wrap", "plot-tag", "theme-ink-paper"],
+            "notes": 'SIL-811：`theme_gray(ink = "white", paper = "black")` + `labs(tag=)`。',
+            "source": _THEME_INVERTED_SOURCE.replace("@DATA@", _data_literal(inverted)),
+        },
+        {
+            "slug": "upstream-theme-legends-all-sides",
+            "snapshot": "theme/legends-at-all-sides-with-justification.svg",
+            "title": "legends at all sides with justification",
+            "family": "theme",
+            "features": [
+                "legend-top",
+                "legend-bottom",
+                "legend-left",
+                "legend-right",
+                "legend-inside",
+            ],
+            "notes": (
+                'SIL-811：五方位图例 + `legend.location = "plot"` 的逐边 justification。'
+                "`ci = false`（登记不跑）：实测 2.95% / 1.17%——点层没画出来（连续 "
+                "`alpha` / `fill` / `size` 三套标度同时映射）、图例键与标题也不对。"
+            ),
+            "ci": False,
+            "source": _THEME_ALL_SIDES_SOURCE.replace("@DATA@", _data_literal(all_sides)),
+        },
+    ]
+
+
+#: G9（SIL-811）：`facet-` 簇剩下的版面条目。参考图一律按 `theme_test()` 的
+#: 版面（见 `docs/cases/README.md` 的「上游快照 case」）。
+_FACET_TEMPLATE = '''\
+"""上游快照复刻：{title}。
+
+源：{snapshot}
+（vdiffr 名 "{title}"）。
+
+R：
+
+{r_code}
+
+`mtcars` 夹具按 R 4.5.3 的 `datasets::mtcars` 逐值内联
+（`tools/upstream/fixtures/mtcars.json`）。
+"""
+
+{imports}
+from ggio.frame import to_column_table
+
+{data}
+
+
+def build():
+    p = (
+{body}
+    )
+    return {{"plot": p, "size": [10, 8]}}
+'''
+
+
+def _facet_spec(
+    *,
+    slug: str,
+    snapshot: str,
+    title: str,
+    r_code: str,
+    imports: str,
+    body: str,
+    columns: tuple[str, ...],
+    features: list[str],
+    notes: str,
+    ci: bool = True,
+) -> dict[str, Any]:
+    """一条 `facet-` 簇的复刻（数据来自 `fixtures/mtcars.json`）。"""
+    data = {name: fixture("mtcars")[name] for name in columns}
+    return {
+        "slug": slug,
+        "snapshot": snapshot,
+        "title": title,
+        "family": "facet",
+        "features": features,
+        "notes": notes,
+        "ci": ci,
+        "source": _FACET_TEMPLATE.format(
+            title=title,
+            snapshot=snapshot,
+            r_code=r_code,
+            imports=imports,
+            data=_data_literal(data),
+            body=body,
+        ),
+    }
+
+
+_FACET_SPECS: list[dict[str, Any]] = [
+    _facet_spec(
+        slug="upstream-facet-strips-switched",
+        snapshot="facet-strips/switched-facet-strips.svg",
+        title="switched facet strips",
+        r_code="""\
+    p <- ggplot(mtcars, aes(disp, drat)) + geom_point()
+    p + facet_grid(am ~ cyl, switch = "both")""",
+        imports="from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs\n"
+        "from ggcore.theme import theme_test",
+        body="""\
+        ggplot(to_column_table(DATA), aes(x="disp", y="drat"))
+        + geom_point()
+        + facet_grid(rows="am", cols="cyl", switch="both")
+        + theme_test()
+        + labs(title="switched facet strips")""",
+        columns=("disp", "drat", "am", "cyl"),
+        features=["facet-grid", "strip-switch"],
+        notes='SIL-811：`facet_grid(switch = "both")`——列 strip 换到底部、行 strip 换到左边。',
+    ),
+    _facet_spec(
+        slug="upstream-facet-wrap-omitted-inner-axis-labels",
+        snapshot="facet-/facet-wrap-with-omitted-inner-axis-labels.svg",
+        title="facet_wrap with omitted inner axis labels",
+        r_code="""\
+    base <- ggplot(mtcars, aes(mpg, disp)) + geom_point() +
+      guides(x = "axis", y = "axis", x.sec = "axis", y.sec = "axis")
+    base + facet_wrap(vars(cyl, vs), axes = "all", axis.labels = "margins")""",
+        imports="from ggcore.plot import aes, facet_wrap, geom_point, ggplot, guides, labs\n"
+        "from ggcore.theme import theme_test",
+        body="""\
+        ggplot(to_column_table(DATA), aes(x="mpg", y="disp"))
+        + geom_point()
+        + guides(**{"x": "axis", "y": "axis", "x.sec": "axis", "y.sec": "axis"})
+        + facet_wrap(["cyl", "vs"], axes="all", axis_labels="margins")
+        + theme_test()
+        + labs(title="facet_wrap with omitted inner axis labels")""",
+        columns=("mpg", "disp", "cyl", "vs"),
+        features=["facet-wrap", "axis-labels-margins"],
+        notes=(
+            "SIL-811：`ci = false`（登记不跑）。实测 2.55% / 0.53%：顶部轴标签已挪到"
+            " strip 之外，剩下的是行间轴带 5.48pt 被 gtable 的 null 行二次扣除"
+            "（两个面板各矮 2.74pt）。卡在 `facet_table.panel_boxes()` 的分辨高度。"
+        ),
+        ci=False,
+    ),
+]
 
 
 #: G1a（SIL-788）：guides / guide-legend / guide-colorbar / draw-key 四个簇的复刻表。
@@ -10513,7 +10882,7 @@ def _meta_source(spec: dict[str, Any]) -> str:
         return (
             f'family = "{family}"\n'
             f"features = {json.dumps(spec['features'])}\n"
-            "ci = true\n"
+            f"ci = {str(bool(spec.get('ci', True))).lower()}\n"
             f'title = "上游快照：{spec["title"]}"\n'
             f'source = "upstream:tests/testthat/_snaps/{spec["snapshot"]}"\n'
             "tolerance = { png = 0.02 }\n"
