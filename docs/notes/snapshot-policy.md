@@ -16,8 +16,12 @@ M0 的比对对象有三类，用途不同，**不能混用容差**：
 > **缺口归属（SIL-786）**：`snapshots.toml` 的每个 group 必须写
 > `owner = "m2-closeout"`（M2 已宣称但没做到对等，M3 开工前归零）或
 > `owner = "m3"`（`geom_sf` / `coord_sf` / `coord_map` / `annotate` / 版面组合，
-> 移交 M3）。按簇的 burndown 表由 `pixi run snapshots:report` 生成在同一份清单里，
-> 不另维护；`pixi run snapshots:report:check` 挂在 CI 上守新鲜度。
+> 移交 M3）。owner 是**按簇**声明：单条 `[snapshots."…"]` 的 owner 覆盖必须与
+> 所属 group 一致，否则 `snapshots:check` 判红。按簇的 burndown 表由
+> `pixi run snapshots:report` 生成在同一份清单里，不另维护；`pixi run
+> snapshots:report:check` 挂在 CI 上守两件事：清单新鲜度，以及三处口径一致
+> ——清单表头、burndown 逐簇相加、`snapshots.toml` 的 group owner 与
+> `docs/cases/matrix.md` 的同一张数（SIL-822）。
 
 ## 为什么上游快照不入库
 

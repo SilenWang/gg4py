@@ -78,6 +78,67 @@ def test_inventory_burndown_is_generated_from_the_toml() -> None:
     assert SNAPSHOTS.check_report() == []
 
 
+def _resolved() -> list[dict]:
+    return SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), SNAPSHOTS.load_dispositions())
+
+
+def test_inventory_header_equals_the_burndown_sum() -> None:
+    """SIL-822：表头（按 owner 合计）= burndown 逐簇相加，提交的清单里就必须成立。"""
+    rows = _resolved()
+    text = (ROOT / "docs" / "notes" / "snapshot-inventory.md").read_text(encoding="utf-8")
+    assert SNAPSHOTS.inventory_drift(text, rows) == []
+
+
+def test_report_check_reproduces_the_sil822_drift() -> None:
+    """把本次漂移原样注入清单：表头 / 逐簇相加 / toml owner 对不上时必须判红。
+
+    复现的是 SIL-822 的两处已知冲突：三个簇在 burndown 表里标 `m2-closeout`
+    （逐簇相加 7 / 32），表头却按逐条 owner 写 0 / 39，且 `coord-polar` 的
+    group owner 停在 `m2-closeout`。
+    """
+    rows = _resolved()
+    text = SNAPSHOTS.render_inventory(rows, SNAPSHOTS.load_manifest()["pin"])
+    assert SNAPSHOTS.inventory_drift(text, rows) == []
+
+    drifted = text
+    for cluster in ("coord-polar", "guide-axis", "facet-labels", "geom-hline-vline-abline"):
+        drifted = drifted.replace(f"| `{cluster}` | m3 |", f"| `{cluster}` | m2-closeout |")
+    assert drifted != text
+
+    problems = SNAPSHOTS.inventory_drift(drifted, rows)
+    assert any("表头写" in problem and "逐簇相加" in problem for problem in problems), problems
+    assert any(
+        "`coord-polar`" in problem and "burndown owner" in problem for problem in problems
+    ), problems
+
+
+def test_group_owner_that_stops_at_m2_closeout_is_red(monkeypatch: pytest.MonkeyPatch) -> None:
+    """只改单条 owner、group owner 停在 m2-closeout（本次漂移的来源）→ `snapshots:check` 红。"""
+    dispositions = SNAPSHOTS.load_dispositions()
+    dispositions["groups"]["coord-polar"]["owner"] = "m2-closeout"
+    rows = SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), dispositions)
+    moved = [row["path"] for row in rows if row["cluster"] == "coord-polar" and not row["case"]]
+    assert moved
+    for path in moved:
+        dispositions["snapshots"].setdefault(path, {})["owner"] = "m3"
+    monkeypatch.setattr(SNAPSHOTS, "load_dispositions", lambda: dispositions)
+    problems, _ = SNAPSHOTS.check()
+    assert any("coord-polar" in problem and "m2-closeout" in problem for problem in problems), (
+        problems
+    )
+
+
+def test_matrix_ledger_must_match_the_inventory() -> None:
+    """`matrix.md` 的上游快照表是第三处口径，与台账不一致时必须红。"""
+    rows = _resolved()
+    text = (ROOT / "docs" / "cases" / "matrix.md").read_text(encoding="utf-8")
+    assert SNAPSHOTS.matrix_drift(text, rows) == []
+
+    drifted = text.replace("| 311 | 272 | 39 | 0 | 39 |", "| 311 | 272 | 39 | 7 | 32 |")
+    assert drifted != text
+    assert SNAPSHOTS.matrix_drift(drifted, rows)
+
+
 def test_large_base_size_outliers_are_admitted_without_widening_bands() -> None:
     """三条大字号快照曾是**实现缺口**，修好 `from_theme()` 后按 2% 档纳管（SIL-792）。
 

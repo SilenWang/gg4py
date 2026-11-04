@@ -459,17 +459,9 @@ def upstream_snapshot_summary(verdicts: Sequence[Verdict]) -> dict[str, Any] | N
     `tools/upstream/snapshot-manifest.json`。这里只做 join：不联网、不重新渲染。
     没 commit 清单时返回 ``None``（老分支 / 精简检出）。
     """
-    manifest = REPO / "tools" / "upstream" / "snapshot-manifest.json"
-    dispositions = REPO / "tools" / "upstream" / "snapshots.toml"
-    if not manifest.is_file() or not dispositions.is_file():
+    module = _snapshots_module()
+    if module is None:
         return None
-    spec = importlib.util.spec_from_file_location(
-        "gg_upstream_snapshots", REPO / "tools" / "upstream" / "snapshots.py"
-    )
-    if spec is None or spec.loader is None:
-        return None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
     rows = module.resolve(module.load_manifest(), module.load_dispositions())
     imported = [row for row in rows if row["case"]]
     status = {verdict.case.name: verdict.status for verdict in verdicts}
@@ -482,6 +474,34 @@ def upstream_snapshot_summary(verdicts: Sequence[Verdict]) -> dict[str, Any] | N
         "red": red,
         "gaps": len(rows) - len(imported),
     }
+
+
+def _snapshots_module():
+    """按需加载 `tools/upstream/snapshots.py`（没 commit 清单时返回 ``None``）。"""
+    manifest = REPO / "tools" / "upstream" / "snapshot-manifest.json"
+    dispositions = REPO / "tools" / "upstream" / "snapshots.toml"
+    if not manifest.is_file() or not dispositions.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location(
+        "gg_upstream_snapshots", REPO / "tools" / "upstream" / "snapshots.py"
+    )
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def upstream_snapshot_ledger() -> dict[str, Any] | None:
+    """静态矩阵里的同一张台账（SIL-822）：总数 / 已纳管 / 缺口 / 按 owner 分布。
+
+    数字直接来自 `snapshots.py` 的 `ledger()`，与 `snapshot-inventory.md`
+    同源；`snapshots:report:check` 会核对两边。
+    """
+    module = _snapshots_module()
+    if module is None:
+        return None
+    return module.ledger(module.resolve(module.load_manifest(), module.load_dispositions()))
 
 
 class TaskBackend:
@@ -747,8 +767,13 @@ def render_matrix(
     taxonomy: Taxonomy,
     legacy: Sequence[Path],
     external: Sequence[tuple[str, str, str]],
+    ledger: Mapping[str, Any] | None = None,
 ) -> str:
-    """生成 `docs/cases/matrix.md`。纯函数：同一份仓库内容 → 同一份字节。"""
+    """生成 `docs/cases/matrix.md`。纯函数：同一份仓库内容 → 同一份字节。
+
+    `ledger` 是上游快照台账（`snapshots.py` 的 `ledger()`）；给定时矩阵里多一节
+    与 `snapshot-inventory.md` 同口径的表（SIL-822）。临时 root（测试）不传。
+    """
     families, features, cells = aggregate(cases, taxonomy)
     by_name = {case.name: case for case in cases}
 
@@ -813,6 +838,26 @@ def render_matrix(
     totals = [str(total) if total else "—" for total in feature_totals]
     totals.append(str(placed) if placed else "—")
     lines.append("| **合计** | " + " | ".join(totals) + " |")
+
+    if ledger is not None:
+        by_owner = ledger["by_owner"]
+        lines.extend(
+            [
+                "",
+                "## 上游快照（v4.0.3）",
+                "",
+                "| 快照总数 | 已纳管 | 已知缺口 | `m2-closeout` 缺口 | `m3` 缺口 |",
+                "| ---: | ---: | ---: | ---: | ---: |",
+                f"| {ledger['total']} | {ledger['imported']} | {ledger['gaps']} "
+                f"| {by_owner['m2-closeout']} | {by_owner['m3']} |",
+                "",
+                "分母是上游 pin 的 `tests/testthat/_snaps/**/*.svg`；逐条处置见 "
+                "`docs/notes/snapshot-inventory.md`（生成物，`pixi run snapshots:report`），"
+                "归属写 `tools/upstream/snapshots.toml`。三处同源，由 "
+                "`pixi run snapshots:report:check` 一起核对；本表只记静态台账，"
+                "运行时红绿在 `.cases-matrix/report.md`。",
+            ]
+        )
 
     gaps = [
         (family, feature)
@@ -1320,7 +1365,9 @@ def main(argv: list[str] | None = None, backend: TaskBackend | None = None) -> i
     external = _external_rows(args.root)
 
     matrix_file = MATRIX_FILE if args.root == CASES else args.root / MATRIX_FILE.name
-    generated = render_matrix(cases, taxonomy, legacy, external)
+    # 台账那节只属于真实仓库（tmp root 的测试不读上游清单）。
+    ledger = upstream_snapshot_ledger() if args.root == CASES else None
+    generated = render_matrix(cases, taxonomy, legacy, external, ledger)
     if args.print_matrix:
         print(generated)
 

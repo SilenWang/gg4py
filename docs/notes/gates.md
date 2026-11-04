@@ -13,6 +13,7 @@
 | `pixi run gate:cbor` | `tools/gates/check_cbor_diff.py` | `_cbor` 与 `cbor2` canonical 不等价（M0-10/SIL-646） | NaN 不归一成 `f97e00`、长度头写错 |
 | `pixi run api:coverage:check` | `tools/gates/api_coverage.py` | v4.0.3 的 NAMESPACE 导出在任何分类里掉到 90% 以下，或有缺口没登记 issue 归口（SIL-745） | `theme` 覆盖率 40% 且 `theme_set` 没归口 |
 | `pixi run snapshots:check` | `tools/upstream/snapshots.py` | 上游 311 份 SVG 快照里有条目没处置、缺口没归口、或已纳管 case 的 `expected.svg` 与上游不再逐字节相同 | 改了 `docs/cases/upstream-*/expected.svg` |
+| `pixi run snapshots:report:check` | `tools/upstream/snapshots.py --check-report` | 清单没重生成；或表头 / burndown 逐簇相加 / `snapshots.toml` 的 group owner / `matrix.md` 的上游快照表四处口径对不上（SIL-822） | 单条 owner 移交 m3 但 group owner 还写 m2-closeout |
 | `pixi run tiers:check` | `tools/cases/snapshot_tiers.py` | 某个 case 声明的容差超过它所在文本负载档位的上限（SIL-745 #3） | `text-light` case 写 `tolerance = { png = 0.05 }` |
 
 `pixi run check` = `lint` + `test` + 几道门全部。
