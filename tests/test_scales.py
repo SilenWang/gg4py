@@ -1239,3 +1239,42 @@ def test_callable_labels_get_untransformed_breaks_and_keep_na_positions() -> Non
     assert scale.breaks() == (None, 3.0)
     assert scale.labels() == (None, "<3>")
     assert seen == [[3.0]]
+
+
+def test_reset_clears_continuous_position_range_but_keeps_discrete_levels() -> None:
+    """`layout$reset_scales()`：连续位置标度清范围，离散位置标度只清 `range_c`。
+
+    第二段训练用 stat / position 之后的数据重填，所以面板范围取「画出来的值」
+    （`docs/notes/scales.md` §1）。
+    """
+    scales = ScaleSet()
+    scales.train(column([1.0, 10.0]), "x")
+    scales.train(column([1.0, 10.0]), "xmin")
+    scales.train(column(["a", "c"]), "y")
+    assert scales.limits("x") == (1.0, 10.0)
+    assert scales.continuous_range("y") is None
+    scales.train(column([0.5, 3.5]), "ymin")
+    assert scales.continuous_range("y") == (0.5, 3.5)
+
+    scales.reset()
+
+    continuous = scales.scale("x")
+    assert continuous._range is None
+    assert scales.limits("y") == ("a", "c")
+    assert scales.continuous_range("y") is None
+
+
+def test_boxplot_outliers_stay_inside_the_panel_range() -> None:
+    """第二段训练认 `ymin_final` / `ymax_final`：离群点在面板里（上游同口径）。"""
+    values = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 100.0])
+    data = ColumnTable(
+        [
+            ("x", Column("str", np.array(["a"] * 10, dtype=object))),
+            ("y", Column("float", values)),
+        ],
+        nrows=10,
+    )
+    built = build_plot(ggplot(data, aes(x="x", y="y")) + registry.geom_boxplot())
+    low, high = built.panel_params.y_range
+    assert low < 1.0 < high
+    assert high > 100.0

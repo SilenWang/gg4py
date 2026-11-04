@@ -102,8 +102,38 @@ CONTINUOUS_AESTHETICS = frozenset({"size", "alpha", "colour", "fill", "linewidth
 #: 离散标度覆盖的美学。
 DISCRETE_AESTHETICS = frozenset({"shape", "colour", "fill", "linetype"})
 
-_X_ALIASES = frozenset({"xmin", "xmax", "xend"})
-_Y_ALIASES = frozenset({"ymin", "ymax", "yend"})
+#: 位置标度吃的美学名（上游 `ggplot_global$x_aes` / `y_aes`）：除了 `x` / `y`
+#: 本体，还有箱线图 / 区间几何派生的 `ymin_final` / `lower` 这一批。第二段
+#: 训练（`plot-build.R` 的 `train_position()`）靠它们把「画出来的范围」收进
+#: 标度——`geom_boxplot()` 的离群点就只在 `ymin_final` / `ymax_final` 里。
+_X_ALIASES = frozenset(
+    {
+        "xmin",
+        "xmax",
+        "xend",
+        "xintercept",
+        "xmin_final",
+        "xmax_final",
+        "xlower",
+        "xmiddle",
+        "xupper",
+        "x0",
+    }
+)
+_Y_ALIASES = frozenset(
+    {
+        "ymin",
+        "ymax",
+        "yend",
+        "yintercept",
+        "ymin_final",
+        "ymax_final",
+        "lower",
+        "middle",
+        "upper",
+        "y0",
+    }
+)
 
 
 class ScaleError(ValueError):
@@ -1128,9 +1158,12 @@ class ScaleBase:
     def reset(self) -> None:
         """`Scale$reset()`：重新训练前的钩子。默认什么都不做。
 
-        上游 `layout$reset_scales()` 会清空范围；`ggcore.build` 的第一段与第二段
-        训练是累加的（M1-4 的既有口径），所以默认保持累加。分箱位置标度在这里
-        翻到「stat 之后」的映射（见 :class:`BinnedPositionScale`）。
+        上游 `layout$reset_scales()` 在 `compute_position()` 之后调用，紧接着用
+        **stat / position 之后**的数据重训位置标度（`plot-build.R` 的第二次
+        `train_position()`）。连续位置标度因此要丢弃第一段的范围
+        （:meth:`ContinuousScale.reset`）；离散位置标度只能清「连续部分」
+        （`range_c`，见 :meth:`ScaleSet.reset`）。分箱位置标度在这里翻到
+        「stat 之后」的映射（:class:`BinnedPositionScale`）。
         """
 
     @property
@@ -1239,6 +1272,16 @@ class ContinuousScale(ScaleBase):
         else:
             self._range = (min(self._range[0], low), max(self._range[1], high))
         self._trained = True
+
+    def reset(self) -> None:
+        """`Scale$reset()`：清空训练范围，等第二段训练重填。
+
+        只对位置标度生效：非位置标度（colour / size / …）在本仓只在第一段
+        训练，清空会让调色板失去范围。面板范围取「画出来的值」——`geom_hex()`
+        的面板是六边形中心的范围，不是原始数据的范围（SIL-811）。
+        """
+        if self.is_position:
+            self._range = None
 
     # -- 范围 -------------------------------------------------------------
 
@@ -3096,9 +3139,12 @@ class ScaleSet:
     def reset(self) -> None:
         """`layout$reset_scales()`：第二段训练前让标度翻到 stat 之后的语义。
 
-        连续 / 离散标度是空操作（M1-4 的两段训练是累加的）；分箱位置标度在这里
-        把 `map()` 从「箱号」切到「箱中心」。
+        连续位置标度清空范围（第二段训练用 stat / position 之后的数据重填）；
+        离散位置标度只清「连续部分」（上游 `ScaleDiscretePosition$reset()` 只
+        `range_c$reset()`——离散水平没法从数值列恢复，所以留着）。分箱位置标度
+        在这里把 `map()` 从「箱号」切到「箱中心」。
         """
+        self._continuous.clear()
         for scale in self._all_scales().values():
             scale.reset()
 

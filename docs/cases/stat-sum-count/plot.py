@@ -13,6 +13,7 @@ from ggcore.plot import (
     stat_sum,
     theme_void,
 )
+from ggcore.theme import theme
 from ggio.frame import to_column_table
 
 DATA = {"x": [1, 1, 2, 2, 2], "y": [1, 1, 2, 3, 3]}
@@ -27,5 +28,8 @@ def build():
         + scale_x_continuous(limits=(0.5, 2.5), expand=(0, 0))
         + scale_y_continuous(limits=(0.5, 3.5), expand=(0, 0))
         + theme_void()
+        # 参考图的 R 侧是 `theme_case()` = theme_void() + legend.position = "none"
+        # （`tools/refs/stat_longtail_ref.R`），`size` 映射到 `n` 也不出图例。
+        + theme(**{"legend.position": "none"})
     )
     return {"plot": p, "size": SIZE}

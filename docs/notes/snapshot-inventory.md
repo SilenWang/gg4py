@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**252**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**59**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **24** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
+- 已纳管：**256**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**55**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **20** 条（M3 开工前归零） / `m3` **35** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -15,16 +15,14 @@
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `guide-axis` | m2-closeout | 23 | 15 | 8 |
-| `theme` | m2-closeout | 39 | 31 | 8 |
+| `theme` | m2-closeout | 39 | 32 | 7 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `facet-labels` | m2-closeout | 2 | 0 | 2 |
-| `geom-hex` | m2-closeout | 3 | 1 | 2 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
 | `facet-` | m2-closeout | 4 | 3 | 1 |
-| `facet-strips` | m2-closeout | 1 | 0 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `guide-legend` | m2-closeout | 7 | 6 | 1 |
 | `guides` | m2-closeout | 45 | 44 | 1 |
@@ -35,9 +33,11 @@
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
 | `draw-key` | m2-closeout | 6 | 6 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
+| `facet-strips` | m2-closeout | 1 | 1 | 0 |
 | `geom-boxplot` | m2-closeout | 3 | 3 | 0 |
 | `geom-curve` | m2-closeout | 2 | 2 | 0 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
+| `geom-hex` | m2-closeout | 3 | 3 | 0 |
 | `geom-label` | m2-closeout | 1 | 1 | 0 |
 | `geom-path` | m2-closeout | 5 | 5 | 0 |
 | `geom-polygon` | m2-closeout | 2 | 2 | 0 |
@@ -52,7 +52,7 @@
 | `sec-axis` | m2-closeout | 7 | 7 | 0 |
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
-| **合计** | — | 311 | 252 | 59 |
+| **合计** | — | 311 | 256 | 55 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -92,6 +92,7 @@
 | `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
 | `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
 | `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg` | `upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout` |
+| `facet-strips/switched-facet-strips.svg` | `upstream-facet-strips-switched` |
 | `geom-boxplot/customised-style.svg` | `upstream-geom-boxplot-customised-style` |
 | `geom-boxplot/outlier-colours.svg` | `upstream-geom-boxplot-outlier-colours` |
 | `geom-boxplot/staples.svg` | `upstream-geom-boxplot-staples` |
@@ -132,6 +133,8 @@
 | `geom-dotplot/stack-up.svg` | `upstream-geom-dotplot-stack-up` |
 | `geom-dotplot/stackratio-1-5.svg` | `upstream-geom-dotplot-stackratio-1-5` |
 | `geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg` | `upstream-geom-dotplot-variable-linetype-size` |
+| `geom-hex/hex-bin-plot-in-polar-coordinates.svg` | `upstream-geom-hex-polar` |
+| `geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg` | `upstream-geom-hex-sqrt-y` |
 | `geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg` | `upstream-geom-hex-single-bin` |
 | `geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-cartesian` |
 | `geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-flipped` |
@@ -309,6 +312,7 @@
 | `theme/theme-minimal.svg` | `upstream-theme-minimal` |
 | `theme/theme-void-large.svg` | `upstream-theme-void-large` |
 | `theme/theme-void.svg` | `upstream-theme-void` |
+| `theme/theme-with-inverted-colours.svg` | `upstream-theme-inverted-colours` |
 | `theme/ticks-length.svg` | `upstream-theme-ticks-length` |
 | `theme/titles-aligned-to-entire-plot.svg` | `upstream-theme-titles-aligned-to-entire-plot` |
 | `theme/width-is-3-times-height.svg` | `upstream-theme-width-is-3-times-height` |
@@ -397,7 +401,7 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 ### `facet-` — 1 条 · SIL-715 · m2-closeout
 
-SIL-796：`axes = "all"` + `axis.labels = "margins"` 已接上（case `upstream-facet-facet-wrap-with-omitted-inner-axis-labels`），但 `facet_wrap` 每行插轴带后 gtable 的 null 行把 strip 与面板之间的 5.46pt 轴带分配成 2.72pt，第二行 strip 上移 2.74pt（图级 2.92%，均值 0.65%）。卡在 `facet_table()` 的 `heights` 与 `facet_table.panel_boxes()` 的 null 行分配口径，不是阈值问题。
+SIL-811 未纳管（case `upstream-facet-wrap-omitted-inner-axis-labels` 登记为 `ci = false`）：顶部 / 右侧轴标签已按 R 挪到 strip 之外（2.92% → 2.55%，均值 0.53%），剩下的 2.55% 是行间轴带被 gtable 的 null 行二次扣除——`panel_boxes()` 的分辨高度比表高少 5.48pt，两个面板各矮 2.74pt，第二行的 strip 与面板因此整体上移。卡在 `facet_table.panel_boxes()` 与 `plot_layout()` 谁扣 `x_axis_cm` 的口径，不是阈值问题。
 
 <details><summary>快照</summary>
 
@@ -422,36 +426,6 @@ SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NA
 <details><summary>快照</summary>
 
 - `facet-labels/parsed-facet-labels.svg`
-
-</details>
-
-### `facet-strips` — 1 条 · SIL-715 · m2-closeout
-
-SIL-796：`facet_grid(switch = "both")` 未实现——strip 仍固定在顶部 / 右侧，未换到底部 / 左侧，y strip 文本也未按换边翻转（图级 12.7%）。卡在 `facet_table()` 的 strip 放置位置与 `strip.text.y` 的角度翻转。
-
-<details><summary>快照</summary>
-
-- `facet-strips/switched-facet-strips.svg`
-
-</details>
-
-### `geom-hex` — 1 条 · SIL-715 · m2-closeout
-
-SIL-795 未纳管：`geom_hex()` + `coord_polar()` 实测 6.9%（门槛 2%）。画法已按上游改成逐顶点 `coord$transform()`，剩余差异来自面板范围——R 4.0.3 在 `layout$reset_scales()` 之后**用 stat 之后的数据重训位置标度**（`plot-build.R` 的第二次 `train_position()`），所以 `geom_hex` 的 x/y range 是六边形中心的范围（`displ` 1.53..6.93），而本仓两段训练是累加的（首段含原始数据 1.6..7.0）。改成「重训」会连带改变 bar / path 等已纳管快照的成图（试过：`aes-stat-count` 从 0.5% 掉到 14.6%），属于流水线级改动，留待单独立项。
-
-<details><summary>快照</summary>
-
-- `geom-hex/hex-bin-plot-in-polar-coordinates.svg`
-
-</details>
-
-### `geom-hex` — 1 条 · SIL-715 · m2-closeout
-
-SIL-795 未纳管：同 `hex bin plot in polar coordinates`——同一处「stat 之后重训位置标度」的差异（实测 12.1%，`coord_transform(y = "sqrt")` 只是把偏差放大）。六边形分箱、计数与颜色本身已与 R 逐值相同（111 个 bin 的 x/y/count/density/fill 全等），差的只是面板范围。
-
-<details><summary>快照</summary>
-
-- `geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg`
 
 </details>
 
@@ -656,6 +630,16 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 
 ### `theme` — 1 条 · SIL-715 · m2-closeout
 
+SIL-811 未纳管（case `upstream-theme-legends-all-sides` 登记为 `ci = false`）：实测 3.10% / 1.28%。`mtcars` 七列夹具已内联，`legend.location = "plot"` 与逐边 `legend.justification.<side>` 已接上；差的是同一层同时映射 `colour` / `fill`（数值列 → 连续 fill）/ `shape` / `size` / `alpha` 时点层画不出来（图例只出标题、无键），属多重非位置标度的绘制链。
+
+<details><summary>快照</summary>
+
+- `theme/legends-at-all-sides-with-justification.svg`
+
+</details>
+
+### `theme` — 1 条 · SIL-715 · m2-closeout
+
 `element_point()` 的 `element_grob()` 渲染（`pch = 21` + 逐点 fill），是 `grid.newpage()` + `grid.draw()` 的裸 grob 快照，不走 ggplot 管线。
 
 <details><summary>快照</summary>
@@ -696,16 +680,6 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 
 ### `theme` — 1 条 · SIL-715 · m2-closeout
 
-`plot.tag` 还没有渲染（R 的 `table_add_tag()` 会为 tag 单开一行），所以整页版式比上游少一行；色板与面板背景已对。修好 tag 后重测，预期进档。
-
-<details><summary>快照</summary>
-
-- `theme/theme-with-inverted-colours.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
 上游用 `S7::new_class()` 造 `element_text` 子类并覆写 `element_grob()` 画 1cm 方块；Python 侧没有可子类化的 element 渲染协议，属扩展能力。
 
 <details><summary>快照</summary>
@@ -721,15 +695,5 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 <details><summary>快照</summary>
 
 - `theme/stretched-horizontal-legends.svg`
-
-</details>
-
-### `theme` — 1 条 · SIL-715 · m2-closeout
-
-需要 `mtcars` 完整夹具（`hp` / `gear` / `wt` 三列本仓还没有内联），且用 `legend.location = 'plot'` 把图例挂在整页而不是面板行；`legend.justification.<side>` 已实现。
-
-<details><summary>快照</summary>
-
-- `theme/legends-at-all-sides-with-justification.svg`
 
 </details>

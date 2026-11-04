@@ -61,12 +61,12 @@ reason = "SIL-810 已把 6 条全部纳管：`key_glyph=`（名称 / `draw_key_*
 [groups."facet-"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "省略内轴标签 / 左对齐 strip 的分面布局口径未复刻（SIL-715 #7 的组合矩阵在 M2-S3 另做）。"
+reason = "SIL-796 纳管 3 条（左对齐两条 + facet_grid 省略内轴标签）；SIL-811 把 facet_wrap 的顶部轴标签挪到 strip 之外后仍差 2.55% / 0.53%（单条 reason 见下）。"
 
 [groups."facet-labels"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`labeller` 的 plotmath 解析与 outside 对齐未复刻。"
+reason = "SIL-811 剩 2 条：`outside-justified-labels` 的跨面板外侧对齐（自由标度 × 多行标签）与 `label_parsed` 的 plotmath（后者归 m3）。"
 
 [groups."facet-layout"]
 issue = "SIL-715"
@@ -76,7 +76,7 @@ reason = "非表格布局（`facet_grid` 缺行/列）的轴定位未复刻。"
 [groups."facet-strips"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "`facet_wrap(switch=)` 的 strip 换边未复刻。"
+reason = "SIL-811 已把 `facet_grid(switch = \"both\")` 纳管（`upstream-facet-strips-switched`）：列 strip 换到底部、行 strip 换到左边，文本走 `strip.text.x.bottom` / `strip.text.y.left`（角度 90）。"
 
 [groups."geom-boxplot"]
 issue = "SIL-715"
@@ -96,7 +96,7 @@ reason = "dotplot 的 35 条已全部纳管（SIL-787）；新增快照先落到
 [groups."geom-hex"]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "SIL-795 纳管 1 条（`binwidth = c(0.1, 0.1)` 的单箱）；剩 2 条与极坐标 / 变换轴组合，卡在「stat 之后重训位置标度」这一流水线口径（单条 reason 见下）。画法已按上游改成逐顶点 `coord$transform()`（不做 `coord_munch()` 细分）。"
+reason = "SIL-811 已全部纳管 3 条：单箱、`coord_polar()`、`coord_transform(y = \"sqrt\")`。「stat 之后重训位置标度」按上游 `plot-build.R` 的第二次 `train_position()` 落地（`ContinuousScale.reset()` 清范围 + 位置标度认全 `ggplot_global$x_aes` / `y_aes`），面板范围因此取六边形中心；`geom_hex()` 的 `fill = after_stat(count)` 走 `StatBinhex$default_aes` 出 colourbar。"
 
 [groups."geom-hline-vline-abline"]
 issue = "SIL-715"
@@ -211,7 +211,7 @@ reason = "SIL-795 已全部纳管 3 条（名字是 `stat_sum`，快照实际来
 [groups.theme]
 issue = "SIL-715"
 owner = "m2-closeout"
-reason = "SIL-792 把 18 条纳管（8 套主题 + 3 个 `base_size = 33` 变体 + spacing / margins / 刻度长度 / 四边轴样式 / aspect.ratio 六条 / 标题与注脚对齐 / strip 与旋转标签 / 横向图例间距）；剩 8 条按缺口单列在下面。"
+reason = "SIL-792 纳管 18 条；SIL-811 又纳管 `theme-with-inverted-colours`（`ink` / `paper` 反转 + `labs(tag=)`）；剩 7 条按缺口单列在下面（stretchy key / null 间距 3 条、裸 grob 2 条、S7 自定义 strip 1 条、五方位图例 1 条）。"
 
 [snapshots."theme/theme-bw.svg"]
 case = "upstream-theme-bw"
@@ -307,10 +307,10 @@ case = "upstream-theme-height-is-3-times-width-2x2-facets"
 case = "upstream-theme-horizontal-legends-placed-apart"
 
 [snapshots."theme/theme-with-inverted-colours.svg"]
-reason = "`plot.tag` 还没有渲染（R 的 `table_add_tag()` 会为 tag 单开一行），所以整页版式比上游少一行；色板与面板背景已对。修好 tag 后重测，预期进档。"
+case = "upstream-theme-inverted-colours"
 
 [snapshots."theme/legends-at-all-sides-with-justification.svg"]
-reason = "需要 `mtcars` 完整夹具（`hp` / `gear` / `wt` 三列本仓还没有内联），且用 `legend.location = 'plot'` 把图例挂在整页而不是面板行；`legend.justification.<side>` 已实现。"
+reason = "SIL-811 未纳管（case `upstream-theme-legends-all-sides` 登记为 `ci = false`）：实测 3.10% / 1.28%。`mtcars` 七列夹具已内联，`legend.location = \"plot\"` 与逐边 `legend.justification.<side>` 已接上；差的是同一层同时映射 `colour` / `fill`（数值列 → 连续 fill）/ `shape` / `size` / `alpha` 时点层画不出来（图例只出标题、无键），属多重非位置标度的绘制链。"
 
 [snapshots."theme/stretched-vertical-legends.svg"]
 reason = "`legend.key.height = unit(1, 'null')` 是 stretchy key：R 让 key 吃掉 guide-box 的剩余高度，本仓的 `_key_size()` 把 `null` 换算成 0 后直接报错。归口 G1 的 stretchy 版式（SIL-715）。"
@@ -978,7 +978,7 @@ case = "upstream-facet-facet-grid-with-omitted-inner-axis-labels"
 case = "upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout"
 
 [snapshots."facet-/facet-wrap-with-omitted-inner-axis-labels.svg"]
-reason = "SIL-796：`axes = \"all\"` + `axis.labels = \"margins\"` 已接上（case `upstream-facet-facet-wrap-with-omitted-inner-axis-labels`），但 `facet_wrap` 每行插轴带后 gtable 的 null 行把 strip 与面板之间的 5.46pt 轴带分配成 2.72pt，第二行 strip 上移 2.74pt（图级 2.92%，均值 0.65%）。卡在 `facet_table()` 的 `heights` 与 `facet_table.panel_boxes()` 的 null 行分配口径，不是阈值问题。"
+reason = "SIL-811 未纳管（case `upstream-facet-wrap-omitted-inner-axis-labels` 登记为 `ci = false`）：顶部 / 右侧轴标签已按 R 挪到 strip 之外（2.92% → 2.55%，均值 0.53%），剩下的 2.55% 是行间轴带被 gtable 的 null 行二次扣除——`panel_boxes()` 的分辨高度比表高少 5.48pt，两个面板各矮 2.74pt，第二行的 strip 与面板因此整体上移。卡在 `facet_table.panel_boxes()` 与 `plot_layout()` 谁扣 `x_axis_cm` 的口径，不是阈值问题。"
 
 [snapshots."facet-labels/outside-justified-labels.svg"]
 reason = "SIL-796：`axis.text.*` 的 hjust / vjust 已接到轴标签锚点（`_anchor()` 之后的显式覆盖），但 `scales = \"free\"` × 多行轴标签（`\"X\\nX\\nX\\nX\\nX\"`）的外侧对齐仍差 15.5%：free 面板的轴带宽度按每面板标签单独量，R 的 `outside` 口径要求四边标签基线跨面板统一。卡在「自由标度 × 多行标签的跨面板对齐」。"
@@ -988,7 +988,7 @@ owner = "m3"
 reason = "SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。"
 
 [snapshots."facet-strips/switched-facet-strips.svg"]
-reason = "SIL-796：`facet_grid(switch = \"both\")` 未实现——strip 仍固定在顶部 / 右侧，未换到底部 / 左侧，y strip 文本也未按换边翻转（图级 12.7%）。卡在 `facet_table()` 的 strip 放置位置与 `strip.text.y` 的角度翻转。"
+case = "upstream-facet-strips-switched"
 
 # patterns 4 条：现有 `TilePatternSpec.resolve()` 按**单节点包围盒**折 npc，
 # 而 R 的 `pattern()` 内容坐标是**整个图层包围盒**的 npc（`userSpaceOnUse`），
@@ -1049,10 +1049,10 @@ case = "upstream-geom-curve-flipped"
 case = "upstream-geom-curve-standard"
 
 [snapshots."geom-hex/hex-bin-plot-in-polar-coordinates.svg"]
-reason = 'SIL-795 未纳管：`geom_hex()` + `coord_polar()` 实测 6.9%（门槛 2%）。画法已按上游改成逐顶点 `coord$transform()`，剩余差异来自面板范围——R 4.0.3 在 `layout$reset_scales()` 之后**用 stat 之后的数据重训位置标度**（`plot-build.R` 的第二次 `train_position()`），所以 `geom_hex` 的 x/y range 是六边形中心的范围（`displ` 1.53..6.93），而本仓两段训练是累加的（首段含原始数据 1.6..7.0）。改成「重训」会连带改变 bar / path 等已纳管快照的成图（试过：`aes-stat-count` 从 0.5% 掉到 14.6%），属于流水线级改动，留待单独立项。'
+case = "upstream-geom-hex-polar"
 
 [snapshots."geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg"]
-reason = 'SIL-795 未纳管：同 `hex bin plot in polar coordinates`——同一处「stat 之后重训位置标度」的差异（实测 12.1%，`coord_transform(y = "sqrt")` 只是把偏差放大）。六边形分箱、计数与颜色本身已与 R 逐值相同（111 个 bin 的 x/y/count/density/fill 全等），差的只是面板范围。'
+case = "upstream-geom-hex-sqrt-y"
 
 [snapshots."geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg"]
 case = "upstream-geom-hex-single-bin"

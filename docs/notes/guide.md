@@ -69,6 +69,8 @@ page（plot.margin）
 覆盖整张图的 `legend.position`；不同 guide 可以落在不同方位。对齐 R 4.0.3：
 
 - `right` / `left` → 竖排盒（`legend.box` 默认 `vertical`），在 panel 行里垂直居中；
+  横向贴 **panel 单元格**的边（`panel_area` 的右边 / 左边）而不是页面内区：
+  等比例面板（`coord_polar()` 的正圆）比内区窄，多出来的空白留在图例右侧；
 - `top` / `bottom` → 横排盒（默认 `horizontal`），水平居中；
 - `inside` → 用 `legend.position.inside = c(x, y)`（npc）+ `legend.justification.inside`
   锚在面板区内，**不占版面**；`legend.position = c(x, y)` 等价于 inside。
@@ -91,7 +93,9 @@ ggcore 的实现（`build_guides()`）：
    （`plot.guides` 里同美学后加的替换先加的，与 `plot.scales` 同一口径）；
 2. 默认 guide：连续 colour / fill → `GuideColourbar`，其余 → `GuideLegend`；
 3. 只有「被**映射**过的」美学进图例：`aes(colour = "g")` 进，
-   `geom_point(colour = "red")`（常量）不进；`show_legend = False` 的图层排除；
+   `geom_point(colour = "red")`（常量）不进；`show_legend = False` 的图层排除。
+   `Stat$default_aes` 补出来的映射也算：`geom_hex()` 的
+   `fill = after_stat(count)` 出 `count` 的 colourbar（标题用 stat 输出列名）；
 4. `guide = "none"`（`plot.guides` 或 `scale_*(guide = )`）或
    `legend.position = "none"` 直接没有图例；
 5. 每个美学 `guide.train()` → `GuideBuild`；再按 `order` + `(kind, title, 标签序列)`

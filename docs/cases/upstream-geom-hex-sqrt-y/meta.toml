@@ -1,0 +1,7 @@
+family = "geom-hex"
+features = ["bin-hex", "facet-null", "theme-grey"]
+ci = true
+title = "上游快照：hex bin plot with sqrt-transformed y"
+source = "upstream:tests/testthat/_snaps/geom-hex/hex-bin-plot-with-sqrt-transformed-y.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-811：面板范围取 stat 之后的六边形中心（上游第二次 train_position）。"

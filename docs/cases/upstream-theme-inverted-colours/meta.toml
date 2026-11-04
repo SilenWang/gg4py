@@ -1,0 +1,7 @@
+family = "theme"
+features = ["facet-wrap", "plot-tag", "theme-ink-paper"]
+ci = true
+title = "上游快照：Theme with inverted colours"
+source = "upstream:tests/testthat/_snaps/theme/theme-with-inverted-colours.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-811：`theme_gray(ink = \"white\", paper = \"black\")` + `labs(tag=)`。"

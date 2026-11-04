@@ -205,6 +205,15 @@ wrap 有多个面板行时，行结构是
 `strip-r-<row>` 在右侧与面板行同高。`FacetTable.strip_height_cm` /
 `strip_width_cm` 分别给顶部 strip 块总高与右侧 strip 块总宽。
 
+**`facet_grid(switch =)`**（SIL-811）：`"both"` / `"x"` 把列 strip 换到面板**下方**，
+`"both"` / `"y"` 把行 strip 换到**左侧**（`FacetTable.switched_sides` → 名字前缀
+`strip-b-*` / `strip-l-*`）。换边后文本元素按边解析：`strip.text.x.bottom` /
+`strip.text.y.left`（后者角度 90，与右侧的 -90 互为镜像）。轴带贴着**整张分面表**
+的外沿画（`_axis_grobs()` 读 `FacetTable.inside_strip_sides`），所以底部轴标签落在
+strip 之下、左侧轴标签落在 strip 右侧，与 R 的 `attach_strips()` 一致；换边 +
+`strip.placement = "outside"` 目前按 inside 画（`plot_layout()` 的轴带只有
+top / right 两条）。
+
 **labeller**：`"label_value"`（默认）/ `"label_both"`（`变量: 值`）/
 `"label_context"`（单变量同 value，多变量同 both）、`labeller(a={...})`
 （逐变量覆盖，未覆盖的走 `.default`）、`{值: 标签}` 简写与任意
