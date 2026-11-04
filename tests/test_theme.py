@@ -707,3 +707,62 @@ def test_theme_sub_none_deletes_the_element() -> None:
     assert merged.elements["panel.background"] is None
     # 删除后回落到父元素 rect（白底黑边）。
     assert resolve_theme(merged)["panel.background"].fill == "#FFFFFF"
+
+
+# ---------------------------------------------------------------------------
+# element_grob()：S7 泛型的等价物（裸 grob 快照 + 自定义 strip）
+# ---------------------------------------------------------------------------
+
+
+def test_element_grob_point_uses_pointsize_and_stroke() -> None:
+    """`element_grob(element_point)`：R 的 `gg_par(pointsize =, stroke =)` 换算。"""
+    from ggcore.theme import calc_element, element_grob
+    from ggcore.units import UnitContext, convert_width
+
+    calc_element("point", theme_grey())
+    explicit = calc_element(
+        "point", merge_theme(theme_grey(), theme(point=element_point(shape=21, size=5)))
+    )
+    grob = element_grob(explicit, x=[0.2, 0.8], y=[0.8, 0.2], fill=["orange", "grey"])
+    # fontsize = size(5mm) × .pt + stroke(0.5mm) × .stroke / 2 = 15.17pt
+    pointsize = convert_width(grob.size, "bigpts", ctx=UnitContext())[0]
+    assert pointsize == pytest.approx(5 * 72.27 / 25.4 + 0.5 * 96.0 / 25.4 / 2)
+    assert grob.pch == 21
+
+
+def test_element_grob_polygon_splits_gpar_by_id() -> None:
+    """`id` 分组的 pathgrob：每组一份描边色（`polygon-elements`）。"""
+    from ggcore.grobs import GTreeGrob
+    from ggcore.theme import calc_element, element_grob
+
+    element = calc_element(
+        "polygon", merge_theme(theme_grey(), theme(polygon=element_polygon(fill="orchid")))
+    )
+    grob = element_grob(
+        element,
+        x=[0.0, 0.5, 1.0, 0.5, 0.15, 0.85, 0.85, 0.15],
+        y=[0.5, 0.0, 0.5, 1.0, 0.15, 0.15, 0.85, 0.85],
+        id=[1, 1, 1, 1, 2, 2, 2, 2],
+        colour=["orange", "limegreen"],
+    )
+    assert isinstance(grob, GTreeGrob)
+    assert len(grob.children) == 2
+
+
+def test_element_grob_custom_subclass_overrides_grob() -> None:
+    """子类覆写 `grob()` 就是 R 的 `S7::method(element_grob, <class>)`。"""
+    from dataclasses import dataclass
+
+    from ggcore.grobs import RectGrob, rect_grob
+    from ggcore.theme import calc_element, element_grob
+
+    @dataclass(frozen=True, slots=True)
+    class ElementTest(ElementText):
+        def grob(self, **kwargs):
+            return rect_grob(unit(1.0, "cm"), unit(1.0, "cm"), default_units="cm")
+
+    merged = merge_theme(theme_grey(), theme(**{"strip.text": ElementTest()}))
+    resolved = calc_element("strip.text", merged)
+    assert isinstance(resolved, ElementTest)
+    grob = element_grob(resolved, label="a", x=0.5, y=0.5, default_units="npc")
+    assert isinstance(grob, RectGrob)

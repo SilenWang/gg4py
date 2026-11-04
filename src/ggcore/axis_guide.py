@@ -38,7 +38,6 @@ import numpy as np
 
 from ggcore.axis import (
     AxisTicks,
-    text_line_cm,
     text_width_cm,
 )
 from ggcore.gtable import CellBox
@@ -730,12 +729,15 @@ def _label_box(
     `margin_main` 是沿轴方向的 margin（横向轴的左右 / 竖向轴的上下），
     `margin_cross` 是垂直于轴方向的 margin。
     """
-    from ggcore.axis import margin_sides_cm
+    from ggcore.axis import margin_sides_cm, text_block_cm
 
     size = float(getattr(element, "size", 0.0) or 0.0)
     family = getattr(element, "family", "") or ""
     mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
-    line = text_line_cm(size)
+    line = max(
+        (text_block_cm(label.text, size, getattr(element, "lineheight", None)) for label in labels),
+        default=0.0,
+    )
     width = max(
         (text_width_cm(label.text, size, metrics, family) for label in labels),
         default=0.0,
@@ -833,12 +835,12 @@ def _label_stats(
     label: AxisLabel, element: Any, side: str, angle: float, metrics: Any
 ) -> tuple[float, float]:
     """单个标签旋转后的 `(沿轴长, 垂直轴长)`。"""
-    from ggcore.axis import margin_sides_cm
+    from ggcore.axis import margin_sides_cm, text_block_cm
 
     size = float(getattr(element, "size", 0.0) or 0.0)
     family = getattr(element, "family", "") or ""
     mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
-    line = text_line_cm(size)
+    line = text_block_cm(label.text, size, getattr(element, "lineheight", None))
     width = text_width_cm(label.text, size, metrics, family)
     radians = math.radians(angle % 360.0)
     cos = abs(math.cos(radians))

@@ -57,8 +57,10 @@ __all__ = [
     "Rel",
     "ResolvedTheme",
     "ThemeError",
+    "calc_element",
     "element_blank",
     "element_geom",
+    "element_grob",
     "element_line",
     "element_point",
     "element_polygon",
@@ -651,6 +653,199 @@ def element_geom(
     )
 
 
+def calc_element(name: str, theme: Theme | ResolvedTheme | None = None) -> Any:
+    """R `calc_element()`：按元素树把 `name` 解析成最终元素（缺省取全局主题）。"""
+    source = theme if theme is not None else theme_get()
+    resolved = source if isinstance(source, ResolvedTheme) else resolve_theme(source)
+    return resolved[name]
+
+
+def _element_paint(value: Any) -> Any:
+    """主题颜色 → gpar 颜色（`NA` / 未设置为 None：不描边 / 不填充）。"""
+    if value is None or value is NA:
+        return None
+    return value
+
+
+def _element_linewidth_pt(value: Any) -> float | None:
+    """`linewidth`（mm）→ gpar 的 `lwd`（pt）：`gg_par(lwd =)` 的 `× .pt`。
+
+    `element_grob(element_rect|element_polygon|element_line)` 走的是
+    `gg_par(lwd = linewidth)`，R 的 `.pt = 72.27/25.4`；与 `element_point` 的
+    `stroke × .stroke / 2`（`.stroke = 96/25.4`）不是同一个换算。
+    """
+    if value is None:
+        return None
+    from ggcore.geom.base import POINT_PER_MM
+
+    try:
+        return float(value) * POINT_PER_MM
+    except (TypeError, ValueError):
+        return None
+
+
+def _element_text_gpar(element: ElementText) -> Any:
+    from ggcore.viewport import gpar
+
+    col = element.colour if isinstance(element.colour, str) else None
+    face = str(element.face or "plain").lower()
+    font = {"bold": 2, "italic": 3, "oblique": 3, "bold.italic": 4, "bolditalic": 4}.get(face, 1)
+    return gpar(
+        col=col or "black",
+        fontsize=float(element.size or 11.0),
+        fontfamily=element.family or "",
+        font=font,
+        lineheight=float(element.lineheight or 1.2),
+    )
+
+
+def _element_point_gpar(element: ElementPoint, kwargs: Mapping[str, Any]) -> dict[str, Any]:
+    """`element_grob(element_point)` 的 gpar：`gg_par(pointsize =, stroke =)`。
+
+    R 把点径折成 `fontsize = size * .pt + stroke * .stroke / 2`，`pointsGrob()`
+    的缺省 `size = unit(1, "char")` 就是这一个字号（`geom/point.py` 同一口径，
+    设备侧半径 = `0.375 × fontsize`）。
+    """
+    from ggcore.geom.base import POINT_PER_MM, STROKE_PER_MM
+    from ggcore.geom.point import translate_shape
+
+    shape = kwargs.get("shape")
+    shape = element.shape if shape is None else shape
+    pch = 19 if shape is None else translate_shape(shape)
+    size = kwargs.get("size")
+    size = element.size if size is None else size
+    size = 1.5 if size is None else size
+    stroke = kwargs.get("stroke")
+    stroke = element.stroke if stroke is None else stroke
+    stroke = 0.5 if stroke is None else stroke
+    pointsize = float(size) * POINT_PER_MM + float(stroke) * STROKE_PER_MM / 2.0
+    colour = kwargs.get("colour")
+    colour = element.colour if colour is None else colour
+    fill = kwargs.get("fill")
+    fill = element.fill if fill is None else fill
+    return {
+        "pch": pch,
+        "pointsize": pointsize,
+        "lwd": float(stroke) * STROKE_PER_MM / 2.0,
+        "col": _element_paint(colour),
+        "fill": _element_paint(fill),
+    }
+
+
+def _element_polygon_grobs(element: ElementPolygon, kwargs: Mapping[str, Any]) -> list[Any]:
+    """`element_grob(element_polygon)`：`id` 分组、逐组一份 gpar。
+
+    R 的 `pathGrob(y, ..., pathId = id)` 按 `id` 分子路径；`colour` 给一组颜色
+    时第 i 组用第 i 个颜色。这里每组画一个 `path_grob`，与 grid 的“按组回收
+    gpar”一致（`polygon-elements` 的两段菱形）。
+    """
+    from ggcore.grobs import path_grob
+
+    x = np.asarray(kwargs.get("x", (0.0, 0.5, 1.0, 0.5)), dtype=np.float64).reshape(-1)
+    y = np.asarray(kwargs.get("y", (0.5, 1.0, 0.5, 0.0)), dtype=np.float64).reshape(-1)
+    ids = kwargs.get("id")
+    colour = kwargs.get("colour")
+    colour = element.colour if colour is None else colour
+    fill = kwargs.get("fill")
+    fill = element.fill if fill is None else fill
+    lwd = _element_linewidth_pt(element.linewidth)
+    units = kwargs.get("default_units", "npc")
+    name = kwargs.get("name")
+    if ids is None:
+        groups = [list(range(len(x)))]
+    else:
+        ids_list = list(np.asarray(ids).reshape(-1))
+        keys: list[Any] = []
+        for item in ids_list:
+            if item not in keys:
+                keys.append(item)
+        groups = [[index for index, item in enumerate(ids_list) if item == key] for key in keys]
+    colours = list(colour) if isinstance(colour, (list, tuple)) else None
+    out: list[Any] = []
+    for index, members in enumerate(groups):
+        group_colour = colours[index % len(colours)] if colours else colour
+        out.append(
+            path_grob(
+                x[members].tolist(),
+                y[members].tolist(),
+                default_units=units,
+                gp={
+                    "col": _element_paint(group_colour),
+                    "fill": _element_paint(fill),
+                    "lwd": lwd,
+                    "linejoin": element.linejoin,
+                },
+                name=name if len(groups) == 1 else None,
+            )
+        )
+    return out
+
+
+def element_grob(element: Any, **kwargs: Any) -> Any:
+    """R `element_grob()`：主题元素 → grid grob（S7 泛型的等价物）。
+
+    默认按元素类型分派；**扩展协议**与上游一致——子类定义 `grob(**kwargs)`
+    就覆盖渲染（`custom-strip-elements-can-render` 用它画 1cm 方块）。
+    """
+    from ggcore.grobs import g_tree, null_grob, points_grob, rect_grob, text_grob
+    from ggcore.units import unit
+
+    custom = getattr(element, "grob", None)
+    if callable(custom):
+        return custom(**kwargs)
+    if isinstance(element, ElementBlank):
+        return null_grob()
+    if isinstance(element, ElementText):
+        label = kwargs.get("label", "")
+        hjust = kwargs.get("hjust")
+        vjust = kwargs.get("vjust")
+        rot = kwargs.get("rot")
+        return text_grob(
+            "" if label is None else label,
+            kwargs.get("x", 0.5),
+            kwargs.get("y", 0.5),
+            hjust=float(element.hjust if hjust is None else hjust),
+            vjust=float(element.vjust if vjust is None else vjust),
+            rot=float(element.angle if rot is None else rot),
+            default_units=kwargs.get("default_units", "npc"),
+            gp=_element_text_gpar(element),
+            name=kwargs.get("name"),
+        )
+    if isinstance(element, ElementPoint):
+        point = _element_point_gpar(element, kwargs)
+        return points_grob(
+            kwargs.get("x", 0.5),
+            kwargs.get("y", 0.5),
+            pch=point["pch"],
+            size=unit(point["pointsize"], "bigpts"),
+            size_units="bigpts",
+            default_units=kwargs.get("default_units", "npc"),
+            gp={"col": point["col"], "fill": point["fill"], "lwd": point["lwd"]},
+            name=kwargs.get("name"),
+        )
+    if isinstance(element, ElementPolygon):
+        grobs = _element_polygon_grobs(element, kwargs)
+        if len(grobs) == 1:
+            return grobs[0]
+        return g_tree(*grobs, name=kwargs.get("name") or "element_polygon")
+    if isinstance(element, ElementRect):
+        units = kwargs.get("default_units", "npc")
+        return rect_grob(
+            kwargs.get("x", 0.5),
+            kwargs.get("y", 0.5),
+            unit(kwargs.get("width", 1.0), units),
+            unit(kwargs.get("height", 1.0), units),
+            default_units=units,
+            gp={
+                "col": _element_paint(element.colour),
+                "fill": _element_paint(element.fill),
+                "lwd": _element_linewidth_pt(element.linewidth),
+            },
+            name=kwargs.get("name"),
+        )
+    raise ThemeError(f"{type(element).__name__} 没有默认的 element_grob() 实现")
+
+
 def _margin_side(value: Any, kind: str) -> Unit | None:
     if value is None:
         return None
@@ -997,7 +1192,11 @@ def _merge_element(name: str, new: Any, old: Any) -> Any:
             l=new.l if new.l is not None else old.l,
         )
     if isinstance(new, Element) and isinstance(old, Element):
-        if type(new) is not type(old):
+        # 子类与父元素可合并（R 的 S7 子类同样继承父元素的缺省值），合完仍是子类：
+        # `custom-strip-elements-can-render` 的自定义 strip 元素靠这条保住
+        # `grob()` 覆盖。
+        compatible = type(new) is type(old) or isinstance(new, type(old))
+        if not compatible:
             raise ThemeError(
                 f"主题元素 {name!r} 只能合并同类元素：{type(new).__name__} vs {type(old).__name__}"
             )

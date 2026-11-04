@@ -1,0 +1,7 @@
+family = "theme"
+features = ["legend-key-size", "legend-top"]
+ci = true
+title = "上游快照：stretched horizontal legends"
+source = "upstream:tests/testthat/_snaps/theme/stretched-horizontal-legends.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-816：`legend.key.width = unit(1, 'null')` / `unit(1/3, 'null')` 的 stretchy key。"

@@ -70,6 +70,10 @@ def build():
 `build_scene()` 走 `build_plot()` + `ggcore.geom.scene.scene_from_plot()`，与
 `pixi run render` 的生产路径完全相同。
 
+`{"grob": <grid grob>, "size": [...]}`：上游那类**不走 ggplot 管线**的裸 grob 快照
+（R 里 `grid.newpage(); grid.draw(g)`），整页一个视口、直接画 grob。典型是
+`theme/point-elements` / `theme/polygon-elements` 这种 `element_grob()` 快照。
+
 M0-9 的最小适配层（只有老 case 用，`ggcore.plotspec` 直接画，不过语法层）：
 
 ```python
@@ -86,7 +90,8 @@ def build():
 
 | 键 | 必填 | 检查 |
 | --- | --- | --- |
-| `plot` | 二选一 | 带非空 `layers` 的 ggplot 对象（语法层形态） |
+| `plot` | 三选一 | 带非空 `layers` 的 ggplot 对象（语法层形态） |
+| `grob` | 三选一 | 一个 grid grob（裸 grob 快照，见 `theme/point-elements`） |
 | `data` | 二选一 | 非空映射（DataFrame-like 也行）；不要在这里读文件 |
 | `layers` | 二选一 | 非空数组，每项是 dict 且 `geom` 是非空字符串 |
 | `mapping` | 否 | 若给，必须是 dict |

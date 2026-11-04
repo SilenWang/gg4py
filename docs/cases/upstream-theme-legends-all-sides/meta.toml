@@ -1,6 +1,6 @@
 family = "theme"
 features = ["legend-top", "legend-bottom", "legend-left", "legend-right", "legend-inside"]
-ci = false
+ci = true
 title = "上游快照：legends at all sides with justification"
 source = "upstream:tests/testthat/_snaps/theme/legends-at-all-sides-with-justification.svg"
 tolerance = { png = 0.02 }

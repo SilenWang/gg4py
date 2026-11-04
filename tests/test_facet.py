@@ -25,7 +25,7 @@ from ggcore.build import BuildError, build_plot
 from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
 from ggcore.geom.scene import axis_title_area, plot_layout
-from ggcore.plot import ggplot
+from ggcore.plot import ggplot, guides
 from ggcore.theme import element_blank, element_rect, element_text, resolve_theme, theme
 from ggcore.units import unit
 
@@ -1034,3 +1034,31 @@ def test_axis_titles_span_panel_cells_not_strips() -> None:
     assert area.right == pytest.approx(max(box.right for box in boxes))
     assert area.y_cm == pytest.approx(min(box.y_cm for box in boxes))
     assert area.top == pytest.approx(max(box.top for box in boxes))
+
+
+def test_facet_strip_cells_share_the_panel_table() -> None:
+    """strip 单元格必须和 panel 用同一张 facet gtable（SIL-816）。
+
+    带行间 / 列间轴带（`axes = "all"`）时，另建一张不带 `axis_*_cm` 的表会让
+    strip 比 panel 宽出一条轴带宽、并整体上移。
+    """
+    from ggcore.geom.scene import _strip_box
+    from ggcore.units import UnitContext
+
+    build = build_plot(
+        wrap_plot(axes="all")
+        + guides(**{"x": "axis", "y": "axis", "x.sec": "axis", "y.sec": "axis"})
+    )
+    layout = plot_layout(build, width_in=10, height_in=8)
+    facet_table = layout.facet_table
+    assert facet_table is not None
+    sizes = facet_table.gtable.resolve(
+        layout.panel_area.width_cm,
+        layout.panel_area.height_cm,
+        ctx=UnitContext(),
+    )
+    panel_widths = {round(box.width_cm, 6) for box in layout.panel_boxes.values()}
+    for strip in facet_table.strips:
+        box = _strip_box(facet_table, strip, layout, layout.panel_area, sizes)
+        assert box is not None
+        assert round(box.width_cm, 6) in panel_widths

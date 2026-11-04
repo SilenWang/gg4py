@@ -110,8 +110,10 @@ __all__ = [
     "guide_theme",
     "guide_train",
     "guide_transform",
+    "legend_box_direction",
     "legend_box_layout",
     "legend_grob",
+    "legend_justification",
     "legend_layout",
 ]
 
@@ -1721,7 +1723,7 @@ def _key_grob(
         if size_cm is None:
             raw_theme = build.theme
             theme = raw_theme if hasattr(raw_theme, "get") else resolve_theme(raw_theme)
-            size = _key_size(theme, GuideLegend())
+            size = _key_size(theme, GuideLegend())[:2]
         else:
             size = size_cm
         drawn = draw_key(glyph, resolved, layer.params, size[1] * 10.0)
@@ -1823,18 +1825,41 @@ def _cm_unit(value: Any, *, height: bool) -> float:
         raise GuideError(f"guide 的尺寸单位无法换算成 cm：{value!r}（{exc}）") from None
 
 
-def _key_size(theme: ResolvedTheme, guide: Guide) -> tuple[float, float]:
-    width = _cm_unit(theme.get("legend.key.width"), height=False)
-    height = _cm_unit(theme.get("legend.key.height"), height=True)
+def _null_weight(value: Any) -> float:
+    """纯 `null` 单位的权重（R 的 `pureNullUnitValue()`）；其它单位给 0。
+
+    `legend.key.height = unit(1, "null")` 是 stretchy key：R 让 key 吃掉
+    guide-box 的剩余高度（`redistribute_null_units()`），不是把它换算成 0。
+    """
+    from ggcore.units import is_pure_null, null_value
+
+    if value is None:
+        return 0.0
+    try:
+        if not is_pure_null(value, 0):
+            return 0.0
+        return float(null_value(value, 0))
+    except Exception:
+        return 0.0
+
+
+def _key_size(theme: ResolvedTheme, guide: Guide) -> tuple[float, float, float, float]:
+    """`(宽, 高, 宽 null 权重, 高 null 权重)` cm；null 方向的固定尺寸记 0。"""
+    width_unit = theme.get("legend.key.width")
+    height_unit = theme.get("legend.key.height")
     override_w = getattr(guide, "keywidth", None)
     override_h = getattr(guide, "keyheight", None)
     if override_w is not None:
-        width = _cm_unit(override_w, height=False)
+        width_unit = override_w
     if override_h is not None:
-        height = _cm_unit(override_h, height=True)
-    if width <= 0 or height <= 0:
+        height_unit = override_h
+    null_w = _null_weight(width_unit)
+    null_h = _null_weight(height_unit)
+    width = 0.0 if null_w else _cm_unit(width_unit, height=False)
+    height = 0.0 if null_h else _cm_unit(height_unit, height=True)
+    if (width <= 0 and not null_w) or (height <= 0 and not null_h):
         raise GuideError("legend.key.width / legend.key.height 解析为 0，图例 key 没有尺寸")
-    return width, height
+    return width, height, null_w, null_h
 
 
 def _key_dimensions(
@@ -1847,7 +1872,7 @@ def _key_dimensions(
     key 的尺寸先取主题的 `legend.key.size`；`size` / `linewidth` 标度把键撑到
     `(size + linewidth) / 10` cm；`key_glyph` 自己带 `width` / `height` 时取更大者。
     """
-    base_w, base_h = _key_size(theme, guide)
+    base_w, base_h, null_w, null_h = _key_size(theme, guide)
     out: list[tuple[float, float]] = []
     for key in guide_build.keys:
         width, height = base_w, base_h
@@ -1861,7 +1886,7 @@ def _key_dimensions(
         if size_mm > 0 or line_mm > 0:
             bump = (size_mm + line_mm) / 10.0
             width = max(width, bump)
-            height = max(height, bump)
+            height = bump if null_h else max(height, bump)
         for glyph in guide_build.key_glyphs:
             if glyph is None:
                 continue
@@ -1870,12 +1895,12 @@ def _key_dimensions(
             except Exception:
                 continue
             if isinstance(drawn, KeyGlyph):
-                if drawn.width_cm is not None:
+                if drawn.width_cm is not None and not null_w:
                     width = max(width, float(drawn.width_cm))
-                if drawn.height_cm is not None:
+                if drawn.height_cm is not None and not null_h:
                     height = max(height, float(drawn.height_cm))
         out.append((width, height))
-    return tuple(out)
+    return tuple(out), null_w, null_h
 
 
 def _text_element(theme: ResolvedTheme, name: str) -> ElementText:
@@ -1999,6 +2024,10 @@ class LegendLayout:
     ticks: tuple[tuple[float, str], ...] = ()
     col_widths_cm: tuple[float, ...] = ()
     row_heights_cm: tuple[float, ...] = ()
+    #: stretchy key 的 null 权重合计（`legend.key.width / height = unit(1, "null")`）。
+    #: 交给 `legend_box_layout()` 决定这张图例能不能吃 guide-box 的剩余尺寸。
+    null_w: float = 0.0
+    null_h: float = 0.0
     label_position: str = "right"
     title_position: str | None = None
     title_hjust: float = 0.0
@@ -2043,6 +2072,11 @@ def _justification(theme: ResolvedTheme, position: str) -> tuple[float, float]:
     if value is None:
         value = theme.get("legend.justification")
     return _valid_just(value, default=(0.5, 0.5))
+
+
+def legend_justification(theme: ResolvedTheme, position: str) -> tuple[float, float]:
+    """`legend.justification.<position>` 的 `(xjust, yjust)`（缺省 0.5 / 0.5）。"""
+    return _justification(theme, position)
 
 
 def _valid_just(value: Any, *, default: tuple[float, float]) -> tuple[float, float]:
@@ -2094,24 +2128,42 @@ def legend_box_layout(
     layouts: Sequence[LegendLayout],
     position: str,
     theme: ResolvedTheme,
+    *,
+    target_height: float | None = None,
+    target_width: float | None = None,
 ) -> LegendBoxLayout:
-    """把同一方位的图例排成一个 `guide-box`（R `Guides$package_box()`）。"""
+    """把同一方位的图例排成一个 `guide-box`（R `Guides$package_box()`）。
+
+    `target_height` / `target_width` 是 guide-box 能占的版面（竖向图例是面板行高，
+    横向是面板列宽）：`legend.spacing.y / x = unit(1, "null")` 时，剩余尺寸由
+    这些 null 间隔吸收（R 的 `gtable_add_row_space()` + null 行）。
+    """
     direction = legend_box_direction(theme, position)
     mt, mr, mb, ml = margin_sides_cm(theme.get("legend.box.margin"))
-    gap = _cm_unit(theme.get("legend.spacing"), height=True) or _cm_unit(
-        theme.get("legend.spacing.y"), height=True
-    )
-    gap_x = _cm_unit(theme.get("legend.spacing.x"), height=False) or gap
-    gap_y = _cm_unit(theme.get("legend.spacing.y"), height=True) or gap
+    spacing = theme.get("legend.spacing")
+    gap_y_unit = theme.get("legend.spacing.y")
+    gap_x_unit = theme.get("legend.spacing.x")
+    gap_y_null = _null_weight(gap_y_unit) or _null_weight(spacing)
+    gap_x_null = _null_weight(gap_x_unit) or _null_weight(spacing)
+    gap = _cm_unit(spacing, height=True)
+    gap_y = 0.0 if gap_y_null else (_cm_unit(gap_y_unit, height=True) or gap)
+    gap_x = 0.0 if gap_x_null else (_cm_unit(gap_x_unit, height=False) or gap)
     box_xjust, box_yjust = _box_just(theme, direction)
     sizes = list(layouts)
     if direction == "horizontal":
+        gaps = [gap_x] * max(0, len(sizes) - 1)
+        if gap_x_null and target_width is not None and gaps:
+            natural = sum(item.width_cm for item in sizes) + sum(gaps) + ml + mr
+            extra = float(target_width) - natural
+            if extra > 0:
+                share = extra / len(gaps)
+                gaps = [value + share for value in gaps]
         total_h = max((item.height_cm for item in sizes), default=0.0)
         height = total_h + mt + mb
         col_widths = [ml]
         for index, item in enumerate(sizes):
             if index:
-                col_widths.append(gap_x)
+                col_widths.append(gaps[index - 1])
             col_widths.append(item.width_cm)
         col_widths.append(mr)
         row_heights = [mt, total_h, mb]
@@ -2119,7 +2171,7 @@ def legend_box_layout(
         x = ml
         for index, item in enumerate(sizes):
             if index:
-                x += gap_x
+                x += gaps[index - 1]
             boxes.append(
                 _Box(
                     x,
@@ -2130,18 +2182,27 @@ def legend_box_layout(
             )
             x += item.width_cm
     else:
+        gaps = [gap_y] * max(0, len(sizes) - 1)
+        if gap_y_null and target_height is not None and gaps:
+            natural = sum(item.height_cm for item in sizes) + sum(gaps) + mt + mb
+            extra = float(target_height) - natural
+            if extra > 0:
+                share = extra / len(gaps)
+                gaps = [value + share for value in gaps]
         total_w = max((item.width_cm for item in sizes), default=0.0)
-        height = sum(item.height_cm for item in sizes) + gap_y * max(0, len(sizes) - 1) + mt + mb
+        height = sum(item.height_cm for item in sizes) + sum(gaps) + mt + mb
         row_heights = [mt]
         for index, item in enumerate(sizes):
             if index:
-                row_heights.append(gap_y)
+                row_heights.append(gaps[index - 1])
             row_heights.append(item.height_cm)
         row_heights.append(mb)
         col_widths = [ml, total_w, mr]
         boxes = []
         top = height - mt
-        for item in sizes:
+        for index, item in enumerate(sizes):
+            if index:
+                top -= gaps[index - 1]
             y = top - item.height_cm
             boxes.append(
                 _Box(
@@ -2151,7 +2212,7 @@ def legend_box_layout(
                     item.height_cm,
                 )
             )
-            top = y - gap_y
+            top = y
     return LegendBoxLayout(
         position=position,
         direction=direction,
@@ -2184,8 +2245,15 @@ def legend_layout(
     position: str | None = None,
     *,
     metrics: Any = None,
+    stretch_h: float = 0.0,
+    stretch_w: float = 0.0,
 ) -> LegendLayout:
-    """一张图例的尺寸与内部格位（cm；不含外部的 `legend.box.spacing`）。"""
+    """一张图例的尺寸与内部格位（cm；不含外部的 `legend.box.spacing`）。
+
+    `stretch_h` / `stretch_w` 是 `legend.key.height / width = unit(1, "null")`
+    这类 stretchy key 分到的剩余尺寸（R 的 `redistribute_null_units()`）；为 0
+    时就是固定版式。
+    """
     guide = guide_build.guide
     theme = guide_theme(theme, guide)
     direction = legend_direction(guide, position, theme)
@@ -2240,6 +2308,8 @@ def legend_layout(
             spacing_x=spacing_x,
             text_el=text_el,
             metrics=metrics,
+            stretch_h=stretch_h,
+            stretch_w=stretch_w,
         )
     if isinstance(guide, GuideColoursteps):
         return _steps_layout(
@@ -2269,7 +2339,7 @@ def legend_layout(
     text_position = legend_text_position(guide, theme)
     title_position = legend_title_position(guide, theme, direction)
     n = len(guide_build.keys)
-    key_dims = _key_dimensions(guide_build, theme, guide)
+    key_dims, key_null_w, key_null_h = _key_dimensions(guide_build, theme, guide)
     nrow, ncol, byrow = _grid_shape(guide, n, direction)
 
     # --- 标签 / 标题的文字盒（R：legend.text / legend.title 的 margin + gap）---
@@ -2377,26 +2447,60 @@ def legend_layout(
     grid_rows: list[float] = []
     key_row_index: list[int] = []
     label_row_index: list[int] = []
+    #: 与 `grid_rows` 对齐的 null 权重（`legend.key.height` 是纯 null 时为
+    #: 权重值，其它行 0）。R 用 `redistribute_null_units()` 把 guide-box 的
+    #: 剩余高度按这些权重摊给 stretchy key。
+    grid_null_rows: list[float] = []
     if text_position in ("top", "bottom"):
         for row in range(nrow):
             if row > 0:
                 grid_rows.append(spacing_y)
+                grid_null_rows.append(0.0)
             if text_position == "top":
                 label_row_index.append(len(grid_rows))
                 grid_rows.append(row_label[row])
+                grid_null_rows.append(0.0)
                 key_row_index.append(len(grid_rows))
                 grid_rows.append(key_h[row])
+                grid_null_rows.append(key_null_h)
             else:
                 key_row_index.append(len(grid_rows))
                 grid_rows.append(key_h[row])
+                grid_null_rows.append(key_null_h)
                 label_row_index.append(len(grid_rows))
                 grid_rows.append(row_label[row])
+                grid_null_rows.append(0.0)
     else:
         for row in range(nrow):
             if row > 0:
                 grid_rows.append(spacing_y)
+                grid_null_rows.append(0.0)
             key_row_index.append(len(grid_rows))
-            grid_rows.append(max(key_h[row], row_label[row]))
+            # stretchy key：R 的行高就是那个 `null`（`0.333null`），标签高度不进
+            # 行高——`redistribute_null_units()` 之后各图例的「绝对部分」才相等，
+            # 两张 stretchy 图例最终一样高（stretched-vertical-legends）。
+            grid_rows.append(key_h[row] if key_null_h else max(key_h[row], row_label[row]))
+            grid_null_rows.append(key_null_h)
+
+    grid_null_cols: list[float] = [0.0] * len(grid_cols)
+    for index in key_col_index:
+        grid_null_cols[index] = key_null_w
+
+    # `legend.key.height / width = unit(1, "null")`：R 在 `package_box()` 里
+    # 按 null 权重把 guide-box 的剩余尺寸摊给这些行 / 列（`stretch_h` /
+    # `stretch_w` 是外层算好的「这一张图例能分到多少」）。
+    if direction == "vertical" and stretch_h > 0:
+        total_null = sum(grid_null_rows)
+        if total_null > 0:
+            for index, weight in enumerate(grid_null_rows):
+                if weight:
+                    grid_rows[index] += stretch_h * weight / total_null
+    if direction == "horizontal" and stretch_w > 0:
+        total_null = sum(grid_null_cols)
+        if total_null > 0:
+            for index, weight in enumerate(grid_null_cols):
+                if weight:
+                    grid_cols[index] += stretch_w * weight / total_null
 
     # --- 标题占位 + 额外宽度 / 高度（R `add_title()`）---
     left_cols: list[float] = []
@@ -2534,6 +2638,8 @@ def legend_layout(
         keys=tuple(key_cells),
         col_widths_cm=tuple(col_widths),
         row_heights_cm=tuple(row_heights),
+        null_w=float(sum(grid_null_cols)),
+        null_h=float(sum(grid_null_rows)),
         label_position=text_position,
         title_position=title_position if guide_build.title else None,
         title_hjust=_title_hjust(guide, title_el),
@@ -2572,7 +2678,7 @@ def _custom_layout(
     content_w = _cm_unit(guide.width, height=False) if guide.width is not None else 0.0
     content_h = _cm_unit(guide.height, height=True) if guide.height is not None else 0.0
     if content_w <= 0 or content_h <= 0:
-        key_w, key_h = _key_size(theme, guide)
+        key_w, key_h = _key_size(theme, guide)[:2]
         content_w = content_w or key_w
         content_h = content_h or key_h
     title_size = float(title_el.size or 0.0)
@@ -2763,11 +2869,17 @@ def _colourbar_layout(
     spacing_x: float,
     text_el: ElementText,
     metrics: Any,
+    stretch_h: float = 0.0,
+    stretch_w: float = 0.0,
 ) -> LegendLayout:
     guide = guide_build.guide
     assert isinstance(guide, GuideColourbar)
-    key_w, key_h = _key_size(theme, guide)
+    key_w, key_h, null_w, null_h = _key_size(theme, guide)
     bar_w, bar_h = _bar_size(guide, key_w, key_h, direction)
+    if direction == "vertical":
+        bar_h += stretch_h * null_h
+    else:
+        bar_w += stretch_w * null_w
     text_size = float(text_el.size or 0.0)
     label_w = _label_width(guide_build, text_el, metrics)
     label_row = text_line_cm(text_size)
@@ -2799,6 +2911,8 @@ def _colourbar_layout(
         bar=bar_box,
         ticks=_bar_ticks(guide_build, guide, bar_box, direction),
         title_position=_title_position_of(guide, direction),
+        null_h=null_h,
+        null_w=null_w,
     )
 
 
@@ -2855,7 +2969,7 @@ def _steps_layout(
     bins = guide_build.bins
     if bins is None:  # pragma: no cover - build_guides 一定带上
         raise GuideError("guide_coloursteps 缺少分箱数据（build_guides 没有训练它）")
-    key_w, key_h = _key_size(theme, guide)
+    key_w, key_h = _key_size(theme, guide)[:2]
     bar_w, bar_h = _bar_size(GuideColourbar(), key_w, key_h, direction)
     text_size = float(text_el.size or 0.0)
     label_w = _label_width(guide_build, text_el, metrics)
@@ -2916,7 +3030,7 @@ def _bins_layout(
     bins = guide_build.bins
     if bins is None:  # pragma: no cover
         raise GuideError("guide_bins 缺少分箱数据（build_guides 没有训练它）")
-    key_w, key_h = _key_size(theme, guide)
+    key_w, key_h = _key_size(theme, guide)[:2]
     n = max(1, bins.bins)
     text_size = float(text_el.size or 0.0)
     label_w = _label_width(guide_build, text_el, metrics)

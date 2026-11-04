@@ -30,9 +30,15 @@ R：
 （`tools/upstream/fixtures/mtcars.json`）。
 """
 
+import sys
+from pathlib import Path
+
 from ggcore.plot import aes, geom_point, ggplot, guide_colourbar, guide_legend, guides, labs
 from ggcore.theme import theme, theme_test
 from ggio.frame import to_column_table
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _fixtures import factor_column, replace_column
 
 DATA = {
     "disp": [
@@ -277,9 +283,12 @@ DATA = {
 
 
 def build():
+    table = to_column_table(DATA)
+    table = replace_column(table, "gear", factor_column(DATA["gear"], sorted(set(DATA["gear"]))))
+    table = replace_column(table, "cyl", factor_column(DATA["cyl"], sorted(set(DATA["cyl"]))))
     p = (
         ggplot(
-            to_column_table(DATA),
+            table,
             aes(
                 x="disp",
                 y="mpg",
@@ -311,6 +320,11 @@ def build():
                 "legend.location": "plot",
             }
         )
-        + labs(title="legends at all sides with justification")
+        # R 的图例标题取自映射表达式 `factor(gear)` / `factor(cyl)`；显式给出同值。
+        + labs(
+            title="legends at all sides with justification",
+            fill="factor(gear)",
+            shape="factor(cyl)",
+        )
     )
     return {"plot": p, "size": [10, 8]}

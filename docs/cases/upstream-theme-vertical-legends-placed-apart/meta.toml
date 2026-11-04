@@ -1,0 +1,7 @@
+family = "theme"
+features = ["legend-spacing", "legend-right"]
+ci = true
+title = "上游快照：vertical legends placed apart"
+source = "upstream:tests/testthat/_snaps/theme/vertical-legends-placed-apart.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-816：`legend.spacing.y = unit(1, 'null')` 在 guide-box 内分配剩余高度。"

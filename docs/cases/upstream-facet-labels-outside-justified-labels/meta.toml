@@ -1,6 +1,6 @@
 family = "facet-labels"
 features = ["facet-label-outside-justification"]
-ci = false
+ci = true
 title = "上游快照：outside-justified labels"
 source = "upstream:tests/testthat/_snaps/facet-labels/outside-justified-labels.svg"
 tolerance = { png = 0.02 }
