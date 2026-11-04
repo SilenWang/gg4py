@@ -6,7 +6,7 @@
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
 - 已纳管：**272**（`expected.svg` 与上游快照逐字节相同）
 - 已知缺口：**39**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **2** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **39** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -474,26 +474,6 @@ SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 
 
 </details>
 
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。
-
-<details><summary>快照</summary>
-
-- `guide-axis/stacked-radial-axes.svg`
-
-</details>
-
 ### `guide-axis` — 1 条 · SIL-715 · m3
 
 SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x 轴标签是 `label_math()`（`10` 用 8.80px、指数用 6.16px 两次落字，见快照 `guides-with-minor-ticks.svg` 的 8 段 text），本仓所有 text 走一条 shaping，画不出上下标；plotmath 已在 SIL-786 由 00b6d04 整块移交 M3。次轴带本身（`axis.minor.ticks.length.y.right = 5cm` 撑开 `axis-r` 列）已经算对，等 plotmath 落地后可直接复测。按 SIL-817 约束作为新能力整条移交 m3。
@@ -511,6 +491,26 @@ SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_log
 <details><summary>快照</summary>
 
 - `guide-axis/logtick-axes-with-customisation.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m3
+
+SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。
+
+<details><summary>快照</summary>
+
+- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
+
+</details>
+
+### `guide-axis` — 1 条 · SIL-715 · m3
+
+SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。
+
+<details><summary>快照</summary>
+
+- `guide-axis/stacked-radial-axes.svg`
 
 </details>
 
