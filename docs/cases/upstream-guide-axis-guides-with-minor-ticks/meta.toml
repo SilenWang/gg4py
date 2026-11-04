@@ -1,0 +1,7 @@
+family = "guide-axis"
+features = ["guide-axis", "guide-axis-minor-ticks"]
+ci = false
+title = "上游快照：guides with minor ticks"
+source = "upstream:tests/testthat/_snaps/guide-axis/guides-with-minor-ticks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-817（G10a）：复现用例，**尚未达档**（图级 9.41% / 均值 1.03%）。卡点是 `axis.minor.ticks.length.y.right = 5cm` 时次轴带的宽度分配与 R 的 gtable 不一致；负刻度长度（`-0.5cm`）与 5cm 主刻度已能画。修到 2% / 1% 后再把 ci 改回 true。"
