@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "gtable"]
+ci = true
+title = "上游快照：axis guides, check overlap"
+source = "upstream:tests/testthat/_snaps/guide-axis/axis-guides-check-overlap.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：裸 gtable 快照（`draw_axis()` + `plot(gt)`），走 `{\"gtable\": …}` 契约；标题是 doppelganger 名。"

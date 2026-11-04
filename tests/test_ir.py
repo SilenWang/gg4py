@@ -770,6 +770,9 @@ def test_text_node_carries_no_measurement_intent() -> None:
         "anchor",
         "baseline",
         "angle",
+        # `lineheight` 是绘制参数（多行文本的行距 = 1.2 × lineheight × size），
+        # 不是测量上下文：宽度仍然只带最终值（SIL-820）。
+        "lineheight",
     }
     assert {buffer.name for buffer in spec.buffers} == {"pos", "width"}
 

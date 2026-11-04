@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**266**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**45**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **8** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
+- 已纳管：**272**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**39**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **2** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -14,17 +14,14 @@
 | --- | --- | ---: | ---: | ---: |
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
-| `guide-axis` | m2-closeout | 23 | 16 | 7 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
+| `guide-axis` | m2-closeout | 23 | 19 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
 | `facet-labels` | m2-closeout | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
-| `guide-legend` | m2-closeout | 7 | 6 | 1 |
-| `guides` | m2-closeout | 45 | 44 | 1 |
-| `legend-draw` | m2-closeout | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
@@ -44,7 +41,10 @@
 | `geom-smooth` | m2-closeout | 2 | 2 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
+| `guide-legend` | m2-closeout | 7 | 7 | 0 |
+| `guides` | m2-closeout | 45 | 45 | 0 |
 | `labels` | m2-closeout | 6 | 6 | 0 |
+| `legend-draw` | m2-closeout | 1 | 1 | 0 |
 | `position-stack` | m2-closeout | 1 | 1 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 266 | 45 |
+| **合计** | — | 311 | 272 | 39 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -177,10 +177,13 @@
 | `geom-violin/styled-quantiles.svg` | `upstream-geom-violin-styled-quantiles` |
 | `geom-violin/with-smaller-bandwidth-and-points.svg` | `upstream-geom-violin-with-smaller-bandwidth-and-points` |
 | `geom-violin/with-tails-and-points.svg` | `upstream-geom-violin-with-tails-and-points` |
+| `guide-axis/align-facet-labels-facets-horizontal.svg` | `upstream-guide-axis-align-facet-labels-horizontal` |
 | `guide-axis/align-facet-labels-facets-vertical.svg` | `upstream-guide-axis-align-facet-labels-vertical` |
 | `guide-axis/axis-guides-basic.svg` | `upstream-guide-axis-axis-guides-basic` |
+| `guide-axis/axis-guides-check-overlap.svg` | `upstream-guide-axis-check-overlap` |
 | `guide-axis/axis-guides-negative-rotation.svg` | `upstream-guide-axis-axis-guides-negative-rotation` |
 | `guide-axis/axis-guides-positive-rotation.svg` | `upstream-guide-axis-axis-guides-positive-rotation` |
+| `guide-axis/axis-guides-text-dodged-into-rows-cols.svg` | `upstream-guide-axis-text-dodged` |
 | `guide-axis/axis-guides-vertical-negative-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-negative-rotation` |
 | `guide-axis/axis-guides-vertical-rotation.svg` | `upstream-guide-axis-axis-guides-vertical-rotation` |
 | `guide-axis/axis-guides-with-capped-ends.svg` | `upstream-guide-axis-capped-ends` |
@@ -200,6 +203,7 @@
 | `guide-legend/horizontal-legend-direction.svg` | `upstream-guide-legend-horizontal-direction` |
 | `guide-legend/left-aligned-legend-key.svg` | `upstream-guide-legend-left-aligned-key` |
 | `guide-legend/legend-byrow-true.svg` | `upstream-guide-legend-byrow-true` |
+| `guide-legend/legend-key-justification.svg` | `upstream-guide-legend-key-justification` |
 | `guide-legend/legend-with-widely-spaced-keys.svg` | `upstream-guide-legend-widely-spaced-keys` |
 | `guide-legend/vertical-legend-direction.svg` | `upstream-guide-legend-vertical-direction` |
 | `guides/facet-grid-legend-on-bottom.svg` | `upstream-guides-facet-grid-legend-bottom` |
@@ -245,6 +249,7 @@
 | `guides/padding-in-legend-box.svg` | `upstream-guides-padding-in-legend-box` |
 | `guides/reversed-guide-bins.svg` | `upstream-guides-reversed-guide-bins` |
 | `guides/rotated-guide-titles-and-labels.svg` | `upstream-guides-rotated-guide-titles-labels` |
+| `guides/stylised-guide-custom.svg` | `upstream-guides-stylised-guide-custom` |
 | `guides/vertical-gap-of-1cm-between-guide-title-and-guide.svg` | `upstream-guides-vertical-gap-1cm-title-guide` |
 | `labels/defaults.svg` | `upstream-labels-defaults` |
 | `labels/tag-in-margin.svg` | `upstream-labels-tag-in-margin` |
@@ -252,6 +257,7 @@
 | `labels/tag-in-panel-as-numeric.svg` | `upstream-labels-tag-in-panel-as-numeric` |
 | `labels/tag-in-plot-as-character.svg` | `upstream-labels-tag-in-plot-as-character` |
 | `labels/tag-in-plot-as-numeric.svg` | `upstream-labels-tag-in-plot-as-numeric` |
+| `legend-draw/all-legend-keys.svg` | `upstream-legend-draw-all-keys` |
 | `position-stack/area-stacking.svg` | `upstream-position-stack-area` |
 | `scale_date/dates-along-x-default-breaks.svg` | `upstream-scale-date-dates-along-x-default-breaks` |
 | `scale_date/dates-along-y-default-breaks.svg` | `upstream-scale-date-dates-along-y-default-breaks` |
@@ -470,37 +476,7 @@ SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-SIL-817 复核：同 `axis-guides-check-overlap`，是 `test_draw_axis(10, labels = comma(b * 1e9), n.dodge = 2)` 的裸轴 gtable。`n.dodge = 2` 的分行逻辑（`_grid_shape()` + `_visible_labels()`）已能跑，缺的是「不经过 ggplot 版面」的渲染入口。
-
-<details><summary>快照</summary>
-
-- `guide-axis/axis-guides-text-dodged-into-rows-cols.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-817 复核：这条快照不是 ggplot 对象，而是 `test_draw_axis()` 用 `draw_axis()` 拼四条轴再放进 `gtable(widths = c(0.05, 0.9, 0.05) npc)` 直接 `plot()` 的**裸 gtable**；三文件 case 只接 plot 规格，所以任何 plot 近似（SIL-810 用 20 个断点的面板试过）都多出 36pt/28.8pt 的面板边距。实测近似图 3.62% / 0.45%。卡点与 `all-legend-keys` 同一个：case 契约要先支持「plot.py 返回 gtable / grob」。
-
-<details><summary>快照</summary>
-
-- `guide-axis/axis-guides-check-overlap.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-817 实测 2.05% / 0.27%（阈值 2% / 1%，差 0.05 个点）。版面已经对齐：15 行面板高 34.78 / 45.65 / 13.04…（= `diff(y.range)` 的 null 权重）、38 个 y 标签、plot/axis 标题位置与 R 逐点相同；8522 个差异像素里 2400 px 是 4 条面板边框的 1 px 落点——本仓 y 轴带宽 115.4418pt vs R 115.47pt（最长标签 `land cruiser wagon 4wd` 的 HarfBuzz 宽度差 0.028pt），0.002–0.03pt 的偏移把 resvg 对 1.07pt 描边的整行覆盖率从 0.75 翻到 0.56（灰度 103 vs 141）。卡在「文本度量与 svglite 对齐到 0.01pt」，不是版面公式。
-
-<details><summary>快照</summary>
-
-- `guide-axis/align-facet-labels-facets-horizontal.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m2-closeout
-
-SIL-817 实测 48.97% / 4.82%：`coord_radial()` 的 full-bleed 版面未复刻——R 的面板是整页的正方形（575.61×575.61：`plot.title` 与两条 axis title 都画在面板内、不占 gtable 行），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩（528.3×528.3，另加 `inner.radius = 0.5` 的环），同心圆半径与 theta 标签的锚点因此整体差 8%–9%。卡在 `plot_layout()` 对 radial 的「面板 = 整页 − 图例」口径 + `guide_axis_theta(angle=)` 的锚点随角度旋转。
+SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。
 
 <details><summary>快照</summary>
 
@@ -510,7 +486,7 @@ SIL-817 实测 48.97% / 4.82%：`coord_radial()` 的 full-bleed 版面未复刻�
 
 ### `guide-axis` — 1 条 · SIL-715 · m2-closeout
 
-SIL-817 实测仍然报错：`ValueError: guide_axis_theta 暂不支持与 guide_axis_stack 叠放`（`src/ggcore/axis_guide.py:1163` 的 `polar_axis_grobs()`）。R 的径向叠放是两层 theta 轴沿半径各占一圈（`guide_axis_stack("axis_theta", guide_axis_theta(cap = "both"))` 进 `guides(theta=, theta.sec=)`），需要 radial 版的 `stack_offset`（直角坐标由 G8 的 `axis_guide_stack` 累加轴带完成），与 `coord-polar` 剩下 4 条同属 `docs/notes/guide.md` §8.5 的 radial 轴体系。
+SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。
 
 <details><summary>快照</summary>
 
@@ -535,36 +511,6 @@ SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_log
 <details><summary>快照</summary>
 
 - `guide-axis/logtick-axes-with-customisation.svg`
-
-</details>
-
-### `guide-legend` — 1 条 · SIL-715 · m2-closeout
-
-SIL-817 实测 3.72% / 1.49%。顺序可以显式对齐（R 没写 `order`，`Guides$build()` 因此按 `order_<rlang::hash>` 排：drat 在前；case 里写成 `guides(size = guide_legend(order = 1), colour = guide_legend(order = 2))` 后降到 2.66% / 1.04%）。剩下的 0.66% / 0.04% 是 `size` 图例的**逐键高度**：R 的三行是 0.6096 / 1.3037 / 1.6389cm（随点径撑开，点 3/4/5 映射到 `range = c(0, 20)`），本仓三行等高（整摞图例 226pt vs R 277pt）；`_key_dimensions()` 只按标度值算 key 宽高，没把点径（`stroke` 外的直径）计入行高。卡在「逐键行高 = max(key 尺寸, 点径 + 2×stroke)」。
-
-<details><summary>快照</summary>
-
-- `guide-legend/legend-key-justification.svg`
-
-</details>
-
-### `guides` — 1 条 · SIL-715 · m2-closeout
-
-SIL-817 实测 5.13% / 0.80%：无图层版面已对（SIL-810），圆也画对了（IR 里 1 个 circle，圆心 (673.6, 296.65) 与 R 的 (680.69, 296.65) 之差就是图例框偏移），差在 `_custom_layout()` 的盒子尺寸——R 用 `grobWidth()` / `grobHeight()`（circleGrob r = 1cm → 2cm），逐列 [0.193 外边距, 0.557 旋转标题列, 2 内容, 0.193]，逐行 [0.193, 0.154, 2, 0.154, 0.193]（标题转 90° 后高 2.31cm，撑开上下各 0.154cm）；本仓退回 `legend.key.size`，图例框 2.89×1.34cm vs R 2.94×2.69cm，面板因此宽 1.1pt、网格线整列错位。卡在「`guide_custom()` 的 grob 包围盒测量（circle / rect / text / gtable / null）+ 标题列按 `angle` 交换宽高」。
-
-<details><summary>快照</summary>
-
-- `guides/stylised-guide-custom.svg`
-
-</details>
-
-### `legend-draw` — 1 条 · SIL-715 · m2-closeout
-
-这条快照不是 ggplot 对象，而是把 17 个 `draw_key_*` 直接拼成 gtable 后画；三文件 case 只接 plot 规格，得先有 `key_glyph` 才能用图例复现同一组 key。
-
-<details><summary>快照</summary>
-
-- `legend-draw/all-legend-keys.svg`
 
 </details>
 

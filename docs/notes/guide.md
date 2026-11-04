@@ -483,21 +483,21 @@ R 4.0.3 里 `guides(x.sec = guide_axis(...))` 会画一条**恒等**的次轴（
 - `secondary_ticks()` 的恒等分支：`breaks` 里带 `None` 时先 zip 再过滤，否则
   `labels` 比 `positions` 长（离散次轴 `zip(strict=True)` 直接抛异常）。
 
-### 12.4 尚未对等（8 条）
+### 12.4 尚未对等（2 条）
 
-SIL-810 收掉了 `n.dodge` 进版式、`guide_axis_stack` 逐层累加、`cap=` 与直角
-坐标 `axis_theta`（共 5 条快照转绿）。SIL-817 收掉 `align facet labels,
-facets vertical`（1.61%：行 strip 右侧时轴标题的居中区、`reorder()` 只改
-factor levels 不改标度 limits）。剩下 7 条：
+SIL-810 收掉 `n.dodge` 进版式、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标
+`axis_theta`（5 条）。SIL-817 收掉 `align facet labels, facets vertical`。
+SIL-820 又收掉 6 条（见 §12.6）。剩下 2 条同属一个子系统：
 
 | 卡点 | 影响 |
 | --- | --- |
-| `label_math()` 的 plotmath 标签（次轴 5cm 刻度长已算对） | `guides with minor ticks`（移交 m3） |
-| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×575.61、轴标题画在面板内） | `guide_axis_theta with angle`（SIL-817 实测 48.97%） |
-| `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | `stacked radial axes`（现在直接抛 ValueError） |
-| `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation`（移交 m3） |
-| 裸 gtable 快照（`draw_axis()` 拼四条轴后 `plot()`）：三文件 case 只接 plot 规格 | `check overlap`、`text dodged`（近似图 3.62% / 3.72%）、`all legend keys` |
-| 长标签的亚像素落点（版面系数已对齐：15 个面板高、38 个 y 标签、标题位置逐点相同） | `align facet labels, facets horizontal`（2.05%，差 4 条面板边框的 1 px 落点） |
+| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×576、标题与两条轴标题画在面板内）+ `guide_axis_theta(angle=)` 的锚点 | `guide_axis_theta with angle adapting to theta`（48.7%） |
+| 同一套 radial 版面 + `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | `stacked radial axes`（现在直接抛 ValueError） |
+
+两条要一起做：单独补叠放、面板仍是收缩版式，快照照样红。估工 3–4 个工作日
+（`plot_layout()` 的 radial 口径 1.5–2 天、theta 轴 1 天、叠放 0.5 天、
+6 条 `coord-polar`/radial 快照回归 0.5–1 天），并要新增 radial 版面的单测；
+SIL-820 只写结论、未动 `owner`，等 leader 决定留在 M2 还是移交 m3。
 
 ### 12.5 SIL-816：stretchy key 与逐边 justification
 
@@ -518,3 +518,29 @@ factor levels 不改标度 limits）。剩下 7 条：
 - **guide 顺序**：R 按 `order` + 内容 hash 排序；我们的 `_sort_key` 是
   `order` + 美学序号 + 名字。同方位多图例且顺序有差时，case 里显式 `order=`
   钉住（`stretched-vertical-legends` / `stretched-horizontal-legends`）。
+
+### 12.6 SIL-820：裸 gtable 入口、逐键行高、`guide_custom()` 的包围盒
+
+- **裸 gtable case 契约**：`plot.py` 可以返回 `{"gtable": <GTable>, "size": [...]}`
+  （R 的 `plot(gt)`）。`ggcore.axis_guide.draw_axis()` 是 R `draw_axis()` 的移植：
+  收现成的断点 / 标签（npc）与一个 `CellBox`，把轴线 + 刻度 + 标签画进去；方位
+  口径照 `GuideAxis$assemble_drawing()`——`side="top"` 贴**下**沿、刻度向上
+  （真实版式里它的单元格就在面板上方），`"bottom"` 反之，左右同理。
+  `build()` 声明 `metrics` 参数时会拿到设备的字体度量（`check.overlap` 要按真实
+  字宽筛标签，估算值会多删一半）。
+- **逐键行高**：`legend_layout()` 的每一行按**该键自己的**标签块高与 key 高取
+  max，不再全场用最大标签高度；多行标签的高度用 `text_block_cm()`（单行高 +
+  (n-1) 个行距），行距 = `1.2 × lineheight × fontsize`（`legend.text` 的
+  lineheight 是 0.9，缺省 1.2 时才是 1.44em）。`size` 图例的 key 高 = 标度值
+  (`(size + linewidth) / 10` cm)，所以三行不再等高。
+- **`guide_custom()` 的内容盒**：缺省取 grob 的 `grobWidth()` / `grobHeight()`
+  （`circleGrob(r = unit(1, "cm"))` → 2×2cm），不再退回 `legend.key.size`。只对
+  **绝对单位**成立：`npc` / `null` 这类相对单位要先有视口才折得开，R 在 guide 的
+  绘制上下文里量、本仓在临时页视口里量，结论不同（`old-s3-guide-circle`），
+  所以 `grobs.is_absolute_size()` 为假时仍退回 key 尺寸。标题按旋转后量
+  （`angle = 90` 时列宽 = 一行行距、行高 = 文字宽），标题比内容长时按 vjust 在
+  上下补行。
+- **1 px 描边**：主题的 `linewidth`（mm）→ `lwd`（pt）改用 R 的 `.pt = 72.27/25.4`
+  （`geom/base.POINT_PER_MM` 同一个常数）。0.4% 的差在 1 px 边框上就是从 0.75
+  翻到 0.56 的覆盖率：`align facet labels, facets horizontal` 因此从 2.05%
+  降到 1.91%。

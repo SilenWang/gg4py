@@ -674,6 +674,9 @@ NODE_SPECS: Mapping[NodeKind, NodeSpec] = MappingProxyType(
                 ParamSpec("anchor", "anchor", Anchor.CENTER, note="pos 指文本的哪一边"),
                 ParamSpec("baseline", "baseline", Baseline.MIDDLE, note="竖直锚定方式"),
                 ParamSpec("angle", "float", 0.0, note="旋转角，度，逆时针"),
+                # 多行文本的行距 = 1.2 × lineheight × size；取值来自 `gpar()`，
+                # `legend.text` 的 0.9 与缺省的 1.2 画出来不是同一个行距。
+                ParamSpec("lineheight", "float", 1.2, note="行距系数（gpar lineheight）"),
             ),
             texts=True,
             doc=(

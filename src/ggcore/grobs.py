@@ -109,6 +109,7 @@ __all__ = [
     "g_table_grob",
     "g_tree",
     "height_details",
+    "is_absolute_size",
     "lines_grob",
     "null_grob",
     "path_grob",
@@ -2015,6 +2016,10 @@ class _Traverser:
                 "anchor": anchor.value,
                 "baseline": baseline.value,
                 "angle": label_angle,
+                # 多行的行距要跟着 gpar 走：R 的 `textGrob` 行距 =
+                # 1.2 × lineheight × fontsize，`legend.text` 的 lineheight = 0.9
+                # 时是 1.08em，不是缺省的 1.44em（SIL-820）。
+                "lineheight": float(gp.lineheight),
             }
 
         return _Resolved(NodeKind.TEXT, {"pos": pos, "width": widths}, params, texts=labels)
@@ -2224,6 +2229,51 @@ def _bbox_points(grob: Grob, frame: _Frame) -> tuple[float, float]:
         xs = _recycle(frame.loc(grob.x, "x"), n)  # type: ignore[attr-defined]
         ys = _recycle(frame.loc(grob.y, "y"), n)  # type: ignore[attr-defined]
     return float(xs.max() - xs.min()), float(ys.max() - ys.min())
+
+
+_ABSOLUTE_UNITS = frozenset(
+    {"cm", "mm", "inches", "points", "bigpts", "picas", "dida", "cicero", "scaledpts"}
+)
+
+
+def is_absolute_size(grob: GrobLike) -> bool:
+    """grob 的尺寸是不是绝对单位（cm / mm / inches / pt …）。
+
+    `guide_custom()` 的缺省盒子是 `grobWidth()` / `grobHeight()`，而相对单位
+    （`npc` / `null` / `lines`）要先有一个视口才折得开——R 在 guide 的绘制上下文
+    里量，本仓在临时页视口里量，两者对 `circleGrob(r = unit(0.5, "npc"))` 会给出
+    完全不同的数（`upstream-guides-old-s3-guide-circle` 就是这么红起来的）。
+    调用方拿到 ``False`` 时应退回 `legend.key.size`。
+    """
+    item = _as_grob(grob)
+    if isinstance(item, (GTreeGrob, ClipPathGrob)):
+        return all(is_absolute_size(child) for child in item.children)
+    if isinstance(item, (RectGrob, RasterGrob)):
+        units = (item.width, item.height)
+    elif isinstance(item, CircleGrob):
+        units = (item.r,)
+    elif isinstance(item, PointsGrob):
+        units = (item.size,)
+    elif isinstance(item, TextGrob):
+        return True  # 文字尺寸只由字号决定，与视口无关
+    elif isinstance(item, GTableGrob):
+        return all(is_absolute_size(grob) for grob in item.table.grobs)
+    else:
+        # 路径型 grob 由坐标决定尺寸，坐标里的相对单位同样要视口。
+        return False
+    return all(_unit_is_absolute(value) for value in units)
+
+
+def _unit_is_absolute(value: Any) -> bool:
+    """单位（含 sum/min/max 复合）的每个成分都是绝对长度。"""
+    unit_obj = value if isinstance(value, Unit) else unit(value)
+    for element in unit_obj:
+        if element.children:
+            if not all(_unit_is_absolute(Unit((child,))) for child in element.children):
+                return False
+        elif element.kind not in _ABSOLUTE_UNITS:
+            return False
+    return True
 
 
 def width_details(grob: GrobLike, node: VpNode) -> Unit:

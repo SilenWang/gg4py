@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-legend", "theme-text", "rotation"]
+ci = true
+title = "上游快照：stylised guide_custom"
+source = "upstream:tests/testthat/_snaps/guides/stylised-guide-custom.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-820：`guide_custom()` 的内容盒按 grob 的 `grobWidth()`/`grobHeight()`（这里 2×2 cm 的圆），标题按 `angle = 90` 交换宽高；标题是 doppelganger 名。"

@@ -57,6 +57,7 @@ from ggcore.axis import (
     font_int,
     margin_sides_cm,
     paint,
+    text_block_cm,
     text_line_cm,
     text_width_cm,
 )
@@ -124,6 +125,8 @@ GUIDE_AESTHETICS = ("colour", "fill", "size", "shape", "alpha", "linetype", "lin
 AUTO: Any = object()
 
 _POINTS_PER_INCH = 72.0
+#: ggplot2 的 `.pt`：主题的 `linewidth`（mm）→ `lwd`（pt）用 72.27，不是 72。
+_POINT_PER_MM = 72.27 / 25.4
 _CM_PER_INCH = 2.54
 
 #: 色条相邻小矩形多铺的长度（1pt）。R 用 1×nbin 的位图，天然没有缝；我们只能是
@@ -1923,9 +1926,13 @@ def _text_footprint(
     R 在 gtable 里量的是**旋转后**的 grob（`legend.text` 竖排时宽 = 行高、
     高 = 字符串长度），以前这里只量不旋转的那一版，竖排标签的列宽会大出一整条
     字符串的宽度（SIL-788 的 rotated guide titles and labels）。
+
+    多行标签（`"up\\nto\\nfour\\nlines"`）的高度按 `textGrob` 的块高算：
+    单行高 + (n-1) 个行距。早先一律按一行量，`size` / 多行 `colour` 图例的行高
+    只有一行，整摞图例比 R 矮一截（SIL-820 的 `legend key justification`）。
     """
     width = text_width_cm(text, size, metrics, element.family or "")
-    height = text_line_cm(size)
+    height = text_block_cm(text, size, getattr(element, "lineheight", None))
     angle = float(getattr(element, "angle", 0.0) or 0.0)
     if round(angle) % 180 == 90:
         return height, width
@@ -2348,20 +2355,21 @@ def legend_layout(
         _text_footprint(key.label, text_size, text_el, metrics) for key in guide_build.keys
     ]
     label_text_w = [width for width, _height in label_footprints]
-    label_text_h = max(
-        (height for _width, height in label_footprints), default=text_line_cm(text_size)
-    )
+    # 逐键的高度（不是全场最大值）：R 的 `measure_grobs()` 一个键量一次，
+    # gtable 的行高 = 该行里最高的那一个。早先所有行都用最大标签高度，短标签
+    # 那一行也被撑到整摞最高，图例比 R 高一截（SIL-820）。
+    label_text_hs = [height for _width, height in label_footprints] or [text_line_cm(text_size)]
     if text_position == "right":
         label_w = [ml + value + mr + gap for value in label_text_w]
-        label_h = mt + label_text_h + mb
+        label_hs = [mt + value + mb for value in label_text_hs]
         label_pad_x = gap
     elif text_position == "left":
         label_w = [ml + value + mr + gap for value in label_text_w]
-        label_h = mt + label_text_h + mb
+        label_hs = [mt + value + mb for value in label_text_hs]
         label_pad_x = 0.0
     else:
         label_w = [ml + value + mr for value in label_text_w]
-        label_h = mt + label_text_h + mb + gap
+        label_hs = [mt + value + mb + gap for value in label_text_hs]
         label_pad_x = 0.0
 
     tmt, tmr, tmb, tml = margin_sides_cm(title_el.margin)
@@ -2416,7 +2424,7 @@ def legend_layout(
         # R 把 key 与标签放进同一个 gtable 行：行高 = max(key 高度, 标签高度)。
         # 字号放大到 key 比文字还矮时（`base_size = 33` 的 `theme_bw` 族），
         # 行高必须跟着文字走，否则图例整体会比上游矮一截。
-        row_label[row] = max(row_label[row], label_h)
+        row_label[row] = max(row_label[row], label_hs[index])
 
     grid_cols: list[float] = []
     key_col_index: list[int] = []
@@ -2578,24 +2586,11 @@ def legend_layout(
             )
         else:
             key_box = _Box(cell_x, cell_top - row_h, cell_w, row_h)
-        if text_position == "right":
+        label_h = label_hs[index]
+        if text_position in ("right", "left"):
             label_box = _Box(
                 col_left(label_col_index[col]) + label_pad_x,
                 cell_top - (row_h + label_h) / 2.0,
-                label_text_w[index],
-                label_h,
-            )
-        elif text_position == "left":
-            label_box = _Box(
-                col_left(label_col_index[col]) + label_pad_x,
-                cell_top - (row_h + label_h) / 2.0,
-                label_text_w[index],
-                label_h,
-            )
-        elif text_position == "top":
-            label_box = _Box(
-                key_box.x_cm + (key_box.width_cm - label_text_w[index]) / 2.0,
-                row_top(label_row_index[row]) - label_h,
                 label_text_w[index],
                 label_h,
             )
@@ -2661,6 +2656,47 @@ def _title_vjust(guide: Guide, element: ElementText) -> float:
     return float(element.vjust if element.vjust is not None else 0.5)
 
 
+def _grob_extent_cm(grob: Any, metrics: Any) -> tuple[float, float] | None:
+    """一个 grob 的自然尺寸（cm）：`grobWidth()` / `grobHeight()`。
+
+    量在一张临时页视口里做（与 `facet._strip_extent()` 同一条路）：`lines` /
+    `char` 这类相对单位要当前 gpar 才折得开。可调用对象（按格子尺寸现算的
+    `guide_custom(grob=fn)`）量不出来，返回 ``None`` 让调用方退回 key 尺寸。
+    """
+    import numpy as np
+
+    from ggcore.grobs import height_details, width_details
+    from ggcore.units import convert_height, convert_width
+    from ggcore.viewport import Device, ViewportTree, gpar, viewport
+
+    if grob is None or callable(grob) or not hasattr(grob, "name"):
+        return None
+    from ggcore.grobs import is_absolute_size
+
+    if not is_absolute_size(grob):
+        return None
+    tree = ViewportTree(Device(7.0, 7.0), metrics=metrics)
+    tree.push(
+        viewport(
+            "page",
+            x=0.5,
+            y=0.5,
+            width=1.0,
+            height=1.0,
+            clip="off",
+            gp=gpar(fontsize=12.0, fontfamily=""),
+        )
+    )
+    node = tree.current
+    width = float(
+        np.asarray(convert_width(width_details(grob, node), "cm", ctx=node.unit_context())).sum()
+    )
+    height = float(
+        np.asarray(convert_height(height_details(grob, node), "cm", ctx=node.unit_context())).sum()
+    )
+    return width, height
+
+
 def _custom_layout(
     guide_build: GuideBuild,
     theme: ResolvedTheme,
@@ -2678,27 +2714,54 @@ def _custom_layout(
     content_w = _cm_unit(guide.width, height=False) if guide.width is not None else 0.0
     content_h = _cm_unit(guide.height, height=True) if guide.height is not None else 0.0
     if content_w <= 0 or content_h <= 0:
-        key_w, key_h = _key_size(theme, guide)[:2]
-        content_w = content_w or key_w
-        content_h = content_h or key_h
+        # R 的 `guide_custom()` 缺省 `width = grobWidth(grob)` /
+        # `height = grobHeight(grob)`：内容盒子按 grob 自己的包围盒走，不是
+        # `legend.key.size`（`circleGrob(r = unit(1, "cm"))` 是 2 × 2 cm）。
+        measured = _grob_extent_cm(guide.grob, metrics)
+        if measured is not None:
+            content_w = content_w or measured[0]
+            content_h = content_h or measured[1]
+        if content_w <= 0 or content_h <= 0:
+            key_w, key_h = _key_size(theme, guide)[:2]
+            content_w = content_w or key_w
+            content_h = content_h or key_h
     title_size = float(title_el.size or 0.0)
-    title_text_w = (
-        text_width_cm(guide_build.title or "", title_size, metrics, title_el.family or "")
-        if guide_build.title
-        else 0.0
-    )
     title_position = legend_title_position(guide, theme, direction)
+    # 标题的「沿标题方向」长度 = 文字推进宽度；「垂直方向」= 一行行距
+    # （R 量 guide.title grob 得到的是 1.2 × lineheight × fontsize，不是
+    # `stringHeight` 的 cap height）。`angle = 90 / 270` 时两者互换：
+    # 竖排标题的列宽 = 行距，行高 = 文字宽。
+    if guide_build.title:
+        text_w, text_h = _text_footprint(guide_build.title, title_size, title_el, metrics)
+        rotated = round(float(getattr(title_el, "angle", 0.0) or 0.0)) % 180 == 90
+        along = text_h if rotated else text_w
+        # `titleGrob` 的 cross 尺寸是一行行距（1.2 × lineheight 1.2 × size = 1.44em），
+        # 不是 `stringHeight()` 的 cap height——R 量 guide.title 得到 0.557cm @ 11pt。
+        cross = title_size * 1.44 * _CM_PER_INCH / _POINTS_PER_INCH
+    else:
+        along = cross = 0.0
     title_h = 0.0
     title_w = 0.0
+    extra = top_extra = bottom_extra = 0.0
     if guide_build.title:
         if title_position in ("top", "bottom"):
-            title_h = text_line_cm(title_size) + gap
-            title_w = title_text_w
+            title_h = cross
+            title_w = along
         else:
-            title_w = title_text_w + gap
-            title_h = text_line_cm(title_size)
-    width = max(content_w, title_w) + pad_l + pad_r
-    height = content_h + title_h + pad_t + pad_b
+            title_w = cross
+            title_h = along
+            # R 的 `add_title()`：标题比内容长时按 vjust 在上下各补一行。
+            extra = max(0.0, title_h - content_h)
+            vjust = _title_vjust(guide, title_el)
+            top_extra = (1.0 - vjust) * extra
+            bottom_extra = vjust * extra
+    # 标题是**另一列 / 另一行**：左右标题加宽、上下标题加高，取 max 只用于
+    # 「标题比内容短」时不让盒子缩水。
+    width = content_w + title_w + pad_l + pad_r
+    height = content_h + extra + pad_t + pad_b
+    if guide_build.title and title_position in ("top", "bottom"):
+        width = max(content_w, title_w) + pad_l + pad_r
+        height = content_h + title_h + pad_t + pad_b
     title_box = None
     if guide_build.title:
         if title_position == "top":
@@ -2709,7 +2772,7 @@ def _custom_layout(
             title_box = _Box(pad_l, pad_b, title_w, height - pad_t - pad_b)
         else:
             title_box = _Box(width - pad_r - title_w, pad_b, title_w, height - pad_t - pad_b)
-    content_y = pad_b + (title_h if title_position == "bottom" else 0.0)
+    content_y = pad_b + bottom_extra + (title_h if title_position == "bottom" else 0.0)
     if title_position == "top":
         content_y = pad_b
     col_widths = [pad_l, content_w, pad_r]
@@ -2718,10 +2781,10 @@ def _custom_layout(
     elif guide_build.title and title_position == "bottom":
         row_heights = [pad_t, content_h, title_h, pad_b]
     elif guide_build.title and title_position == "left":
-        row_heights = [pad_t, content_h, pad_b]
+        row_heights = [pad_t, top_extra, content_h, bottom_extra, pad_b]
         col_widths = [pad_l, title_w, content_w, pad_r]
     elif guide_build.title:
-        row_heights = [pad_t, content_h, pad_b]
+        row_heights = [pad_t, top_extra, content_h, bottom_extra, pad_b]
         col_widths = [pad_l, content_w, title_w, pad_r]
     else:
         row_heights = [pad_t, content_h, pad_b]
@@ -3421,7 +3484,7 @@ def _frame_paint(guide: Any, theme: ResolvedTheme) -> tuple[str | None, float]:
     """
     explicit = getattr(guide, "frame_colour", None)
     if explicit is not None:
-        return paint(explicit), 0.5 * 72.0 / 25.4
+        return paint(explicit), 0.5 * _POINT_PER_MM
     source = getattr(theme, "theme", None)
     elements = getattr(source, "elements", None) or {}
     if "legend.frame" not in elements:
@@ -3430,7 +3493,7 @@ def _frame_paint(guide: Any, theme: ResolvedTheme) -> tuple[str | None, float]:
     if not isinstance(frame, ElementRect):
         return None, 0.0
     colour = paint(frame.colour)
-    width = float(frame.linewidth or 0.0) * 72.0 / 25.4
+    width = float(frame.linewidth or 0.0) * _POINT_PER_MM
     return colour, width
 
 
@@ -3443,7 +3506,7 @@ def _tick_style(guide: Any, theme: ResolvedTheme) -> tuple[str | None, float, fl
     if colour is None:
         return None, 0.0, 0.0
     length = _cm_unit(theme.get("legend.ticks.length"), height=False)
-    width = float(getattr(element, "linewidth", None) or 0.0) * 72.0 / 25.4
+    width = float(getattr(element, "linewidth", None) or 0.0) * _POINT_PER_MM
     return colour, length, width
 
 
@@ -3518,7 +3581,7 @@ def _legend_axis_line_grob(
         x0, y0 = x, box.y_cm
         x1, y1 = x, box.y_cm + box.height_cm
     arrow = None if isinstance(element.arrow, bool) else element.arrow
-    width = float(element.linewidth or 0.0) * 72.0 / 25.4
+    width = float(element.linewidth or 0.0) * _POINT_PER_MM
     from ggcore.grobs import segments_grob
 
     return [

@@ -253,6 +253,25 @@ def validate_plot_spec(spec: Any) -> list[str]:
                 errors.append("`size` 必须是两个正数（英寸）")
         return errors
 
+    if "gtable" in spec:
+        # 裸 gtable 快照：`{"gtable": <GTable>, "size": [...]}`（`plot(gt)` 那种，
+        # 如 `guide-axis/axis-guides-check-overlap`）。R 的 gtable 是个 grob，
+        # 这里按 gtable 形状校验（行列 + layout 表），不要求它有 `gps`。
+        table = spec["gtable"]
+        if not (
+            hasattr(table, "layout") and hasattr(table, "widths") and hasattr(table, "heights")
+        ):
+            errors.append("`gtable` 必须是 gtable（行列单位 + layout 表）")
+        size = spec.get("size")
+        if size is not None:
+            if (
+                not isinstance(size, (list, tuple))
+                or len(size) != 2
+                or any(not isinstance(value, (int, float)) or value <= 0 for value in size)
+            ):
+                errors.append("`size` 必须是两个正数（英寸）")
+        return errors
+
     data = spec.get("data")
     if not isinstance(data, Mapping) or not data:
         errors.append("plot 规格缺 `data`（非空映射：列名 → 数组）")

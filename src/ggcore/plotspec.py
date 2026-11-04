@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import math
 import re
 import sys
@@ -88,11 +89,15 @@ class BuildResult:
 # ---------------------------------------------------------------------------
 
 
-def load_plot(directory: str | Path) -> Mapping[str, Any]:
+def load_plot(directory: str | Path, *, metrics: Any = None) -> Mapping[str, Any]:
     """在独立模块里执行 `<directory>/plot.py`，调用 `build()` 并返回规格。
 
     与 `tools/cases/matrix.py` 的静态校验同一份契约，但这里只在渲染时调用：
     导入失败 / 没有 `build()` / 返回值不是映射都折成 :class:`PlotSpecError`。
+
+    `metrics` 只在 `build()` 显式接受同名参数时传进去：裸 grob / gtable 这类
+    快照的版面（比如 `check.overlap` 要按真实字宽决定保留哪些标签）必须用设备
+    的字体度量算，不能退回估算。老 case 的 `build()` 不接受它，行为不变。
     """
     path = Path(directory)
     if path.is_file():  # 直接给了 plot.py
@@ -118,7 +123,7 @@ def load_plot(directory: str | Path) -> Mapping[str, Any]:
     if not callable(builder):
         raise PlotSpecError(f"{PLOT_FILE} 必须定义 `build()` 并返回 plot 规格 dict")
     try:
-        result = builder()
+        result = builder(metrics=metrics) if _takes_metrics(builder) else builder()
     except Exception as exc:
         raise PlotSpecError(
             f"{PLOT_FILE} 的 `build()` 抛异常：{type(exc).__name__}: {exc}"
@@ -126,6 +131,15 @@ def load_plot(directory: str | Path) -> Mapping[str, Any]:
     if not isinstance(result, Mapping):
         raise PlotSpecError(f"`build()` 必须返回 dict，实际是 {type(result).__name__}")
     return result
+
+
+def _takes_metrics(builder: Any) -> bool:
+    """`build()` 是否声明了 `metrics` 参数（`build(metrics=None)`）。"""
+    try:
+        parameters = inspect.signature(builder).parameters
+    except (TypeError, ValueError):  # pragma: no cover - 内置/包装函数
+        return False
+    return "metrics" in parameters
 
 
 # ---------------------------------------------------------------------------
@@ -427,13 +441,16 @@ def _gp_colour(colour: str, **extra: Any) -> Any:
 def build_scene(spec: Mapping[str, Any], *, metrics: Metrics | None = None) -> ir.Scene:
     """plot 规格 → `ggcore.ir.Scene`（float32、y 向下、单位 pt）。
 
-    三种规格形态：
+    四种规格形态：
 
     - `{"plot": ggplot(...), "size": [...]}`：走 M1-7 的真管线
       （`build_plot()` + `ggcore.geom.scene.scene_from_build()`），语法层与绘制
       契约都是生产路径；
     - `{"grob": <grid grob>, "size": [...]}`：裸 grob 快照（`grid.newpage()` +
       `grid.draw()` 那种），整页一个视口；
+    - `{"gtable": <GTable>, "size": [...]}`：裸 gtable 快照（`plot(gt)` 那种）。
+      与 `{"grob": …}` 同一条渲染腿——gtable 本身就是 grob，`scene()` 认它；
+      单独一支是为了让契约校验报出「这是 gtable，不是普通 grob」；
     - `{"data": ..., "layers": [...]}`：M0-9 的最小适配层（仍服务老 case）。
     """
     if "plot" in spec:
@@ -444,9 +461,11 @@ def build_scene(spec: Mapping[str, Any], *, metrics: Metrics | None = None) -> i
             spec["plot"], width_in=width_in, height_in=height_in, metrics=metrics
         )
     width_in, height_in = _size_in(spec)
-    if "grob" in spec:
+    if "grob" in spec or "gtable" in spec:
         # 裸 grob 快照（`grid.newpage(); grid.draw(g)`）：不经 ggplot 管线，直接把
-        # 一个 grid grob 画在整页上（`theme/point-elements` 这类快照就是它）。
+        # 一个 grid grob / gtable 画在整页上（`theme/point-elements`、
+        # `guide-axis/axis-guides-check-overlap` 这类快照就是它）。
+        item = spec["gtable"] if "gtable" in spec else spec["grob"]
         tree = ViewportTree(Device(width_in, height_in), metrics=metrics)
         tree.push(
             viewport(
@@ -459,7 +478,7 @@ def build_scene(spec: Mapping[str, Any], *, metrics: Metrics | None = None) -> i
                 gp=gpar(fontsize=12.0, fontfamily=""),
             )
         )
-        return scene([spec["grob"]], tree).to_ir_scene()
+        return scene([item], tree).to_ir_scene()
     data = _data(spec)
     layers = _layers(spec)
     limits = resolve_limits(spec)

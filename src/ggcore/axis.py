@@ -87,6 +87,10 @@ FALLBACK_CHAR_EM = 0.6
 _CM_PER_INCH = 2.54
 _POINTS_PER_INCH = 72.0
 
+#: ggplot2 的 `.pt`：mm → pt 用的是 72.27（`geom/base.POINT_PER_MM`），不是
+#: 72——主题的 `linewidth` 换成 `lwd` 走这个常数（R 的 `gg_par()`）。
+_MM_POINTS_PER_INCH = 72.27
+
 
 class AxisError(ValueError):
     """轴参数无法表达（secondary axis 的非法变换 / 旋转标签等）。"""
@@ -304,7 +308,7 @@ def _mm_to_pt(value: Any) -> float:
     if value is None:
         return 0.0
     try:
-        return float(value) * _POINTS_PER_INCH / 25.4
+        return float(value) * _MM_POINTS_PER_INCH / 25.4
     except (TypeError, ValueError):
         return 0.0
 

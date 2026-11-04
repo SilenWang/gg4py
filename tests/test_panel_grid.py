@@ -19,8 +19,9 @@ from ggcore.theme import element_blank, element_line, theme, theme_grey, theme_v
 
 SIZE = {"width_in": 4.0, "height_in": 3.0}
 GRID = (0.5, 0.25)  # theme_grey: major 0.5mm / minor 0.25mm（R 的 linewidth）
-#: IR 的 `gpar.lwd` 是 R 的 lwd 单位（1/96 in）：1mm = 72/25.4 × 0.75。
-LWD_PER_MM = 72.0 / 25.4 * 0.75
+#: IR 的 `gpar.lwd` 是 R 的 lwd 单位（1/96 in）：1mm = 72.27/25.4 × 0.75
+#: （`.pt` 用 R 的 72.27，与 `geom/base.POINT_PER_MM` 同一个常数）。
+LWD_PER_MM = 72.27 / 25.4 * 0.75
 
 
 def table() -> ColumnTable:

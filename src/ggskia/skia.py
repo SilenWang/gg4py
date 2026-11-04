@@ -50,7 +50,7 @@ from ggcore.ir import (
 from ggcore.png import encode_rgba
 from ggskia.curves import curve_points, xspline_points
 from ggskia.pch import character_pch, symbol
-from ggskia.text import LINE_PITCH, TextShaper
+from ggskia.text import TextShaper
 
 __all__ = ["SkiaPdfDevice", "SkiaRasterDevice", "SkiaSvgDevice"]
 
@@ -587,6 +587,7 @@ class _SkiaDevice(Device):
                 paint,
                 width=float(widths[index]),
                 font_key=node.params["font"],
+                lineheight=float(node.params.get("lineheight", 1.2)),
             )
 
     def _place_text(
@@ -602,6 +603,7 @@ class _SkiaDevice(Device):
         *,
         width: float | None = None,
         font_key: str = "sans",
+        lineheight: float = 1.2,
     ) -> None:
         assert self.canvas is not None
         lines = label.split("\n")
@@ -622,9 +624,11 @@ class _SkiaDevice(Device):
             cap *= 72.27 / 72.0
         else:  # 位图字体（CBDT）没有 cap height：退回字面框
             cap = ascent + float(metrics.fDescent)
-        # 多行：R 4.5.3 实测行距 = 1.2 × lineheight × fontsize（默认 1.44×）；
-        # 整块高度 = (n-1) × 行距 + strheight。
-        block = (len(lines) - 1) * LINE_PITCH * size + cap
+        # 多行：R 4.5.3 实测行距 = 1.2 × lineheight × fontsize（缺省 lineheight
+        # 1.2 时 1.44×；`legend.text` 是 0.9 → 1.08×）；整块高度 =
+        # (n-1) × 行距 + strheight。
+        pitch = 1.2 * float(lineheight) * size
+        block = (len(lines) - 1) * pitch + cap
         top = {
             "alphabetic": -cap,
             "top": 0.0,
@@ -642,7 +646,7 @@ class _SkiaDevice(Device):
             line_width = sum(run.advance for run in runs)
             measured = line_width if width is None or len(lines) > 1 else width
             dx = {"left": 0.0, "center": -measured / 2.0, "right": -measured}[anchor]
-            baseline_y = top + cap + index * LINE_PITCH * size
+            baseline_y = top + cap + index * pitch
             pen = dx
             for run in runs:
                 font = self.shaper.font(run.face, size)

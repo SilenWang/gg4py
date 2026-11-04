@@ -88,8 +88,8 @@ def _scene(args: argparse.Namespace):
     directory = args.cases
     if not directory.is_dir():
         raise PlotSpecError(f"{directory} 不是 case 目录（缺 plot.py）")
-    spec = load_plot(directory)
     metrics = ShaperMetrics()
+    spec = load_plot(directory, metrics=metrics)
     return build_scene(spec, metrics=metrics), str(directory)
 
 
