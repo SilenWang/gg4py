@@ -7,12 +7,17 @@
 
 - 分母 **311**（上游 pin `cc1444c1` 的 `_snaps/**/*.svg`），不回到 314。
 - 阈值 **图级 2% / 均值 1%**，不放宽：不新增覆盖、不改既有 case 的阈值。
-- 归属两档写在 `tools/upstream/snapshots.toml` 的每个 group 上：
+- 归属两档写在 `tools/upstream/snapshots.toml` 的每个 group 上（owner 按簇声明，
+  单条覆盖必须与 group 一致）：
 
-| owner | 缺口 | 含义 |
+| owner | 开工时缺口 | 含义 |
 | --- | ---: | --- |
 | `m2-closeout` | 267 | 「M2 已宣称但没做到对等」，M3 开工前必须归零 |
 | `m3` | 23 | 真 M3 新能力，移交 |
+
+现状（SIL-822 对齐后）：缺口 **39** 条全部归 `m3`，`m2-closeout` **0** 条。逐簇
+数字以 `docs/notes/snapshot-inventory.md` 为准（生成物）；`docs/cases/matrix.md`
+的「上游快照」一节与它同源。
 
 burndown 表在 `docs/notes/snapshot-inventory.md` 的「按簇 burndown」一节，生成入口
 `pixi run snapshots:report`，新鲜度由 `pixi run snapshots:report:check`（已挂进 `check`）守。

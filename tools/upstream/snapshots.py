@@ -13,6 +13,9 @@
 | `tools/upstream/snapshots.toml` | 人 | 每一条的处置：纳管成哪个 case，或哪个 group 的缺口 |
 | `docs/notes/snapshot-inventory.md` | 本工具 | 每条快照的处置清单（生成物） |
 
+同一个口径还出现在 `docs/cases/matrix.md` 的「上游快照（v4.0.3）」一节
+（`cases:matrix` 生成）。四处数字都由 `ledger()` 算一次。
+
 ## 处置规则
 
 - `[snapshots."<path>"] case = "<docs/cases 下的目录名>"`：已复刻，`expected.svg`
@@ -24,7 +27,14 @@
   （空间 / 版面组合 / annotate），移交 M3 但不许无主留在台账里。缺 owner 判红。
 
 `--report` 写出的清单里带一张按簇的 burndown 表（上游 / 已纳管 / 缺口）；
-`--check-report` 只校验 `docs/notes/snapshot-inventory.md` 与处置清单同源（CI 守新鲜度）。
+`--check-report` 守两件事：清单与处置清单同源（新鲜度），以及三处台账口径一致
+（表头按 owner 的合计 = burndown 逐簇相加 = `snapshots.toml` 的 group owner =
+`docs/cases/matrix.md` 的同一张数）。口径只由 `ledger()` 算一次，三个文件都从它派生。
+
+owner 是**按簇**声明的：一个簇的缺口只能有一个 owner。单条 `[snapshots]` 的
+`owner` 覆盖仍然支持，但它必须与所属簇的 `[groups]` owner 一致，否则
+`snapshots:check` / `--check-report` 判红——「最后一条缺口移交 m3 却只改单条」正是
+SIL-822 记录的漂移来源（`coord-polar` 的 group owner 停在 `m2-closeout`）。
 
 ## 为什么清单入库、SVG 不入库
 
@@ -38,6 +48,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 import tarfile
 import tomllib
@@ -51,6 +62,8 @@ UPSTREAM = ROOT / "tools" / "upstream"
 MANIFEST = UPSTREAM / "snapshot-manifest.json"
 DISPOSITIONS = UPSTREAM / "snapshots.toml"
 INVENTORY = ROOT / "docs" / "notes" / "snapshot-inventory.md"
+#: 案例矩阵里也有一张同一口径的静态表（`pixi run cases:matrix` 生成）。
+MATRIX = ROOT / "docs" / "cases" / "matrix.md"
 CASES = ROOT / "docs" / "cases"
 #: 按需拉取的上游源码（不入库）。
 CACHE = ROOT / ".upstream-gg"
@@ -126,7 +139,11 @@ def load_dispositions() -> dict[str, Any]:
 
 
 def resolve(manifest: dict[str, Any], dispositions: dict[str, Any]) -> list[dict[str, Any]]:
-    """每条快照 → {path, cluster, case|None, issue, reason, owner}。"""
+    """每条快照 → {path, cluster, case|None, issue, reason, owner, cluster_owner}。
+
+    `owner` 是这一条缺口实际计入的里程碑（单条覆盖优先），`cluster_owner` 是
+    `[groups]` 上按簇声明的 owner——两者不一致就是台账漂移，`check()` 判红。
+    """
     groups = dispositions.get("groups", {})
     overrides = dispositions.get("snapshots", {})
     rows: list[dict[str, Any]] = []
@@ -136,41 +153,26 @@ def resolve(manifest: dict[str, Any], dispositions: dict[str, Any]) -> list[dict
         group = groups.get(entry["category"], {})
         owner = override.get("owner") or group.get("owner", "")
         case = override.get("case")
+        row = {
+            **entry,
+            "cluster": entry["category"],
+            "cluster_owner": group.get("owner", ""),
+            "case": case,
+            "issue": "",
+            "reason": "",
+            "owner": owner,
+        }
         if case:
-            rows.append(
-                {
-                    **entry,
-                    "cluster": entry["category"],
-                    "case": case,
-                    "issue": "",
-                    "reason": "",
-                    "owner": owner,
-                }
-            )
+            rows.append(row)
             continue
         if entry["category"] not in groups:
-            rows.append(
-                {
-                    **entry,
-                    "cluster": entry["category"],
-                    "case": None,
-                    "issue": "",
-                    "reason": "",
-                    "owner": "",
-                    "error": f"分类 {entry['category']!r} 既没有 case，也没有 group 归口",
-                }
-            )
+            row["owner"] = ""
+            row["error"] = f"分类 {entry['category']!r} 既没有 case，也没有 group 归口"
+            rows.append(row)
             continue
-        rows.append(
-            {
-                **entry,
-                "cluster": entry["category"],
-                "case": None,
-                "issue": group.get("issue", ""),
-                "reason": override.get("reason", group.get("reason", "")),
-                "owner": owner,
-            }
-        )
+        row["issue"] = group.get("issue", "")
+        row["reason"] = override.get("reason", group.get("reason", ""))
+        rows.append(row)
     return rows
 
 
@@ -207,6 +209,7 @@ def check() -> tuple[list[str], dict[str, Any]]:
             problems.append(
                 f"{row['path']}: 缺口 owner 必须是 {' / '.join(OWNERS)}，收到 {row['owner']!r}"
             )
+    problems.extend(_owner_problems(rows))
     summary = {
         "total": len(rows),
         "imported": sum(1 for row in rows if row["case"]),
@@ -215,45 +218,99 @@ def check() -> tuple[list[str], dict[str, Any]]:
     return problems, summary
 
 
+def _owner_problems(rows: list[dict[str, Any]]) -> list[str]:
+    """owner 是按簇的声明：一个簇的缺口只能有一个 owner，且必须写在 `[groups]` 上。"""
+    groups = load_dispositions().get("groups", {})
+    owners: dict[str, set[str]] = {}
+    for row in rows:
+        if not row["case"]:
+            owners.setdefault(row["cluster"], set()).add(row["owner"])
+    problems: list[str] = []
+    for cluster, found in sorted(owners.items()):
+        if len(found) > 1:
+            problems.append(
+                f"簇 {cluster!r} 的缺口 owner 不一致（{' / '.join(sorted(found))}）"
+                "：单条 owner 必须与 [groups] 的 owner 一致，要移交就改簇"
+            )
+            continue
+        declared = groups.get(cluster, {}).get("owner", "")
+        only = next(iter(found))
+        if declared != only:
+            problems.append(
+                f"簇 {cluster!r} 的缺口 owner 是 {only!r}，但 [groups] 里写的是 {declared!r}"
+                "（移交时连 group owner 一起改，别只改单条）"
+            )
+    return problems
+
+
+def ledger(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """台账的唯一口径：总数 / 已纳管 / 缺口 / 缺口按 owner 的分布。
+
+    `snapshot-inventory.md`、`matrix.md` 与 `--check-report` 都从这里取数，
+    三处不允许各算一遍。
+    """
+    gaps = [row for row in rows if not row["case"]]
+    by_owner = dict.fromkeys(OWNERS, 0)
+    by_owner.update(Counter(row["owner"] for row in gaps))
+    return {
+        "total": len(rows),
+        "imported": len(rows) - len(gaps),
+        "gaps": len(gaps),
+        "by_owner": by_owner,
+    }
+
+
 def render_inventory(rows: list[dict[str, Any]], pin: dict[str, str]) -> str:
     imported = [row for row in rows if row["case"]]
     gaps = [row for row in rows if not row["case"]]
-    by_owner = Counter(row["owner"] for row in gaps)
+    summary = ledger(rows)
+    by_owner = summary["by_owner"]
     clusters: dict[str, dict[str, Any]] = {}
     for row in rows:
         item = clusters.setdefault(
-            row["cluster"], {"owner": row["owner"], "total": 0, "imported": 0, "gaps": 0}
+            row["cluster"],
+            {"declared": row["cluster_owner"], "total": 0, "imported": 0, "owners": Counter()},
         )
         item["total"] += 1
         if row["case"]:
             item["imported"] += 1
         else:
-            item["gaps"] += 1
+            item["owners"][row["owner"]] += 1
     lines = [
         "# 上游 SVG 快照清单（v4.0.3）",
         "",
         "<!-- 生成物：`pixi run snapshots:report`。处置写 `tools/upstream/snapshots.toml`。 -->",
         "",
         f"- 参考实现：`{pin['repo']}` `{pin['tag']}` @ `{pin['commit']}`",
-        f"- 快照总数：**{len(rows)}**（上游 `tests/testthat/_snaps/**/*.svg`）",
-        f"- 已纳管：**{len(imported)}**（`expected.svg` 与上游快照逐字节相同）",
-        f"- 已知缺口：**{len(gaps)}**（全部按分类归口，见下表）",
-        f"- 缺口归属：`m2-closeout` **{by_owner.get('m2-closeout', 0)}** 条（M3 开工前归零）"
-        f" / `m3` **{by_owner.get('m3', 0)}** 条（移交 M3）",
+        f"- 快照总数：**{summary['total']}**（上游 `tests/testthat/_snaps/**/*.svg`）",
+        f"- 已纳管：**{summary['imported']}**（`expected.svg` 与上游快照逐字节相同）",
+        f"- 已知缺口：**{summary['gaps']}**（全部按分类归口，见下表）",
+        f"- 缺口归属：`m2-closeout` **{by_owner['m2-closeout']}** 条（M3 开工前归零）"
+        f" / `m3` **{by_owner['m3']}** 条（移交 M3）",
         "",
         "## 按簇 burndown",
         "",
         "| 簇 | owner | 上游 | 已纳管 | 缺口 |",
         "| --- | --- | ---: | ---: | ---: |",
     ]
-    for name, item in sorted(clusters.items(), key=lambda kv: (-kv[1]["gaps"], kv[0])):
-        lines.append(
-            f"| `{name}` | {item['owner'] or '—'} | {item['total']} | "
-            f"{item['imported']} | {item['gaps']} |"
-        )
+    # owner 列：有缺口的簇写**缺口实际归属**（一个簇只允许一个 owner，由 `check()` 守）；
+    # 全已纳管的簇沿用 `[groups]` 上的声明值，仅作归属说明。两处都由 `resolve()`
+    # 的同一条数据派生，所以「表头 = 逐簇相加」不是人工维护的巧合。
+    table = []
+    for name, item in clusters.items():
+        gap_total = sum(item["owners"].values())
+        if item["owners"]:
+            owner_text = " / ".join(sorted(item["owners"]))
+        else:
+            owner_text = item["declared"] or "—"
+        table.append((name, owner_text, item["total"], item["imported"], gap_total))
+    for name, owner_text, total, imported_count, gap_total in sorted(
+        table, key=lambda item: (-item[4], item[0])
+    ):
+        lines.append(f"| `{name}` | {owner_text} | {total} | {imported_count} | {gap_total} |")
     lines.extend(
         [
-            f"| **合计** | — | {len(rows)} | {len(imported)} | {len(gaps)} |",
+            f"| **合计** | — | {summary['total']} | {summary['imported']} | {summary['gaps']} |",
             "",
             "口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零"
             "（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / "
@@ -301,14 +358,162 @@ def render_inventory(rows: list[dict[str, Any]], pin: dict[str, str]) -> str:
 
 
 def check_report() -> list[str]:
-    """`docs/notes/snapshot-inventory.md` 是否与处置清单同源（CI 守新鲜度）。"""
+    """三处台账口径一致 + 清单新鲜度（CI 守点，`pixi run snapshots:report:check`）。
+
+    守的不只是「文件没重生成」，而是 SIL-822 那次漂移本身：表头按 owner 的合计、
+    burndown 逐簇相加、`snapshots.toml` 的 group owner、`matrix.md` 的同一张数，
+    任何一处对不上都判红。
+    """
+    rows = resolve(load_manifest(), load_dispositions())
+    problems: list[str] = []
     if not INVENTORY.is_file():
-        return [f"{INVENTORY.relative_to(ROOT)} 不存在"]
-    expected = render_inventory(resolve(load_manifest(), load_dispositions()), _pin())
-    if INVENTORY.read_text(encoding="utf-8") != expected:
+        problems.append(f"{INVENTORY.relative_to(ROOT)} 不存在")
+    else:
+        text = INVENTORY.read_text(encoding="utf-8")
+        problems.extend(inventory_drift(text, rows))
+        if text != render_inventory(rows, _pin()):
+            problems.append(
+                f"{INVENTORY.relative_to(ROOT)} 与 snapshots.toml 不同源"
+                "（跑 `pixi run snapshots:report` 重新生成）"
+            )
+    if MATRIX.is_file():
+        problems.extend(matrix_drift(MATRIX.read_text(encoding="utf-8"), rows))
+    else:
+        problems.append(f"{MATRIX.relative_to(ROOT)} 不存在")
+    return problems
+
+
+def _section(text: str, start: str, end: str) -> str:
+    begin = text.find(start)
+    if begin < 0:
+        return ""
+    begin += len(start)
+    stop = text.find(end, begin)
+    return text[begin:] if stop < 0 else text[begin:stop]
+
+
+#: burndown 表的一行：`| 簇 | owner | 上游 | 已纳管 | 缺口 |`（合计行没有反引号）。
+_INVENTORY_ROW = re.compile(
+    r"^\| `(?P<cluster>[^`]+)` \| (?P<owner>[^|]+?) \| "
+    r"(?P<total>\d+) \| (?P<imported>\d+) \| (?P<gaps>\d+) \|$",
+    re.MULTILINE,
+)
+#: `matrix.md` 的上游快照表：总数 / 已纳管 / 缺口 / m2-closeout / m3。
+_MATRIX_ROW = re.compile(r"^\| (\d+) \| (\d+) \| (\d+) \| (\d+) \| (\d+) \|$", re.MULTILINE)
+
+
+def inventory_drift(text: str, rows: list[dict[str, Any]]) -> list[str]:
+    """清单自身的三处口径：表头合计、逐簇相加、`snapshots.toml` 的 group owner。"""
+    problems: list[str] = []
+    summary = ledger(rows)
+    expected: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        item = expected.setdefault(
+            row["cluster"],
+            {"declared": row["cluster_owner"], "total": 0, "imported": 0, "owners": Counter()},
+        )
+        item["total"] += 1
+        if row["case"]:
+            item["imported"] += 1
+        else:
+            item["owners"][row["owner"]] += 1
+
+    header = re.search(
+        r"缺口归属：.*?`m2-closeout` \*\*(\d+)\*\*.*?`m3` \*\*(\d+)\*\*",
+        text,
+    )
+    if header is None:
+        problems.append("清单里找不到「缺口归属」表头，无法核对口径")
+    table = [
+        (
+            match["cluster"],
+            match["owner"].strip(),
+            *(int(match[key]) for key in ("total", "imported", "gaps")),
+        )
+        for match in _INVENTORY_ROW.finditer(_section(text, "## 按簇 burndown", "## 已纳管"))
+    ]
+    if not table:
+        problems.append("清单里找不到「按簇 burndown」表，无法核对口径")
+        return problems
+
+    seen = {name for name, *_ in table}
+    for name in sorted(set(expected) - seen):
+        problems.append(f"burndown 表缺了簇 `{name}`")
+    for name, owner, total, imported, gaps in table:
+        item = expected.get(name)
+        if item is None:
+            problems.append(f"burndown 表里的 `{name}` 不在台账里")
+            continue
+        want = (item["total"], item["imported"], sum(item["owners"].values()))
+        if (total, imported, gaps) != want:
+            problems.append(
+                f"`{name}` 一行是 {total}/{imported}/{gaps}（上游 / 已纳管 / 缺口），"
+                f"台账算出来是 {want[0]}/{want[1]}/{want[2]}"
+            )
+        want_owner = (
+            " / ".join(sorted(item["owners"])) if item["owners"] else item["declared"] or "—"
+        )
+        if owner != want_owner:
+            problems.append(
+                f"`{name}` 的 burndown owner 写的是 {owner!r}，台账解析出来是 {want_owner!r}"
+            )
+
+    table_m2 = sum(gaps for _, owner, _, _, gaps in table if owner == "m2-closeout")
+    table_m3 = sum(gaps for _, owner, _, _, gaps in table if owner == "m3")
+    if header is not None:
+        head_m2, head_m3 = int(header.group(1)), int(header.group(2))
+        if (head_m2, head_m3) != (table_m2, table_m3):
+            problems.append(
+                f"表头写 `m2-closeout` {head_m2} / `m3` {head_m3}，"
+                f"但 burndown 逐簇相加是 {table_m2} / {table_m3}"
+            )
+        counts = summary["by_owner"]
+        if (head_m2, head_m3) != (counts["m2-closeout"], counts["m3"]):
+            problems.append(
+                f"表头写 `m2-closeout` {head_m2} / `m3` {head_m3}，"
+                f"但按 snapshots.toml 逐条解析是 {counts['m2-closeout']} / {counts['m3']}"
+            )
+
+    groups = load_dispositions().get("groups", {})
+    for name, item in sorted(expected.items()):
+        if not item["owners"]:
+            continue
+        declared = groups.get(name, {}).get("owner", "")
+        found = " / ".join(sorted(item["owners"]))
+        if declared != found:
+            problems.append(
+                f'`{name}` 的缺口归 {found!r}，但 `[groups."{name}"]` 的 owner 是 '
+                f"{declared!r}（owner 按簇声明：移交时连 group owner 一起改）"
+            )
+    return problems
+
+
+def matrix_drift(text: str, rows: list[dict[str, Any]]) -> list[str]:
+    """`docs/cases/matrix.md` 的上游快照表是否与台账同一口径。"""
+    summary = ledger(rows)
+    want = (
+        summary["total"],
+        summary["imported"],
+        summary["gaps"],
+        summary["by_owner"]["m2-closeout"],
+        summary["by_owner"]["m3"],
+    )
+    begin = text.find("## 上游快照（v4.0.3）")
+    if begin < 0:
         return [
-            f"{INVENTORY.relative_to(ROOT)} 与 snapshots.toml 不同源"
-            "（跑 `pixi run snapshots:report` 重新生成）"
+            "docs/cases/matrix.md 缺少「上游快照（v4.0.3）」一节"
+            "（跑 `pixi run cases:matrix --no-run` 重新生成）"
+        ]
+    stop = text.find("\n## ", begin + 1)
+    section = text[begin:] if stop < 0 else text[begin:stop]
+    match = _MATRIX_ROW.search(section)
+    if match is None:
+        return ["docs/cases/matrix.md 的「上游快照（v4.0.3）」一节里找不到数字行"]
+    got = tuple(int(value) for value in match.groups())
+    if got != want:
+        return [
+            f"docs/cases/matrix.md 的上游快照表是 {got}"
+            f"（总数 / 已纳管 / 缺口 / m2-closeout / m3），台账算出来是 {want}"
         ]
     return []
 

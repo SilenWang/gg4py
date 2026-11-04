@@ -40,8 +40,8 @@ reason = "`coord_map()` 只做注册与最小可用；mapproj 投影与经纬度
 
 [groups."coord-polar"]
 issue = "SIL-715"
-owner = "m2-closeout"
-reason = "SIL-793 纳管 7 条（同心圆 / 圆弧螺旋 / 玫瑰 / racetrack 两条 / 次轴 / reversed）；剩 4 条是 `coord_radial()` 的轴体系：`guide_axis_theta()` 的逐 guide 主题、`axis.line.theta` / `axis.line.r` 的绘制、`r.axis.inside = c(90, 225)` 的两个角度、`rotate.angle = TRUE`（见单条 reason）。"
+owner = "m3"
+reason = "SIL-793 纳管 7 条（同心圆 / 圆弧螺旋 / 玫瑰 / racetrack 两条 / 次轴 / reversed）；剩 4 条是 `coord_radial()` 的轴体系：`guide_axis_theta()` 的逐 guide 主题、`axis.line.theta` / `axis.line.r` 的绘制、`r.axis.inside = c(90, 225)` 的两个角度、`rotate.angle = TRUE`（见单条 reason）。这 4 条随 SIL-786 收尾整簇移交 m3，owner 与缺口一致。"
 
 [groups."coord-transform"]
 issue = "SIL-715"
@@ -65,7 +65,7 @@ reason = "SIL-796 纳管 3 条（左对齐两条 + facet_grid 省略内轴标签
 
 [groups."facet-labels"]
 issue = "SIL-715"
-owner = "m2-closeout"
+owner = "m3"
 reason = "SIL-816 纳管 `outside-justified-labels`（多行轴标签的轴带按整块量，15.5% → 0.40%）；`label_parsed` 的 plotmath 归 m3。"
 
 [groups."facet-layout"]
@@ -100,7 +100,7 @@ reason = "SIL-811 已全部纳管 3 条：单箱、`coord_polar()`、`coord_tran
 
 [groups."geom-hline-vline-abline"]
 issue = "SIL-715"
-owner = "m2-closeout"
+owner = "m3"
 reason = "SIL-795 纳管 3 条（cartesian / flipped / polar：极坐标下参考线被 munch 成圆弧）；剩 2 条 map 投影（mercator / azequalarea）要 `coord_map()` 的投影核，归 M3-2（单条 reason 见下）。"
 
 [groups."geom-label"]
@@ -145,8 +145,8 @@ reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先�
 
 [groups."guide-axis"]
 issue = "SIL-715"
-owner = "m2-closeout"
-reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%）。剩 7 条：plotmath 上标 1 条（`guides-with-minor-ticks`，移交 m3）、`transform_compose` / `pseudo_log` 1 条（移交 m3）、radial 轴体系 2 条、长标签字形落点 2 条、横向分面 1 条（2.05%）。逐条 reason 见下。"
+owner = "m3"
+reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面。剩 4 条全部是 M3 新能力：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`）、radial 轴体系 2 条（`stacked-radial-axes` / `guide-axis-theta-with-angle-adapting-to-theta`），owner 记 m3。逐条 reason 见下。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -754,25 +754,21 @@ case = "upstream-guide-axis-customization"
 case = "upstream-guide-axis-guides-specified"
 
 [snapshots."guide-axis/guides-with-minor-ticks.svg"]
-owner = "m3"
 reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x 轴标签是 `label_math()`（`10` 用 8.80px、指数用 6.16px 两次落字，见快照 `guides-with-minor-ticks.svg` 的 8 段 text），本仓所有 text 走一条 shaping，画不出上下标；plotmath 已在 SIL-786 由 00b6d04 整块移交 M3。次轴带本身（`axis.minor.ticks.length.y.right = 5cm` 撑开 `axis-r` 列）已经算对，等 plotmath 落地后可直接复测。按 SIL-817 约束作为新能力整条移交 m3。"
 
 [snapshots."guide-axis/stacked-axes.svg"]
 case = "upstream-guide-axis-stacked-axes"
 
 [snapshots."guide-axis/stacked-radial-axes.svg"]
-owner = "m3"
 reason = "SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
-owner = "m3"
 reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。"
 
 [snapshots."guide-axis/guide-axis-theta-in-cartesian-coordinates.svg"]
 case = "upstream-guide-axis-theta-cartesian"
 
 [snapshots."guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"]
-owner = "m3"
 reason = "SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。"
 
 [snapshots."guide-axis/align-facet-labels-facets-horizontal.svg"]
@@ -936,19 +932,15 @@ case = "upstream-coord-polar-reversed"
 # 未纳管的 4 条（`coord_radial()` 的轴体系，卡点见各条 reason）
 
 [snapshots."coord-polar/bottom-half-circle-with-rotated-text.svg"]
-owner = "m3"
 reason = "SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。"
 
 [snapshots."coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"]
-owner = "m3"
 reason = 'SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。'
 
 [snapshots."coord-polar/inner-radius-with-all-axes.svg"]
-owner = "m3"
 reason = "SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。"
 
 [snapshots."coord-polar/partial-with-all-axes.svg"]
-owner = "m3"
 reason = 'SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。'
 
 # SIL-796（G7b 小簇 B：版面 / 标签 / 图案）：
@@ -991,7 +983,6 @@ case = "upstream-facet-wrap-omitted-inner-axis-labels"
 case = "upstream-facet-labels-outside-justified-labels"
 
 [snapshots."facet-labels/parsed-facet-labels.svg"]
-owner = "m3"
 reason = "SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。"
 
 [snapshots."facet-strips/switched-facet-strips.svg"]
@@ -1127,11 +1118,9 @@ case = "upstream-stat-summary-crossbars"
 # 未纳管的 5 条（卡点见各条 reason；hex 两条在上面的分组里已按路径单列）
 
 [snapshots."geom-hline-vline-abline/lines-curved-in-azequalarea.svg"]
-owner = "m3"
 reason = 'SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。'
 
 [snapshots."geom-hline-vline-abline/straight-lines-in-mercator.svg"]
-owner = "m3"
 reason = 'SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。'
 
 [snapshots."geom-text/geom-text-with-expressions.svg"]

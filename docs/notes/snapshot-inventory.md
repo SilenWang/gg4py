@@ -15,12 +15,12 @@
 | `geom-sf` | m3 | 10 | 0 | 10 |
 | `coord_sf` | m3 | 9 | 0 | 9 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
-| `guide-axis` | m2-closeout | 23 | 19 | 4 |
+| `guide-axis` | m3 | 23 | 19 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
 | `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
-| `geom-hline-vline-abline` | m2-closeout | 5 | 3 | 2 |
-| `facet-labels` | m2-closeout | 2 | 1 | 1 |
+| `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
+| `facet-labels` | m3 | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
