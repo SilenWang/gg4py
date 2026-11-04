@@ -422,9 +422,15 @@ pixi run gate:determinism         # 整页场景的 plot_digest 跨进程一致
 改成**位置专用参数**，否则 `scale_colour_discrete(name = "…")` 会撞上
 `construct(name=)`（`TypeError: got multiple values for argument 'name'`）。
 
-尚未对等（8 条，见 `snapshots.toml` 的单条 `reason`）：`key_glyph` 覆盖点
-（timeseries / polygon / rect / dotplot / 自定义 key 函数、grob 的 `width` /
-`height` 撑开 key 格）、无图层空图的版面、逐美学 `show.legend = c(...)`。
+SIL-810（G8）补齐的尾部能力：
+
+| 能力 | 实现 |
+| --- | --- |
+| `geom_*(key_glyph = "timeseries" / "rect" / "polygon" / "dotplot" / …)` | `ggcore.legend_draw.KEY_GLYPHS`，17 个 `draw_key_*`；没有显式 `key_glyph=` 时按 geom 名取上游缺省 glyph |
+| 自定义 key 函数 | `key_glyph=<callable>`，签名 `(data, params, size_mm)`；返回 `Grob` 或 `KeyGlyph(grob, width_cm, height_cm)`（上游的 grob `width` / `height` 属性） |
+| key 尺寸随标度变化 | `_key_dimensions()`：`max(legend.key.size, (size + linewidth) / 10)`，逐键算、按列/行取最大（`legend.key.justification` 也按逐键尺寸锚定） |
+| 逐美学 `show.legend` | `show_legend = {"colour": None, "alpha": False}`（`None` = `NA` 自动） |
+| 无图层版面 | `plot_layout()` 不再给 `ggplot()` 留轴占位，面板铺满 `plot.margin` 内区 |
 
 ## 12. G1b（SIL-791）：轴 guide 侧的边界情形
 
@@ -470,15 +476,16 @@ R 4.0.3 里 `guides(x.sec = guide_axis(...))` 会画一条**恒等**的次轴（
 - `secondary_ticks()` 的恒等分支：`breaks` 里带 `None` 时先 zip 再过滤，否则
   `labels` 比 `positions` 长（离散次轴 `zip(strict=True)` 直接抛异常）。
 
-### 12.4 尚未对等（13 条）
+### 12.4 尚未对等（8 条）
+
+SIL-810 收掉了 `n.dodge` 进版式、`guide_axis_stack` 逐层累加、`cap=` 与直角
+坐标 `axis_theta`（共 5 条快照转绿）。剩下 8 条：
 
 | 卡点 | 影响 |
 | --- | --- |
-| 次轴带的**空标题行**：R 给 top / right 的 `axis-t` 留 17.3pt（`xlab-t` 的空 grob 也占位），ggcore 的 `plot_layout()` 只在真有标题时留 | `capped ends` / `stacked axes` / `minor ticks` / `axis_theta in cartesian` / `guides specified in guides` 的面板顶边都高 17.3pt |
-| `n.dodge` 只进了绘制、没进版式：竖轴两条标签列时 R 的轴带宽 26.7pt、我们仍按一列 14.7pt | `guide_axis() customization`（差 12pt） |
-| `guide_axis_stack` 的叠放轴带宽度仍按单层算 | `stacked axes` |
 | `label_math()` 的 plotmath 标签 + 5cm 的次轴刻度长 | `guides with minor ticks` |
-| 极坐标 / 径向下的 `axis_theta` 锚点（`flip_text_angle()`、半径 0.45）与 `r.sec` / `theta.sec` 叠放 | `axis_theta` 两条、`stacked radial axes` |
+| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×575.61、轴标题画在面板内） | `guide_axis_theta with angle`（28.1%）、`stacked radial axes` |
+| `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | `stacked radial axes`（现在直接抛 ValueError） |
 | `transform_compose()` / `transform_pseudo_log()` 未实现（`scales.py` / `coord.py` 记在 M3-2） | `logtick axes with customisation` |
-| `check_overlap` + 长标签的亚像素落点（保留集合已与 R 一致） | `check overlap`（3.49%）、`text dodged`（3.58%） |
+| `check_overlap` + 长标签的亚像素落点（保留集合已与 R 一致） | `check overlap`（3.62%）、`text dodged`（3.72%） |
 | 分面 + `reorder()` 的 38 个离散水平的逐面板 y 轴带 | 两条 `align facet labels`，属 G7 的 `facet-` 簇 |

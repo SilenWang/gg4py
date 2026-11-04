@@ -53,6 +53,24 @@ from ggcore.guide import guide_merge as guide_merge
 from ggcore.guide import guide_train as guide_train
 from ggcore.guide import guide_transform as guide_transform
 from ggcore.layer import Layer, Position
+from ggcore.legend_draw import KeyGlyph as KeyGlyph
+from ggcore.legend_draw import draw_key_abline as draw_key_abline
+from ggcore.legend_draw import draw_key_blank as draw_key_blank
+from ggcore.legend_draw import draw_key_boxplot as draw_key_boxplot
+from ggcore.legend_draw import draw_key_crossbar as draw_key_crossbar
+from ggcore.legend_draw import draw_key_dotplot as draw_key_dotplot
+from ggcore.legend_draw import draw_key_label as draw_key_label
+from ggcore.legend_draw import draw_key_linerange as draw_key_linerange
+from ggcore.legend_draw import draw_key_path as draw_key_path
+from ggcore.legend_draw import draw_key_point as draw_key_point
+from ggcore.legend_draw import draw_key_pointrange as draw_key_pointrange
+from ggcore.legend_draw import draw_key_polygon as draw_key_polygon
+from ggcore.legend_draw import draw_key_rect as draw_key_rect
+from ggcore.legend_draw import draw_key_smooth as draw_key_smooth
+from ggcore.legend_draw import draw_key_text as draw_key_text
+from ggcore.legend_draw import draw_key_timeseries as draw_key_timeseries
+from ggcore.legend_draw import draw_key_vline as draw_key_vline
+from ggcore.legend_draw import draw_key_vpath as draw_key_vpath
 from ggcore.scales import scale_type as scale_type
 from ggcore.theme import merge_theme, theme_get
 from ggcore.theme import theme_replace as theme_replace

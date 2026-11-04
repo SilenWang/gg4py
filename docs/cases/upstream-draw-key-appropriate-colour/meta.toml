@@ -1,0 +1,7 @@
+family = "guide"
+features = ["draw-key", "show-legend-named"]
+ci = true
+title = "上游快照：appropriate colour key with alpha key as lines"
+source = "upstream:tests/testthat/_snaps/draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-810（G8）：vdiffr 快照原样纳入；标题是 doppelganger 名。"

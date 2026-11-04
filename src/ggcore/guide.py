@@ -64,6 +64,7 @@ from ggcore.build import LayerBuild, PlotBuild
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import parse_aes
 from ggcore.grobs import NullGrob, ZeroGrob, rect_grob, text_grob
+from ggcore.legend_draw import KeyGlyph, default_key_glyph, draw_key, key_glyph_for
 from ggcore.theme import (
     ElementBlank,
     ElementLine,
@@ -826,6 +827,8 @@ class GuideBuild:
     name: str = ""
     #: 分箱 guide（bins / coloursteps）的训练结果；其它 guide 为 None。
     bins: BinnedKeys | None = None
+    #: 参与绘制的图层的 `key_glyph=`（每层一项；`None` 表示按 geom 默认画）。
+    key_glyphs: tuple[Any, ...] = ()
 
     @property
     def kind(self) -> str:
@@ -945,6 +948,15 @@ def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:
     show = getattr(layer, "show_legend", None)
     if show is None:
         show = layer.params.get("show_legend", layer.params.get("show.legend"))
+    if isinstance(show, Mapping):
+        # R 4.0.3：`show.legend = c(colour = NA, alpha = FALSE)` 逐美学生效。
+        # `NA` 是自动（照常按映射决定），`FALSE` 只关掉这一条美学。
+        for name in (aesthetic, "colour" if aesthetic == "color" else aesthetic):
+            if name in show:
+                show = show[name]
+                break
+        else:
+            show = None
     if show is False:
         return False
     if aesthetic in getattr(layer, "params", {}):
@@ -1262,7 +1274,21 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
 
     merged = _merge_guides(candidates)
     custom = _custom_builds(build)
-    return tuple(sorted((*merged, *custom), key=_sort_key))
+
+    def with_glyphs(guide_build: GuideBuild) -> GuideBuild:
+        if not guide_build.layers:
+            return guide_build
+        specs = tuple(
+            key_glyph_for(build.layers[index])
+            or default_key_glyph(
+                getattr(getattr(build.layers[index], "geom_object", None), "name", "")
+            )
+            for index in guide_build.layers
+            if _layer_maps_any(build, index, guide_build.aesthetics)
+        )
+        return replace(guide_build, key_glyphs=specs)
+
+    return tuple(sorted((*(with_glyphs(item) for item in merged), *custom), key=_sort_key))
 
 
 def guide_transform(guide: Guide, keys: tuple[GuideKey, ...]) -> tuple[GuideKey, ...]:
@@ -1663,11 +1689,28 @@ def _key_grob(
     values: Mapping[str, Any],
     *,
     override: Mapping[str, Any] | None = None,
+    size_cm: tuple[float, float] | None = None,
 ) -> Any | None:
     layer = build.layers[layer_index]
     geom = _geom_of(layer)
     # R：键值先写，`override.aes` 最后 `modify_list()` —— 覆盖值赢。
     resolved = {**dict(values), **dict(override or {})}
+    glyph = key_glyph_for(layer)
+    if glyph is None:
+        glyph = default_key_glyph(geom.name)
+    if glyph is not None:
+        if size_cm is None:
+            raw_theme = build.theme
+            theme = raw_theme if hasattr(raw_theme, "get") else resolve_theme(raw_theme)
+            size = _key_size(theme, GuideLegend())
+        else:
+            size = size_cm
+        drawn = draw_key(glyph, resolved, layer.params, size[1] * 10.0)
+        if isinstance(drawn, KeyGlyph):
+            drawn = drawn.grob
+        if isinstance(drawn, (NullGrob, ZeroGrob)):
+            return None
+        return drawn
     table = key_table(
         layer,
         resolved,
@@ -1773,6 +1816,47 @@ def _key_size(theme: ResolvedTheme, guide: Guide) -> tuple[float, float]:
     if width <= 0 or height <= 0:
         raise GuideError("legend.key.width / legend.key.height 解析为 0，图例 key 没有尺寸")
     return width, height
+
+
+def _key_dimensions(
+    guide_build: GuideBuild,
+    theme: ResolvedTheme,
+    guide: Guide,
+) -> tuple[tuple[float, float], ...]:
+    """逐键的 `(宽, 高)` cm（R `set_key_size()` + `build_decor()` 的 max 口径）。
+
+    key 的尺寸先取主题的 `legend.key.size`；`size` / `linewidth` 标度把键撑到
+    `(size + linewidth) / 10` cm；`key_glyph` 自己带 `width` / `height` 时取更大者。
+    """
+    base_w, base_h = _key_size(theme, guide)
+    out: list[tuple[float, float]] = []
+    for key in guide_build.keys:
+        width, height = base_w, base_h
+        size = key.values.get("size")
+        linewidth = key.values.get("linewidth")
+        try:
+            size_mm = 0.0 if size is None or size is NA else float(size)
+            line_mm = 0.0 if linewidth is None or linewidth is NA else float(linewidth)
+        except (TypeError, ValueError):
+            size_mm = line_mm = 0.0
+        if size_mm > 0 or line_mm > 0:
+            bump = (size_mm + line_mm) / 10.0
+            width = max(width, bump)
+            height = max(height, bump)
+        for glyph in guide_build.key_glyphs:
+            if glyph is None:
+                continue
+            try:
+                drawn = draw_key(glyph, dict(key.values), {}, base_h * 10.0)
+            except Exception:
+                continue
+            if isinstance(drawn, KeyGlyph):
+                if drawn.width_cm is not None:
+                    width = max(width, float(drawn.width_cm))
+                if drawn.height_cm is not None:
+                    height = max(height, float(drawn.height_cm))
+        out.append((width, height))
+    return tuple(out)
 
 
 def _text_element(theme: ResolvedTheme, name: str) -> ElementText:
@@ -2165,8 +2249,8 @@ def legend_layout(
 
     text_position = legend_text_position(guide, theme)
     title_position = legend_title_position(guide, theme, direction)
-    key_w, key_h = _key_size(theme, guide)
     n = len(guide_build.keys)
+    key_dims = _key_dimensions(guide_build, theme, guide)
     nrow, ncol, byrow = _grid_shape(guide, n, direction)
 
     # --- 标签 / 标题的文字盒（R：legend.text / legend.title 的 margin + gap）---
@@ -2233,8 +2317,13 @@ def legend_layout(
 
     col_label = [0.0] * ncol
     row_label = [0.0] * nrow
+    key_w = [0.0] * ncol
+    key_h = [0.0] * nrow
     for row, col, index in cells:
         col_label[col] = max(col_label[col], label_w[index])
+        width, height = key_dims[index] if index < len(key_dims) else (0.0, 0.0)
+        key_w[col] = max(key_w[col], width)
+        key_h[row] = max(key_h[row], height)
         # R 把 key 与标签放进同一个 gtable 行：行高 = max(key 高度, 标签高度)。
         # 字号放大到 key 比文字还矮时（`base_size = 33` 的 `theme_bw` 族），
         # 行高必须跟着文字走，否则图例整体会比上游矮一截。
@@ -2248,7 +2337,7 @@ def legend_layout(
             if col > 0:
                 grid_cols.append(spacing_x)  # 组间 gap（标签自身的 gap 折在标签列里）
             key_col_index.append(len(grid_cols))
-            grid_cols.append(key_w)
+            grid_cols.append(key_w[col])
             label_col_index.append(len(grid_cols))
             grid_cols.append(col_label[col])
     elif text_position == "left":
@@ -2258,13 +2347,13 @@ def legend_layout(
             label_col_index.append(len(grid_cols))
             grid_cols.append(col_label[col])
             key_col_index.append(len(grid_cols))
-            grid_cols.append(key_w)
+            grid_cols.append(key_w[col])
     else:
         for col in range(ncol):
             if col > 0:
                 grid_cols.append(spacing_x)
             key_col_index.append(len(grid_cols))
-            grid_cols.append(max(key_w, col_label[col]))
+            grid_cols.append(max(key_w[col], col_label[col]))
 
     grid_rows: list[float] = []
     key_row_index: list[int] = []
@@ -2277,10 +2366,10 @@ def legend_layout(
                 label_row_index.append(len(grid_rows))
                 grid_rows.append(row_label[row])
                 key_row_index.append(len(grid_rows))
-                grid_rows.append(key_h)
+                grid_rows.append(key_h[row])
             else:
                 key_row_index.append(len(grid_rows))
-                grid_rows.append(key_h)
+                grid_rows.append(key_h[row])
                 label_row_index.append(len(grid_rows))
                 grid_rows.append(row_label[row])
     else:
@@ -2288,7 +2377,7 @@ def legend_layout(
             if row > 0:
                 grid_rows.append(spacing_y)
             key_row_index.append(len(grid_rows))
-            grid_rows.append(max(key_h, row_label[row]))
+            grid_rows.append(max(key_h[row], row_label[row]))
 
     # --- 标题占位 + 额外宽度 / 高度（R `add_title()`）---
     left_cols: list[float] = []
@@ -2345,12 +2434,27 @@ def legend_layout(
         return row_y_top[grid_row_offset + index]
 
     key_cells: list[LegendKeyCell] = []
+    key_just = _valid_just(theme.get("legend.key.justification"), default=(0.5, 0.5))
+    has_key_just = theme.get("legend.key.justification") is not None
     for row, col, index in cells:
         cell_top = row_top(key_row_index[row])
         # key 与标签同处一个 gtable 行、都按中心对齐（R 的 `gtable` 缺省 vjust）：
         # 行高由两者中更高的一边决定，矮的一边在行内居中，而不是贴底。
         row_h = grid_rows[key_row_index[row]]
-        key_box = _Box(col_left(key_col_index[col]), cell_top - (row_h + key_h) / 2.0, key_w, key_h)
+        cell_x = col_left(key_col_index[col])
+        cell_w = grid_cols[key_col_index[col]]
+        glyph_w, glyph_h = key_dims[index] if index < len(key_dims) else (cell_w, row_h)
+        if has_key_just:
+            # `legend.key.justification`：键按自己的尺寸锚在键格里（R 的 key
+            # gTree 视口 `viewport(x = just, just = just)`）。
+            key_box = _Box(
+                cell_x + key_just[0] * (cell_w - glyph_w),
+                cell_top - row_h + key_just[1] * (row_h - glyph_h),
+                glyph_w,
+                glyph_h,
+            )
+        else:
+            key_box = _Box(cell_x, cell_top - row_h, cell_w, row_h)
         if text_position == "right":
             label_box = _Box(
                 col_left(label_col_index[col]) + label_pad_x,
@@ -2367,14 +2471,14 @@ def legend_layout(
             )
         elif text_position == "top":
             label_box = _Box(
-                key_box.x_cm + (key_w - label_text_w[index]) / 2.0,
+                key_box.x_cm + (key_box.width_cm - label_text_w[index]) / 2.0,
                 row_top(label_row_index[row]) - label_h,
                 label_text_w[index],
                 label_h,
             )
         else:
             label_box = _Box(
-                key_box.x_cm + (key_w - label_text_w[index]) / 2.0,
+                key_box.x_cm + (key_box.width_cm - label_text_w[index]) / 2.0,
                 row_top(label_row_index[row]) - label_h,
                 label_text_w[index],
                 label_h,
@@ -3080,6 +3184,7 @@ def legend_grob(
                 layer_index,
                 cell.key.values,
                 override=override,
+                size_cm=(key_box.width_cm, key_box.height_cm),
             )
             if decor is None:
                 continue

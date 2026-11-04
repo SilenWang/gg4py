@@ -729,6 +729,11 @@ def plot_layout(
             )
     x_title = axis_title_extent(theme, "bottom", _axis_title_text(build, "x"), metrics=metrics)
     y_title = axis_title_extent(theme, "left", _axis_title_text(build, "y"), metrics=metrics)
+    if not build.layers:
+        # R：没有图层（`ggplot()` + `guides(custom=...)`）时没有任何轴，面板直接
+        # 铺满 `plot.margin` 内区（`guides/stylised-guide-custom` 实测边距 5.48pt）。
+        x_axis = y_axis = x_axis_top = y_axis_right = 0.0
+        x_title = y_title = x_title_top = y_title_right = 0.0
 
     spacing = _box_spacing_cm(theme)
     right_box = box_layouts.get("right")

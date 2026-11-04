@@ -1,0 +1,7 @@
+family = "guide"
+features = ["draw-key", "key-glyph"]
+ci = true
+title = "上游快照：circle glyphs of 2cm size"
+source = "upstream:tests/testthat/_snaps/draw-key/circle-glyphs-of-2cm-size.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-810（G8）：vdiffr 快照原样纳入；标题是 doppelganger 名。"
