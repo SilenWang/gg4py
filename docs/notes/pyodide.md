@@ -128,6 +128,8 @@ CI 里两步都跑：`pixi run check` 的 `depends-on` 挂着这两个任务，�
 x86_64 容器慢约 1.9×——差在 wasm 实例化拿到的 CPU，不在 ggcore 的代码。M3-9 对
 预算时用 runner 这组数字：本机是下限，runner 更接近用户端。
 
+M3-9 之后的实测（含 warm 分段与每个手段的 A/B）见 §10。
+
 这组数字是**CPU 地板**，不是用户可见的首图时间：E1 在 4G 网络下测得首访
 11.16 s，差在 9.35 MB 载荷的下载，不在计算（`docs/spike/README.md`）。M3-9 的
 口径（首访 4G ≤ 12 s、warm ≤ 3 s）里的计算部分可以参考这里的 2.2 s；浏览器里还
@@ -262,16 +264,18 @@ case 两端 IR 不一致（同长度、不同 sha256）。
 
 资产由 `pixi run pyodide:assets` 落到 `web/runtime/vendor/`（**不入库**）：
 
-| 文件 | 字节 | 说明 |
-| --- | --- | --- |
-| `pyodide/pyodide.asm.wasm` | 9,598,218 | gzip 后 3.55 MB 上线 |
-| `pyodide/python_stdlib.zip` | 2,545,637 | 已压缩，原样上线 |
-| `pyodide/pyodide.asm.mjs` | 1,250,344 | gzip 后 0.26 MB |
-| `pyodide/*.whl` | 2.96 + 4.18 + 0.12 + … | **按需**：numpy / pandas / contourpy 各自懒加载 |
-| `gg4py.zip` | 716,699 | `src/{ggcore,ggio}` 的确定性 zip（82 个文件，条目从仓库根算起） |
-| `fonts/*.ttf` | ≤ 2 MiB/字面 | 只有拉丁字面：Arimo / DejaVu / Noto Sans / Noto Emoji |
+| 文件 | 原始字节 | 线上字节 | 说明 |
+| --- | ---: | ---: | --- |
+| `pyodide/pyodide.asm.wasm` | 9,598,218 | 2,741,061 | brotli q11（构建期预压） |
+| `pyodide/python_stdlib.zip` | 2,545,637 | 2,487,479 | 已压缩，brotli 只再省 2% |
+| `pyodide/pyodide.asm.mjs` | 1,250,344 | 207,390 | brotli |
+| `pyodide/pyodide-lock.json` | 119,077 | 21,689 | brotli；boot 时要读 |
+| `pyodide/pyodide.mjs` | 17,931 | 17,931 | 不到 32 KiB 门槛，不压 |
+| `pyodide/*.whl` | 2.96 + 4.18 + 0.12 + … MB | 同原始 | 本身是 zip，**按需**懒加载；brotli 赚不到 2%，不压 |
+| `gg4py.tar` | 3,563,520 | 1,017,919 | 确定性 tar（86 条目，源码已预编译成 `.pyc`）+ brotli |
+| `fonts/*.ttf` | ≤ 2 MiB/字面 | 约一半 | 只有拉丁字面：Arimo / DejaVu / Noto Sans / Noto Emoji |
 
-三条刻意设计：
+五条刻意设计：
 
 1. **一个 CDN 都不碰**。页面、脚本、worker、运行时、轮子、字体全在同源 `vendor/`
    下；构建期（`spike:e1:assets`）才允许下一次网，且 sha256 由 pyodide-lock 固定。
@@ -285,12 +289,27 @@ case 两端 IR 不一致（同长度、不同 sha256）。
    CJK 文本就会去下 35 MB（实测：一次加载光字体 36 MB，首访直接 40 s+）。
    `stage_assets.py` 按 ≤ 2 MiB 挑字面重写一份 `vendor/fonts.css`；CJK 文本回落到
    系统字体。**这是取舍不是遗漏**：CJK 子集化在 M3-4 之后单独做。
+4. **预压缩在构建期做，不在请求期做**（SIL-830）。`*.br` 是 `stage_assets.py` 用
+   node 自带 zlib 生成的兄弟文件，静态托管按 `Content-Encoding: br` 回放（等价
+   nginx 的 `brotli_static on`），浏览器侧一行不用改。收益逐个文件过一遍，不到 2%
+   的不压、不留兄弟文件。**why 构建期**：wasm 9.6 MB 用 gzip 现压要几百毫秒，首字节
+   因此晚到——那几百毫秒是服务端 CPU，不是用户的网络，混进冷启动数字里就是自欺。
+   压缩产物按内容 sha256 缓存在 `.pyodide-cache/brotli/`（不入库）：wasm 的 q11 要
+   20 s，只有首次构建付一次。
+5. **ggcore 只发字节码**（SIL-830）。`.pyc` 由 `tools/pyodide/compile_pyc.mjs` 在
+   **同一份 Pyodide 运行时**里 `compileall` 生成——`.pyc` 的魔法数跟 CPython 版本
+   绑定，桌面 3.12 编出来的字节码在浏览器 3.14 里会被判版本不对、白丢。`co_filename`
+   走 `stripdir=/app`，所以 traceback 里仍是 `src/ggcore/...`；度量表等数据文件原样
+   保留（`import ggcore` 要读它们）。实测 `import ggcore` 761.8 → 195.4 ms。
 
 ### 加载进度
 
 进度不是估的：Service Worker 用 `response.body.tee()` 数**真实传输字节**（wasm /
 stdlib 是 pyodide 自己 fetch 的，页面拿不到逐字节回调；SW 在中间就够了），分母是
-`vendor/manifest.json` 里规划过的文件 + 每次跑示例时点名的包。页面把
+`vendor/manifest.json` 里规划过的文件 + 每次跑示例时点名的包。计数口径是**解码后**
+的字节（`response.body` 由浏览器解 gzip / brotli），所以缓存里存的也是解码后的明文
+——落缓存时必须把 `Content-Encoding` / `Content-Length` 摘掉，否则 warm 回放会被再
+解一次（SIL-830 把 wasm 换成 brotli 之后这条从「侥幸」变成「必须」，见 `sw.js`）。页面把
 `已下载 / 预计` 与阶段一起画在进度条上；`pixi run pyodide:runtime` 断言进度序列
 覆盖 ≥3 个阶段、百分比单调上升且到过 90%+，并在 5%–99% 之间截一张图。
 
@@ -303,52 +322,78 @@ stdlib 是 pyodide 自己 fetch 的，页面拿不到逐字节回调；SW 在中
 
 ## 10. 实测加载时间（Fast 4G，本机）
 
-口径：服务端按 **9 Mbps / 170 ms** 限速（DevTools 的 Fast 4G 预置），每次冷启动
-用**新浏览器**（Cache Storage / HTTP 缓存 / Service Worker 全空），warm 是同
+口径（`pixi run pyodide:timing`）：服务端按 **9 Mbps / 170 ms** 限速（DevTools 的
+Fast 4G 预置，实现是 `tools/pyodide/check_runtime.py` 的 `_Limiter`——不用 CDP 节流
+是因为 13 MB 里大头是 **worker** 自己 fetch 的，page target 的节流对它不生效），每次
+冷启动用**新浏览器**（Cache Storage / HTTP 缓存 / Service Worker 全空），warm 是同
 浏览器重新导航一次；终点是「第一张图的 SVG 已合成」（两次 `requestAnimationFrame`）。
 
-| 状态 | 3 次实测（ms） | 中位 | 线上字节 |
-| --- | --- | --- | --- |
-| 首访（冷，新浏览器） | 13438 / 13527 / 13546 | **13.5 s** | 10.11 MB |
-| warm（同一浏览器重载） | 4116 / 4155 / 4201 | **4.2 s** | 0.04 MB |
+前后都在**同一台机器、同一个 harness** 上各跑 3 次取中位：
 
-冷启动的分段（取中间那次，单位 ms）：
+| 状态 | SIL-824 基线 | SIL-830 | 变化 | 预算 |
+| --- | ---: | ---: | ---: | ---: |
+| 首访（冷） | 13.50 s（13438 / 13527 / 13546） | **11.78 s**（11778 / 11709 / 11801） | −1.72 s | 12 s |
+| warm | 4.11 s（4116 / 4155 / 4201） | **2.86 s**（2857 / 3046 / 2862） | −1.25 s | 3 s |
+| 首访线上字节 | 10.18 MB | **9.49 MB** | −0.69 MB | — |
+| warm 线上字节 | 0.05 MB | 0.05 MB | — | — |
 
-| 段 | ms | 说明 |
+冷启动分段（改完之后，单位 ms，取一次代表运行）：
+
+| 段 | 基线 | SIL-830 | 说明 |
+| --- | ---: | ---: | --- |
+| HTML → `runtime.js` 求值 | 385 | 174 | 内联预载脚本在解析期就注册 SW / 起 worker |
+| SW 接管（cold 必等） | 747 | 380 | worker 必须在 SW 之后起，否则绕开缓存与字节进度 |
+| pyodide boot（下载 + 实例化） | 7,709 | 7,329 | wasm 3.53 → 2.74 MB（brotli），服务端不再现压 |
+| numpy 下载 + 安装 + `import ggcore` + build | 4,242 | 3,550 | 字节码省 0.57 s；numpy wheel 2.96 MB 是最后一段 |
+| IR → 渲染 → 2 帧 | 373 | 12 | 渲染器与示例源码在 boot 期间就取好，首图前 0 个 RTT |
+
+warm 的 2.86 s：页面与 worker 启动 0.17 s（内联预载，**worker 在 HTML 解析期就起**）、
+pyodide boot 1.54 s（含 90 ms 解包）、numpy 安装 + `import ggcore`（字节码）+ build
+0.95 s、渲染 0.01 s。三次之间 ±0.2 s 是本机噪声（同一台机器上 warm 单次最慢 3.05 s），
+所以口径按 3 次中位——`pyodide:timing` 的判据也是中位。
+
+### 每个手段各自值多少（都在这台机器上 A/B 过）
+
+| 手段 | 怎么做的 | 实测 |
 | --- | --- | --- |
-| 页面 + SW + `new Worker()` | 747 | 含 manifest、worker 模块与 SW 注册 |
-| worker 内 pyodide boot | 7,709 | 含 wasm + stdlib 8.1 MB 的下载 |
-| numpy 下载并安装 | 2,824 | 2.96 MB wheel |
-| `import ggcore` | 1,069 | 60+ 个模块 + numpy |
-| build + encode + 渲染 + 2 帧 | 391 | 到第一张图合成 |
-| IR 到手（`result_in`） | 13,136 | |
+| brotli 预压缩 | 构建期生成 `.br` 兄弟文件，静态托管 `Content-Encoding: br` | 首屏线上字节 10.11 → 9.49 MB（wasm −0.79、源码包 −0.28、asm.mjs −0.05、lock −0.10）；顺带去掉服务端「按请求 gzip 9.6 MB wasm」的几百毫秒 |
+| `.pyc` 预编译（`optimize=0`） | `compile_pyc.mjs` 在 Pyodide 里 `compileall`，tar 里只有字节码 | `import ggcore` 761.8 → 195.4 ms；整机 A/B（其余手段不变）：冷 11.95 → 11.84 s、**warm 3.49 → 2.87 s** |
+| 源码包 zip → tar | 86 个文件一个 deflate 流不如 tar 整体压 | 0.74 MB（zip，不可再压）→ 0.50 MB（tar+br，不带字节码） |
+| worker 预载 | `index.html` 内联脚本：解析期注册 SW；warm 时直接起 worker 并把消息排队，等 `runtime.js` 接手 | 冷启动 worker 到位 556 → 380 ms；warm 175 ms（`runtime.js` 还在下载时 pyodide 已经 boot） |
+| 关键路径去 RTT | manifest / 首图示例源码 / 渲染器三件事与运行时并行，worker 不再先取 manifest | 首图前 4 个串行 RTT → 0；渲染 373 → 12 ms |
+| SW 缓存响应摘 `Content-Encoding` | 缓存里存的是解码后明文，回放时不能再解一次 | brotli 之后是**正确性**前提，不是优化 |
 
-warm 的 4.2 s 里：页面与 worker 启动 0.35 s、pyodide boot 1.46 s、包安装 0.28 s、
-`import ggcore` 1.07 s、build/encode 0.22 s、渲染 0.36 s。
+### 否决的候选（量过，不做）
 
-**这两个数字没有达到 12 s / 3 s，缺口是结构性的，写清楚留给 M3-9：**
+- **`.pyc` 的 optimize=1 / 2**：`optimize=1` 删掉 `assert`、`=2` 再删 docstring，
+  tar+br 大约再小 10–13%（≈ −0.1 s 传输）。IR 逐字节一致的前提是两端跑同一套语义，
+  省 0.1 s 不值得——所以打包用 `optimize=0`。
+- **首图预取 numpy wheel**：它能把 numpy 的 2.96 MB 挪到 boot 期间并行，理论再省
+  ≈1 s；但那等于把「数值栈懒加载」这条 M3-3 的验收（`ready` 之前没有一个 `.whl`
+  请求）改成「numpy 预取、pandas/contourpy 懒加载」。本任务的两个数字已经达标，
+  不动这条口径。
+- **CJK 字体子集化**：首屏文字是 ASCII（示例里没有中文），字体根本不在 boot 的关键
+  路径上（`fonts/*.ttf` 是渲染时才拉、且已经在 brotli 后减半）。它影响的是「页面上
+  出现中文时」的时间，不是这两个数字，留给后续任务。
 
-- 载荷地板 = E1 的 9.06 MB（wasm 3.55 + stdlib 2.55 + numpy 2.96，三份都不可裁）
-  + ggcore 源码 0.72 MB + `pyodide.asm.mjs` 0.26 MB ≈ 10.0 MB。9 Mbps 下就是
-  9 s 的纯传输，E1 当年 9.35 MB 实测 11.16 s（CDP 节流更狠）。加上 ggcore 的
-  import（1.09 s）与渲染，**12 s 在「全量 ggcore 也进浏览器」之后基本贴着地板**。
-- warm 的 3 s 同理：pyodide boot 1.43 s + numpy 安装 0.27 s 已经 1.7 s，
-  再叠加 `import ggcore` 1.04 s 就必然过 3 s。
-- 能继续压的方向（都属 M3-9，不在本任务改造范围内）：把 ggcore 预编译成
-  `.pyc` 只带字节码（预计省 0.5 s import）、在分片层面预载（worker 与页面并行起）、
-  用 brotli 替代 gzip（wasm 3.55 → ≈3.1 MB）、以及 CJK 字体子集化。
+### 载荷地板（为什么 12 s / 3 s 是贴着地板过的）
 
-工程上已经做了能做的：gg4py.zip 与运行时**并行**下载、渲染器按需 import（不占关键
-路径）、warm 路径不等 Service Worker 的 `ready`、SW cache-first 让 warm 的线上
-字节降到 0.04 MB。
+首访线上字节 9.49 MB 里，不可裁的是：wasm 2.74 + stdlib 2.49 + numpy 2.96 = 8.19 MB
+（三份都没有更小的构建），加上源码包 1.02 + asm.mjs 0.21 + 其余 0.07。9 Mbps 下就是
+**8.4 s 的纯传输**；再叠 pyodide 的实例化（≈1 s）、numpy 安装 + 字节码 import +
+build（≈0.7 s）与页面启动（≈0.4 s），11.8 s 已经是这套载荷在 Fast 4G 上的下限。
+换一台 CPU 慢一倍的机器（比如 GitHub runner 的 boot 是本机的 1.9×），冷启动会退到
+≈13 s——那是 CPU 地板，不是还有没做的传输优化。真要再低，只能动产品口径（放宽首访
+或允许 CDN 回源），按 issue 的要求上报，不自行改数字。
 
 ## 11. 复现
 
 ```bash
-pixi run pyodide:assets     # 运行时 + 源码 zip + 拉丁字面 → web/runtime/vendor/
-pixi run pyodide:runtime    # 端到端验收：自托管 / 懒加载 / 进度 / 断网 / 三示例 IR 一致
-pixi run pyodide:timing     # 12. 的实测（--measure，3 次；约 1 分钟）
-pixi run gate:pyodide       # 全量 case 的逐字节门禁
+pixi run pyodide:assets        # 运行时 + 源码 tar（含 .pyc）+ 拉丁字面 + .br → web/runtime/vendor/
+pixi run pyodide:bytes         # 首屏字节账（原始 / 线上 / 是否预压缩）
+pixi run pyodide:runtime       # 端到端验收：自托管 / 懒加载 / 进度 / 断网 / 三示例 IR 一致
+pixi run pyodide:timing        # §10 的实测（--measure，3 次；约 2 分钟）
+pixi run gate:pyodide          # 全量 case 的逐字节门禁
 ```
 
 产物都在 `.pyodide-runtime/`（`report.json` + 截图，不入库）。

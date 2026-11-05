@@ -167,6 +167,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 加载耗时实测：服务端按 Fast 4G 限速，冷启动 / warm 各跑 3 次；数字进 docs/notes/pyodide.md。
 # 不挂进 `check`：CI runner 的 CPU 与这里不同，用它当门禁只会让红绿取决于机器。
 "pyodide:timing" = { cmd = "python tools/pyodide/check_runtime.py --measure --runs 3", depends-on = ["pyodide:assets", "viewer:browsers"] }
+# SIL-830：首屏字节账。`pyodide:bytes` 打印逐文件原始 / 线上字节；`:check` 守两条——
+# 首屏文件必须预压缩（brotli）、首屏线上字节不超预算（9 Mbps 下每 MB ≈ 0.9 s）。
+# 它不需要浏览器，所以能挂进 `check`；首访耗时本身（`pyodide:timing`）仍然不挂。
+"pyodide:bytes" = "python tools/pyodide/bytes_report.py"
+"pyodide:bytes:check" = { cmd = "python tools/pyodide/bytes_report.py --check", depends-on = ["pyodide:assets"] }
 
 # --- SIL-826 · 浏览器代码编辑器（M3-4）----------------------------------------
 # CodeMirror 6 打成**一个** ES module（`web/editor/dist/editor.js`，不入库）：
@@ -348,6 +353,7 @@ check = { depends-on = [
   "gate:pyodide:selftest",
   "gate:libm-noise",
   "pyodide:runtime",
+  "pyodide:bytes:check",
   "editor:check",
   "gate:cbor",
   "cases:matrix:check",

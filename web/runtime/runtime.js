@@ -12,8 +12,15 @@
 // 记 `first_plot_ms`。字体是 `viewer/fonts.css` 的受管拉丁字面，35 MB 的 CJK 字面
 // 不进首屏（示例文字是 ASCII，见 demos/*.py 的说明）。
 
+// SIL-830：首屏的每一段**都不许串行**。`index.html` 的内联预载在 HTML 解析期就把
+// worker 的 `boot` 发出去（warm），这里再把 manifest / 首图示例源码 / 渲染器三件事
+// 与运行时的下载并起来。冷启动唯一必须等的只有「SW 接管」——不等它，pyodide 的请求
+// 会绕开 Service Worker，字节进度与 warm 缓存一起丢。
+const START = window.__ggPerf?.start ?? performance.now();
+
 // 渲染器**按需**取：它是 4 个 ES 模块，放在关键路径上等于多两个 RTT 的等待；
-// 而它真正要用是在 IR 回来之后（那时早就并行下载完了）。
+// 而它真正要用是在 IR 回来之后（那时早就并行下载完了）。这里在 boot 里提前发起，
+// 让它在运行时下载的同时到齐。
 let renderer = null;
 
 async function loadRenderer() {
@@ -28,7 +35,11 @@ async function loadRenderer() {
 }
 
 const now = () => performance.now();
-const START = now();
+
+//: 首图（冷启动的验收终点就是它）：源码在 boot 里与运行时并行取。
+const FIRST_DEMO = "basic";
+//: 已取到的示例源码（`basic` 在 boot 里就填好，点击不会再等一个 RTT）。
+const sources = new Map();
 
 //: 示例清单：`source` 在点击时取（同一份文件桌面端也在跑，见 demos/*.py）。
 const DEMOS = [
@@ -228,9 +239,12 @@ function showError(message, traceback) {
 }
 
 async function demoSource(name) {
+  if (sources.has(name)) return sources.get(name);
   const response = await fetch(`./demos/${name}.py`);
   if (!response.ok) throw new Error(`demo ${name}: HTTP ${response.status}`);
-  return response.text();
+  const source = await response.text();
+  sources.set(name, source);
+  return source;
 }
 
 async function runDemo(name) {
@@ -275,22 +289,48 @@ function buildDemoButtons() {
   }
 }
 
+function handleServiceWorkerMessage(message) {
+  if (message.type === "vendor-progress") noteVendorProgress(message);
+  else if (message.type === "vendor-progress-error") {
+    console.warn("vendor progress failed", message);
+  }
+}
+
+function watchServiceWorkerMessages() {
+  // 内联预载已经把监听器装好了（warm 时进度可能已经来过一批），这里接管队列；
+  // 没有内联段时（别的页面 / 老 HTML）退回自己装。
+  if (typeof window.__ggVendorSink === "function") {
+    window.__ggVendorSink(handleServiceWorkerMessage);
+    return;
+  }
+  navigator.serviceWorker.addEventListener("message", (event) =>
+    handleServiceWorkerMessage(event.data || {}),
+  );
+}
+
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return null;
   try {
     const registration = await navigator.serviceWorker.register("./sw.js", { scope: "./" });
-    await navigator.serviceWorker.ready;
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      const message = event.data || {};
-      if (message.type === "vendor-progress") noteVendorProgress(message);
-      else if (message.type === "vendor-progress-error") {
-        console.warn("vendor progress failed", message);
-      }
-    });
+    watchServiceWorkerMessages();
     return registration;
   } catch (error) {
     console.warn("Service Worker 不可用，进度改为按阶段显示", error);
     return null;
+  }
+}
+
+/**
+ * 冷启动必须先让 SW 接管，worker 才在它的覆盖下（否则 pyodide 的请求绕开 SW：
+ * 没有逐字节进度，warm 也没有缓存）。warm 时页面一上来就有 controller，直接放行。
+ */
+async function serviceWorkerGate() {
+  if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return;
+  if (navigator.serviceWorker.controller) return;
+  try {
+    await navigator.serviceWorker.ready;
+  } catch (error) {
+    console.warn("Service Worker 未就绪，按无缓存路径继续", error);
   }
 }
 
@@ -301,7 +341,7 @@ async function handleWorkerMessage(event) {
       setStage(message.stage, message.detail);
       return;
     case "fetch-progress": {
-      // worker 自己读 gg4py.zip 时的字节数；SW 那条可能还没到，取两者的最大值。
+      // worker 自己读 gg4py.tar 时的字节数；SW 那条可能还没到，取两者的最大值。
       if (!planned.has(message.file)) planFile(message.file);
       const previous = received.get(message.file) ?? 0;
       if (message.loaded > previous) {
@@ -384,39 +424,68 @@ function renderRuntimeInfo() {
   );
 }
 
+//: 首屏要的字节：运行时核心 + gg4py.tar（包在示例跑起来时才进分母）。
+const BOOT_FILES = [
+  "pyodide/pyodide.mjs",
+  "pyodide/pyodide.asm.mjs",
+  "pyodide/pyodide.asm.wasm",
+  "pyodide/python_stdlib.zip",
+  "gg4py.tar",
+];
+
 async function boot() {
-  manifest = await (await fetch("./vendor/manifest.json")).json();
-  // 首屏要的字节：运行时核心 + gg4py.zip（包在示例跑起来时才进分母）。
-  for (const name of [
-    "pyodide/pyodide.mjs",
-    "pyodide/pyodide.asm.mjs",
-    "pyodide/pyodide.asm.wasm",
-    "pyodide/python_stdlib.zip",
-    "gg4py.zip",
-  ]) {
-    planFile(name);
-  }
+  // 四件事并起来：SW 接管（cold 必等，warm 直接过）、manifest、首图示例源码、
+  // 渲染器。它们谁都不依赖谁，串行只是白等 RTT。
+  const swGate = serviceWorkerGate();
+  registerServiceWorker().catch(() => {});
+  const manifestPromise = fetch("./vendor/manifest.json").then((response) => {
+    if (!response.ok) throw new Error(`manifest.json: HTTP ${response.status}`);
+    return response.json();
+  });
+  const demoPromise = demoSource(FIRST_DEMO);
+  const rendererPromise = loadRenderer();
+  // 两者都只是「提前拉」：失败时下面各自的 await 还会照常报错，这里先摘掉
+  // 未处理拒绝（否则控制台会多一条无关紧要的 unhandled rejection）。
+  demoPromise.catch(() => {});
+  rendererPromise.catch(() => {});
+
+  await swGate;
+  state.marks.sw_done = now();
+  manifest = await manifestPromise;
+  for (const name of BOOT_FILES) planFile(name);
   recordProgress();
 
-  worker = new Worker("./worker.js", { type: "module" });
-  state.marks.worker_spawn = now();
-  worker.onmessage = handleWorkerMessage;
-  worker.onerror = (event) => showError(`worker: ${event.message || "unknown"}`);
+  // warm：worker 在 `index.html` 的内联预载里就起了（SW 已控制页面，缓存与进度
+  // 都不受影响）；cold：这里在 SW 接管之后才起。
+  const early = window.__ggWorkerEarly ?? null;
+  worker = early ?? new Worker("./worker.js", { type: "module" });
+  state.marks.worker_spawn = early ? (window.__ggPerf?.worker_early ?? now()) : now();
+  // 内联预载期间 worker 就挂了的话，`ready` 永远不会来：提前报，不吊着页面。
+  if (early && window.__ggWorkerEarlyError) throw new Error(window.__ggWorkerEarlyError);
+  // ready 的 resolver 必须在「接管队列」之前就位：内联预载可能已经把 ready 消息
+  // 攒在队列里，接管时会同步回放。
   const ready = new Promise((resolve) => {
     worker.__readyResolve = resolve;
   });
-  worker.postMessage({ type: "boot" });
+  if (early && typeof window.__ggWorkerSink === "function") {
+    window.__ggWorkerSink((message) => void handleWorkerMessage({ data: message }));
+  } else {
+    worker.onmessage = handleWorkerMessage;
+    worker.postMessage({ type: "boot" });
+  }
+  worker.onerror = (event) => showError(`worker: ${event.message || "unknown"}`);
   await ready;
+  await demoPromise;
 
   // 首图：运行时一就绪就跑基础示例（首访的验收口径是「到第一张图」）。
-  selectDemo("basic");
-  await runDemo("basic");
+  selectDemo(FIRST_DEMO);
+  await runDemo(FIRST_DEMO);
   return state;
 }
 
 buildDemoButtons();
 renderRuntimeInfo();
-setStage("loading", "注册 Service Worker");
+setStage("loading", "预热 worker");
 
 // 判定与截图用的公开接口（`tools/pyodide/check_runtime.py` 读它）。
 window.__ggRuntime = {
@@ -450,16 +519,6 @@ window.__ggRuntime = {
   run: (name) => runDemo(name),
 };
 
-const bootPromise = (async () => {
-  if (navigator.serviceWorker?.controller) {
-    // 回访：SW 已经在管这个页面，不必等 `ready`（那会把冷启动的注册/激活时间
-    // 也算进 warm）。注册仍然发出去，版本更新靠它。
-    registerServiceWorker().catch(() => {});
-  } else {
-    await registerServiceWorker();
-  }
-  state.marks.sw_done = now();
-  return boot();
-})();
-
-bootPromise.catch((error) => showError(String(error?.message || error)));
+// warm 路径上 SW 已经在管页面，worker 早在 HTML 解析期就起了——这里只负责把它
+// 接过来（`boot()` 里判断 `__ggWorkerEarly`）。
+boot().catch((error) => showError(String(error?.message || error)));

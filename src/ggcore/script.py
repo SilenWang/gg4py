@@ -71,7 +71,7 @@ __all__ = [
 DEFAULT_SIZE = (5.0, 3.5)
 
 #: 顶层模块名 → Pyodide 包名。只列**真正需要单独 loadPackage** 的：ggcore / ggio
-#: 自己就在 `gg4py.zip` 里，标准库随运行时一起到。
+#: 自己就在 `gg4py.tar` 里，标准库随运行时一起到。
 MODULE_PACKAGES = {
     "numpy": "numpy",
     "contourpy": "contourpy",

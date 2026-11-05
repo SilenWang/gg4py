@@ -64,7 +64,7 @@ def require_build() -> None:
         str(path.relative_to(REPO))
         for path in (
             RUNTIME_VENDOR / "manifest.json",
-            RUNTIME_VENDOR / "gg4py.zip",
+            RUNTIME_VENDOR / "gg4py.tar",
             VIEWER / "dist" / "render.js",
             EDITOR / "dist" / "editor.js",
             EXAMPLES / "index.json",

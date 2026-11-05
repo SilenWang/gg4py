@@ -20,7 +20,7 @@ pixi run editor:serve      # 构建编辑器 + 本地资产，然后 http://127.
 `editor:serve` 只是 `web/` 的一个静态服务（`tools/editor/serve.py`）。生产上随便一个
 静态托管（`web/` 整个目录）都能跑；`file://` 不行——浏览器会拦 ES module 与 fetch。
 
-首次访问要下载 Pyodide 运行时（≈ 9 MB）+ `gg4py.zip`（0.73 MB）；numpy 轮子
+首次访问要下载 Pyodide 运行时（≈ 5.5 MB 线上，brotli）+ `gg4py.tar`（1.02 MB，含预编译字节码）；numpy 轮子
 （2.9 MB）在**第一次出图**时才下，pandas / contourpy 只在脚本用到时下（M3-3 的
 懒加载口径不变）。之后靠浏览器 HTTP 缓存，重跑只花内核计算的时间。
 

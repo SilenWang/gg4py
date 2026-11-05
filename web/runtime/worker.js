@@ -5,9 +5,11 @@
 //   1. 运行时（pyodide.mjs / asm.wasm / stdlib）来自 `./vendor/pyodide/`，同源、
 //      无 CDN；Service Worker（`sw.js`）把下载进度报给页面，并把响应缓存住供
 //      warm 启动直接命中。
-//   2. ggcore / ggio 打成 `./vendor/gg4py.zip`（`pixi run pyodide:assets` 生成），
-//      这里自己 fetch（能报字节进度）后 `unpackArchive` 到 `/app`。目录结构与仓库
-//      一致（`/app/src/ggcore`、`/app/src/ggio`），不造第二套布局。
+//   2. ggcore / ggio 打成 `./vendor/gg4py.tar`（`pixi run pyodide:assets` 生成，
+//      源码已预编译成 `.pyc`），这里自己 fetch（能报字节进度）后 `unpackArchive`
+//      到 `/app`。目录结构与仓库一致（`/app/src/ggcore`、`/app/src/ggio`），不造
+//      第二套布局。线上是 `gg4py.tar.br`（静态服务按 `Content-Encoding: br` 回放），
+//      浏览器解完码还是 tar，所以这里只认 tar、不认压缩。
 //   3. **numpy / contourpy / pandas 一个都不在 boot 里**：boot 只到「解包完源码 +
 //      pyodide 可用」。每次跑示例先读该示例的 `needs`（`ast` 静态解析，不执行
 //      代码）再 `loadPackage`，然后才 `import ggcore` —— ggcore 自己 import numpy，
@@ -44,7 +46,7 @@ function stage(name, detail = "") {
   post({ type: "stage", stage: name, detail, at: now() });
 }
 
-/** 读一份响应体，边读边把字节数报给页面（`gg4py.zip` 用）。 */
+/** 读一份响应体，边读边把字节数报给页面（`gg4py.tar` 用）。 */
 async function fetchWithProgress(url, label) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${label}: HTTP ${response.status}`);
@@ -165,13 +167,24 @@ GG_IR = _result.ir_bytes if _result is not None else b""
 
 async function boot() {
   const started = now();
-  manifest = await (await fetch(VENDOR + "manifest.json")).json();
-  stage("runtime", `pyodide ${manifest.pyodide_version ?? ""}`);
+  // `manifest.json` 只在 `ready` 消息里报版本 / 归档摘要，**不进关键路径**：
+  // 它与 wasm 的下载并行，等 `loadPyodide` 回来才 await（SIL-830 省掉一个 RTT）。
+  const manifestPromise = fetch(VENDOR + "manifest.json")
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  stage("runtime", "pyodide runtime");
 
-  // gg4py.zip（0.72 MB）与运行时**并行**下载：它和 wasm/stdlib 抢的是同一条链路，
-  // 但两者都不依赖对方，串起来会白白多等一个 RTT + 一次解压前的空窗。
+  // gg4py.tar（1.02 MB 线上，含预编译字节码）与运行时**并行**下载：它和
+  // wasm/stdlib 抢的是同一条链路，但两者都不依赖对方，串起来会白白多等一个 RTT
+  // + 一次解压前的空窗。
   const archiveStart = now();
-  const archivePromise = fetchWithProgress(VENDOR + "gg4py.zip", "gg4py.zip");
+  const archivePromise = fetchWithProgress(VENDOR + "gg4py.tar", "gg4py.tar").then(
+    (bytes) => {
+      // 到达时刻单独记：`await` 在 loadPyodide 之后，混在一起就分不清是网络还是 CPU。
+      timings.archive_fetch_ms = now() - archiveStart;
+      return bytes;
+    },
+  );
 
   pyodide = await loadPyodide({ indexURL: PYODIDE_DIR });
   timings.runtime_ms = now() - started;
@@ -183,11 +196,11 @@ async function boot() {
   pyodide.setStderr({ batched: (text) => post({ type: "stderr", text }) });
 
   const unpackStart = now();
-  stage("archive", "gg4py.zip");
+  stage("archive", "gg4py.tar");
   const archive = await archivePromise;
-  timings.archive_fetch_ms = now() - archiveStart;
-  pyodide.unpackArchive(archive, "zip", { extractDir: "/app" });
+  pyodide.unpackArchive(archive, "tar", { extractDir: "/app" });
   timings.archive_ms = now() - unpackStart;
+  manifest = await manifestPromise;
   // 编辑器把数据面板的 CSV 写到 `/app/data.csv`，脚本用相对路径 `data.csv` 读它
   // ——桌面端（`tools/editor/check_editor.py`）在临时目录里放同名文件跑同一段
   // 代码，两端都不需要在源码里写死绝对路径。
@@ -198,9 +211,10 @@ async function boot() {
     type: "ready",
     info: {
       pyodide: pyodide.version,
-      python: manifest.abi?.python ?? null,
-      abi: manifest.abi ?? null,
-      archive: manifest.archive ?? null,
+      python: manifest?.abi?.python ?? null,
+      abi: manifest?.abi ?? null,
+      archive: manifest?.archive ?? null,
+      encoding: manifest?.encoding ?? null,
     },
     timings: { ...timings, boot_ms: now() - started },
     packages: [...loaded],
