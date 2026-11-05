@@ -1305,10 +1305,16 @@ def polar_axis_grobs(
     if not entries:
         return []
     guide = guide or AxisGuide(name="axis_theta")
-    if guide.is_stack:  # pragma: no cover - R 的 theta 叠放需要 offset，暂不支持
-        raise ValueError(
-            "guide_axis_theta 暂不支持与 guide_axis_stack 叠放（见 docs/notes/guide.md）"
-        )
+    if guide.is_stack:
+        # `guide_axis_stack("axis_theta", guide_axis_theta(cap = "both"))`：单轴
+        # stack 就是那一轴本身（R 里 `GuideAxisStack$draw()` 对 `position == "theta"`
+        # 也只是逐层画，第一层的 `stack_offset` 是 `unit(0, "cm")`）。真正的多层
+        # 沿半径叠放（`offset + spacing + 上一层 offset`）还没做，见
+        # `docs/notes/guide.md` §8.5。
+        first: AxisGuide | None = guide
+        while first is not None and first.is_stack:
+            first = first.guides[0] if first.guides else None
+        guide = first or AxisGuide(name="axis_theta")
     base_angle = float(guide.angle) if guide.angle is not None else float(element.angle or 0.0)
     gp = {
         "col": paint(element.colour) or "black",
