@@ -1337,6 +1337,8 @@ class SfGeometry:
     datum: CRS | None = None
     graticule: tuple[GraticuleLine, ...] = ()
     ticks: Mapping[str, tuple[tuple[float, str], ...]] = MappingProxyType({})
+    #: 面板四条边上的经纬网标签（`CoordSf$labels()` 的等价物，SIL-839）。
+    labels: tuple[SfGraticuleLabel, ...] = ()
 
     @property
     def is_longlat(self) -> bool:
@@ -1756,6 +1758,7 @@ class SfCoord(CoordBase):
                 datum=None if self.datum is None else st_crs(self.datum),
                 graticule=tuple(lines),
                 ticks=MappingProxyType(ticks),
+                labels=sf_graticule_labels(lines, self._label_graticule(), ranges),
             ),
         )
 

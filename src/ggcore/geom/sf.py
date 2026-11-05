@@ -202,7 +202,10 @@ class SfRenderer(GeomRenderer):
                         target=target,
                         colour=pick("colour", row, colours, line_defaults.get("colour", "black")),
                         linewidth=number(
-                            "linewidth", row, linewidths, _sf_default(line_defaults, "linewidth", 0.5, theme)
+                            "linewidth",
+                            row,
+                            linewidths,
+                            _sf_default(line_defaults, "linewidth", 0.5, theme),
                         ),
                         linetype=pick("linetype", row, linetypes, line_defaults.get("linetype", 1)),
                         alpha=number("alpha", row, alphas, 1.0),
@@ -226,7 +229,10 @@ class SfRenderer(GeomRenderer):
                         size=number("size", row, sizes, 1.5),
                         stroke=number("stroke", row, strokes, 0.5),
                         linewidth=number(
-                            "linewidth", row, linewidths, _sf_default(polygon_defaults, "linewidth", 0.2, theme)
+                            "linewidth",
+                            row,
+                            linewidths,
+                            _sf_default(polygon_defaults, "linewidth", 0.2, theme),
                         ),
                         linetype=pick("linetype", row, linetypes, 1),
                         alpha=number("alpha", row, alphas, 1.0),
@@ -246,7 +252,10 @@ class SfRenderer(GeomRenderer):
                     fill=pick("fill", row, fills, polygon_defaults.get("fill", "#E5E5E5")),
                     colour=pick("colour", row, colours, polygon_defaults.get("colour", "#595959")),
                     linewidth=number(
-                        "linewidth", row, linewidths, _sf_default(polygon_defaults, "linewidth", 0.2, theme)
+                        "linewidth",
+                        row,
+                        linewidths,
+                        _sf_default(polygon_defaults, "linewidth", 0.2, theme),
                     ),
                     linetype=pick("linetype", row, linetypes, 1),
                     alpha=number("alpha", row, alphas, 1.0),
