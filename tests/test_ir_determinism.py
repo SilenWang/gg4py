@@ -7,6 +7,9 @@
 这些用例把「确定性」钉在源头：不是等 CI 红，而是主动注入 ±1 ULP 的 libm 噪声，
 断言 IR 字节不变。全量 515 条的版本是 `pixi run gate:libm-noise`（挂进 `check`）；
 这里放几条快的，覆盖量化点在哪儿、以及每个量化函数的边界行为。
+
+端到端那组按「三种噪声 × 种子」展开：`mixed` 的偏移方向由「位模式 ^ seed」定，
+所以扫 0–3 再加评审手验过的 7；`up` / `down` 方向写死，种子不参与，各留一条。
 """
 
 from __future__ import annotations
@@ -37,6 +40,15 @@ SF_CASES = (
     "upstream-coord-sf-coord-sf-with-custom-guides",
     "upstream-coord-sf-non-sf-geoms-using-long-lat",
     "upstream-coord-sf-non-sf-geoms-using-projected-coords",
+)
+
+#: 噪声 × 种子的组合。`up` / `down` 的方向写死在模式里、与种子无关，各留一条；
+#: `mixed` 的方向是「取值的位模式 ^ seed」，换个种子就换一半取值的偏移方向，
+#: 所以要把种子扫一遍（0–3 覆盖四种奇偶，7 是 SIL-824 评审手工验过的那个，当锚点）。
+NOISE_VARIANTS = tuple(
+    pytest.param(mode, seed, id=f"{mode}-seed{seed}")
+    for mode in libm_noise.MODES
+    for seed in ((0, 1, 2, 3, 7) if mode == "mixed" else (7,))
 )
 
 
@@ -111,12 +123,12 @@ def test_sf_projection_is_quantised_but_NaN_still_propagates() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("mode", libm_noise.MODES)
+@pytest.mark.parametrize("mode, seed", NOISE_VARIANTS)
 @pytest.mark.parametrize("case", SF_CASES)
-def test_sf_cases_survive_libm_noise(case: str, mode: str) -> None:
+def test_sf_cases_survive_libm_noise(case: str, mode: str, seed: int) -> None:
     baseline = _digest(case)
-    with libm_noise.libm_noise(mode, seed=7):
-        assert _digest(case) == baseline
+    with libm_noise.libm_noise(mode, seed=seed):
+        assert _digest(case) == baseline, f"{case} 在 {mode} / seed={seed} 下漂了"
 
 
 @pytest.mark.parametrize("mode", libm_noise.MODES)
