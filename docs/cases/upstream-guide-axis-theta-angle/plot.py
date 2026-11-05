@@ -16,7 +16,7 @@ from ggcore.plot import (
     guides,
     scale_x_continuous,
 )
-from ggcore.theme import element_line, theme, theme_test
+from ggcore.theme import element_line, theme
 from ggio.frame import to_column_table
 
 DATA = {"disp": mtcars["disp"], "mpg": mtcars["mpg"]}
@@ -34,7 +34,6 @@ def build():
                 "theta.sec": guide_axis_theta(angle=90, cap="both"),
             }
         )
-        + theme_test()
         + theme(**{"axis.line": element_line(colour="black")})
     )
     return {"plot": p, "size": [10, 8]}

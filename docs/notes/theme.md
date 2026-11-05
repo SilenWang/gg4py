@@ -456,16 +456,16 @@ build_plot(plt).layers[0].data["stroke"]  # 1.5（= base_size / 22）
    ggcore 的 IR/绘制口径统一用 pt，所以这里不转换。
 5. **不支持 `palette.*` 元素**（4.0.3 的调色板主题元素）。`theme()` 会把它
    当未知元素报错；调色板语义不在 M1-10 / M2-5 的范围。
-6. **`theme_test()` 的面板背景 / 网格（SIL-839 实测，待决策）**。上游 4.0.3 的
-   `theme_test()` 只覆盖 `line` / `rect` / `text` / `point` / `axis.line` /
-   `panel.border` 等，**没有** `panel.background` 与 `panel.grid.*`，于是继承
-   `theme_grey()` 的**灰底（grey92）+ 白网格**。ggcore 的 `theme_test()` 写死成
-   `panel.background = element_rect(fill = paper, colour = NA)` + `panel.grid.major/minor
-   = element_blank()`，即**白底、无网格**。实测差异（`guide-axis-theta-with-angle-adapting-to-theta`
-   的 expected.svg）：R 侧有 1 个 `fill: #EBEBEB` 的 panel polygon 与 **63 条
-   `stroke: #FFFFFF`** 网格线、13 条 r 圈长折线；我们这三类各 0 条，整块面板底色
-   不同（约 23% 像素）。改这条会重设所有 `theme_test()` case 的基线（含已绿的
-   `upstream-guide-axis-*` 一批），所以在拍板前保持现状。
+6. **复刻上游快照要照抄测试代码的主题链（SIL-839 踩过的坑）**。
+   `guide-axis-theta-with-angle-adapting-to-theta` 最初在 case 的 `plot.py` 里加了
+   `theme_test()`，于是量的是一个**错误的对象**：上游 `tests/testthat/test-guide-axis.R`
+   的 `"guide_axis_theta sets relative angle"` 只写
+   `theme(axis.line = element_line(colour = "black"))`，走默认 `theme_grey()`。
+   在 refs 环境照抄这条链重画（`pixi run -e refs Rscript`）得到 `fill: #EBEBEB`
+   ×1、`stroke: #FFFFFF` ×47、`stroke: #333333` ×40，与 expected.svg 同源；
+   而 `theme_test()` 画出来是白底无网格（对照 `upstream-guide-axis-axis-guides-basic`
+   的 expected：`#EBEBEB` 与 `#FFFFFF` 都是 0）。**结论：`theme_test()` 的定义本身
+   是对的，不要为了快照微调它；复刻脚本的主题链必须逐行照抄上游测试。**
 
 ## 与后续任务的接口
 
