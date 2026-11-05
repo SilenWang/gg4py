@@ -113,7 +113,7 @@ INVALID = "invalid"
 
 GLYPHS = {PASS: "✅", FAIL: "❌", PENDING: "⏳", SKIPPED: "⏭", INVALID: "⛔"}
 RED_STATES = {FAIL, INVALID}
-META_KEYS = {"family", "features", "ci", "title", "source", "tolerance", "notes"}
+META_KEYS = {"family", "features", "ci", "title", "source", "tolerance", "band", "notes"}
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +133,7 @@ class Case:
     title: str = ""
     source: str = "local"
     tolerance: dict[str, float] = field(default_factory=dict)
+    band: str | None = None
     expected: str = ""
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -140,6 +141,22 @@ class Case:
     @property
     def valid(self) -> bool:
         return not self.errors
+
+    @property
+    def png_tolerance(self) -> float | None:
+        """传给 `diff --tolerance` 的图级容差。
+
+        `tolerance.png` 显式写死就照它；否则 `band` 声明的档位上限（`report` →
+        5%），两者都没有时返回 None（diff 走 X4 的 2% 缺省）。
+        """
+        explicit = self.tolerance.get("png")
+        if explicit is not None:
+            return float(explicit)
+        if self.band is not None:
+            tiers = _tiers_module()
+            if tiers is not None:
+                return float(tiers.BAND_CAPS.get(self.band, (0.02, 0.01))[0])
+        return None
 
     @property
     def format(self) -> str:
@@ -192,6 +209,10 @@ def _meta_errors(meta: Any) -> tuple[dict[str, Any], list[str]]:
     if not isinstance(source, str):
         errors.append("meta.toml 的 `source` 必须是字符串")
         source = "local"
+    band = meta.get("band")
+    if band is not None and not isinstance(band, str):
+        errors.append('meta.toml 的 `band` 必须是字符串（如 `band = "report"`）')
+        band = None
     suffix = " / ".join(EXTERNAL_SOURCE_PREFIXES)
     if ci is True and not _external_source(source):
         errors.append(
@@ -208,6 +229,7 @@ def _meta_errors(meta: Any) -> tuple[dict[str, Any], list[str]]:
             "title": meta.get("title", "") if isinstance(meta.get("title", ""), str) else "",
             "source": source,
             "tolerance": {k: float(v) for k, v in tolerance.items() if isinstance(v, (int, float))},
+            "band": band,
         },
         errors,
     )
@@ -366,6 +388,15 @@ def load_case(directory: Path) -> Case:
     case.title = values.get("title", "")
     case.source = values.get("source", "local")
     case.tolerance = values.get("tolerance", {})
+    case.band = values.get("band")
+    if case.band is not None:
+        tiers = _tiers_module()
+        if tiers is None:
+            case.errors.append("`band` 需要 tools/cases/snapshot_tiers.py，当前检出里没有它")
+        else:
+            problem = tiers.explicit_band_error(case.name, case.band)
+            if problem:
+                case.errors.append(problem)
 
     unknown = sorted(set(meta) - META_KEYS) if isinstance(meta, Mapping) else []
     if unknown:
@@ -492,6 +523,19 @@ def _snapshots_module():
     return module
 
 
+def _tiers_module():
+    """按需加载 `tools/cases/snapshot_tiers.py`（档位上限的唯一来源）。"""
+    path = REPO / "tools" / "cases" / "snapshot_tiers.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("gg_snapshot_tiers", path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def upstream_snapshot_ledger() -> dict[str, Any] | None:
     """静态矩阵里的同一张台账（SIL-822）：总数 / 已纳管 / 缺口 / 按 owner 分布。
 
@@ -565,7 +609,7 @@ class TaskBackend:
     def diff(self, case: Case) -> StepResult:
         report = case.directory / "current" / "diff_report.md"
         args = ["diff", str(case.directory), "--report", str(report), "--json"]
-        tolerance = case.tolerance.get("png")
+        tolerance = case.png_tolerance
         if tolerance is not None:
             args.extend(["--tolerance", f"{tolerance:g}"])
         result = self._run(*args)
@@ -737,7 +781,10 @@ def _code(text: str) -> str:
 
 
 def _tolerance_text(case: Case) -> str:
-    if not case.tolerance:
+    tolerance = case.png_tolerance
+    if case.band is not None:
+        return f"{case.band} 档（png {tolerance:g}）" if tolerance is not None else case.band
+    if tolerance is None:
         return "默认（X4）"
     return " / ".join(f"{fmt} {value:g}" for fmt, value in sorted(case.tolerance.items()))
 

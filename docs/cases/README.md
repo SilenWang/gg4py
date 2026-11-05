@@ -154,6 +154,7 @@ ci = true                             # 可选，缺省 true；false = 只登记
 title = "geom_point：基础散点 + 分组着色"   # 可选
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"  # ci = true 时必填且必须是外部来源
 tolerance = { png = 0.02 }            # 可选：覆盖图级差异阈值（比例，[0, 1)）
+band = "report"                       # 可选：显式档位（目前只有 report，仅 matrix-report-* 可用）
 notes = "…"                           # 可选：自由文本
 ```
 
@@ -165,6 +166,10 @@ notes = "…"                           # 可选：自由文本
 - `ci = false` 用于「先登记、参考图后补」的草稿 case：矩阵里有它，CI 不跑它。
 - `tolerance` 只认 `png`（所有 case 都按像素比）；它收紧的是**图级差异**上限，
   平均差异仍按 `docs/notes/snapshot-policy.md` 的 1%。
+- `band` 是**显式档位**：目前只有 `band = "report"`（图级 5% / 均值 1%），仅
+  允许 `matrix-report-*` 这类密集报告图声明；不写就按 `expected.svg` 的
+  `text_load` 自动推断。`cases:matrix` 读这个键决定传给 `diff` 的容差，
+  其它 case 写它会被判 `⛔ invalid`（`docs/notes/snapshot-policy.md` §report）。
 - 默认 2% 抓不住文字宽度这一级的偏差：文字类 case 要在 `tolerance` 里收紧
   （`geom-text-cjk` 用 `0.014`），理由与实测数字见 `docs/notes/snapshot-policy.md`
   §文字类 case。
@@ -343,18 +348,21 @@ M1 复验暴露的「单独都对、组合就错」（SIL-715 #7）在 `matrix-*
 （位置 × 方向 × 个数）必须每格至少一条 case，且这批 case 的族 / 特性都已登记进
 `taxonomy.toml`。
 
-`ci = false` 的三条是 SIL-715 #7 的缺口本身（`notes` 里带 SIL-715，报告见
-`.cases-matrix/report.md`）：
+SIL-825 把其中两条 report-style 密集图纳入 CI，并用新增的 `report` 档
+（图级 5% / 均值 1%，`band = "report"` 显式声明，见
+`docs/notes/snapshot-policy.md` §report）：
 
-| case | 图级 / 均值 | 归因 |
+| case | 图级 / 均值 | 现状 |
 | --- | --- | --- |
-| `matrix-report-facet-wrap-grey` | 4.48% / 0.78% | 默认主题的网格线 + 四块面板的文字行：逐行 1px 抗锯齿差 |
-| `matrix-report-facet-grid-grey` | 4.53% / 0.92% | 同上 + 行列 strip |
-| `matrix-report-facet-polar-grey` | 23.99% / 3.28% | **面板尺寸**：R 的面板 64.80pt，我们 68.21pt（`panel_area` 少留 6.8pt），整图缩放不同 |
+| `matrix-report-facet-wrap-grey` | 1.95% / 0.38% | `ci = true`，`band = "report"` |
+| `matrix-report-facet-grid-grey` | 1.75% / 0.38% | `ci = true`，`band = "report"` |
+| `matrix-report-facet-polar-grey` | 8.54% / 1.30% | `ci = false`：极坐标 + `theme_grey` 的面板尺寸仍不同（M3-1 的 radial 版面缺口），5% 档也装不下 |
 
+前两条的实测已降到 2% 以内，`report` 档留的是密集报告图的余量（文字行 + 网格线的
+逐行 1px 抗锯齿差），不是把普通 case 放进去的通道——白名单只管 `matrix-report-*`。
 最后一条是真实缺口（不是阈值问题）：极坐标 + `theme_grey` 时 R 在面板四周为
-theta / r 轴标签留出的空间比我们多，面板因此放大 5.3%。`theme_void` 下的极坐标
-组合（A / D / F 组）都在 1.1% 以内。
+theta / r 轴标签留出的空间比我们多。`theme_void` 下的极坐标组合（A / D / F 组）
+都在 1.1% 以内。
 
 顺带修掉的组合 bug（SIL-743）：**横向图例的水平居中区**。R 的 `guide-box-bottom`
 只跨 panel 列，`facet_grid` 的行 strip 自成一列；此前用整个 `panel_area` 居中，图例

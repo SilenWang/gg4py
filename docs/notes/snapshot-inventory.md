@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**272**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**39**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **39** 条（移交 M3）
+- 已纳管：**274**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**37**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -17,12 +17,12 @@
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `guide-axis` | m3 | 23 | 19 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
-| `annotate` | m3 | 2 | 0 | 2 |
 | `coord-map` | m3 | 2 | 0 | 2 |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
+| `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 272 | 39 |
+| **合计** | — | 311 | 274 | 37 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -66,6 +66,8 @@
 | `aes/stat-count.svg` | `upstream-aes-stat-count` |
 | `aes/stat-identity-width-0-5.svg` | `upstream-aes-stat-identity-width` |
 | `aes/stat-identity.svg` | `upstream-aes-stat-identity` |
+| `annotate/annotation-borders-utah.svg` | `upstream-annotate-utah` |
+| `annotate/line-matches-points.svg` | `upstream-annotate-segment-transform` |
 | `coord-cartesian/clip-on-by-default-only-inside-visible.svg` | `upstream-coord-cartesian-clip-on` |
 | `coord-cartesian/clip-turned-off-both-inside-and-outside-visible.svg` | `upstream-coord-cartesian-clip-off` |
 | `coord-cartesian/contract-range.svg` | `upstream-coord-cartesian-contract-range` |
@@ -335,17 +337,6 @@
 
 ## 已知缺口
 
-### `annotate` — 2 条 · SIL-715 · m3
-
-`annotate()` 的边框与线段共形（`annotation_borders()` / `annotation_segment()`）未复刻。
-
-<details><summary>快照</summary>
-
-- `annotate/annotation-borders-utah.svg`
-- `annotate/line-matches-points.svg`
-
-</details>
-
 ### `coord-map` — 2 条 · SIL-715 · m3
 
 `coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。
@@ -516,16 +507,6 @@ SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一
 
 ### `patterns` — 1 条 · SIL-715 · m3
 
-SIL-796：`geom_col(fill = pattern(...))` 已能渲染（`tile_pattern()` 走 IR `TilePattern`），但相位差 31%——`TilePatternSpec.resolve()` 用单节点 bbox 折 npc，R 的 `pattern()` 内容按**图层 bbox** 的 npc（`userSpaceOnUse`）并锚在图层中心；单根 bar 的 bbox 让每根柱的图案各从自身左下角起算。卡在「图案内容坐标系 = 图层包围盒」。
-
-<details><summary>快照</summary>
-
-- `patterns/single-pattern-fill.svg`
-
-</details>
-
-### `patterns` — 1 条 · SIL-715 · m3
-
 SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。
 
 <details><summary>快照</summary>
@@ -551,5 +532,15 @@ SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4,
 <details><summary>快照</summary>
 
 - `patterns/pattern-fills-with-alpha.svg`
+
+</details>
+
+### `patterns` — 1 条 · SIL-715 · m3
+
+SIL-825 实测 31.02% / 26.36%（格宽两边都是 14.17pt，差的是相位）：`patterns.toml` 的 case `upstream-patterns-single-pattern-fill` 已能画，但 `TilePatternSpec.resolve()` 把内容画在 tile 局部坐标里，R 的 `pattern()` 内容按**整层 grob 的 bbox** 折 npc（`userSpaceOnUse`）再按 tile 裁剪。修复点只有一处：给 `tile_pattern()` 一个「内容用图层 bbox」的口径，并把 `draw` 的坐标系从 tile 换成 bbox。
+
+<details><summary>快照</summary>
+
+- `patterns/single-pattern-fill.svg`
 
 </details>

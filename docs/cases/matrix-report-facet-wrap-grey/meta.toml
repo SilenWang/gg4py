@@ -1,7 +1,7 @@
 family = "matrix"
-features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-cartesian", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
-ci = false
-title = "2×2 facet_wrap × coord_cartesian × 右侧单图例"
+features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
+ci = true
+title = "2×2 facet_wrap × 右侧单图例 × report 档"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
-tolerance = { png = 0.02 }
-notes = "SIL-715 #7 report-style：2×2 分面 + colour 图例 + labs + theme_grey + 默认 expand。"
+band = "report"
+notes = "SIL-825：report-style 密集图（2×2 分面 + colour 图例 + labs + theme_grey + 默认 expand）走 report 档（图级 5% / 均值 1%）；SIL-825 实测 1.95% / 0.38%，2% 也能过，档位留的是密集图的余量。"

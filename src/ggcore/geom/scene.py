@@ -502,6 +502,8 @@ def _axis_title_text(build: PlotBuild, aesthetic: str) -> str | None:
     if aesthetic in labels:
         value = labels[aesthetic]
         return None if value is None else str(value)
+    # 上游 `setup_plot_labels()`：逐层的 computed mapping，`unlabelled` 的层
+    # （`annotate()` 的 `aes_all()`）跳过。`raw_mappings` 已在 build 期按这个规则筛过。
     for mapping in getattr(build, "raw_mappings", ()):
         if aesthetic in mapping:
             return str(mapping[aesthetic])

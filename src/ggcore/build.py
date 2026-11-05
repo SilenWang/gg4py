@@ -972,7 +972,8 @@ class PlotBuild:
     labels: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
     #: `guides()` 的 component（按键 = 美学名或 guide 名）。
     guides: Mapping[str, Any] = field(default_factory=lambda: MappingProxyType({}))
-    #: 每层合并后的原始映射（`aes()` 的原文）：图例标题与「哪些图层映射了这个美学」。
+    #: 每层合并后的原始映射（`aes()` 的原文）：轴标题与「哪些图层映射了这个美学」。
+    #: `unlabelled` 的图层（`annotate()` 的 `aes_all()`）不进这里。
     raw_mappings: tuple[Mapping[str, Any], ...] = ()
     #: `annotation_*()`（M2-S2）：scene 的轴阶段绘制，不进图层流水线。
     annotations: tuple[Any, ...] = ()
@@ -1324,7 +1325,9 @@ def build_plot(plot: ggplot) -> PlotBuild:
         rows_dropped=count_rows_dropped(scaled),
     )
     notes = tuple(note for build in builds for note in build.notes) + panel_params.warnings()
-    raw_mappings = tuple(dict(_resolve_mapping(plot, layer)) for layer in plot.layers)
+    raw_mappings = tuple(
+        dict(_resolve_mapping(plot, layer)) for layer in plot.layers if not layer.unlabelled
+    )
     return PlotBuild(
         layers=builds,
         scales=scales,
@@ -1495,7 +1498,9 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     notes = tuple(note for build in builds for note in build.notes) + tuple(
         note for panel in panels for note in panel.panel_params.warnings()
     )
-    raw_mappings = tuple(dict(_resolve_mapping(plot, layer)) for layer in layers)
+    raw_mappings = tuple(
+        dict(_resolve_mapping(plot, layer)) for layer in layers if not layer.unlabelled
+    )
     return PlotBuild(
         layers=tuple(builds),
         scales=scales.shared,
