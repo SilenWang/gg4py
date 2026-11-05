@@ -281,6 +281,27 @@ M0 交接的遗留口径在本任务收口：
 `axis-l` 建模，再看 `respect` 解出来的 null 与实际绘制方形的关系——不要再用
 「可用高度减 17.36」这类数值拟合（SIL-839 试过：方形尺寸对上了，但居中位置差 9.7pt）。
 
+**`respect` 不是按 null 权重分配，而是整体等比缩放（SIL-839 实测）**：把同一张图的
+panel 列从 `1null` 改成 `2null` 再 draw，panel 从 554.39×554.39 变成 683.93×341.97，
+而**固定列也被一起缩放**——panel 的左边界从 `1.357in` 移到 `0.460in`（`ylab-l` /
+`axis-l` 这些 `grobwidth` / `points` 单位跟着变了）。把 panel 行改成 `2null` 同样让左边界
+跳到 `3.274in`。所以 `_aspect_panel_area` **不能**按「两轴 null 的权重比例」算，也不该引入
+常数：grid 在 `respect = TRUE` 时先把 fixed 单位与 null 一起按比例缩放，再让 null 相等。
+
+`coord_sf()` 的同一次实测（`r-sf` 已进 refs 环境）：
+
+| 项 | 值 |
+| --- | --- |
+| `widths` | `5.5, 0, 0, 0, 12.637(ylab-l), **sum(0cm, 1null, 0.8287cm, 0null, max(0,-0.0966cm), 0.0966cm)**(axis-l), 1null(panel), **sum(0.0966cm, max(0,-0.0966cm), 0null, 0.7790cm, 0.8478cm, 1null, 0cm)**(axis-r), 12.637(ylab-r), …, 5.5` |
+| axis-l 的**固定**部分 | 0.8287 + 0.0966 = 0.9253cm ＝ 26.22pt（`convertWidth` 对它给 26.33，null 不计） |
+| axis-r 的固定部分 | 1.7234cm ＝ 48.83pt |
+| panel viewport | 397.65 × 528.19（grid pt，**非方形**：528.19/397.65 = 1.328 = sf 的 aspect） |
+| 实际绘制内容 | 383.48 × 509.38（SVG pt）＝ cell × **0.9644**（等比缩放，不是减常数；radial 那条同样是等比：535.11 / 552.45 = 0.9686） |
+
+**下一轮照这张表复刻**：先按 `1null + 固定 cm` 给三类列（panel / axis-l / axis-r）建模，
+把 grid 的「整体等比缩放」写进 `_aspect_panel_area`，再核对 0.9644 / 0.9686 这同一个
+缩放因子；不要再用「减 17.36」这类常数（regression：数值拟合会让居中位置差 9.7pt）。
+
 **`axis-b` 行（SIL-790 已对齐）**：R 的 `CoordPolar$render_axis_h()` 返回
 `draw_axis(NA, "", "bottom")`，`ggplotGrob()` 仍给底部轴留一行：刻度长度 +
 theta 标签行。标签行高来自 `titleGrob`（`grobheight + |cos θ|·descent`），对
