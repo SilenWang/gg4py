@@ -30,10 +30,6 @@ from ggcore.metrics.catalog import (
     ResolvedFace,
 )
 from ggcore.metrics.faces import FAMILY_FACES, FontFace, available_styles, resolve_face
-
-# 浏览器 / Pyodide 路径的 `ggcore.units.Metrics`：读兜底度量表，不需要 HarfBuzz
-# 或字体文件（SIL-824）。放在最后 import：它依赖上面几个子模块已经就绪。
-from ggcore.metrics.fallback import TableMetrics, default_metrics
 from ggcore.metrics.provider import (
     FontMetrics,
     MetricProvider,
@@ -85,11 +81,9 @@ __all__ = [
     "ShapedRun",
     "TableBackend",
     "TableFont",
-    "TableMetrics",
     "available_styles",
     "clusters",
     "decode_table",
-    "default_metrics",
     "encode_table",
     "is_supported",
     "resolve_face",

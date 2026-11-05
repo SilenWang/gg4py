@@ -384,11 +384,7 @@ class DotplotRenderer(GeomRenderer):
         table = ColumnTable(columns, nrows=data.nrows)
         count = table_numeric(table, "count", default=1.0)
         count = np.where(np.isfinite(count), np.maximum(count, 0), 0.0)
-        # 索引数组一律 `np.intp`：`np.repeat()` 会把 repeats 按 **safe** 规则转成
-        # 索引 dtype，而 wasm32（Pyodide）的 `np.intp` 是 int32——传 int64 数组会直接
-        # `TypeError`，同一份代码在浏览器里就跑不起来（SIL-824 的全量 case 门禁
-        # 发现的问题）。intp 在两侧都是「索引该有的宽度」，值域也够（行数 < 2^31）。
-        expanded = np.repeat(np.arange(table.nrows, dtype=np.intp), count.astype(np.intp))
+        expanded = np.repeat(np.arange(table.nrows), count.astype(np.int64))
         table = row_slice(table, expanded)
         table = ColumnTable([(name, table.column(name)) for name in table.names], nrows=table.nrows)
         # 行数变了：width 也要按展开后的行取（R 的 `data[rep(...), ]` 之后）。
