@@ -51,6 +51,7 @@
 | --- | --- |
 | [`notes/pyodide.md`](notes/pyodide.md) | CPython 与 Pyodide 的 plot→IR 逐字节一致（M0-10） |
 | [`notes/viewer.md`](notes/viewer.md) | 浏览器查看器：IR → DOM SVG，零 wasm |
+| [`notes/editor.md`](notes/editor.md) | 浏览器代码编辑器：CodeMirror + Pyodide 执行 + 导出（M3-4） |
 | [`notes/viewer-parity.md`](notes/viewer-parity.md) | 两条渲染腿的语义对拍（生成物：`pixi run viewer:parity`） |
 | [`notes/gallery-audit.md`](notes/gallery-audit.md) | r-graph-gallery 35 图人工核对与逐张归因 |
 

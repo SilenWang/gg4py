@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>gg4py editor · 在浏览器里写 ggcore 代码</title>
+    <!-- 受管字体的 @font-face（`pixi run viewer:build` 生成）。导出时 `export.js`
+         会把实际用到的字面内嵌进 SVG，所以屏幕上与导出的图用的是同一份字体。 -->
+    <link rel="stylesheet" href="../viewer/fonts.css" />
+    <link rel="stylesheet" href="./editor.css" />
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1>gg4py editor</h1>
+        <span class="sub">在浏览器里写 <code>import ggcore</code> 的代码</span>
+      </div>
+      <div id="badges">
+        <span class="badge" id="badge-state" data-state="idle">启动中</span>
+        <span class="badge" id="badge-runtime">pyodide —</span>
+        <span class="badge" id="badge-packages">包：无（懒加载）</span>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+    </header>
+
+    <main>
+      <section id="pane-code" aria-label="代码">
+        <div class="pane-head">
+          <label class="examples-label" for="examples">示例</label>
+          <select id="examples" aria-label="示例库"></select>
+          <button id="reset-example" type="button" title="恢复这个示例的原文">重置</button>
+        </div>
+        <div id="editor-host"></div>
+        <details id="data-panel">
+          <summary>数据输入 · <span id="data-mode-label">CSV</span></summary>
+          <div class="tabs" role="tablist">
+            <button role="tab" type="button" data-mode="csv" aria-selected="true">CSV → data.csv</button>
+            <button role="tab" type="button" data-mode="inline" aria-selected="false">内联数据 → DATA</button>
+          </div>
+          <p class="hint" id="data-hint"></p>
+          <textarea id="data-text" spellcheck="false" autocomplete="off"></textarea>
+        </details>
+      </section>
+
+      <section id="pane-plot" aria-label="输出">
+        <div class="pane-head toolbar">
+          <button id="run" class="primary" type="button" disabled>运行 <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+          <span class="spacer"></span>
+          <label>倍数
+            <select id="scale">
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+          <label>DPI <input id="dpi" type="number" min="36" max="600" step="24" value="72" /></label>
+          <label>JPG 质量 <input id="quality" type="range" min="0.4" max="1" step="0.02" value="0.92" /></label>
+          <span class="spacer"></span>
+          <button type="button" data-export="svg">SVG</button>
+          <button type="button" data-export="png">PNG</button>
+          <button type="button" data-export="jpg">JPG</button>
+        </div>
+        <div id="stage-area"><p class="placeholder">运行时启动中…</p></div>
+        <p id="status-line" class="status">等待运行时</p>
+        <div id="console">
+          <div class="console-head"><span>控制台</span><span id="console-count"></span></div>
+          <pre id="stdout" class="out"></pre>
+          <pre id="stderr" class="err"></pre>
+          <pre id="traceback" class="tb" hidden></pre>
+        </div>
+        <dl id="meta"></dl>
+      </section>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

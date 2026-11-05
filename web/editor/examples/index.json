@@ -1,0 +1,53 @@
+{
+  "examples": [
+    {
+      "name": "hello",
+      "label": "1 · 最小散点图",
+      "note": "numpy；ggplot + geom_point + theme_minimal"
+    },
+    {
+      "name": "line",
+      "label": "2 · 折线 + 分组颜色",
+      "note": "numpy；colour 映射到离散列，自动出图例"
+    },
+    {
+      "name": "bars",
+      "label": "3 · 柱状图",
+      "note": "numpy；geom_col + 分组"
+    },
+    {
+      "name": "boxplot",
+      "label": "4 · 箱线图",
+      "note": "numpy；geom_boxplot 的五数 + 离群点"
+    },
+    {
+      "name": "facets",
+      "label": "5 · 分面",
+      "note": "numpy；facet_wrap"
+    },
+    {
+      "name": "polar",
+      "label": "6 · 极坐标",
+      "note": "numpy；coord_polar 玫瑰图"
+    },
+    {
+      "name": "contour",
+      "label": "7 · 等值线填充",
+      "note": "numpy + contourpy（wasm 轮子懒加载）"
+    },
+    {
+      "name": "pandas",
+      "label": "8 · pandas 输入",
+      "note": "numpy + pandas（wasm 轮子懒加载）"
+    },
+    {
+      "name": "csv",
+      "label": "9 · CSV 数据",
+      "note": "numpy；读数据面板写入的 data.csv",
+      "data": {
+        "mode": "csv",
+        "text": "class,value\na,3.2\nb,4.8\nc,2.1\nd,5.6\ne,4.1\nf,3.0\n"
+      }
+    }
+  ]
+}
