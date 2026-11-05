@@ -672,3 +672,26 @@ expected.svg 实测圆半径 = 428.10 / 2 = 214.05
 **比较规则（此后一律按这个来）**：拿 `expected.svg` 的绝对坐标和我们的 SVG 比之前，
 先除以 0.9686，或只比「尺寸 / panel cell」的比值——**不要拿绝对像素直接相减**。
 `polar.point()` 的 0.4 是对的，不需要改。
+
+**`coord$transform` 的直接输出：R 的 npc 半径就是 0.4（SIL-839，非反解）**
+
+```r
+b <- ggplot_build(p); pp <- b$layout$panel_params[[1]]; coord <- b$layout$coord
+coord$transform(data.frame(theta = 0, r = pp$r.range[2]), pp)
+#   theta    r        x         y
+# 5.555758  0.4  0.234020  0.7987551      ← r 列仍是 0.4，x/y 就是 0.4·sin/+0.5
+```
+
+**`CoordRadial$transform()` 对 `r.range` 上界返回 0.4，不是 0.3875。**
+这条是变换层的直接输出，不是从像素反解，所以它是几何侧的终值。
+
+于是 `0.9686` 只能发生在 **transform 之后**（绘制 / viewport 层）。而 `current.viewport()`
+已经量过：`panel.9-7-9-7`、xscale/yscale `0..1`、npc `554.52`、**无子 viewport**——
+**几何侧没有任何 0.9686**。
+
+**由此：`expected.svg` 里 `428.10` 那个 bbox 的测量本身可疑**——它要么不是圆的直径
+（`0.8 × 552.45 = 441.96` 才是），要么量的不是背景 polygon。在这一点查清之前，
+不要再用它推任何「基准错 / 半径差」。
+
+**「绘制内容区 535.11」标注为不可用作前提**：它是 `214.05 / 0.4` 反解出来的，
+**不是独立测量**（SIL-839 复核）。用它证明「基准错了」是循环论证。
