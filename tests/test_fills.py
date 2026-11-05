@@ -1,11 +1,13 @@
 """渐变 / pattern 的**写方**口径（SIL-751，`ggcore.fills`）。
 
-三层：
+四层：
 
 1. 单位解析：`npc` 是「被填充对象包围盒的比例」，`pt` 是节点局部坐标直通；
-2. 图案的 tile 以 `(x, y)` 为中心（R `pattern(just = "centre")`）；
+2. 图案的 tile 以 `(x, y)` 为中心（R `pattern(just = "centre")`），内容按**整层
+   bbox** 的 npc 摆（SIL-833）；
 3. 端到端：`geom_col(fill = 渐变)` 与 `theme(panel.background = element_rect(填渐变))`
-   都能落到 IR 的最终几何上，且 `Node` 拒绝「还没解析的规格」。
+   都能落到 IR 的最终几何上，且 `Node` 拒绝「还没解析的规格」；
+4. 逐行填充值 / 标度承载 FillSpec / `group = FALSE`（SIL-833 的 `pattern-fills-*`）。
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from ggcore.build import build_plot
 from ggcore.fills import (
     linear_gradient,
     node_bbox,
-    pattern_rect,
+    pattern_npc_rect,
     radial_gradient,
     tile_pattern,
 )
@@ -72,9 +74,9 @@ def test_radial_focal_point_is_resolved_too() -> None:
 def test_pattern_tile_is_centred_on_the_nominal_point() -> None:
     seen: list[tuple[float, float, float, float]] = []
 
-    def draw(tile: tuple[float, float, float, float]) -> list[Node]:
-        seen.append(tile)
-        return [pattern_rect(tile, "#E45756")]
+    def draw(bbox: tuple[float, float, float, float]) -> list[Node]:
+        seen.append(bbox)
+        return [pattern_npc_rect(bbox, 0.5, 0.5, 0.2, 0.1, "#E45756")]
 
     fill = tile_pattern(draw, width=0.2, height=0.1)
     resolved = fill.resolve(BOX)
@@ -82,19 +84,50 @@ def test_pattern_tile_is_centred_on_the_nominal_point() -> None:
     # 中心 (60, 120)，tile 20 × 20 → 左上角 (50, 110)
     assert resolved.size == pytest.approx((20.0, 20.0))
     assert resolved.origin == pytest.approx((50.0, 110.0))
-    assert seen == [(50.0, 110.0, 70.0, 130.0)]
+    # 内容拿到的是**整层 bbox**（不是 tile 窗口）：R `pattern()` 的内容坐标系
+    assert seen == [BOX]
     assert resolved.content[0].bufs["rect"].tolist() == [[50.0, 110.0, 70.0, 130.0]]
 
 
-def test_pattern_pt_size_and_origin() -> None:
-    """`units="pt"` 时 x / y / width / height 都是 pt 绝对坐标（R 的 `default.units`）。"""
+def test_pattern_content_spans_the_whole_bbox() -> None:
+    """内容是 bbox npc，不是 tile 局部坐标（SIL-833 的相位口径）。
+
+    同一份内容被每块 tile 裁剪，所以内容跨整个 bbox：`rectGrob(x = 0.25, y =
+    0.25, width = 0.5, height = 0.5)` 画出 bbox 的左下四分之一（局部 y 向下）。
+    """
     fill = tile_pattern(
-        lambda tile: [pattern_rect(tile, "#000000")],
+        lambda bbox: [pattern_npc_rect(bbox, 0.25, 0.25, 0.5, 0.5, "#000000")],
+        width=0.2,
+        height=0.1,
+    )
+    resolved = fill.resolve(BOX)
+    assert resolved.content[0].bufs["rect"].tolist() == [[10.0, 120.0, 60.0, 220.0]]
+
+
+def test_pattern_pt_size_with_an_npc_anchor() -> None:
+    """`units="pt"` 只决定 tile 尺寸；锚点默认仍是 bbox 的 npc（R 的缺省）。"""
+    fill = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 1.0, 1.0, "#000000")],
+        width=8.0,
+        height=8.0,
+        units="pt",
+    )
+    resolved = fill.resolve(BOX)
+    assert resolved.size == pytest.approx((8.0, 8.0))
+    # bbox 中心 (60, 120) − 半块 tile
+    assert resolved.origin == pytest.approx((56.0, 116.0))
+
+
+def test_pattern_pt_anchor() -> None:
+    """`anchor_units="pt"` 时 `x` / `y` 是节点局部坐标（R 的 `default.units`）。"""
+    fill = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 1.0, 1.0, "#000000")],
         width=8.0,
         height=8.0,
         x=60.0,
         y=120.0,
         units="pt",
+        anchor_units="pt",
     )
     resolved = fill.resolve(BOX)
     assert resolved.size == pytest.approx((8.0, 8.0))
@@ -192,3 +225,110 @@ def test_build_keeps_the_fill_spec_out_of_the_data_columns() -> None:
     assert build.layers[0].params["fill"] is spec
     column = build.layers[0].data.column("fill")
     assert all(isinstance(value, str) for value in column.values.tolist())
+
+
+def test_fill_spec_resolves_against_the_whole_layer_bbox() -> None:
+    """逐元素的填充规格共用**整层**包围盒（SIL-833）。
+
+    R 的 `pattern()` 内容按被填充 grob 的 bbox 折 npc；ggplot2 把一层的全部元素
+    画成一个 grob。IR 里一层可能拆成多条指令（逐元素 gpar），所以 `Scene` 写 IR
+    前按 `layer_tag` 取并集——只按单条指令的 bbox 折，图案的相位会逐元素漂移。
+    """
+    from dataclasses import replace
+
+    from ggcore.grobs import g_tree, rect_grob, scene
+    from ggcore.viewport import Device, ViewportTree, gpar, viewport
+
+    boxes: list[tuple[float, float, float, float]] = []
+
+    def make(tag: str) -> object:
+        def draw(bbox: tuple[float, float, float, float]) -> list[Node]:
+            boxes.append(bbox)
+            return [pattern_npc_rect(bbox, 0.5, 0.5, 0.1, 0.1, "#000000")]
+
+        return tile_pattern(draw, width=0.05, height=0.05)
+
+    first, second = make("a"), make("b")
+    tree = ViewportTree(Device(2.0, 2.0))
+    tree.push(viewport("page", clip="off"))
+    left = replace(
+        rect_grob(0.2, 0.5, 0.2, 0.4, gp=gpar(fill=first), name="left"), layer_tag="layer-0"
+    )
+    right = replace(
+        rect_grob(0.8, 0.5, 0.2, 0.4, gp=gpar(fill=second), name="right"), layer_tag="layer-0"
+    )
+    ir_scene = scene(g_tree(left, right, name="layer"), tree).to_ir_scene()
+
+    # 两条矩形是 npc 0.1..0.3 与 0.7..0.9（144pt 页面）：整层包围盒是两者的并集。
+    assert len(boxes) == 2
+    for bbox in boxes:
+        assert bbox == pytest.approx((14.4, 43.2, 129.6, 100.8))
+    patterns = [fill for _, fill in _fills(ir_scene) if isinstance(fill, TilePattern)]
+    assert len(patterns) == 2
+    for pattern in patterns:
+        # 中心 (72, 72) 减半块 tile（宽 0.05×115.2、高 0.05×57.6）
+        assert pattern.origin == pytest.approx((69.12, 70.56))
+
+
+def test_gradient_group_flag_is_part_of_the_spec() -> None:
+    """`group = FALSE` 是 R 的逐元素口径：每个元素各用各的 bbox（SIL-833）。"""
+    layer = plot_linear_gradient(["#000000", "#FFFFFF"])
+    element = plot_linear_gradient(["#000000", "#FFFFFF"], group=False)
+    assert layer.group is True
+    assert element.group is False
+    # 同一份 bbox 下两者解析结果相同——差别只在**用谁的 bbox**（见 Scene）。
+    assert layer.resolve(BOX) == element.resolve(BOX)
+
+
+def test_per_row_fill_list_becomes_per_row_specs() -> None:
+    """`fill = list(渐变, 图案, "black")` → 逐行的填充（R 的按模回收）。"""
+    spec = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 0.25, 0.25, "#000000")],
+        width=0.1,
+        height=0.1,
+    )
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="v"))
+        + geom_col(fill=[plot_linear_gradient(["#000000", "#FFFFFF"], group=False), spec])
+        + scale_x_discrete()
+        + scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + theme_void()
+        + theme(**{"legend.position": "none"})
+    )
+    scene = build_scene({"plot": p, "size": [4, 3]})
+    kinds = [type(fill).__name__ for _, fill in _fills(scene)]
+    assert "LinearGradient" in kinds
+    assert "TilePattern" in kinds
+
+
+def test_manual_scale_can_carry_fill_specs() -> None:
+    """`scale_fill_manual(values = <FillSpec>)`：标度映射后仍是填充对象。"""
+    from ggcore.plot import scale_fill_manual
+
+    spec = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 0.25, 0.25, "#000000")],
+        width=0.1,
+        height=0.1,
+    )
+    gradient = plot_linear_gradient(["#000000", "#FFFFFF"])
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="v", fill="cls"))
+        + geom_col()
+        + scale_fill_manual(values=[gradient, spec, "black"])
+        + scale_x_discrete()
+        + scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + theme_void()
+    )
+    build = build_plot(p)
+    fills = build.layers[0].params["fill"]
+    assert isinstance(fills, tuple)
+    assert isinstance(fills[0], type(gradient))
+    assert isinstance(fills[1], type(spec))
+    # 摊成逐行值之后仍然是**映射**：图例照建（`mapped_fill`）。
+    assert build.layers[0].mapped_fill is True
+    from ggcore.guide import build_guides
+
+    guides = [guide for guide in build_guides(build) if "fill" in guide.aesthetics]
+    assert guides
+    keys = [key.values.get("fill") for key in guides[0].keys]
+    assert any(isinstance(key, TilePattern | type(gradient)) for key in keys)

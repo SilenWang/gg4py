@@ -1,7 +1,10 @@
 family = "patterns"
 features = ["pattern-fill"]
-ci = false
+ci = true
 title = "上游快照：单个平铺图案填充"
 source = "upstream:tests/testthat/_snaps/patterns/single-pattern-fill.svg"
 tolerance = { png = 0.02 }
-notes = "SIL-796：卡点见 tools/upstream/snapshots.toml（图案内容坐标系按图层 bbox）。"
+notes = """图案内容按**整层 grob 的包围盒 npc** 摆（R `pattern()` 的内容坐标系，SIL-833）：
+1cm 的 tile 只决定裁剪窗口与重复周期，相位由内容与 bbox 的相对位置决定。
+SVG 后端写真正的 `<pattern>`（与 svglite 同结构），逐 tile 裁剪+平移的写法会让
+14pt 的棋盘格每条边都差半个像素（实测 14.6% → 1.24%）。"""

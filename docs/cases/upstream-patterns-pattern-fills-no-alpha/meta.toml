@@ -1,0 +1,8 @@
+family = "patterns"
+features = ["pattern-fill", "gradient-fill"]
+ci = true
+title = "上游快照：逐行混合填充（group = FALSE 渐变 + 图案）"
+source = "upstream:tests/testthat/_snaps/patterns/pattern-fills-no-alpha.svg"
+tolerance = { png = 0.02 }
+notes = """`fill = list(linearGradient(group = FALSE), radialGradient(group = FALSE), pattern(...), "black")`：
+渐变的 `group = FALSE` 逐元素折 npc、图案按整层 bbox 折 npc（SIL-833）。"""

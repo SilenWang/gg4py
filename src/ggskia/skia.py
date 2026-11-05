@@ -279,11 +279,7 @@ class _SkiaDevice(Device):
         内容平移 `(i·w, j·h)`、裁到窗口平移后的同一位移。
         """
         assert self.canvas is not None
-        if fill.extend is not Extend.REPEAT:
-            raise DeviceError(
-                f"图案只支持 extend=repeat，收到 {fill.extend.value}；"
-                "pad / reflect 对平铺没有两端渲染器一致的语义"
-            )
+        _require_repeat_pattern(fill)
         bounds = path.getBounds()
         if bounds.isEmpty():
             return
@@ -323,11 +319,15 @@ class _SkiaDevice(Device):
     def _fill_path(self, path: skia.Path, gpar: Any) -> None:
         """填充一条路径：图案走平铺，其余（纯色 / 渐变）走画笔。"""
         if isinstance(gpar.fill, TilePattern):
-            self._tile_path(path, gpar.fill, gpar.alpha)
+            self._pattern_fill(path, gpar.fill, gpar.alpha)
             return
         paint = self._paint(gpar, stroke=False)
         if paint is not None:
             self.canvas.drawPath(path, paint)
+
+    def _pattern_fill(self, path: skia.Path, fill: TilePattern, alpha: float) -> None:
+        """图案填充的**后端钩子**：缺省逐 tile 裁剪 + 平移画内容（矢量）。"""
+        self._tile_path(path, fill, alpha)
 
     def _stroke_and_fill(self, node: Any, path: skia.Path, *, fill: bool = True) -> None:
         assert self.canvas is not None
@@ -451,7 +451,7 @@ class _SkiaDevice(Device):
             if tiled:
                 path = skia.Path()
                 path.addRect(rect)
-                self._tile_path(path, node.gpar.fill, node.gpar.alpha)
+                self._pattern_fill(path, node.gpar.fill, node.gpar.alpha)
             else:
                 fill = self._paint(node.gpar, stroke=False)
                 if fill is not None:
@@ -467,7 +467,7 @@ class _SkiaDevice(Device):
             if tiled:
                 path = skia.Path()
                 path.addCircle(float(cx), float(cy), float(radius))
-                self._tile_path(path, node.gpar.fill, node.gpar.alpha)
+                self._pattern_fill(path, node.gpar.fill, node.gpar.alpha)
             else:
                 fill = self._paint(node.gpar, stroke=False)
                 if fill is not None:
@@ -1029,9 +1029,51 @@ class SkiaSvgDevice(_SkiaDevice):
         # 几何和丢掉的 `spreadMethod` 更正回来（`_rewrite_svg_gradients`）。
         self._svg_fills: list[Any] = []
         self._svg_rasters = []
+        #: 图案按**引用顺序**排队：`(TilePattern, 占位色槽)`。`_pattern_fill()`
+        #: 先用占位色把形状画下去，`_rewrite_svg_patterns()` 再把 `fill` 换成
+        #: `url(#gpat-N)` 并写出 `<pattern>` 定义（见该函数的门禁说明）。
+        self._svg_patterns: list[Any] = []
+        #: `id(TilePattern)` → 槽位。`TilePattern` 里有 `Node`（带 dict 缓冲），
+        #: 不可哈希，只能按对象身份去重；列表本身持有引用，id 不会复用。
+        self._svg_pattern_slots: dict[int, int] = {}
 
     def _note_gradient_fill(self, fill: Any) -> None:
         self._svg_fills.append(fill)
+
+    def _pattern_fill(self, path: skia.Path, fill: TilePattern, alpha: float) -> None:
+        """图案填到 SVG 里是**真的** `<pattern>`，不是逐 tile 裁剪。
+
+        R 的参考图（svglite）写的是 `<pattern>`，光栅器（resvg）按 tile 拼；
+        我们自己逐 tile 画「内容 + 矩形裁剪」时，tile 边界上的半像素覆盖率与
+        R 的整块 tile 拼接对不上——棋盘格这种每 14pt 一条边的图案会整片发灰
+        （SIL-833 的 `single-pattern-fill`：内容相位修对之后仍有 14.6%）。
+        所以这里只把**形状**画下去（占位色），图案本体交给 `_rewrite_svg_patterns()`。
+        """
+        _require_repeat_pattern(fill)
+        if any(node.kind not in _SVG_PATTERN_KINDS for node in fill.content):
+            # 内容里有 RECT / CIRCLE 之外的原语：退回逐 tile 的矢量写法（见
+            # `_tile_path`）。图案内容本来就该是简单几何，这条只是兜底。
+            self._tile_path(path, fill, alpha)
+            return
+        assert self.canvas is not None
+        slot = self._svg_pattern_slots.get(id(fill))
+        if slot is None:
+            slot = len(self._svg_patterns)
+            if slot > 0xFFFF:  # pragma: no cover - 一张图不会有两万个图案
+                raise DeviceError("图案太多：SVG 占位色的槽位用完了")
+            self._svg_pattern_slots[id(fill)] = slot
+            self._svg_patterns.append(fill)
+        paint = skia.Paint(
+            AntiAlias=True,
+            Color=skia.ColorSetARGB(
+                round(max(0.0, min(1.0, float(alpha))) * 255),
+                _PATTERN_PLACEHOLDER[0],
+                (slot >> 8) & 0xFF,
+                slot & 0xFF,
+            ),
+        )
+        paint.setStyle(skia.Paint.kFill_Style)
+        self.canvas.drawPath(path, paint)
 
     def _emit_glyphs(
         self,
@@ -1057,7 +1099,8 @@ class SkiaSvgDevice(_SkiaDevice):
         self._stream = None
         svg = _stable_svg_ids(bytes(data.bytes()))
         svg = _rewrite_svg_rasters(svg, self._svg_rasters)
-        return _rewrite_svg_gradients(svg, self._svg_fills)
+        svg = _rewrite_svg_gradients(svg, self._svg_fills)
+        return _rewrite_svg_patterns(svg, self._svg_patterns)
 
     def _abort(self) -> None:
         # 画布析构时会把半成品写进 stream；这里先放开画布再放手 stream。
@@ -1065,6 +1108,8 @@ class SkiaSvgDevice(_SkiaDevice):
         self._stream = None
         self._svg_fills = []
         self._svg_rasters = []
+        self._svg_patterns = []
+        self._svg_pattern_slots = {}
 
 
 _SVG_IMAGE_TAG = re.compile(
@@ -1120,6 +1165,136 @@ def _rewrite_svg_rasters(svg: bytes, rasters: list[tuple[bytes, bool, str]]) -> 
         return f"{tag}{match.group(2)}{quote}data:{mime};base64,{encoded}{quote}"
 
     return _SVG_IMAGE_TAG.sub(replace, svg.decode("utf-8")).encode("utf-8")
+
+
+def _require_repeat_pattern(fill: TilePattern) -> None:
+    """图案只支持 `extend = repeat`：pad / reflect 对平铺没有两端渲染器一致的语义。"""
+    if fill.extend is not Extend.REPEAT:
+        raise DeviceError(
+            f"图案只支持 extend=repeat，收到 {fill.extend.value}；"
+            "pad / reflect 对平铺没有两端渲染器一致的语义"
+        )
+
+
+#: 图案占位色的 R 通道：`#FE` 开头的颜色不当真颜色用，只用来在序列化后的 SVG
+#: 里认出「这条元素要换成 `url(#pattern)`」（G / B 两个通道编码槽位）。
+_PATTERN_PLACEHOLDER = (0xFE,)
+
+_SVG_TAG = re.compile(r"<svg\b[^>]*>")
+#: 图案内容只用得上这三种几何（`pattern_rect` / `pattern_circle` 的公共面）。
+_SVG_PATTERN_KINDS = {NodeKind.RECT, NodeKind.CIRCLE}
+
+
+def _svg_colour(value: Any) -> tuple[str | None, float]:
+    """IR 的 `(r, g, b, a)` → (`#RRGGBB`, alpha)；`None` 是「不画」。"""
+    if value is None or not isinstance(value, tuple) or len(value) != 4:
+        return None, 1.0
+    red, green, blue, alpha = (int(channel) for channel in value)
+    return f"#{red:02X}{green:02X}{blue:02X}", alpha / 255.0
+
+
+def _pattern_node_svg(node: Any) -> str | None:
+    """图案内容里的一个 IR 节点 → SVG 片段（局部坐标原样写）。"""
+    gpar = node.gpar
+    fill, fill_alpha = _svg_colour(gpar.fill)
+    stroke, stroke_alpha = _svg_colour(gpar.col)
+    style = ["stroke: none", "stroke-linecap: butt", "stroke-linejoin: miter"]
+    if fill is None:
+        style.insert(0, "fill: none")
+    else:
+        style.insert(0, f"fill: {fill}")
+        if fill_alpha < 1.0:
+            style.append(f"fill-opacity: {_svg_number(fill_alpha)}")
+    if stroke is not None:
+        style.extend(
+            [
+                f"stroke: {stroke}",
+                f"stroke-width: {_svg_number(float(gpar.lwd))}",
+                "stroke-linecap: round",
+                "stroke-linejoin: round",
+            ]
+        )
+        if stroke_alpha < 1.0:
+            style.append(f"stroke-opacity: {_svg_number(stroke_alpha)}")
+    body = "; ".join(style)
+    if node.kind is NodeKind.RECT:
+        parts = []
+        for x0, y0, x1, y1 in node.bufs["rect"]:
+            left, right = sorted((float(x0), float(x1)))
+            top, bottom = sorted((float(y0), float(y1)))
+            parts.append(
+                f'<rect x="{_svg_number(left)}" y="{_svg_number(top)}" '
+                f'width="{_svg_number(right - left)}" height="{_svg_number(bottom - top)}" '
+                f"style='{body}'/>"
+            )
+        return "".join(parts)
+    if node.kind is NodeKind.CIRCLE:
+        parts = []
+        for cx, cy, radius in node.bufs["circle"]:
+            parts.append(
+                f'<circle cx="{_svg_number(float(cx))}" cy="{_svg_number(float(cy))}" '
+                f"r=\"{_svg_number(float(radius))}\" style='{body}'/>"
+            )
+        return "".join(parts)
+    return None
+
+
+def _svg_pattern_definition(fill: TilePattern, slot: int) -> str | None:
+    """一个 `TilePattern` → `<pattern>` 定义；内容含画不了的原语时返回 None。"""
+    contents: list[str] = []
+    for node in fill.content:
+        piece = _pattern_node_svg(node)
+        if piece is None:
+            return None
+        contents.append(piece)
+    origin_x, origin_y = fill.origin
+    width, height = fill.size
+    # 内容坐标是**节点局部坐标**（`patternContentUnits = userSpaceOnUse`），
+    # 而浏览器 / resvg 把内容坐标原点放在 tile 左上角：先平移到 tile 原点。
+    # svglite 写的是 `translate(-x, -y + height)`（它把 tile 的 y 放在下边），
+    # 两种写法只差一个整周期，画出来一样（SIL-833 复核过）。
+    return (
+        f'<pattern id="gpat-{slot}" patternUnits="userSpaceOnUse" '
+        f'patternContentUnits="userSpaceOnUse" '
+        f'x="{_svg_number(origin_x)}" y="{_svg_number(origin_y)}" '
+        f'width="{_svg_number(width)}" height="{_svg_number(height)}">'
+        f'<g transform="translate({_svg_number(-origin_x)} {_svg_number(-origin_y)})">'
+        f"{''.join(contents)}</g></pattern>"
+    )
+
+
+def _rewrite_svg_patterns(svg: bytes, patterns: Sequence[TilePattern]) -> bytes:
+    """把占位色形状换成 `url(#gpat-N)`，并写出 `<pattern>` 定义。
+
+    skia 的 SVG 画布没有图案 API，所以 `_pattern_fill()` 先用一个占位色把形状
+    画下去；这里按槽位把 `fill` 换掉、定义插到 `<svg>` 后面（`<defs>` 里的
+    顺序不影响引用）。内容含 RECT / CIRCLE 之外的原语时退回逐 tile 的写法——
+    宁可多画几千条矩形，也不写出一个画错的图案。
+
+    占位色是 `#FE` 开头、后两字节编码槽位；换成 `url(#gpat-N)` 之后产物里不该
+    再有 `#FE01…`（`tests/test_device.py` 里钉住这一条）。内容组平移 `-origin`
+    是因为浏览器 / resvg 把 pattern 内容的坐标原点放在 tile 左上角。
+    """
+    if not patterns:
+        return svg
+    text = svg.decode("utf-8")
+    definitions: list[str] = []
+    for slot, fill in enumerate(patterns):
+        definition = _svg_pattern_definition(fill, slot)
+        if definition is None:
+            raise DeviceError(
+                f"图案内容含 SVG 后端画不了的原语：{[node.kind.value for node in fill.content]}"
+            )
+        definitions.append(definition)
+        placeholder = f"#{_PATTERN_PLACEHOLDER[0]:02X}{(slot >> 8) & 0xFF:02X}{slot & 0xFF:02X}"
+        for quote in ('"', "'"):
+            text = text.replace(f"fill={quote}{placeholder}{quote}", f'fill="url(#gpat-{slot})"')
+    block = f"<defs>{''.join(definitions)}</defs>"
+    match = _SVG_TAG.search(text)
+    if match is None:  # pragma: no cover - skia 总会写 <svg>
+        raise DeviceError("SVG 里找不到 <svg> 根标签")
+    text = f"{text[: match.end()]}{block}{text[match.end() :]}"
+    return text.encode("utf-8")
 
 
 class SkiaPdfDevice(_SkiaDevice):

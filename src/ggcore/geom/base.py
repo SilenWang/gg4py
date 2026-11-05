@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, ClassVar
 
 import numpy as np
@@ -538,16 +538,57 @@ def fill_values(data: Any, params: Any, default: Any) -> list[Any]:
     渐变 / 图案是**一个对象**（不是逐行的标量），塞不进 `Column`（kind 里没有
     object），所以 `build.finish()` 不把它写成列、留在 `build.params` 里，由这里
     整层复用（SIL-751）。
+
+    层参数也可以是**逐行的填充值列表**（R 的
+    `fill = list(linearGradient(group = FALSE), …, "black")`）：列表按 R 的按模
+    回收铺到每行；`FillSpec` 原样留下，由 geom 逐行写进 gpar（SIL-833）。
     """
     spec = params.get("fill") if params is not None else None
     if hasattr(type(spec), "resolve"):
         return [spec] * data.nrows
+    if isinstance(spec, (list, tuple)) and any(hasattr(type(item), "resolve") for item in spec):
+        values = list(spec)
+        return [values[index % len(values)] for index in range(data.nrows)]
     if "fill" not in data:
         return [default] * data.nrows
     column = data.column("fill")
     values = column.values.tolist()
     mask = np.asarray(column.na_mask, dtype=bool).tolist()
     return [_NA if missing else value for value, missing in zip(values, mask, strict=True)]
+
+
+def fill_alpha(fills: Sequence[Any], alpha: Any) -> tuple[list[Any], list[float] | None]:
+    """填充值 + 逐行 alpha → (`fill` 列, `alpha` 列)。
+
+    纯色沿用 R 的 `alpha()`（把 alpha 折进 `#RRGGBBAA`）；渐变 / 图案没有
+    「带 alpha 的颜色」，alpha 只能走 `gpar.alpha`——R 那边是 `fill_alpha()` 给
+    图案挂的 `grid::GridMask`，设备把 alpha 乘到整个填充上（SIL-833 的
+    `pattern-fills-with-alpha`）。
+
+    第二批返回 `None` 表示这一层没有需要单独走 `gpar.alpha` 的行：调用方就别写
+    `alpha` 字段，避免给所有既有图层多一个恒为 1 的 gpar 增量。纯色行的 alpha
+    已经折进颜色，对应的 `alpha` 记 1.0（与父视口的 alpha 相乘不改变结果）。
+    """
+    from ggcore.fills import FillSpec
+
+    values: list[Any] = []
+    alphas: list[float] = []
+    masked = False
+    for item, value in zip(fills, alpha, strict=True):
+        if isinstance(item, FillSpec):
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                number = math.nan
+            if not math.isfinite(number):
+                number = 1.0
+            values.append(item)
+            alphas.append(number)
+            masked = masked or number < 1.0
+        else:
+            values.append(alpha_colour(item, value))
+            alphas.append(1.0)
+    return values, (alphas if masked else None)
 
 
 def alpha_colour(colour: Any, alpha: Any) -> Any:

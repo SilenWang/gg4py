@@ -2,7 +2,8 @@
 
 - 渐变走 skia shader：SVG 后端写出 `<linearGradient>` / `<radialGradient>`
   （`gradientUnits="userSpaceOnUse"`，坐标是节点局部坐标）；
-- 图案走**矢量平铺**（逐 tile 裁剪 + 平移画内容），三路后端都不落位图；
+- 图案：PNG / PDF 走**矢量平铺**（逐 tile 裁剪 + 平移画内容），SVG 后端写真正的
+  `<pattern>`（SIL-833，skia 画布没有图案 API → 占位色 + 序列化后重写）；
 - `extend` 映射到 `spreadMethod`；图案只支持 repeat，别的显式报错。
 """
 
@@ -178,18 +179,25 @@ def test_gradient_extend_is_written_to_svg_as_spread_method() -> None:
 
 
 def test_pattern_is_drawn_as_vectors_not_a_bitmap() -> None:
+    """SVG 里是矢量 `<pattern>`（与 svglite 同结构），不是位图、也不是逐 tile 展开。
+
+    SIL-833：逐 tile 的「内容 + 裁剪矩形」在 tile 边界上有半像素覆盖率，光栅器
+    拼 `<pattern>` 时是整块 tile，两者对不上（棋盘格整片发灰）。
+    """
     svg = _svg(_scene(_rect(10.0, 70.0, 180.0, 150.0, PATTERN)))
     assert "<image" not in svg
-    # 170 × 80 的窗口、12 × 12 的 tile → 十几块，至少不是一块
-    assert len(re.findall(r"<rect\b", svg)) > 20
+    assert "<pattern " in svg
+    assert 'fill="url(#gpat-0)"' in svg
+    # 内容（两块 4 × 4 的矩形）写在 pattern 定义里，只写一份
+    assert len(re.findall(r"<rect\b", svg)) < 10
 
 
-def test_pattern_tiles_are_clipped_to_the_filled_shape() -> None:
-    """平铺副本按 tile 窗口裁剪：SVG 里每一块都带自己的 clipRect。"""
+def test_pattern_content_is_written_in_local_coordinates() -> None:
+    """内容按节点局部坐标写，整个内容组平移到 tile 原点（`-origin`）。"""
     svg = _svg(_scene(_rect(10.0, 10.0, 60.0, 60.0, PATTERN)))
     assert "<clipPath" in svg
-    # 内容 rect 本身仍在局部坐标（裁剪生效靠 clipPath，不是重写坐标）
-    assert re.search(r"<rect\b", svg) is not None
+    assert re.search(r'<g transform="translate\([-\d. ]+\)">', svg) is not None
+    assert 'patternContentUnits="userSpaceOnUse"' in svg
 
 
 def test_pattern_rejects_non_repeat_extend() -> None:

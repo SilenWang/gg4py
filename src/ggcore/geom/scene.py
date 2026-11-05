@@ -1339,13 +1339,18 @@ def _panel_children(
             panel_width_in=float(panel_size_in[0]),
             panel_height_in=float(panel_size_in[1]),
         )
-    for layer in layers:
+    for index, layer in enumerate(layers):
         data = _panel_rows(layer.data, panel)
         if data is None or data.nrows == 0:
             continue
         geom = _geom_of(layer)
         panel_layer = replace(layer, data=data)
-        grob = _draw_layer(panel_layer, geom, panel, draw_params, build, theme, theme_key, metrics)
+        # 整层一个 `layer_tag`：R 的 `pattern()` 内容按整层 grob 的 bbox 折 npc
+        # （SIL-833），同一层拆成多条指令时靠它把 bbox 取并集。
+        tag = f"panel-{panel}-layer-{index}"
+        grob = _draw_layer(
+            panel_layer, geom, panel, draw_params, build, theme, theme_key, metrics, tag=tag
+        )
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)
@@ -1370,6 +1375,8 @@ def _draw_layer(
     theme: ResolvedTheme,
     theme_key: bytes | None,
     metrics: Any,
+    *,
+    tag: str,
 ) -> Any:
     """`geom.draw()`，带内容键缓存（M3-5 增量重算）。
 
@@ -1377,11 +1384,15 @@ def _draw_layer(
     面板号与面板参数、主题（几何会读 `geom.<class>` 元素）、度量实例。命中时
     返回的是同一份**不可变** grob（`frozen` dataclass），后续遍历照常。
 
+    `tag` 是整层的 `layer_tag`（SIL-833）：写进 grob 后由遍历期继承给每条指令，
+    写 IR 时同标记的指令取并集当填充 bbox。命中缓存时也要保证标签是当前这一层
+    的——缓存键不区分同面板的图层序号，两层内容完全一样时会共用一份 grob。
+
     主题指纹每张场景算一次（`_theme_fingerprint`），不进每个图层的键开销。
     """
     cache = layer_draw_cache()
     if cache is None:
-        return geom.draw(layer, params, build.coord, theme, metrics)
+        return replace(geom.draw(layer, params, build.coord, theme, metrics), layer_tag=tag)
     from ggcore.perf import fingerprint, table_fingerprint
 
     key = (
@@ -1394,8 +1405,10 @@ def _draw_layer(
     )
     cached = cache.get(key, metrics)
     if cached is not None:
-        return cached
-    grob = geom.draw(layer, params, build.coord, theme, metrics)
+        # 命中时 grob 已经带着上一次的 `layer_tag`（同一个面板 + 同一个 key），
+        # 但缓存不区分图层序号，顺手改写成当前标签，免得两层共用一份。
+        return cached if cached.layer_tag == tag else replace(cached, layer_tag=tag)
+    grob = replace(geom.draw(layer, params, build.coord, theme, metrics), layer_tag=tag)
     cache.put(key, grob, metrics, layer.data.nrows)
     return grob
 

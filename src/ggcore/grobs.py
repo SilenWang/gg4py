@@ -690,12 +690,19 @@ class Grob:
 
     `vp` 与 grid 的 `grob(..., vp=viewport(...))` 同义：绘制这个 grob 期间把它
     push 进来，画完 pop。`gps` 是**逐元素**的 gpar 增量（长度 1 = 全元素同值）。
+
+    `layer_tag` 是「整层 grob」的标记（SIL-833）：R 的 `pattern()` / 渐变内容按
+    **被填充 grob** 的包围盒折 npc——ggplot2 的 `Geom*$draw_panel()` 把一层的
+    全部元素画成**一个** grob，所以一层里逐元素的图案共用同一个包围盒。遍历期
+    把这个标记继承给所有后代指令，写 IR 时同标记的指令取并集当填充 bbox。
+    空串 = 不是图层几何（背景、网格、图例各自是一个 grob，按自己的 bbox 折）。
     """
 
     name: str = ""
     gps: tuple[Gpar, ...] = ()
     vp: Viewport | None = None
     count: int = 1
+    layer_tag: str = ""
 
     @property
     def gp(self) -> Gpar:
@@ -1605,6 +1612,8 @@ class Instruction:
     transform: tuple[float, float, float, float, float, float] = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
     vp: str = ""
     source: str = ""
+    #: 所属图层的标记（`Grob.layer_tag` 的继承值）；空串 = 不在图层 grob 里。
+    layer: str = ""
 
     @property
     def rows(self) -> int:
@@ -1612,15 +1621,25 @@ class Instruction:
             return int(value.shape[0])
         return len(self.texts)
 
-    def to_node(self) -> ir.Node:
-        """写成 IR 节点（float32 / int32 的唯一一次舍入在这里发生）。"""
+    def to_node(self, *, fill_box: tuple[float, float, float, float] | None = None) -> ir.Node:
+        """写成 IR 节点（float32 / int32 的唯一一次舍入在这里发生）。
+
+        `fill_box` 是填充规格（渐变 / 图案）的解析包围盒（节点局部坐标）。
+        缺省用本节点自己的几何（:func:`ggcore.fills.node_bbox`）；图层里逐元素
+        的填充（`pattern-fills-*`）由 :meth:`Scene.to_ir_scene` 传**整层**的并集
+        包围盒——R 的 `pattern()` 内容按整层 grob 的 bbox 折 npc（SIL-833）。
+        """
         bufs: dict[str, Any] = {}
         for name, value in self.bufs.items():
             bufs[name] = ir.i32(value) if name == "id" else ir.f32(value)
         gpar = self.gpar
         if isinstance(gpar.fill, fills.FillSpec):
             # npc 口径要等几何定下来才能折成局部坐标（`ggcore.fills` 模块头）。
-            bbox = fills.node_bbox(self.kind, self.bufs, self.params)
+            bbox = (
+                fill_box
+                if fill_box is not None
+                else fills.node_bbox(self.kind, self.bufs, self.params)
+            )
             if bbox is None:
                 raise GrobError(f"{self.kind} 没有可以量包围盒的几何，渐变 / 图案无从解析")
             gpar = replace(gpar, fill=gpar.fill.resolve(bbox))
@@ -1631,6 +1650,50 @@ class Instruction:
             bufs=bufs,
             texts=self.texts,
         )
+
+
+def _layer_boxes(
+    instructions: Sequence[Instruction],
+) -> dict[tuple[str, str], tuple[float, float, float, float]]:
+    """按图层（+ 局部坐标系）求几何并集包围盒（SIL-833）。
+
+    R 的 `pattern()` 内容与渐变的 npc 端点都按**被填充 grob** 的 bbox 折；ggplot2
+    的 `Geom*$draw_panel()` 把一层的全部元素画成**一个** grob，所以一层只有一份
+    bbox。IR 里一层可能拆成多条指令（逐元素 gpar、极坐标的逐柱多边形），这里按
+    `layer_tag` + 视口路径取并集，逐条指令再各自用自己的 bbox 就会相位错位。
+
+    并集统计的是**整个图层**的几何（不含 `group = FALSE` 的渐变：R 的
+    `linearGradient(group = FALSE)` 每个元素各用各的 bbox，`pattern-fills-*`
+    的形状）。先挑出「有 group 填充规格」的图层，其余图层不量包围盒——给一条
+    几万点的 path 量包围盒是白花时间。键里带视口路径：一层的指令若被拆到不同
+    局部坐标系，坐标不可比，只能各算各的。
+    """
+    wanted = {
+        (item.layer, item.vp)
+        for item in instructions
+        if item.layer
+        and isinstance(item.gpar.fill, fills.FillSpec)
+        and getattr(item.gpar.fill, "group", True)
+    }
+    if not wanted:
+        return {}
+    boxes: dict[tuple[str, str], list[float]] = {}
+    for item in instructions:
+        key = (item.layer, item.vp)
+        if key not in wanted:
+            continue
+        bbox = fills.node_bbox(item.kind, item.bufs, item.params)
+        if bbox is None:
+            continue
+        current = boxes.get(key)
+        if current is None:
+            boxes[key] = list(bbox)
+            continue
+        current[0] = min(current[0], bbox[0])
+        current[1] = min(current[1], bbox[1])
+        current[2] = max(current[2], bbox[2])
+        current[3] = max(current[3], bbox[3])
+    return {key: (box[0], box[1], box[2], box[3]) for key, box in boxes.items()}
 
 
 @dataclass(frozen=True, slots=True)
@@ -1668,15 +1731,21 @@ class Scene:
         """
         width, height = self.size_pt
         page = (0.0, 0.0, width, height)
+        boxes = _layer_boxes(self.instructions)
         groups: list[tuple[tuple[float, ...], tuple[float, ...], str, list[ir.Node]]] = []
         for item in self.instructions:
             # `VpPath` 用 `::` 分段，最后一截就是最深视口自己的名字。
             name = item.vp.rsplit("::", 1)[-1] if item.vp else ""
             key = (item.transform, item.clip, name)
+            fill = item.gpar.fill
+            grouped = isinstance(fill, fills.FillSpec) and getattr(fill, "group", True)
+            node = item.to_node(
+                fill_box=boxes.get((item.layer, item.vp)) if item.layer and grouped else None
+            )
             if groups and groups[-1][:3] == key:
-                groups[-1][3].append(item.to_node())
+                groups[-1][3].append(node)
             else:
-                groups.append((key[0], key[1], key[2], [item.to_node()]))
+                groups.append((key[0], key[1], key[2], [node]))
         children = tuple(
             ir.Node(
                 NodeKind.VIEWPORT,
@@ -1719,6 +1788,8 @@ class _Traverser:
         self.out: list[Instruction] = []
         self.blobs: dict[str, Blob] = {}
         self._extra_clip: tuple[float, float, float, float] | None = None
+        #: 当前所在的图层标记（`Grob.layer_tag`，SIL-833）：整层一个 bbox。
+        self._layer = ""
         #: 指令缓存（`ggcore.perf.SceneInstructionCache`）：键是内容不是对象 id。
         self.cache = cache
 
@@ -1744,6 +1815,9 @@ class _Traverser:
         if item.vp is not None:
             self.tree.push(item.vp)
             pushed = 1
+        saved_layer = self._layer
+        if item.layer_tag:
+            self._layer = item.layer_tag
         try:
             if isinstance(item, GTreeGrob):
                 self._visit_tree(item)
@@ -1754,6 +1828,7 @@ class _Traverser:
             else:
                 self._visit_leaf(item)
         finally:
+            self._layer = saved_layer
             if pushed:
                 self.tree.pop(pushed)
 
@@ -1881,6 +1956,7 @@ class _Traverser:
                         clip=self._clip(),
                         vp=str(self.tree.current.path),
                         source=grob.name,
+                        layer=self._layer,
                     )
                 )
         if cache_key is not None and self.cache is not None:

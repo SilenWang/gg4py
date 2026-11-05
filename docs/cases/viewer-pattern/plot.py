@@ -3,9 +3,12 @@
 pattern 的 tile 是 12% × 12% 的包围盒（npc 口径，以包围盒中心对齐），内容为
 「浅底 + 左侧 40% 红色竖条」。竖条在 x 方向不对称，相位错一点点就会在像素上
 看出来，所以这条 case 同时守 tile 尺寸、原点与内容坐标。
+
+内容按**包围盒 npc** 摆（SIL-833）：R 的 `pattern()` 内容以被填充 grob 的 bbox
+折 npc，tile 只决定裁剪窗口与重复周期。
 """
 
-from ggcore.fills import pattern_rect
+from ggcore.fills import Box, pattern_npc_rect
 from ggcore.plot import (
     aes,
     geom_col,
@@ -22,14 +25,16 @@ DATA = {"cls": ["a", "b", "c"], "v": [0.35, 0.65, 0.90]}
 
 SIZE = [4, 3]
 
+#: tile 宽 = 30 pt（= 包围盒宽 261 pt 的 30/261）、高 = 包围盒的 12%。
+TW = 30 / 261
+TH = 0.12
 
-def draw(tile: tuple[float, float, float, float]) -> list:
-    """tile 窗口在节点局部坐标里；内容按同一个坐标系摆（`userSpaceOnUse`）。"""
-    x0, y0, x1, y1 = tile
-    stripe = x0 + 0.4 * (x1 - x0)
+
+def draw(bbox: Box) -> list:
+    """`rectGrob(x = 0.5, y = 0.5, width = tw, height = th)` + 左侧 40% 竖条。"""
     return [
-        pattern_rect(tile, "#F4F1EA"),
-        pattern_rect((x0, y0, stripe, y1), "#E45756"),
+        pattern_npc_rect(bbox, 0.5, 0.5, TW, TH, "#F4F1EA"),
+        pattern_npc_rect(bbox, 0.5 - TW / 2 + 0.4 * TW / 2, 0.5, 0.4 * TW, TH, "#E45756"),
     ]
 
 
@@ -37,7 +42,7 @@ def build():
     p = (
         ggplot(to_column_table(DATA), aes(x="cls", y="v"))
         + geom_col(
-            fill=tile_pattern(draw, width=30 / 261, height=0.12, x=0.5, y=0.5, extend="repeat"),
+            fill=tile_pattern(draw, width=TW, height=TH, x=0.5, y=0.5, extend="repeat"),
             colour=None,
         )
         + scale_x_discrete()

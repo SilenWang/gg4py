@@ -740,13 +740,26 @@ def finish(
             value = value.evaluate(geom_element)
         columns = _put(columns, name, _default_column(value, scaled.nrows))
     for name, value in _aes_params(layer).items():
-        if isinstance(value, FillSpec):
+        if isinstance(value, FillSpec) or _is_fill_value_list(value):
             # 渐变 / 图案是**一个对象**，不是逐行的标量：不进数据列，留在
             # `layer.params` 里，画的时候由 geom 当整层的填充缺省值用
-            # （`docs/notes/ir.md` §6.1 的写方口径）。
+            # （`docs/notes/ir.md` §6.1 的写方口径）。R 也接受逐行的列表
+            # （`fill = list(linearGradient(group = FALSE), …, "black")`），
+            # 同样进不了列（`Column` 没有 object kind），由 `fill_values()` 展开。
             continue
         columns = _put(columns, name, _value_column(value, scaled.nrows))
     return ColumnTable(columns, nrows=scaled.nrows)
+
+
+def _is_fill_value_list(value: Any) -> bool:
+    """长度 > 1 的**填充值列表**（逐行的渐变 / 图案 / 颜色混合）。
+
+    只在列表里真的含 `FillSpec` 时才认：纯颜色列表仍按普通向量参数走数据列
+    （`geom_col(fill = c("red", "blue"))` 的既有路径不变）。
+    """
+    if not isinstance(value, (list, tuple)) or len(value) <= 1:
+        return False
+    return any(isinstance(item, FillSpec) for item in value)
 
 
 def _geom_aesthetics(geom: Any) -> tuple[str, ...]:
@@ -948,6 +961,9 @@ class LayerBuild:
     geom_object: Any = None
     #: `geom_*(show_legend=)`：`None` 是自动（ggplot2 的 `NA`），`False` 不进图例。
     show_legend: bool | None = None
+    #: `fill` 是由**标度**映射来的填充对象（`scale_fill_manual(values = <FillSpec>)`）。
+    #: 这时 `params["fill"]` 是摊开的逐行值，但它**仍然是映射**，图例照建（SIL-833）。
+    mapped_fill: bool = False
 
     @property
     def stages(self) -> Mapping[str, ColumnTable]:
@@ -1105,7 +1121,7 @@ def _compute_stages(
 
 
 def _assemble(stages: _Stages, scales: ScaleSet, theme: Any = None) -> LayerBuild:
-    layer = stages.layer
+    layer = _layer_fill_specs(stages, scales)
     scaled = map_scales(scales, stages.positioned)
     data = finish(layer, scaled, stages.index, theme)
     return LayerBuild(
@@ -1122,10 +1138,45 @@ def _assemble(stages: _Stages, scales: ScaleSet, theme: Any = None) -> LayerBuil
         dropped_missing=stages.aesthetics.dropped,
         empty=stages.aesthetics.empty,
         notes=stages.aesthetics.notes,
-        params=stages.layer.params,
+        params=layer.params,
         geom_object=stages.layer.geom,
         show_legend=stages.layer.show_legend,
+        mapped_fill=layer.params.get("fill") is not stages.layer.params.get("fill"),
     )
+
+
+def _layer_fill_specs(stages: _Stages, scales: ScaleSet) -> Layer:
+    """`scale_fill_manual(values = <填 FillSpec>)` → 逐行的填充值列表。
+
+    R 的映射结果可以是渐变 / 图案对象，IR 的数据列没有 object kind，所以这里按
+    标度的**水平码**把对象摊成 `layer.params["fill"]`（与
+    `geom_col(fill = list(...))` 走同一条 `fill_values()`）。没有承载 FillSpec 的
+    填色标度时原样返回，既有路径不受影响。
+
+    摊开之后 `LayerBuild.mapped_fill` 置真：`params["fill"]` 里虽然是逐行值，
+    但这条美学**仍然是映射**，图例要照建（`guide._is_mapped()` 读那个标记）。
+    """
+
+    layer = stages.layer
+    scale = scales.scale("fill")
+    if scale is None or not getattr(scale, "has_fill_specs", False):
+        return layer
+    if "fill" not in stages.positioned:
+        return layer
+    levels = [level for level in scale.limits() if level is not None]
+    values = scale.colours(levels)
+    na_value = scale._na_value(getattr(scale, "default_na_value", None))
+    column = stages.positioned.column("fill")
+    codes = scale.codes(column, na_as_level=False)
+    fills: list[Any] = []
+    for code in codes.tolist():
+        value: Any = na_value
+        if not np.isnan(code) and int(code) - 1 < len(values):
+            value = values[int(code) - 1]
+        fills.append(value)
+    params = dict(layer.params)
+    params["fill"] = tuple(fills)
+    return replace(layer, params=params)
 
 
 # ---------------------------------------------------------------------------

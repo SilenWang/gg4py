@@ -970,10 +970,15 @@ def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:
             show = None
     if show is False:
         return False
-    if aesthetic in getattr(layer, "params", {}):
+    if aesthetic in getattr(layer, "params", {}) and not (
+        aesthetic == "fill" and getattr(layer, "mapped_fill", False)
+    ):
         # 层参数（R 的 `aes_params`）覆盖同名映射：`geom_point(colour = "black")`
         # 的 colour 不再是映射，因此不产生图例键（上游
         # `setup_plot_labels()` 用 `setdiff(names(mapping), names(layer$aes_params))`）。
+        #
+        # 例外是 `mapped_fill`：`scale_fill_manual(values = <FillSpec>)` 的逐行值
+        # 也被摊进了 `params["fill"]`，但它仍然是映射，图例照建（SIL-833）。
         return False
     if aesthetic in _layer_mapping(build, index):
         return True
@@ -1010,7 +1015,14 @@ def _key_values(scale: Any) -> tuple[tuple[str, Any, Any], ...]:
             values.append(str(value))
         else:
             values.append(float(value))
-    mapped = _list_of(scale.map(_column_of(values, scale)))
+    if getattr(scale, "has_fill_specs", False):
+        # `scale_fill_manual(values = <渐变 / 图案>)`：键值原样是 FillSpec，
+        # 折成字符串会把图例键画成占位色（SIL-833）。
+        raw = scale.colours([str(value) for value in values])
+        na_value = scale._na_value(getattr(scale, "default_na_value", None))
+        mapped = [na_value if item is None else item for item in raw]
+    else:
+        mapped = _list_of(scale.map(_column_of(values, scale)))
     out: list[tuple[str, Any, Any]] = []
     for label, value, item in zip(labels, values, mapped, strict=True):
         if label is None or value is None:
