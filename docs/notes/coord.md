@@ -263,6 +263,24 @@ M0 交接的遗留口径在本任务收口：
   panel 单元格**上：spacing / strip 不变，整块居中（R 的 `respect`）。
   `coord-polar-facet` 的 141.26pt 面板宽度与 R 逐像素一致。
 
+**radial 的 `respect` 实测（SIL-839，待照抄）**：`coord_radial(inner.radius = 0.5)`
++ `theme_test()` 的 10×8in 图上，`ggplotGrob()` 的表是（grid pt）：
+
+| 项 | 值 |
+| --- | --- |
+| `gt$widths` | `5.5, 0, 0, 0, 12.637(ylab-l), 1null + 0.422cm + max(0, -0.0966cm) + 0.0966cm(axis-l), 1null(panel), 0, 0, 0, 0, 0, 5.5` |
+| `gt$heights` | `5.5, …, 12.637(xlab-b), …, 1null(panel), …, 5.5` |
+| `respect` | `TRUE` |
+| panel viewport | 554.52 × 554.52（grid pt）＝ 552.45 × 552.45（SVG pt） |
+| **实际绘制方形** | **535.11 × 535.11（SVG pt）**（`x = 107.19, y = 22.79`） |
+
+两个数是分开的：panel viewport 552.45，绘制内容只有 535.11，差 **17.34pt**。
+`axis-l` 那一列不是纯 null，而是 `1null + 0.519cm`（0.422 + 0.0966）的复合单位，
+所以 `respect` 的 null 分摊与面板绘制尺寸不是同一个量；差值的 17.34 ≈ 0.519cm(14.71)
++ 2.63，尚未对上是哪一项。**下一步照这张表复刻**：先按 `1null + 0.519cm` 给
+`axis-l` 建模，再看 `respect` 解出来的 null 与实际绘制方形的关系——不要再用
+「可用高度减 17.36」这类数值拟合（SIL-839 试过：方形尺寸对上了，但居中位置差 9.7pt）。
+
 **`axis-b` 行（SIL-790 已对齐）**：R 的 `CoordPolar$render_axis_h()` 返回
 `draw_axis(NA, "", "bottom")`，`ggplotGrob()` 仍给底部轴留一行：刻度长度 +
 theta 标签行。标签行高来自 `titleGrob`（`grobheight + |cos θ|·descent`），对
