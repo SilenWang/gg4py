@@ -246,20 +246,31 @@ def text_width_cm(
     if not lines:
         return 0.0
     if metrics is not None:
-        widths = [
-            float(
-                metrics.strwidth(
-                    line,
-                    fontsize=float(size_pt),
-                    cex=1.0,
-                    font=str(family),
-                )
-            )
-            for line in lines
-        ]
+        widths = [_line_width_inch(metrics, line, float(size_pt), str(family)) for line in lines]
         return max(widths) * _CM_PER_INCH
     longest = max(len(line) for line in lines)
     return FALLBACK_CHAR_EM * float(size_pt) * longest * _CM_PER_INCH / _POINTS_PER_INCH
+
+
+#: R plotmath 里 `degree` 符号的推进（em）。`coord_sf` 的度数标签在上游是
+#: `"36.25"*degree*N` 这样的表达式，svglite 量到的 `°` 推进是 0.376em；本仓的
+#: 文字整形器用 DejaVu Sans 直接给 0.4em，两者差 0.2pt 会让面板整体平移 0.2pt。
+#: 度数标签只出现在 `coord_sf` 的轴带上，这里按上游口径折算，版面才对得齐。
+_PLOTMATH_DEGREE_EM = 0.376
+
+
+def _line_width_inch(metrics: Any, line: str, size_pt: float, family: str) -> float:
+    """一段文字的宽度（英寸）；含 `°` 时按 plotmath 的 `degree` 推进折算。"""
+    if "°" not in line:
+        return float(metrics.strwidth(line, fontsize=size_pt, cex=1.0, font=family))
+    pieces = line.split("°")
+    total = sum(
+        float(metrics.strwidth(piece, fontsize=size_pt, cex=1.0, font=family))
+        for piece in pieces
+        if piece
+    )
+    total += (len(pieces) - 1) * _PLOTMATH_DEGREE_EM * size_pt / 72.0
+    return total
 
 
 def margin_sides_cm(
@@ -405,6 +416,8 @@ def axis_ticks(
         return AxisTicks(side, (), ())
     if secondary:
         return secondary_ticks(scale, params, side)
+    if getattr(params, "sf", None) is not None:
+        return _sf_ticks(params, side)
     if getattr(params, "polar", None) is not None:
         return _polar_ticks(scale, params, side)
     breaks, labels = axis_breaks(scale, params, params.screen_axis(side))
@@ -537,6 +550,28 @@ def secondary_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
         tuple(min(max(position, 0.0), 1.0) for position, _ in pairs),
         tuple(label for _, label in pairs),
     )
+
+
+def _sf_ticks(params: Any, side: str) -> AxisTicks:
+    """`coord_sf` 的刻度：位置与标签来自 graticule 的贴边判定。
+
+    `PanelParams.sf.ticks` 已在 `SfCoord.panel_params()` 里按
+    `view_scales_from_graticule()` 算好（四个轴位各一组）；这里只把目标 CRS 的
+    绝对位置换成 npc。
+    """
+    axis = params.screen_axis(side)
+    entries = params.sf.ticks.get(side, ())
+    positions: list[float] = []
+    texts: list[str] = []
+    for value, label in entries:
+        position = params.position_of(axis, float(value))
+        if not math.isfinite(position):
+            continue
+        if not (-1e-9 <= position <= 1.0 + 1e-9):
+            continue
+        positions.append(min(max(position, 0.0), 1.0))
+        texts.append(str(label))
+    return AxisTicks(side, tuple(positions), tuple(texts))
 
 
 def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:

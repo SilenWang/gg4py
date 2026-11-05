@@ -29,7 +29,19 @@ import numpy as np
 __all__ = ["COLUMN_KINDS", "Column", "ColumnTable"]
 
 #: 允许的语义类型。顺序即文档顺序。
-COLUMN_KINDS = ("float", "int", "bool", "str", "categorical", "datetime", "date", "timedelta")
+COLUMN_KINDS = (
+    "float",
+    "int",
+    "bool",
+    "str",
+    "categorical",
+    "datetime",
+    "date",
+    "timedelta",
+    # M3-2：Simple Features 几何（object 数组，元素是 ggcore.sf.Geometry）。
+    "geometry",
+)
+
 
 _KINDS = frozenset(COLUMN_KINDS)
 _NUMERIC = frozenset({"float", "int", "datetime", "date", "timedelta"})
@@ -113,6 +125,11 @@ class Column:
             return values.astype(np.bool_)
         if self.kind == "categorical":
             return values.astype(np.int32)
+        if self.kind == "geometry":
+            # 几何是 object 数组；元素是 ggcore.sf.Geometry（NA 位放空几何）。
+            if values.dtype != object:
+                values = values.astype(object)
+            return values
 
         # str：只收字符串，别把数字悄悄 stringify 成 "1"
         if values.dtype.kind == "O" and not all(isinstance(item, str) for item in values.tolist()):
@@ -129,7 +146,11 @@ class Column:
         if not mask.any():
             return
         placeholders = values[mask]
-        if self.kind == "str":
+        if self.kind == "geometry":
+            clean = bool(
+                np.all([item is None or getattr(item, "is_empty", False) for item in placeholders])
+            )
+        elif self.kind == "str":
             clean = bool(np.all(placeholders == ""))
         elif self.kind == "bool":
             clean = not bool(np.any(placeholders))

@@ -199,6 +199,7 @@ def compute_stat(
     *,
     scales: Any = None,
     raw: ColumnTable | None = None,
+    coord: Any = None,
 ) -> ColumnTable:
     """第 2 阶段：按 `layer.stat.name` 算统计量。
 
@@ -210,6 +211,15 @@ def compute_stat(
     name = layer.stat.name
     if name == "identity":
         return aesthetics.table
+    if name in ("sf", "sf_coordinates"):
+        from ggcore.sf_stat import compute_sf, compute_sf_coordinates
+
+        table = aesthetics.table
+        if table.nrows == 0:
+            return _EMPTY
+        if name == "sf":
+            return compute_sf(table, coord=coord)
+        return compute_sf_coordinates(table, params=_stat_params(layer), coord=coord)
     custom = _custom_stat(layer.stat)
     if custom is not None:
         return custom(aesthetics.table, scales=scales)

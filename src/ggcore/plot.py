@@ -238,6 +238,15 @@ def _add_component(component: Any, plot: ggplot) -> ggplot:
 def _add_layer(component: Layer, plot: ggplot) -> ggplot:
     new = plot.clone()
     new.layers.append(component)
+    # `geom_sf()` 的返回值带 `coord_sf(default = TRUE)`（R/geom-sf.R）：
+    # 当前坐标还是默认 cartesian 时自动换成 coord_sf；用户之后显式加 coord_*
+    # 仍然覆盖它（`+` 的顺序就是 R 的添加顺序）。
+    if (
+        component.geom.name == "sf"
+        and getattr(plot.coordinates, "name", "") == "cartesian"
+        and not getattr(plot.coordinates, "params", {})
+    ):
+        new.coordinates = Coord("sf", {"default": True})
     return new
 
 
@@ -356,6 +365,17 @@ def guides(*args: Any, **kwargs: Any) -> Guides:
     return Guides(normalised)
 
 
+# M3-2：sf 的文字 / 标签图层不是独立几何（内部是 text / label 图层），
+# 注册表里没有它们的名字，这里显式转发。
+geom_sf_text = registry.geom_sf_text
+geom_sf_label = registry.geom_sf_label
+
+
+def update_geom_defaults(geom: str, new: Any = None) -> None:
+    """`update_geom_defaults("point", aes(colour = "blue"))`（M3-2）。"""
+    registry.update_geom_defaults(geom, new)
+
+
 def _rename_aesthetic(name: str) -> str:
     """`color` → `colour`（R 的 `rename_aes()` 对这两个别名同口径）。"""
     return "colour" if name == "color" else name
@@ -376,6 +396,9 @@ def _export_registry_entries() -> list[str]:
         "coord_munch",
         "sec_axis",
         "dup_axis",
+        "update_geom_defaults",
+        "geom_sf_text",
+        "geom_sf_label",
     ]
     for kind in registry.KINDS:
         for name in registry.registered(kind):

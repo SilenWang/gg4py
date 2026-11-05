@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：North Carolina county boundaries"
+source = "upstream:tests/testthat/_snaps/geom-sf/north-carolina-county-boundaries.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：多边形几何 + linetype = 2 + coord_sf(datum = 4326)。"

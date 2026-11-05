@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：reversed sf coords"
+source = "upstream:tests/testthat/_snaps/coord_sf/reversed-sf-coords.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：coord_sf(reverse = \"xy\") 与 clip / axis.line。"

@@ -178,7 +178,7 @@ M0 交接的遗留口径在本任务收口：
 | `coord_trans` / `coord_transform` | `TransCoord` | 见 §8；`coord_trans()` 在 4.0.3 已弃用，仍导出 |
 | `coord_polar` | `PolarCoord` | 见 §9；`theta` / `start` / `direction` / `clip` |
 | `coord_radial` | `RadialCoord` | 见 §9；partial arc / `inner.radius` / `reverse` / `r.axis.inside` |
-| `coord_sf` / `coord_map` / `coord_quickmap` | `SfCoord` / `MapCoord` / `QuickmapCoord` | 见 §11（最小可用） |
+| `coord_sf` / `coord_map` / `coord_quickmap` | `SfCoord` / `MapCoord` / `QuickmapCoord` | 见 §11（M3-2：真实投影 / graticule / mapproj mercator） |
 | `coord_munch` | `ggcore.coord.coord_munch()` | 见 §10（非线性坐标的逐边细分） |
 
 `PanelParams` 新增（都有默认值，旧调用点不受影响）：
@@ -274,17 +274,22 @@ geom 侧唯一的分支点是 `panel.is_linear`（能力判断，不是 coord �
 `geom_bar` / `geom_col` / `geom_histogram` 走 `_munch_rects()`，
 `geom_area` 走 `_munch_area()`。玫瑰图（`coord-polar-bar`）因此逐像素通过。
 
-## 11. `coord_sf` / `coord_map` / `coord_quickmap`（最小可用）
+## 11. `coord_sf` / `coord_map` / `coord_quickmap`（M3-2 起完整）
 
-真正的空间能力（投影 / graticule / sf 几何）归 **M3-2**。M2-1 的范围：
+M2-1 只做注册与最小可用；**M3-2 已落地**（口径与已知差异见
+`docs/notes/sf.md`）：
 
-- `coord_sf()` 无参数可用（identity），`aspect = (y 跨度 / x 跨度) / cos(中纬度)`
-  的经纬度修正**没有**做（需要 CRS）；给 `crs` / `default_crs` / `datum`
-  直接报 `CoordError` 并点名 M3-2。
-- `coord_map()` 只有 `projection = "identity"` 可用；默认的 `"mercator"`
-  需要 mapproj，同样点名报错。
+- `coord_sf()`：EPSG:4326 / 3857 / 3347 的真实投影，`crs` 缺省取第一层几何的
+  CRS，`default_crs` / `lims_method` / `reverse` / `label_axes` /
+  `label_graticule` 全部落地；经纬度的 `aspect = (y/x) / cos(中心纬度)`；
+  面板网格与四边刻度来自 `st_graticule()`。
+- `coord_map()`：mapproj 球面 mercator（`orientation` 缺省
+  `c(90, 0, mean(lon))`）；其它投影（`gilbert` / `ortho` / `conic` …）显式报
+  `CoordError` 并点名 M3-2。
 - `coord_quickmap()` 可用：`aspect = (y/x) / cos(面板中心纬度)`，与上游
   `CoordQuickmap$aspect()` 同式；`coord-quickmap` 案例逐像素对拍（0.14%）。
+- 主轴位置：`scale_*_continuous(position = "top" | "right")` 生效（M3-2，
+  `coord-map` 的 switched-scale-position 快照）。
 
 ## 12. 次轴（`sec_axis()` / `dup_axis()`）
 
@@ -314,8 +319,8 @@ geom 侧唯一的分支点是 `panel.is_linear`（能力判断，不是 coord �
 | polar / radial 的 `theta.sec` / `r.sec` 次轴 | 明确报错 | 后续 coord 任务 |
 | polar 带轴时的空轴行（≈0.147cm，见 §9） | 不占位 | 与 theme 口径一起收 |
 | 非矩形 clipPath（radial 的扇形裁剪） | 只有矩形裁剪；数据在 arc 外不会被裁掉 | IR 多边形 clip 接入后 |
-| `coord_sf` 的真实投影 / graticule | 明确报错（M3-2） | M3-2 |
-| `coord_map` 的 mapproj 投影 | 明确报错（M3-2） | M3-2 |
+| `coord_sf` 的 plotmath 度数标签 | 单段文本（宽度按 degree 符号 0.376em 折算） | 完整 plotmath 引擎 |
+| `coord_map` 的非 mercator 投影 | 明确报错 | 需要 mapproj 全量 |
 | facet free scales × `coord_trans` | 每面板范围独立，但断点仍共用一个 `continuous_range` | 后续 |
 | 离散标度的显式 `limits` 里没有数据的水平 | `levels` 不含它（M1-4 缺口），轴断点会少一个 | SIL-715 同族 |
 

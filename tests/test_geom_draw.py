@@ -704,7 +704,13 @@ def _digest_plots() -> dict[str, object]:
         xmax=[1.4, 1.4, 1.4],
         group=[1.0, 1.0, 1.0],
     )
+    from ggcore.sf import sf as sf_table
+    from ggcore.sf import st_point
+
+    sf_data = sf_table({"a": [1.0, 2.0]}, geometry=[st_point(0.2, 0.3), st_point(0.6, 0.7)])
     return {
+        # --- M3-2：空间几何 ---------------------------------------------------
+        "sf": ggplot(sf_data) + registry.geom_sf(),
         "point": ggplot(point, aes(x="x", y="y", colour="g")) + registry.geom_point(),
         "line": ggplot(line, aes(x="x", y="y", colour="g")) + registry.geom_line(),
         "path": ggplot(path, aes(x="x", y="y")) + registry.geom_path(),

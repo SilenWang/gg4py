@@ -12,13 +12,13 @@
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | `coord` | 12 | 11 | 12 | 100.0% | 91.7% | ✅ |
 | `facet` | 3 | 3 | 3 | 100.0% | 100.0% | ✅ |
-| `geom` | 53 | 49 | 49 | 92.5% | 92.5% | ✅ |
+| `geom` | 53 | 50 | 52 | 98.1% | 94.3% | ✅ |
 | `guide` | 17 | 12 | 17 | 100.0% | 70.6% | ✅ |
 | `position` | 8 | 8 | 8 | 100.0% | 100.0% | ✅ |
 | `scale` | 131 | 130 | 131 | 100.0% | 99.2% | ✅ |
-| `stat` | 36 | 33 | 33 | 91.7% | 91.7% | ✅ |
+| `stat` | 36 | 35 | 35 | 97.2% | 97.2% | ✅ |
 | `theme` | 25 | 10 | 25 | 100.0% | 40.0% | ✅ |
-| **合计** | **285** | **256** | **278** | **97.5%** | 89.8% | ✅ |
+| **合计** | **285** | **259** | **283** | **99.3%** | 90.9% | ✅ |
 
 ## 缺口清单
 
@@ -27,12 +27,7 @@
 | 导出 | 归口 | 原因 |
 | --- | --- | --- |
 | `geom_freqpoly` | SIL-715 | `geom_freqpoly()` 是 `geom_line(stat = "bin")` 的形状；`Geom` 目前还不带「换默认 stat」的入口，登记它会让 `registered_renderers() == registered("geom")` 的不变量要求多写一个渲染器（SIL-779 钉的口径）。 |
-| `geom_sf` | SIL-715 | 空间几何（M3-2）：需要 sf 数据的 *list-column* 解析与 geom_sf 的 grob 路径；M2 只做注册会破坏「注册即绘制」的不变量。 |
-| `geom_sf_label` | SIL-715 | 同 `geom_sf`：M3-2 空间能力。 |
-| `geom_sf_text` | SIL-715 | 同 `geom_sf`：M3-2 空间能力。 |
 | `stat_density2d_filled` | SIL-715 | 上游只是 `stat_density_2d_filled` 的别名；`STAT_GEOMS` 是「一个 stat 一个默认 geom」，加别名要先决定它挂哪个 geom，排进 SIL-715 的别名清理。 |
-| `stat_sf` | SIL-715 | 同 `geom_sf`：M3-2 空间能力。 |
-| `stat_sf_coordinates` | SIL-715 | 同 `geom_sf`：M3-2 空间能力。 |
 
 ## 只在公开命名空间、不在注册表的导出
 
@@ -40,6 +35,8 @@
 
 ```text
 coord_munch
+geom_sf_label
+geom_sf_text
 guide_gengrob
 guide_geom
 guide_merge

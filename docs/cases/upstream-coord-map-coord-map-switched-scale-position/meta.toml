@@ -1,0 +1,7 @@
+family = "coord-map"
+features = ["coord-map", "projection", "theme-complete"]
+ci = true
+title = "上游快照：coord-map-switched-scale-position"
+source = "upstream:tests/testthat/_snaps/coord-map/coord-map-switched-scale-position.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：mapproj 球面 mercator（orientation 缺省 c(90, 0, mean(lon))）。"

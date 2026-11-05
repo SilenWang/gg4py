@@ -54,7 +54,8 @@ Python 模块，反之亦然。
 | `ggcore.coord`（`TransCoord`） | `R/coord-transform.R` | `coord_trans()` / `coord_transform()` | 已实现（M2-1：逐轴变换、变换后空间 expand、断点位置；见 coord.md §8） |
 | `ggcore.coord`（`PolarCoord`） | `R/coord-polar.R` | `coord_polar()` | 已实现（M2-1：theta / r 范围、`theta_rescale` / `r_rescale`、辐条 + 同心圆背景、theta 标签） |
 | `ggcore.coord`（`RadialCoord`） | `R/coord-radial.R` | `coord_radial()` | 已实现（M2-1：partial arc、`inner.radius`、`reverse`、bbox、`r.axis.inside` 的轴槽） |
-| `ggcore.coord`（`SfCoord` / `MapCoord` / `QuickmapCoord`） | `R/coord-sf.R` / `R/coord-map.R` | `coord_sf()` / `coord_map()` / `coord_quickmap()` | 最小可用（M2-1：identity 投影 + quickmap 的纬度因子；真实投影报错点名 M3-2） |
+| `ggcore.coord`（`SfCoord` / `MapCoord` / `QuickmapCoord`） | `R/coord-sf.R` / `R/coord-map.R` | `coord_sf()` / `coord_map()` / `coord_quickmap()` | 已实现（M3-2：4326 / 3857 / 3347 + graticule；`coord_map` 的 mapproj mercator；见 `docs/notes/sf.md`） |
+| `ggcore.sf` / `ggcore.sf_stat` / `ggcore.geom.sf` | `R/geom-sf.R` / `R/stat-sf.R` / `R/stat-sf-coordinates.R` | `geom_sf()` / `geom_sf_text()` / `geom_sf_label()` / `stat_sf()` / `stat_sf_coordinates()` | 已实现（M3-2：几何 / CRS / 投影 / 代表点 / 图例 key；20/21 条上游快照纳管） |
 | `ggcore.coord`（`coord_munch`） | `R/coord-munch.R` | `coord_munch()` | 已实现（M2-1：非线性坐标的逐边细分，geom 侧只判断 `panel.is_linear`） |
 | `ggcore.axis`（`SecondaryAxis` / `secondary_ticks`） | `R/axis-secondary.R` | `sec_axis()` / `dup_axis()` | 已实现（M2-1：断点 / 标签 / 位置 + top/right 槽；极坐标次轴报错） |
 | `ggcore.facet.base` | `R/facet-.R:66` | `Facet` | 已实现（M1-6：布局 / 面板标度 / map_data，见 `docs/notes/facet.md`） |

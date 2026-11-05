@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "projection", "guide"]
+ci = false
+title = "上游快照：coord_sf() with custom guides"
+source = "upstream:tests/testthat/_snaps/coord_sf/coord-sf-with-custom-guides.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：label_graticule = \"NSWE\" 的四边度数标签 + 自定义 guide。**未纳管**：图级差 2.85%（阈值 2%），差异在旋转后的度数标签与自定义 guide 的文字排布；保留为复现用例。" 

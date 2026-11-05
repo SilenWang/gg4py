@@ -63,6 +63,7 @@ from ggcore.geom.segment import (
     SpokeRenderer,
     VlineRenderer,
 )
+from ggcore.geom.sf import SfRenderer
 from ggcore.geom.smooth import SmoothRenderer
 from ggcore.geom.stat2d import BUILD_ONLY_RENDERERS
 from ggcore.geom.text import LabelRenderer, TextRenderer
@@ -163,6 +164,8 @@ GEOM_RENDERERS: dict[str, GeomRenderer] = {
     "blank": BlankRenderer(),
     "rug": RugRenderer(),
     "map": MapRenderer(),
+    # M3-2：空间几何（点 / 线 / 面 / 几何集合按类型分派）
+    "sf": SfRenderer(),
     # M2-7 长尾 B：文本 / 点 / 分布 / 2D 族（20 个注册名）
     "text": TextRenderer(),
     "label": LabelRenderer(),

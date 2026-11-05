@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete", "text"]
+ci = true
+title = "上游快照：Texts for North Carolina"
+source = "upstream:tests/testthat/_snaps/geom-sf/texts-for-north-carolina.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：geom_sf_text + stat_sf_coordinates（EPSG:3857 多边形的代表点）。"

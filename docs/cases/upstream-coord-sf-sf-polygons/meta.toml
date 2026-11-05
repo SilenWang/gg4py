@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：sf polygons"
+source = "upstream:tests/testthat/_snaps/coord_sf/sf-polygons.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：EPSG:4326 多边形 + coord_sf 的度数标签（36.25°N / 81.7°W）。"

@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete", "text"]
+ci = true
+title = "上游快照：Labels for North Carolina"
+source = "upstream:tests/testthat/_snaps/geom-sf/labels-for-north-carolina.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：geom_sf_label + stat_sf_coordinates（标签框 + 代表点）。"

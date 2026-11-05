@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：spatial points"
+source = "upstream:tests/testthat/_snaps/geom-sf/spatial-points.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：sf 点几何 + coord_sf（无 CRS）的自动坐标。"

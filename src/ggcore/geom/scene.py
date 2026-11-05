@@ -660,11 +660,17 @@ def plot_layout(
     y_title_right = 0.0
     secondary_x = False
     secondary_y = False
+    x_side = "bottom"
+    y_side = "left"
+    guide_x = guide_for(build, "x")
+    guide_y = guide_for(build, "y")
     for panel, params in _panels(build):
-        ticks_x = axis_ticks(
-            _panel_scale(build, panel, params.scale_key("bottom")), params, "bottom"
-        )
-        ticks_y = axis_ticks(_panel_scale(build, panel, params.scale_key("left")), params, "left")
+        scale_bottom_layout = _panel_scale(build, panel, params.scale_key("bottom"))
+        scale_left_layout = _panel_scale(build, panel, params.scale_key("left"))
+        x_side = _scale_side(scale_bottom_layout, "bottom")
+        y_side = _scale_side(scale_left_layout, "left")
+        ticks_x = axis_ticks(scale_bottom_layout, params, x_side)
+        ticks_y = axis_ticks(scale_left_layout, params, y_side)
         guide_x = guide_for(build, "x")
         guide_y = guide_for(build, "y")
         if params.polar is not None:
@@ -677,29 +683,51 @@ def plot_layout(
                 x_axis = max(x_axis, polar_axis_row_cm(theme))
         if params.polar is None:
             guide_ticks_x = axis_guide_ticks(
-                _panel_scale(build, panel, params.scale_key("bottom")),
+                scale_bottom_layout,
                 params,
-                "bottom",
+                x_side,
                 guide_x,
                 theme,
                 base=ticks_x,
             )
-            x_axis = max(
-                x_axis,
-                axis_guide_extent(theme, guide_ticks_x, guide_x, side="bottom", metrics=metrics),
+            extent_x = axis_guide_extent(
+                theme, guide_ticks_x, guide_x, side=x_side, metrics=metrics
             )
+            if x_side == "top":
+                x_axis_top = max(x_axis_top, extent_x)
+                x_title_top = max(
+                    x_title_top,
+                    axis_title_extent(
+                        theme,
+                        "top",
+                        _guide_title(guide_x, _axis_title_text(build, "x")),
+                        metrics=metrics,
+                    ),
+                )
+            else:
+                x_axis = max(x_axis, extent_x)
         guide_ticks_y = axis_guide_ticks(
-            _panel_scale(build, panel, params.scale_key("left")),
+            scale_left_layout,
             params,
-            "left",
+            y_side,
             guide_y,
             theme,
             base=ticks_y,
         )
-        y_axis = max(
-            y_axis,
-            axis_guide_extent(theme, guide_ticks_y, guide_y, side="left", metrics=metrics),
-        )
+        extent_y = axis_guide_extent(theme, guide_ticks_y, guide_y, side=y_side, metrics=metrics)
+        if y_side == "right":
+            y_axis_right = max(y_axis_right, extent_y)
+            y_title_right = max(
+                y_title_right,
+                axis_title_extent(
+                    theme,
+                    "right",
+                    _guide_title(guide_y, _axis_title_text(build, "y")),
+                    metrics=metrics,
+                ),
+            )
+        else:
+            y_axis = max(y_axis, extent_y)
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
         right_scale = _panel_scale(build, panel, params.scale_key("right"))
         if has_secondary_axis(build, "x", top_scale):
@@ -758,8 +786,18 @@ def plot_layout(
                     metrics=metrics,
                 ),
             )
-    x_title = axis_title_extent(theme, "bottom", _axis_title_text(build, "x"), metrics=metrics)
-    y_title = axis_title_extent(theme, "left", _axis_title_text(build, "y"), metrics=metrics)
+    # `position = "top"` / `"right"` 时主轴标题也在那一侧（上面的循环已经把
+    # 占位记进 x_title_top / y_title_right），原侧不再占一行 / 一列。
+    x_title_text = _guide_title(guide_x, _axis_title_text(build, "x"))
+    y_title_text = _guide_title(guide_y, _axis_title_text(build, "y"))
+    if x_side == "top":
+        x_title = 0.0
+    else:
+        x_title = axis_title_extent(theme, x_side, x_title_text, metrics=metrics)
+    if y_side == "right":
+        y_title = 0.0
+    else:
+        y_title = axis_title_extent(theme, y_side, y_title_text, metrics=metrics)
     if not build.layers:
         # R：没有图层（`ggplot()` + `guides(custom=...)`）时没有任何轴，面板直接
         # 铺满 `plot.margin` 内区（`guides/stylised-guide-custom` 实测边距 5.48pt）。
@@ -1261,6 +1299,8 @@ def _panel_children(
     if params.polar is not None:
         for kind in ("major", "minor"):
             children.extend(_polar_grid_grobs(build, panel, params, theme, kind=kind))
+    elif params.sf is not None:
+        children.extend(_sf_grid_grobs(params, theme))
     else:
         for kind in ("major", "minor"):
             for axis in ("x", "y"):
@@ -1386,6 +1426,48 @@ def _grid_grob(
         gp=gp,
         name=name,
     )
+
+
+def _sf_grid_grobs(params: PanelParams, theme: ResolvedTheme) -> list[Any]:
+    """`CoordSf$render_bg()`：面板网格 = graticule 的经纬线。
+
+    样式取 `panel.grid.major`（不是 `.x` / `.y`：上游给整张网格一份 gpar）；
+    主题元素 blank / 颜色 NA 时一条都不画。
+    """
+    if params.sf is None or not params.sf.graticule:
+        return []
+    element = theme.get("panel.grid.major")
+    if not isinstance(element, ElementLine):
+        return []
+    colour = paint(element.colour)
+    if colour is None:
+        return []
+    gp = gpar(
+        col=colour,
+        lwd=_mm_to_pt(element.linewidth),
+        lty=element.linetype if element.linetype is not None else 1,
+        lineend=element.lineend or "butt",
+        linejoin=element.linejoin or "round",
+    )
+    grobs: list[Any] = []
+    for line in params.sf.graticule:
+        xs = np.array([point[0] for point in line.coords], dtype=np.float64)
+        ys = np.array([point[1] for point in line.coords], dtype=np.float64)
+        px = params.npc("x", xs)
+        py = params.npc("y", ys)
+        if not (np.isfinite(px).any() and np.isfinite(py).any()):
+            continue
+        grobs.append(
+            polyline_grob(
+                unit(px.tolist(), "native"),
+                unit(py.tolist(), "native"),
+                id=[1] * len(px),
+                default_units="native",
+                gp=gp,
+                name="graticule",
+            )
+        )
+    return grobs
 
 
 def _polar_grid_grobs(
@@ -1686,6 +1768,21 @@ def _axis_visible(build: PlotBuild, panel: int, side: str) -> tuple[bool, bool]:
     return True, True if labels[1] else margin
 
 
+def _scale_side(scale: Any, default: str) -> str:
+    """`scale_*_continuous(position = ...)`：主轴画在哪一边（缺省 bottom / left）。
+
+    R 4.0.3 把主轴侧记录在 scale 的 `position` 上（`axis_order()` 由它推），
+    `Coord$render_axis_*()` 只画该侧；另一侧留给次轴或留白。
+    """
+    if scale is None:
+        return default
+    getter = getattr(scale, "_param", None)
+    value = getter("position") if getter is not None else None
+    if value in ("top", "bottom", "left", "right"):
+        return str(value)
+    return default
+
+
 def _axis_grobs(
     build: PlotBuild,
     theme: ResolvedTheme,
@@ -1732,19 +1829,21 @@ def _axis_grobs(
         scale_left = _panel_scale(build, panel, params.scale_key("left"))
         scale_top = _panel_scale(build, panel, params.scale_key("top"))
         scale_right = _panel_scale(build, panel, params.scale_key("right"))
-        ticks_x = axis_ticks(scale_bottom, params, "bottom")
-        ticks_y = axis_ticks(scale_left, params, "left")
-        draw_bottom, label_bottom = _axis_visible(build, panel, "bottom")
-        draw_left, label_left = _axis_visible(build, panel, "left")
+        x_side = _scale_side(scale_bottom, "bottom")
+        y_side = _scale_side(scale_left, "left")
+        ticks_x = axis_ticks(scale_bottom, params, x_side)
+        ticks_y = axis_ticks(scale_left, params, y_side)
+        draw_bottom, label_bottom = _axis_visible(build, panel, x_side)
+        draw_left, label_left = _axis_visible(build, panel, y_side)
         gx = None
         gy = None
         if draw_bottom:
-            gx = axis_guide_ticks(scale_bottom, params, "bottom", guide_x, theme, base=ticks_x)
+            gx = axis_guide_ticks(scale_bottom, params, x_side, guide_x, theme, base=ticks_x)
             grobs.extend(
                 axis_guide_grobs(
                     theme,
                     gx,
-                    cell,
+                    top_cell if x_side == "top" else cell,
                     guide_x,
                     metrics=metrics,
                     name=f"axis-x-{panel}",
@@ -1752,12 +1851,12 @@ def _axis_grobs(
                 )
             )
         if draw_left:
-            gy = axis_guide_ticks(scale_left, params, "left", guide_y, theme, base=ticks_y)
+            gy = axis_guide_ticks(scale_left, params, y_side, guide_y, theme, base=ticks_y)
             grobs.extend(
                 axis_guide_grobs(
                     theme,
                     gy,
-                    cell,
+                    right_cell if y_side == "right" else cell,
                     guide_y,
                     metrics=metrics,
                     name=f"axis-y-{panel}",
@@ -1816,8 +1915,8 @@ def _axis_grobs(
                 )
             )
         line_sides = (
-            *(("bottom",) if draw_bottom else ()),
-            *(("left",) if draw_left else ()),
+            *((x_side,) if draw_bottom else ()),
+            *((y_side,) if draw_left else ()),
             *(("top",) if gx_top is not None else ()),
             *(("right",) if gy_right is not None else ()),
         )
@@ -1828,8 +1927,8 @@ def _axis_grobs(
                     cell,
                     name=f"axis-line-{panel}",
                     ranges={
-                        "bottom": axis_line_range(guide_x, gx) if gx is not None else None,
-                        "left": axis_line_range(guide_y, gy) if gy is not None else None,
+                        x_side: axis_line_range(guide_x, gx) if gx is not None else None,
+                        y_side: axis_line_range(guide_y, gy) if gy is not None else None,
                         "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
                         "right": axis_line_range(guide_right, gy_right)
                         if gy_right is not None
@@ -1865,14 +1964,25 @@ def _axis_grobs(
                 )
             )
     area = axis_title_area(layout)
+    panels_for_side = list(_panels(build))
+    x_title_side = "bottom"
+    y_title_side = "left"
+    if panels_for_side:
+        _, first_params = panels_for_side[0]
+        x_title_side = _scale_side(
+            _panel_scale(build, panels_for_side[0][0], first_params.scale_key("bottom")), "bottom"
+        )
+        y_title_side = _scale_side(
+            _panel_scale(build, panels_for_side[0][0], first_params.scale_key("left")), "left"
+        )
     if x_title:
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
         grob = axis_title_grob(
             theme,
-            "bottom",
+            x_title_side,
             x_title,
             fake,
-            labels_extent_cm=layout.x_axis_cm,
+            labels_extent_cm=layout.x_axis_top_cm if x_title_side == "top" else layout.x_axis_cm,
             metrics=metrics,
             name="axis-title-x",
         )
@@ -1882,10 +1992,12 @@ def _axis_grobs(
         fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
         grob = axis_title_grob(
             theme,
-            "left",
+            y_title_side,
             y_title,
             fake,
-            labels_extent_cm=layout.y_axis_cm,
+            labels_extent_cm=layout.y_axis_right_cm
+            if y_title_side == "right"
+            else layout.y_axis_cm,
             metrics=metrics,
             name="axis-title-y",
         )

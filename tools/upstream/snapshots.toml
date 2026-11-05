@@ -36,7 +36,7 @@ reason = "SIL-793 已纳管：`coord_flip()` + `dup_axis(guide = guide_axis(titl
 [groups."coord-map"]
 issue = "SIL-715"
 owner = "m3"
-reason = "`coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。"
+reason = "SIL-823 已全部纳管 2 条：mapproj 球面 mercator（orientation 缺省 c(90, 0, mean(lon))）+ 转换后的轴位置。`map_data(\"usa\")` 的 10 个多边形内联在 `ggcore.map_data_usa`。"
 
 [groups."coord-polar"]
 issue = "SIL-715"
@@ -51,7 +51,7 @@ reason = "SIL-793 已把 3 条全部纳管：log10 / log2 的 `coord_transform()
 [groups."coord_sf"]
 issue = "SIL-715"
 owner = "m3"
-reason = "空间坐标（`coord_sf`）的 graticule / crs 归 M3-2。"
+reason = "SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；剩 `coord-sf-with-custom-guides` 是 plotmath 度数表达式 + `guide_none(angle)` / `n.dodge` 的自定义 guide 组合，版面差 2.85%（节点间 ≤ 2%），见 docs/notes/sf.md 的已知差异。"
 
 [groups."draw-key"]
 issue = "SIL-715"
@@ -126,7 +126,7 @@ reason = "geom_raster 的 12 条已全部纳管（SIL-794）；新增快照先�
 [groups."geom-sf"]
 issue = "SIL-715"
 owner = "m3"
-reason = "空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-column 解析。"
+reason = "SIL-823 已全部纳管 10 条：`geom_sf` / `geom_sf_text` / `geom_sf_label`、`stat_sf` / `stat_sf_coordinates`、按几何类型的缺省美学与图例 key、箭头、几何集合。"
 
 [groups."geom-smooth"]
 issue = "SIL-715"
@@ -1133,3 +1133,63 @@ reason = 'SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map(
 
 [snapshots."geom-text/geom-text-with-expressions.svg"]
 reason = 'SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 plotmath 排版（希腊字母 + 上下标 + 根号笔画，逐 glyph 定位、字号 0.7 倍、根号是 path）。本仓的文本层只吃纯文本，没有 plotmath 解析与排版，`geom_text()` 也没有 `parse = TRUE`。'
+
+[snapshots."geom-sf/labels-for-north-carolina.svg"]
+case = "upstream-geom-sf-labels-for-north-carolina"
+
+[snapshots."geom-sf/geom-sf-line-legend.svg"]
+case = "upstream-geom-sf-line-legend"
+
+[snapshots."geom-sf/geom-sf-point-legend.svg"]
+case = "upstream-geom-sf-point-legend"
+
+[snapshots."geom-sf/geom-sf-polygon-legend.svg"]
+case = "upstream-geom-sf-polygon-legend"
+
+[snapshots."geom-sf/mixed-geometry-types.svg"]
+case = "upstream-geom-sf-mixed-geometry-types"
+
+[snapshots."geom-sf/north-carolina-county-boundaries-with-arrow.svg"]
+case = "upstream-geom-sf-north-carolina-county-boundaries-with-arrow"
+
+[snapshots."geom-sf/north-carolina-county-boundaries-with-more-than-one-arrow.svg"]
+case = "upstream-geom-sf-north-carolina-county-boundaries-with-more-than-one-arrow"
+
+[snapshots."geom-sf/north-carolina-county-boundaries.svg"]
+case = "upstream-geom-sf-north-carolina-county-boundaries"
+
+[snapshots."geom-sf/spatial-points.svg"]
+case = "upstream-geom-sf-spatial-points"
+
+[snapshots."geom-sf/texts-for-north-carolina.svg"]
+case = "upstream-geom-sf-texts-for-north-carolina"
+
+[snapshots."coord_sf/limits-specified-in-long-lat.svg"]
+case = "upstream-coord-sf-limits-specified-in-long-lat"
+
+[snapshots."coord_sf/limits-specified-in-projected-coords.svg"]
+case = "upstream-coord-sf-limits-specified-in-projected-coords"
+
+[snapshots."coord_sf/no-breaks.svg"]
+case = "upstream-coord-sf-no-breaks"
+
+[snapshots."coord_sf/no-panel-grid.svg"]
+case = "upstream-coord-sf-no-panel-grid"
+
+[snapshots."coord_sf/non-sf-geoms-using-long-lat.svg"]
+case = "upstream-coord-sf-non-sf-geoms-using-long-lat"
+
+[snapshots."coord_sf/non-sf-geoms-using-projected-coords.svg"]
+case = "upstream-coord-sf-non-sf-geoms-using-projected-coords"
+
+[snapshots."coord_sf/reversed-sf-coords.svg"]
+case = "upstream-coord-sf-reversed-sf-coords"
+
+[snapshots."coord_sf/sf-polygons.svg"]
+case = "upstream-coord-sf-sf-polygons"
+
+[snapshots."coord-map/coord-map-switched-scale-position.svg"]
+case = "upstream-coord-map-coord-map-switched-scale-position"
+
+[snapshots."coord-map/usa-mercator.svg"]
+case = "upstream-coord-map-usa-mercator"

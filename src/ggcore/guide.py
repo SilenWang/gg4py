@@ -1304,8 +1304,9 @@ def build_guides(build: PlotBuild) -> tuple[GuideBuild, ...]:
             return guide_build
         specs = tuple(
             key_glyph_for(build.layers[index])
-            or default_key_glyph(
-                getattr(getattr(build.layers[index], "geom_object", None), "name", "")
+            or _layer_default_glyph(
+                build.layers[index],
+                getattr(getattr(build.layers[index], "geom_object", None), "name", ""),
             )
             for index in guide_build.layers
             if _layer_maps_any(build, index, guide_build.aesthetics)
@@ -1707,6 +1708,24 @@ def _first_value(table: ColumnTable, name: str) -> Any:
     return value
 
 
+def _layer_default_glyph(layer: Any, geom: Any) -> Any:
+    """geom 的缺省 key glyph；`geom_sf` 按几何类型选点 / 线 / 面。"""
+    name = geom if isinstance(geom, str) else getattr(geom, "name", "")
+    if name == "sf":
+        try:
+            from ggcore.geom.sf import sf_legend_type
+
+            legend = (getattr(layer, "params", None) or {}).get("legend")
+            if legend is None:
+                legend = sf_legend_type(layer.data)
+            return {"point": "point", "line": "path", "other": "polygon"}.get(
+                str(legend), "polygon"
+            )
+        except Exception:  # pragma: no cover - 没有 geometry 列时退回 polygon
+            return "polygon"
+    return default_key_glyph(name)
+
+
 def _key_grob(
     build: PlotBuild,
     layer_index: int,
@@ -1721,7 +1740,7 @@ def _key_grob(
     resolved = {**dict(values), **dict(override or {})}
     glyph = key_glyph_for(layer)
     if glyph is None:
-        glyph = default_key_glyph(geom.name)
+        glyph = _layer_default_glyph(layer, geom)
     if glyph is not None:
         if size_cm is None:
             raw_theme = build.theme
