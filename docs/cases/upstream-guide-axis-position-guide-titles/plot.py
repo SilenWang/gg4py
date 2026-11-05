@@ -9,6 +9,7 @@ from ggcore.plot import (
     ggplot,
     guide_none,
     guides,
+    labs,
 )
 from ggcore.theme import theme_test
 from ggio.frame import to_column_table
@@ -29,5 +30,6 @@ def build():
                 "y.sec": guide_none(title="y (secondary)"),
             },
         )
+        + labs(title="position guide titles")
     )
     return {"plot": p, "size": [10, 8]}
