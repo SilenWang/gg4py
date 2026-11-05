@@ -562,3 +562,25 @@ refs 里直接量 grid 原语（`textGrob("25", gp = gpar(fontsize = 8.8))`）�
 动手前需确认：`text_line_cm()` / `text_width_cm()` 只服务布局，还是也参与字形推进
 （`axis.py:785/849/851`、`axis_guide.py:747/849`、`facet.py:1935` 都是布局侧的调用，
 但 `Metrics.strwidth()` 若同时用于绘制，改口径会让已渲染文本跟着变）。
+
+**列宽的真正入口是 `_label_box()`，不是 `_label_stats()`（SIL-839 更正）**
+
+- 列宽 / 轴带尺寸全部由 `_label_box()`（`src/ggcore/axis_guide.py:719`）的
+  `width·cos + line·sin` / `width·sin + line·cos` 决定；
+- `_label_stats()`（同文件 `:839`）**只服务 `check.overlap` 与标签定位**，改它列宽纹丝不动
+  （SIL-839 实测：改 `_label_stats()` 后 `coord_sf` 的 panel clip 左边界仍是 156.05，
+  改 `_label_box()` 才变成 154.94）。
+
+**R 侧两点实验的实测值（refs，`guide_axis(angle = 45)` + `theme_grey()`）**
+
+```
+axis.text.x size    : 8.8
+axis.text.x margin  : 2.2points, 0points, 0points, 0points   ← 只有 top 2.2pt
+gtable axis-b 行高  : 0cm（p1 与 margin=0 的 p2 都是 0）
+```
+
+也就是说：**R 的 `axis.text.x` margin 只有 2.2pt**，之前按 `axis.text` 段反推出来的
+「margin 11.80」不成立；而且 R 的 `axis-b` 行高是 **0cm**——标签不占 gtable 行高，
+它的旋转 extent 由 panel 的 padding / 标签 grob 自身承担。所以 `_label_box()`
+里那套「extent + margin 相加」的和，和 R 的 gtable 行高不是同一个量，
+不能再用「合计 23.49」当验收（该数字来自对 `axis.text` 段的错误反推）。
