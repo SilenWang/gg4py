@@ -695,3 +695,27 @@ coord$transform(data.frame(theta = 0, r = pp$r.range[2]), pp)
 
 **「绘制内容区 535.11」标注为不可用作前提**：它是 `214.05 / 0.4` 反解出来的，
 **不是独立测量**（SIL-839 复核）。用它证明「基准错了」是循环论证。
+
+**`render_bg` 的 grob 全都没有 vp —— 0.9686 不在 ggplot2 侧（SIL-839 实测）**
+
+```r
+gp <- coord$render_bg(pp, theme_grey())
+# class: gTree,grob,gDesc
+# gp$vp: NULL
+# child names: GRID.polygon.11 / panel.grid.minor.y / panel.grid.minor.x /
+#              panel.grid.major.y / panel.grid.major.x
+# 每个 child 的 vp 也都是 NULL
+```
+
+两点结论：
+
+1. **没有任何 grob 级 viewport**：背景与四条网格全部直接画在 panel viewport
+   （554.52、xscale/yscale `0..1`）里，坐标就是 npc。**ggplot2 侧不存在 0.9686**。
+2. **网格 grob 的 name 就是 `panel.grid.major.x`（theta 辐条）/ `panel.grid.major.y`
+   （r 同心圆）**，`.minor` 同理——这是上游的命名，`_polar_grid_grobs()` 要对齐它，
+   `scratch/ablate.py` 按 name 过滤时也应认这四个名字。
+
+**svglite 的输出坐标与 grid pt 不是 1:1**：同一条边，grid 里 panel 是 **554.52**，
+而 `expected.svg` 里页面级 clip 宽 **575.61**（比值 1.0381，其倒数 0.9633 与
+`428.10 / 441.96 = 0.9686` 同量级）。所以「SVG 坐标 ÷ 0.9686 才可比」这条规则继续有效，
+`polar.point()` 的 0.4 也是对的。
