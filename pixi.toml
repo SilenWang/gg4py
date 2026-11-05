@@ -157,6 +157,17 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "spike:e1:assets" = "npm install --no-save --no-package-lock --prefix docs/spike/e1_coldstart/.npm pyodide@314.0.7 && python docs/spike/e1_coldstart/fetch_assets.py"
 "spike:e1" = { cmd = "python -u docs/spike/e1_coldstart/run_e1.py", depends-on = ["spike:e1:assets"] }
 
+# --- SIL-824 · 浏览器运行时（Pyodide + 全量 ggcore，资产自托管） ---------------
+# 把运行时资产落到 `web/runtime/vendor/`：pyodide 运行时 + 轮子（复用 E1 的本地副本，
+# 不重复下载）、ggcore/ggio 源码 zip（确定性打包）、受管字体里的拉丁字面。
+"pyodide:assets" = { cmd = "python tools/pyodide/stage_assets.py", depends-on = ["spike:e1:assets", "viewer:build"] }
+# 端到端验收：整轮只许本站请求（另有「阻断站外」重载）、numpy/contourpy/pandas 懒加载、
+# 可见加载进度、三个示例的 IR 与 CPython 逐字节相同。挂进 `check`。
+"pyodide:runtime" = { cmd = "python tools/pyodide/check_runtime.py", depends-on = ["pyodide:assets", "viewer:browsers"] }
+# 加载耗时实测：服务端按 Fast 4G 限速，冷启动 / warm 各跑 3 次；数字进 docs/notes/pyodide.md。
+# 不挂进 `check`：CI runner 的 CPU 与这里不同，用它当门禁只会让红绿取决于机器。
+"pyodide:timing" = { cmd = "python tools/pyodide/check_runtime.py --measure --runs 3", depends-on = ["pyodide:assets", "viewer:browsers"] }
+
 [feature.dev.pypi-dependencies]
 pytest = ">=9.2.0, <10"
 pytest-benchmark = ">=5.2.0, <6"
@@ -271,8 +282,12 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # M0-10: 同一份 plot → IR 在 CPython（cbor2）与 Pyodide（ggcore 自带纯 Python
 # 编码器）上各跑一次，逐字节比较。只要 node，不需要浏览器；资产复用 E1 的
 # `spike:e1:assets`（pyodide 运行时 + numpy 轮子，均来自本地目录）。
+# SIL-824：「ggcore 全量在 Pyodide 跑通」的门禁：冒烟（plot→IR + 边角取值 + 等值线）
+# 之外，把 `docs/cases/*/plot.py` 全部在两端各跑一遍，逐条比 IR 的 sha256。
+# 两端都走 `ggcore.metrics.fallback.TableMetrics`（浏览器里没有 skia / HarfBuzz）。
 "gate:pyodide" = { cmd = "python tools/gates/check_pyodide_ir.py", depends-on = ["spike:e1:assets"] }
 # 负向对照：让 Pyodide 侧故意差 1 个比特，门禁必须判红才说明它真的在看字节。
+# 负向对照覆盖两个相位：冒烟翻一个字节、全量相位翻一条 case 的摘要，两者都必须红。
 "gate:pyodide:selftest" = { cmd = "python tools/gates/check_pyodide_ir.py --expect-diff", depends-on = ["spike:e1:assets"] }
 # `_cbor` 与 cbor2 的 canonical 等价性（SIL-646）：9330 个取值，含 NaN 全部位型、
 # ±Inf、负数分支、23/24/255/256/65535/65536 长度头、嵌套容器与随机模糊。
@@ -306,6 +321,7 @@ check = { depends-on = [
   "gate:metrics",
   "gate:pyodide",
   "gate:pyodide:selftest",
+  "pyodide:runtime",
   "gate:cbor",
   "cases:matrix:check",
   "api:coverage:check",

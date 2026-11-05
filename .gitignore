@@ -55,3 +55,6 @@ web/viewer/gallery/
 
 # M1 出口复现件（`scripts/exit_report.py` / `.R`）的产物：随用随生成，不入库
 dist/
+# SIL-824：浏览器运行时的自托管资产（`pixi run pyodide:assets` 生成）与实测产物
+web/runtime/vendor/
+.pyodide-runtime/
