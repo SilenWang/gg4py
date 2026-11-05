@@ -1312,6 +1312,20 @@ def _panel_children(
         if isinstance(element, ElementRect):
             grob = _rect_from_element(element, border_only=border_only, name=name)
             if grob is not None:
+                if params.polar is not None and params.polar.radial:
+                    # R 的 `guide_grid(square = FALSE)` 把 `panel.background` 换成
+                    # `c(±Inf)` 的 polygon 再 `coord_munch`；munched 之后它的范围是
+                    # **`r.range` 上界（半径 0.4）** 的外接方形，即 npc `0.1..0.9`，
+                    # 不是整块 panel cell（实测 `coord_munch` 结果 x/y 都是
+                    # `0.1000..0.9000`）。铺满 cell 会让四角多出一圈灰底。
+                    radius = float(params.polar.inner_radius[1])
+                    grob = replace(
+                        grob,
+                        x=unit(0.5, "npc"),
+                        y=unit(0.5, "npc"),
+                        width=unit(2.0 * radius, "npc"),
+                        height=unit(2.0 * radius, "npc"),
+                    )
                 children.append(grob)
 
     # 网格线顺序照 ggplot2 的 panel gtable：major 在 minor 之下，两者都在面板
