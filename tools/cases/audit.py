@@ -19,8 +19,8 @@ from pathlib import Path
 
 sys.path.insert(0, "src")
 
-from ggcore.geom.scene import scene_from_plot  # noqa: E402
-from ggcore.plotspec import load_plot  # noqa: E402
+from ggcore.geom.scene import scene_from_plot
+from ggcore.plotspec import load_plot
 
 CASES = Path(__file__).resolve().parents[2] / "docs" / "cases"
 _FONT_SIZE = re.compile(r"font-size:\s*([0-9.]+)px")
@@ -37,7 +37,7 @@ def ours_sizes(case: Path) -> Counter[float] | None:
         built = spec if isinstance(spec, dict) else {"plot": spec}
         width, height = built.get("size", (10, 8))
         scene = scene_from_plot(built["plot"], width_in=width, height_in=height)
-    except Exception:  # noqa: BLE001 —— 单个 case 构建失败不该中断整轮审计
+    except Exception:
         return None
 
     out: Counter[float] = Counter()
