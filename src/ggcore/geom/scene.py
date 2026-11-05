@@ -2060,6 +2060,22 @@ def _axis_grobs(
                     name=f"axis-theta-{panel}",
                 )
             )
+            # `CoordRadial$render_fg()` 还会画 `theta.sec`（key 落在内半径、角度 +π）。
+            # 没有 `guides(theta.sec = ...)` 时上游画的是空 guide，这里同样跳过。
+            theta_sec = _guide_for(build, "theta.sec")
+            if theta_sec is not None:
+                grobs.extend(
+                    polar_axis_grobs(
+                        theta_scale,
+                        params,
+                        theme,
+                        cell,
+                        theta_sec,
+                        metrics=metrics,
+                        name=f"axis-theta-sec-{panel}",
+                        secondary=True,
+                    )
+                )
     area = axis_title_area(layout)
     panels_for_side = list(_panels(build))
     x_title_side = "bottom"
