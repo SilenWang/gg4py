@@ -772,3 +772,23 @@ HEAD 逐字节一致）。
    逐 guide `theme=` / 多环 `stack_offset`；
 3. 待收：`coord_sf-with-custom-guides` 2.85% / 1.00%、
    `matrix-report-facet-polar-grey` 4.39%（`ci = true`，report band 不得破 1% 均值）。
+
+## 待办：sf 多边形的 linewidth（不是本 issue 收）
+
+- **上游真值**：refs 里 `ggplot_build(p)$data[[1]]$linewidth` = **0.2**，来自
+  `GeomSf$default_aes` 的 `linewidth = 0.4 * borderwidth`（`borderwidth = 0.5`）。
+- **已改**：`SF_POLYGON_DEFAULTS["linewidth"]` 从写死的 `0.43` 改成
+  `FromTheme("borderwidth * 0.4")`，并在 `geom/sf.py` 加了 `_sf_default()` 让兜底
+  也走 `FromTheme.evaluate()`（直接 `float(FromTheme)` 会 `TypeError`）。
+- **未查明**：数据列实际取到 **0.3225**，与 0.2 不符。`number()` 的兜底只在整列 NA
+  时触发，所以这个值来自 `use_defaults()` / `build.finish()` 那条链，追下去要另开一轮。
+- **svglite 的写出口径**：`0.2 × 72.27/25.4 = 0.569 pt`，而 `expected.svg` 的
+  `stroke-width` 是 `0.43`，差 1.32 倍。这是 svglite 的 `lwd → stroke-width` 换算，
+  与 ggcore 无关，留给几何 stage。
+
+**已排除的三条假设（不要重走）**：
+
+1. 「`SF_POLYGON_DEFAULTS` 没生效」——`sf.py:147` 的
+   `{**_geom_defaults("polygon"), **SF_POLYGON_DEFAULTS}` 展开顺序证明它覆盖了 0.5；
+2. 「双重换算」——`_draw_polygon` 里的 `× POINT_PER_MM` 是 mm→pt，本身正确；
+3. 「兜底常量」——`number()` 的 `0.43` 兜底只在整列 NA 时触发，实际走的是数据列。
