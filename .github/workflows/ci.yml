@@ -3,6 +3,34 @@ name: ci
 
 on:
   pull_request:
+    # SIL-835：PR 只对「改到 CI 会读的东西」的改动跑门禁。门禁内容（三个 job、
+    # `pixi run check` 的依赖任务）一个字没动，收窄的只有触发范围。
+    #
+    # 排除项只有三类：`docs/**`（默认）、根目录 `*.md`、`LICENSE`。
+    # 下面这些 docs 路径看似文档，实际被 CI 读取/校验，必须仍然触发：
+    #   docs/cases/**                     案例三文件 + matrix.md，`cases:matrix:check` 与全部渲染门禁
+    #   docs/spike/**                     度量语料 `corpus/labels_200.json`（gate:metrics）、
+    #                                     E1/E2 实验脚本（gate:pyodide、tests 会读）
+    #   docs/notes/snapshot-inventory.md  台账新鲜度（snapshots:report:check）+ tests
+    #   docs/notes/api-coverage.md        API 覆盖率文档新鲜度（api:coverage:check）
+    #   docs/notes/theme.md               theme 派生区块新鲜度（docs:theme:check）
+    #   docs/notes/upstream.md            上游 pin，tests 校验 `- commit:` 行
+    #   docs/notes/extension.md           文档里的代码块就是 doctest，tests 直接执行
+    # 其余 docs/**（`docs/notes/` 的纯 prose、`docs/spike/**/report.md` 等）不触发；
+    # `docs/notes/snapshot-tiers.md` 也在其中——`tiers:check` 只读 meta.toml 的档位声明，
+    # 不读这份生成物（若将来给它加新鲜度门禁，记得把它加进例外）。
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!*.md"
+      - "!LICENSE"
+      - "docs/cases/**"
+      - "docs/spike/**"
+      - "docs/notes/snapshot-inventory.md"
+      - "docs/notes/api-coverage.md"
+      - "docs/notes/theme.md"
+      - "docs/notes/upstream.md"
+      - "docs/notes/extension.md"
   push:
     branches: [main]
   workflow_dispatch:
@@ -84,7 +112,29 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      # SIL-835：`cases matrix` 是最慢的 job（全量渲染 + 像素对拍），workflow 被触发
+      # 不代表它必须跑：只改 tests/ 或纯 Python 门禁脚本的 PR 不会改变渲染产物。
+      # 不引入第三方 action，直接用 git diff 判范围；PR 事件里 base SHA 一定可取。
+      - name: scope — is the case matrix affected?
+        id: scope
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "not a pull_request — running the matrix"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+          changed=$(git diff --name-only FETCH_HEAD HEAD)
+          echo "changed files:"; printf '%s\n' "$changed"
+          if grep -qE '^(src/|docs/cases/|docs/spike/|tools/|web/|pixi\.toml$|pixi\.lock$|\.github/workflows/)' <<<"$changed"; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no src / docs-cases / tools / web / pixi change — skipping the case matrix"
+          fi
       - uses: prefix-dev/setup-pixi@v0.8.0
+        if: steps.scope.outputs.run == 'true'
         with:
           environments: default
           cache: true
@@ -92,13 +142,15 @@ jobs:
       #    与 .cases-matrix/report.md；有红 case 就直接非 0 退出（失败 case 名
       #    同时以 ::error 注解出现在 PR 的 Files changed 里）。
       - name: pixi run cases:matrix
+        if: steps.scope.outputs.run == 'true'
         run: pixi run cases:matrix
       # 二、静态矩阵是入库产物：新增/删除 case 后必须把重生成的矩阵一起提交。
       - name: matrix.md is up to date
+        if: steps.scope.outputs.run == 'true'
         run: git diff --exit-code -- docs/cases/matrix.md
       # 三、PR 上贴摘要：报告文件 + 失败 case 名（step summary 逐 job 保留）。
       - name: publish summary
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         run: |
           {
             echo "### 案例矩阵"
@@ -110,7 +162,7 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         with:
           name: cases-matrix
           path: |
