@@ -1525,6 +1525,8 @@ class SfGraticuleLabel:
     y: float
     label: str
     angle: float
+    #: `"E"`（经线标签，贴上下边，走 `axis.text.x`）或 `"N"`（纬线，贴左右边，走 `axis.text.y`）。
+    type: str = "E"
 
 
 def _graticule_side_labels(
@@ -1572,6 +1574,7 @@ def _graticule_side_labels(
             y=float(lines[i].y_start),
             label=lines[i].label,
             angle=float(lines[i].angle_start),
+            type=lines[i].type,
         )
         for i in idx_start
     ]
@@ -1581,6 +1584,7 @@ def _graticule_side_labels(
             y=float(lines[i].y_end),
             label=lines[i].label,
             angle=float(lines[i].angle_end),
+            type=lines[i].type,
         )
         for i in idx_end
     ]
