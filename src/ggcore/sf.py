@@ -615,6 +615,28 @@ def _unproject(crs: CRS, x: Any, y: Any) -> tuple[np.ndarray, np.ndarray]:
     raise SfError(f"不支持的源 CRS {crs!r}")
 
 
+#: 投影坐标（米）写进几何之前的量化位数：1e-5 m（0.01 mm）。地图数据没有比这更细
+#: 的精度，而 1 ULP 级的 libm 噪声（`log` / `tan` / `sqrt` 的末位）被投影公式放大
+#: 到 1e-8 m 量级后，落在窄面板范围（单点几何的 range 只有 0.1 m）上会变成可见的
+#: 位置差、进而翻过 float32 的舍入边界（SIL-824 返工：nc 标签在另一台机器上漂）。
+#: 上限由 `tests/test_sf.py` 的投影恒等断言给出：1e-5 m 的量化误差（5e-6 m）仍小于
+#: 它对 `111319.49079327358 × lon` 的 1e-12 相对容差。
+PROJECTED_DECIMALS = 5
+#: 经纬度（度）的量化位数：1e-7 度 ≈ 1 cm。
+GEOGRAPHIC_DECIMALS = 7
+
+
+def _quantise_projected(values: np.ndarray, decimals: int) -> np.ndarray:
+    """把投影结果舍到固定十进制网格（纯 IEEE 运算，不经过 libm/版本相关的 round）。
+
+    NaN / ±Inf 原样保留：投影的边界语义（`|lat| > 90` 落成 NaN）不能被改写。
+    """
+    arr = np.asarray(values, dtype=np.float64)
+    scale = float(10**decimals)
+    finite = np.isfinite(arr)
+    return np.where(finite, np.rint(arr * scale) / scale, arr)
+
+
 def st_transform_xy(x: Any, y: Any, target: Any, source: Any) -> tuple[np.ndarray, np.ndarray]:
     """`sf_transform_xy()`：`source` → `target`；任一为 None 时原样返回。
 
@@ -629,6 +651,9 @@ def st_transform_xy(x: Any, y: Any, target: Any, source: Any) -> tuple[np.ndarra
         return xs, ys
     lon, lat = _unproject(source_crs, xs, ys)
     out_x, out_y = _project(target_crs, lon, lat)
+    decimals = GEOGRAPHIC_DECIMALS if target_crs.is_longlat else PROJECTED_DECIMALS
+    out_x = _quantise_projected(out_x, decimals)
+    out_y = _quantise_projected(out_y, decimals)
     finite = np.isfinite(out_x) & np.isfinite(out_y)
     out_x = np.where(finite, out_x, np.nan)
     out_y = np.where(finite, out_y, np.nan)

@@ -54,6 +54,7 @@ import numpy as np
 from ggcore.aes import X_AES, Y_AES, flipped_names
 from ggcore.components import Coord
 from ggcore.data import Column, ColumnTable
+from ggcore.munch import munch_steps
 from ggcore.scales import (
     CONTINUOUS_EXPANSION,
     Expansion,
@@ -137,14 +138,26 @@ class CoordTransform:
     `apply()` / `invert()` 都按 numpy 向量化；定义域外的值给 NaN（上游是 NaN /
     ±Inf，再在 `squish_infinite()` 里处理）。`reverse` 是负号，`sqrt` 的负值给
     NaN，与 R 的 `sqrt()` 一致。
+
+    **出口统一量化**：`apply()` / `invert()` 在返回前把结果舍到固定十进制网格
+    （:data:`TRANSFORM_DECIMALS`）。变换结果会直接参与「断点是否落在范围内」这类
+    **离散**判定与面板范围计算，宿主 libm / numpy 版本的末位差足以让
+    `log10(1000)` 落在 3.0 的两侧，从而多画或少画一个刻度（SIL-824 返工）。
+    子类只实现 `_apply()` / `_invert()`，量化口径只有这一处。
     """
 
     name: str = "identity"
 
     def apply(self, values: Any) -> np.ndarray:
-        return np.asarray(values, dtype=np.float64)
+        return _canonical_values(self._apply(values))
 
     def invert(self, values: Any) -> np.ndarray:
+        return _canonical_values(self._invert(values))
+
+    def _apply(self, values: Any) -> np.ndarray:
+        return np.asarray(values, dtype=np.float64)
+
+    def _invert(self, values: Any) -> np.ndarray:
         return np.asarray(values, dtype=np.float64)
 
     def domain_error(self, values: np.ndarray) -> bool:
@@ -155,14 +168,14 @@ class CoordTransform:
 class _LogTransform(CoordTransform):
     """`log` / `log2` / `log10`。"""
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         data = np.asarray(values, dtype=np.float64)
         out = np.full(data.shape, np.nan)
         valid = np.isfinite(data) & (data > 0)
         out[valid] = np.log(data[valid]) / math.log(self._BASE)
         return out
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         return np.power(self._BASE, np.asarray(values, dtype=np.float64))
 
     _BASE: ClassVar[float] = 10.0
@@ -190,14 +203,14 @@ class _Log(_LogTransform):
 class _Log1p(CoordTransform):
     name: str = field(default="log1p", init=False)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         data = np.asarray(values, dtype=np.float64)
         out = np.full(data.shape, np.nan)
         valid = np.isfinite(data) & (data > -1)
         out[valid] = np.log1p(data[valid])
         return out
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         return np.expm1(np.asarray(values, dtype=np.float64))
 
 
@@ -205,10 +218,10 @@ class _Log1p(CoordTransform):
 class _Exp(CoordTransform):
     name: str = field(default="exp", init=False)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         return np.exp(np.asarray(values, dtype=np.float64))
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         return np.log(np.asarray(values, dtype=np.float64))
 
 
@@ -216,14 +229,14 @@ class _Exp(CoordTransform):
 class _Sqrt(CoordTransform):
     name: str = field(default="sqrt", init=False)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         data = np.asarray(values, dtype=np.float64)
         out = np.full(data.shape, np.nan)
         valid = np.isfinite(data) & (data >= 0)
         out[valid] = np.sqrt(data[valid])
         return out
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         return np.square(np.asarray(values, dtype=np.float64))
 
 
@@ -231,14 +244,14 @@ class _Sqrt(CoordTransform):
 class _Reciprocal(CoordTransform):
     name: str = field(default="reciprocal", init=False)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         data = np.asarray(values, dtype=np.float64)
         out = np.full(data.shape, np.nan)
         valid = np.isfinite(data) & (data != 0)
         out[valid] = 1.0 / data[valid]
         return out
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         data = np.asarray(values, dtype=np.float64)
         out = np.full(data.shape, np.nan)
         valid = np.isfinite(data) & (data != 0)
@@ -250,10 +263,10 @@ class _Reciprocal(CoordTransform):
 class _Reverse(CoordTransform):
     name: str = field(default="reverse", init=False)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         return -np.asarray(values, dtype=np.float64)
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         return -np.asarray(values, dtype=np.float64)
 
 
@@ -266,10 +279,10 @@ class _CallableTransform(CoordTransform):
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "_forward", forward)
 
-    def apply(self, values: Any) -> np.ndarray:
+    def _apply(self, values: Any) -> np.ndarray:
         return np.asarray(self._forward(np.asarray(values, dtype=np.float64)), dtype=np.float64)
 
-    def invert(self, values: Any) -> np.ndarray:
+    def _invert(self, values: Any) -> np.ndarray:
         raise CoordError(
             "coord_trans 的自定义函数没有逆变换：反向需要它（`backtransform_range()` / "
             "secondary axis）。改用注册名（identity / log10 / sqrt …）或传入 "
@@ -305,6 +318,22 @@ _UNSUPPORTED_TRANSFORMS: Mapping[str, str] = MappingProxyType(
         "time": "M3-2",
     }
 )
+
+
+#: `coord_trans()` 变换结果的量化位数。变换（`log` / `exp` / `sqrt` / `reverse`）
+#: 的输出会直接参与**离散**判定（断点是否落在范围内、面板范围的端点），宿主
+#: libm / numpy 版本的末位差足以让 `log10(1000)` 落在 3.0 的两侧，从而多画或少画
+#: 一个刻度（SIL-824 返工：`coord-transform-reversed` 在另一台机器上多出 "1000"）。
+#: 12 位十进制（相对 1e-12）足够吸收 1 ULP 的 libm 噪声，又小于 R 对拍的 1e-12 容差。
+TRANSFORM_DECIMALS = 12
+
+
+def _canonical_values(values: Any, decimals: int = TRANSFORM_DECIMALS) -> np.ndarray:
+    """把变换结果舍到固定十进制网格（纯 IEEE 运算；NaN / ±Inf 原样保留）。"""
+    arr = np.asarray(values, dtype=np.float64)
+    scale = float(10**decimals)
+    finite = np.isfinite(arr)
+    return np.where(finite, np.rint(arr * scale) / scale, arr)
 
 
 def as_coord_transform(value: Any) -> CoordTransform:
@@ -2125,7 +2154,7 @@ def _munch_points(
                 keep_key.append(key)
                 continue
             distance = math.hypot((x1 - x0) / x_span, (y1 - y0) / y_span)
-            steps = max(1, math.ceil(distance / float(segment_length)))
+            steps = munch_steps(distance, segment_length)
             for step in range(1, steps + 1):
                 ratio = step / steps
                 keep_x.append(x0 + (x1 - x0) * ratio)

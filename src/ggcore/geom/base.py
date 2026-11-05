@@ -30,6 +30,7 @@ import numpy as np
 
 from ggcore.build import BuildWarning
 from ggcore.data import Column, ColumnTable
+from ggcore.munch import munch_steps
 from ggcore.viewport import NA
 from ggcore.viewport import NA as _NA
 
@@ -493,7 +494,9 @@ def munch_xy(
                 out_id.append(identifier)
                 continue
             distance = math.hypot((x1 - x0) / x_span, (y1 - y0) / y_span)
-            steps = max(1, math.ceil(distance / float(segment_length)))
+            # 段数的量化与 `coord_munch()` 共用一份实现（离散判定不能被 libm 的
+            # 末位噪声翻档，见 `ggcore.coord.munch_steps`）。
+            steps = munch_steps(distance, segment_length)
             for step in range(1, steps + 1):
                 ratio = step / steps
                 out_x.append(x0 + (x1 - x0) * ratio)

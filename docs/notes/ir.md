@@ -243,6 +243,9 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - 必须 C 连续；用 `ggcore.ir.f32()` / `i32()` 构造，构造后是只读视图（`writeable=False`）。
 - 输入是 float64 / Python list 时在 `f32()` 一次性舍入到 float32，IR 里不再有第二次舍入，
   所以 round-trip 是**逐位**相同（dtype + shape + 原始字节），不是 `allclose`。
+- 舍入前先量化到 1e-6 的十进制网格（`ggcore.ir.nodes._canonical_buffer`）：几何顶点来自
+  宿主 libm 的 `sin` / `cos` / `exp`，1 ULP 的差**通常**被 float32 吸收，但值恰好贴着
+  float32 的舍入边界时会翻一格——那同样让 IR 的 sha256 变化。见 §9 的「跨机器确定性」。
 - 解码用 `np.frombuffer` 直接看线格式里的 bytes，不复制；形状与字节长度不符直接报错。
 - 允许缓冲里出现 NaN / ±Inf / -0.0（缺失点、断线用 NaN 表达），但**参数字段**必须是有限值。
 - **设备输入就是本格式的 `Scene`**：`ggcore.grobs.Scene` 的 `Instruction.bufs` 是
@@ -404,9 +407,40 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 4. 不含时间戳、随机 id、运行环境信息；
 5. 缓冲直接取 numpy 的 C 连续原始字节（无字典序、无浮点格式化）。
 
+6. **写进字节的浮点先量化到固定十进制网格**：参数与 `gpar` 是 10 位
+   （`ggcore.ir.nodes.PARAM_DECIMALS`），缓冲是 1e-6（`BUFFER_DECIMALS`），
+   `coord_trans` 的变换结果是 1e-12（`ggcore.coord.TRANSFORM_DECIMALS`）。
+
 门禁 `pixi run gate:determinism` 用三个不同 `PYTHONHASHSEED` 的进程编码同一个
 `demo_scene()`，比较 stdout（digest / 字节数）；子进程同时做 `encode(decode(data)) == data`
 自检。
+
+### 跨机器确定性（SIL-824 返工）
+
+第 6 条不是为了省字节，而是为了**换一台机器也逐字节相同**。2026-11-05，`gate:pyodide`
+在本机 515/515 全绿，在 CI runner 上有 3 条 `coord_sf` case 两端 IR 不一致：同长度、
+不同 sha256，差在 `viewport.transform` 的平移量末位。
+
+链条是这样的：`coord_sf` 的 `1 / cos(lat)` 比例 → 面板版式 → `transform` 的 cm→pt 平移，
+而 `cos` 来自宿主 libm。glibc 的不同版本、不同 CPU、emscripten 的 libm 在同一输入上
+会差 1 ULP（1e-16 相对），经比例放大后仍然是 1e-13 量级的 pt 差——渲染上看不见，
+但足以翻过 double 的末位。
+
+所以「进 IR 的浮点」一律先量化：1 ULP 级的差要么被舍掉，要么需要恰好落在十进制网格
+边界 ±1e-16 内才会翻一格（概率 ~1e-4/值）。量化网格与实现无关：`round()` 对 float 是
+正确舍入的十进制转换，不经过 libm。
+
+同一类问题还有两处**离散**判定（量化吸收不了，必须单独处理）：
+
+| 位置 | 判定 | 处理 |
+| --- | --- | --- |
+| `ggcore.munch.munch_steps` | `ceil(distance / segment_length)` 的段数 | 先把商舍到 1e-6 再 `ceil` |
+| `ggcore.axis_guide.polar_axis_grobs` | `90° < angle < 270°` 的标签翻面 | 先把角度舍到 1e-6 再比较 |
+| `ggcore.sf.st_transform_xy` | 投影坐标（窄面板会放大） | 投影结果舍到 1e-5 m / 1e-7° |
+
+`pixi run gate:libm-noise` 把 `math` / `numpy` 的三角与指数函数整体偏 ±1 ULP（三种
+方向），把全部 case 再跑一遍：任何一条的 sha256 变了就红。它不需要 CI，也不需要
+第二台机器——这是「换一台 runner」在本机能做的最接近的代理。
 
 ## 10. 体积：10k 点 path vs 逐元素 JSON
 

@@ -1278,6 +1278,11 @@ def _anchor(angle: float, side: str) -> tuple[float, float]:
 # ---------------------------------------------------------------------------
 
 
+#: theta 标签角度的量化位数：`90 < angle < 270` 的翻转判定不能被 libm 末位噪声
+#: 翻档（SIL-824 返工）。1e-6 度远小于任何渲染端的可见分辨率。
+ANGLE_DECIMALS = 6
+
+
 def polar_axis_grobs(
     scale: Any,
     params: Any,
@@ -1315,10 +1320,12 @@ def polar_axis_grobs(
     grobs: list[Any] = []
     if guide.minor_ticks:
         grobs.extend(_theta_minor_tick_grobs(scale, params, theme, box, name=f"{name}.minor"))
-    for index, (x, y, text) in enumerate(entries):
-        theta = math.atan2(x - 0.5, y - 0.5)
-        angle = base_angle - math.degrees(theta)
-        angle = angle % 360.0
+    for index, (x, y, text, theta) in enumerate(entries):
+        # 90° / 270° 是**离散**分界：`angle` 恰好落在边界上时，宿主 libm 在
+        # `math.degrees()` 上的 1 ULP 差就能让判定翻档（标签从正着变倒着、baseline
+        # 从 bottom 变 top），IR 字节随之变化（SIL-824 返工：coord_polar 的 theta
+        # 标签在另一台机器上翻面）。先量化再比较，边界抖动被吃掉。
+        angle = round((base_angle - math.degrees(theta)) % 360.0, ANGLE_DECIMALS)
         if 90.0 < angle < 270.0:
             angle += 180.0
         radians = math.radians(angle)

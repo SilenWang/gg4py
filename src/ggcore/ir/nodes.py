@@ -57,16 +57,49 @@ def _frozen_view(arr: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     return view
 
 
+#: 缓冲量化的十进制度：与 :data:`PARAM_DECIMALS` 同一口径（1e-6 pt）。
+BUFFER_DECIMALS = 6
+#: 10 ** BUFFER_DECIMALS，以 float 存放：`rint(x * scale) / scale` 全是 IEEE 运算，
+#: 不经过 libm，因此在 CPython / Pyodide / 任何 CPU 上逐位相同。
+_BUFFER_SCALE = float(10**BUFFER_DECIMALS)
+
+
+def _canonical_buffer(values: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    """把 float64 缓冲舍到十进制网格，再交给 float32 舍入。
+
+    为什么也要管缓冲：`coord_polar` / `coord_radial` 的顶点、`coord_trans` 的变换
+    结果都来自宿主 libm 的 `sin` / `cos` / `exp`。1 ULP 的差在 float32 舍入后
+    **通常**消失，但值恰好贴着 float32 的舍入边界时会翻一格——那同样让 IR 的
+    sha256 变化（SIL-824 的返工：本机能稳，CI runner 上不稳）。
+
+    先量化到 1e-6（远大于 libm 噪声、远小于 float32 的舍入边界密度），再做
+    float32 舍入，就把「贴着边界」的概率从 ~1e-9 压到可以忽略。
+    NaN / ±Inf 原样保留（`np.where` 只搬运，不做算术；`run_ir.py` 的边角取值 scene
+    因此仍逐位保留 NaN 的全部位型）。
+    """
+    arr = np.asarray(values)
+    if arr.dtype != np.float64:
+        arr = arr.astype(np.float64)
+    finite = np.isfinite(arr)
+    if not finite.any():
+        return arr
+    quantised = np.rint(arr * _BUFFER_SCALE) / _BUFFER_SCALE
+    return np.where(finite, quantised, arr)
+
+
 def f32(values: Any) -> np.ndarray[Any, Any]:
     """转成 C 连续的只读 float32 缓冲（几何顶点、宽度、矩形都用它）。
 
     输入是 float64 / Python list 时在这里一次性舍入到 float32——这是 IR 的精度
-    口径：写进去的是 float32，读出来的逐位相同，不做第二次舍入。
+    口径：写进去的是 float32，读出来的逐位相同，不做第二次舍入。舍入之前先按
+    :func:`_canonical_buffer` 量化到十进制网格，消掉宿主 libm 的末位噪声。
     """
     arr = np.asarray(values)
-    if arr.dtype != F32:
-        arr = arr.astype(F32)
-    return _frozen_view(np.ascontiguousarray(arr))
+    if arr.dtype == F32:
+        # 已经是 float32 的输入（`run_ir.py` 的 NaN 位型 / 解码回写）不再过一遍
+        # 十进制网格：那会改写 NaN 的 payload，而位型保留是本函数的口径之一。
+        return _frozen_view(np.ascontiguousarray(arr))
+    return _frozen_view(np.ascontiguousarray(_canonical_buffer(arr).astype(F32)))
 
 
 def i32(values: Any) -> np.ndarray[Any, Any]:
@@ -189,13 +222,38 @@ def _colour(value: Any, field_name: str) -> Color:
     return (channels[0], channels[1], channels[2], channels[3])
 
 
+#: 写进 IR 的浮点参数量化到这一位十进制。见 :func:`_canonical_float` 与
+#: `docs/notes/ir.md` §5.1：10 位十进制对 1e2 量级的坐标就是 1e-8 pt（远小于任何
+#: 渲染分辨率），却比宿主 libm 的末位噪声（1 ULP，1e-16 相对）大三个数量级。
+PARAM_DECIMALS = 10
+
+
+def _canonical_float(number: float) -> float:
+    """把一个参数浮点舍到固定十进制网格（`PARAM_DECIMALS` 位）。
+
+    为什么必须做：IR 是**逐字节**比较的产物（`pixi run gate:pyodide` 把全部 case
+    在 CPython 与 Pyodide 上各编一遍），而版式里的坐标 / 变换来自宿主 libm 的
+    `sin` / `cos` / `atan2`。不同 glibc 版本、不同 CPU、以及 emscripten 的 libm
+    在同一输入上会差 1 ULP；`coord_sf` 的 `1/cos(lat)` 这类比例还会把它放大一档，
+    最终写进 `viewport.transform` 就成了「同长度、不同 sha256」的漂移
+    （SIL-824 的 CI：3 条 coord_sf case）。
+
+    量化到 1e-10 之后，1 ULP 级的差要么被舍掉、要么需要落在十进制网格边界
+    ±1e-16 内才会翻一格——概率 ~1e-4/值，比「跑在另一台机器上」的随机性低得多。网格本身
+    与实现无关：Python 的 `round()` 对 float 是正确舍入的十进制转换，不经过 libm。
+    """
+    if not math.isfinite(number):
+        return number
+    return round(number, PARAM_DECIMALS)
+
+
 def _finite(value: Any, field_name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise IRValidationError(f"{field_name} 必须是数值，收到 {value!r}")
     number = float(value)
     if not math.isfinite(number):
         raise IRValidationError(f"{field_name} 必须是有限值，收到 {value!r}")
-    return number
+    return _canonical_float(number)
 
 
 class FillKind(StrEnum):
