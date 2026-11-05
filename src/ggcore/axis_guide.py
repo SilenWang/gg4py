@@ -94,6 +94,11 @@ class AxisGuide:
     #: `guide_axis_stack()`：按顺序叠放的子 guide。
     guides: tuple[AxisGuide, ...] = ()
     spacing: Any = None
+    #: 逐 guide 主题（`guide_axis(theme = ...)`）：只覆盖**这一条 guide** 的元素，
+    #: 不串到全局 theme。R 里它挂在 `Guide$theme` 上，渲染时与全局 theme 合并后
+    #: 只作用在该 guide 的 grob 上（`axis.line.theta` / `r.axis.inside` /
+    #: `rotate.angle` 都读它）。
+    theme: Any = None
 
     def __post_init__(self) -> None:
         if self.name not in _AXIS_NAMES:
@@ -132,6 +137,7 @@ def guide_axis(
     cap: str = "none",
     position: str | None = None,
     order: float = 0.0,
+    theme: Any = None,
 ) -> AxisGuide:
     del order  # 轴 guide 的 order 在 R 里也只用于 guides() 排序，轴本身不读
     return AxisGuide(
@@ -143,6 +149,7 @@ def guide_axis(
         minor_ticks=bool(minor_ticks),
         cap=cap,
         position=position,
+        theme=theme,
     )
 
 
@@ -237,6 +244,7 @@ def guide_axis_theta(
     angle: float | None = None,
     minor_ticks: bool = False,
     cap: str = "none",
+    theme: Any = None,
 ) -> AxisGuide:
     return AxisGuide(
         name="axis_theta",
@@ -244,6 +252,7 @@ def guide_axis_theta(
         angle=angle,
         minor_ticks=bool(minor_ticks),
         cap=cap,
+        theme=theme,
     )
 
 

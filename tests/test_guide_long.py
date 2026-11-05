@@ -428,3 +428,20 @@ def test_theta_axis_stack_is_constructible() -> None:
     scene = scene_from_plot(plot, width_in=4, height_in=3)
     labels = list(_text_nodes(scene.root))
     assert labels, "theta 轴标签没画出来"
+
+
+def test_axis_guide_theme_is_per_guide() -> None:
+    """`theme=` 只挂在这条 guide 上（R 的 `Guide$theme`），不串到全局 theme。
+
+    `axis.line.theta` / `r.axis.inside` / `rotate.angle` 都读这条 per-guide theme，
+    所以它是 theta 轴那几项的基础（SIL-839 §8.5）。
+    """
+    from ggcore.axis_guide import guide_axis, guide_axis_theta
+
+    sentinel = object()
+    assert guide_axis().theme is None
+    assert guide_axis(theme=sentinel).theme is sentinel
+    assert guide_axis_theta().theme is None
+    assert guide_axis_theta(theme=sentinel).theme is sentinel
+    # 逐 guide 独立：A 的 theme 不会出现在 B 上
+    assert guide_axis(theme=sentinel).theme is not guide_axis().theme
