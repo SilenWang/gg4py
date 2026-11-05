@@ -571,16 +571,25 @@ refs 里直接量 grid 原语（`textGrob("25", gp = gpar(fontsize = 8.8))`）�
   （SIL-839 实测：改 `_label_stats()` 后 `coord_sf` 的 panel clip 左边界仍是 156.05，
   改 `_label_box()` 才变成 154.94）。
 
-**R 侧两点实验的实测值（refs，`guide_axis(angle = 45)` + `theme_grey()`）**
+**R 侧两点实验的实测值（refs，`guide_axis(angle = 45)` + `theme_grey()`）—— 两条结论未定论**
 
 ```
 axis.text.x size    : 8.8
-axis.text.x margin  : 2.2points, 0points, 0points, 0points   ← 只有 top 2.2pt
-gtable axis-b 行高  : 0cm（p1 与 margin=0 的 p2 都是 0）
+axis.text.x margin  : 2.2points, 0points, 0points, 0points
+gtable axis-b 行高  : 读到 0cm（p1 与 margin=0 的 p2 都是 0）
 ```
 
-也就是说：**R 的 `axis.text.x` margin 只有 2.2pt**，之前按 `axis.text` 段反推出来的
-「margin 11.80」不成立；而且 R 的 `axis-b` 行高是 **0cm**——标签不占 gtable 行高，
-它的旋转 extent 由 panel 的 padding / 标签 grob 自身承担。所以 `_label_box()`
-里那套「extent + margin 相加」的和，和 R 的 gtable 行高不是同一个量，
-不能再用「合计 23.49」当验收（该数字来自对 `axis.text` 段的错误反推）。
+**这两条结论目前未定论，不要据此改代码**（SIL-839 复核）：
+
+- 这张图是 **mtcars 代理图，不是 `coord_sf` 那条 case**；
+- 一张有可见底部轴标签的图，`axis-b` 行高不该是 0cm——两版都读到 0，
+  说明取的行索引/行名不对（`heights` 里固定行不止一个：`panel-spacing` /
+  `axis-t` / `axis-b` 都在），必须用 `gt$layout$name == "axis-b"` 精确定位。
+
+要定论，得用**这条 case 自己的 gtable**：把 `docs/cases/upstream-coord-sf-coord-sf-with-custom-guides/plot.py`
+的代码在 refs 里原样跑出来，`ggplotGrob()` 后按 `layout$name` 取 `axis-l` 的列和
+`axis-b` 的行，再用 `widthDetails()` / `heightDetails()` 出宽高。R 的 axis-l
+26.22pt（0.8287cm + 0.0966cm）本来就是从这条 case 量到的，直接对它即可。
+
+在那之前，「margin 11.80 / 合计 23.49」和「margin 只有 2.2pt / extent 不占行高」
+**两套数字都不作数**。
