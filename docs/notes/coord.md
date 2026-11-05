@@ -742,3 +742,33 @@ HEAD 逐字节一致）。
 **结论**：那个 3.2% 是 svglite 落在圆/多段路径上的输出特性，不是几何差异；
 我们复现它只会让所有 polar 快照变差。`polar.point()` 的 0.4、`_aspect_panel_area()`
 都保持原样，这条 case 的「半径项」正式排除，差异回到面板内容与元素本身。
+
+**止损记录：`0.9686` 不是全局径向常量（SIL-839，A/B 实测后回滚）**
+
+把 `POLAR_RADIUS_TO_REFERENCE = 0.9686` 一处定义在 `coord.py`，作用于
+`radius()` + 背景 rect + 辐条外端（角度、文字不动），跑 5 条 polar：
+
+| case | 改前 | 改后 | 变化 |
+| --- | ---: | ---: | ---: |
+| `upstream-guide-axis-theta-angle` | 29.67% | **27.31%** | −2.36pp ✓ |
+| `upstream-coord-polar-three-circles` | 1.14% | 3.53% | **+2.39pp** ✗ |
+| `upstream-scales-numeric-polar` | 1.30% | 2.74% | **+1.44pp** ✗ |
+| `matrix-report-facet-polar-grey` | 4.39% | 10.48% | **+6.09pp** ✗ |
+| `coord-polar-theta-y` | 0.16% | 0.38% | +0.22pp ✗ |
+
+**三条已绿的 polar 快照恶化 1.4–6.1pp**，远超 0.5pp 阈值 → 已完整回滚。
+
+**结论**：`0.9686` 只对 `guide-axis-theta-angle` 这一条期望图成立，不是 ggplot2
+侧的全局径向口径。若是全局，四条本来 1% 上下的 polar 快照不可能同时恶化——
+它们和这条 case 共用同一套 polar 映射。最可能是这条 `expected.svg` 来自另一份
+设备参数/渲染器版本的快照。
+
+**这条 case 的剩余缺口**（不再深挖，转其余收口）：
+
+1. 元素层面：`grid` 2.02pp、`axis` 2.39pp 已实测（`ablate.py` 按 `gpar.col` 认，
+   经过字节自检）；`text` / `bg` / `points` 三行仍失效，原因已定位
+   （`text` 的 `keep()` 末尾 `or True` 恒真、`bg` 依赖为空的 `params["name"]`）；
+2. 库缺口（与像素差独立）：`axis.line.theta` / `axis.ticks.theta` / `cap` /
+   逐 guide `theme=` / 多环 `stack_offset`；
+3. 待收：`coord_sf-with-custom-guides` 2.85% / 1.00%、
+   `matrix-report-facet-polar-grey` 4.39%（`ci = true`，report band 不得破 1% 均值）。
