@@ -538,3 +538,27 @@ refs 里直接量 grid 原语（`textGrob("25", gp = gpar(fontsize = 8.8))`）�
 `text_width_cm`（我们本来就比 R 大 1.34pt，改了只会更偏）；要改的是旋转标签那段
 （`_label_stats()` 里 `ml + mr` / `mt + mb` 的取用，以及 R
 `R/guide-axis.R` 的 `axis_label_element` → `axis.text.x` margin 口径）。
+
+**待改规格：`axis-l` 的两项必须一起改（SIL-839 转 review 时的缺口清单）**
+
+只补 margin 会超，只改 extent 会少——两项是耦合的：
+
+| | 旋转 extent | margin | 合计 |
+| --- | ---: | ---: | ---: |
+| R | 11.69 | 11.80 | **23.49** |
+| 我们 | 13.03 | 9.65 | **22.68** |
+
+1. **旋转 extent** 换成 R 口径：`0.707 × (strwidth + strheight)`
+   = `0.707 × (10.0455 + 6.4862)` = **11.69**。
+   现状用的是 `text_line_cm()`（`TEXT_LINE_EM = 0.8945`，
+   `facet.py` 注释说明它是「R 的 `stringHeight()` + descent」）与
+   `text_width_cm()`（10.56，比 `grobWidth` 大 0.51）——
+   旋转 bbox 应当用 **`grobWidth`/`grobHeight` 的值**，不是 line-em。
+2. **margin** 按 R 的 **11.80** 取（现状 9.65）。
+
+**验收看合计 `23.49`（+ `axis.ticks.length` 2.74 = 26.22），不要逐项去凑**——
+单项能对上是因为两项互相抵消，SIL-839 前几轮的 0.8 / 1.13 都是这么绕出来的。
+
+动手前需确认：`text_line_cm()` / `text_width_cm()` 只服务布局，还是也参与字形推进
+（`axis.py:785/849/851`、`axis_guide.py:747/849`、`facet.py:1935` 都是布局侧的调用，
+但 `Metrics.strwidth()` 若同时用于绘制，改口径会让已渲染文本跟着变）。
