@@ -976,6 +976,9 @@ def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:
         # 层参数（R 的 `aes_params`）覆盖同名映射：`geom_point(colour = "black")`
         # 的 colour 不再是映射，因此不产生图例键（上游
         # `setup_plot_labels()` 用 `setdiff(names(mapping), names(layer$aes_params))`）。
+        #
+        # 例外是 `mapped_fill`：`scale_fill_manual(values = <FillSpec>)` 的逐行值
+        # 也被摊进了 `params["fill"]`，但它仍然是映射，图例照建（SIL-833）。
         return False
     if aesthetic in _layer_mapping(build, index):
         return True

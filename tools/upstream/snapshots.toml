@@ -990,7 +990,7 @@ case = "upstream-facet-strips-switched"
 
 # patterns 4 条全部纳管（SIL-833）：内容按整层 grob 的 bbox 折 npc、SVG 后端写
 # 真正的 `<pattern>`、逐行 FillSpec 列表 / `scale_fill_manual(values = <FillSpec>)`
-# / 逐行 alpha 都落到了 IR。
+# / 逐行 alpha 都落到了 IR。四条 case 的像素差都在 1.5% 上下（阈值 2%）。
 [snapshots."patterns/single-pattern-fill.svg"]
 case = "upstream-patterns-single-pattern-fill"
 

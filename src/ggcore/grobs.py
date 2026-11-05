@@ -1665,7 +1665,8 @@ def _layer_boxes(
     并集统计的是**整个图层**的几何（不含 `group = FALSE` 的渐变：R 的
     `linearGradient(group = FALSE)` 每个元素各用各的 bbox，`pattern-fills-*`
     的形状）。先挑出「有 group 填充规格」的图层，其余图层不量包围盒——给一条
-    几万点的 path 量包围盒是白花时间。
+    几万点的 path 量包围盒是白花时间。键里带视口路径：一层的指令若被拆到不同
+    局部坐标系，坐标不可比，只能各算各的。
     """
     wanted = {
         (item.layer, item.vp)

@@ -180,6 +180,14 @@ class RadialGradientSpec(FillSpec):
 
 @dataclass(frozen=True)
 class TilePatternSpec(FillSpec):
+    """平铺图案的待解析规格：`draw(bbox)` 给出**被填充 grob 的 bbox** 里的内容。
+
+    字段口径：`width` / `height` 用 `units`（`npc` 是 bbox 的比例、`pt` 是局部
+    pt），`x` / `y` 是 tile 中心、单位由 `anchor_units` 单独给（R `pattern()` 的
+    `width = unit(1, "cm")` 与缺省 npc 锚点就是两个单位）。`group` 恒为 True：
+    `pattern()` 没有 `group` 参数，内容始终按整层 grob 的 bbox 折（SIL-833）。
+    """
+
     draw: Callable[[Box], Sequence[Node]]
     width: float = 1.0
     height: float = 1.0

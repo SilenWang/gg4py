@@ -304,6 +304,8 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
   **一个** grob 里，npc 的分母就是那个 grob 的 bbox——只有这么做图案相位才对得上。
 - 渐变的 `group = FALSE`（R `linearGradient(group = )` 的同名量）是**逐元素**口径：
   每个元素各用各的 bbox，不参与图层的并集。`pattern()` 没有这个参数，恒为整层。
+  逐行填充值（`fill = list(…)`、`scale_fill_manual(values = <FillSpec>)`）走的是
+  另一条路：值留在 `layer.params["fill"]`，由 `fill_values()` 按模展开。
 - `pattern.content` 的原语用**与节点几何同一个局部坐标**（不是 tile 相对坐标），
   并且是**按被填充 grob 的 bbox 摆一次**、所有 tile 共用：tile 只决定裁剪窗口与
   重复周期，相位由内容与 bbox 的相对位置决定。窗口是 `[origin, origin + size)`；

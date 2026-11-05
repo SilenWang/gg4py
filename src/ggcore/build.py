@@ -1152,6 +1152,9 @@ def _layer_fill_specs(stages: _Stages, scales: ScaleSet) -> Layer:
     标度的**水平码**把对象摊成 `layer.params["fill"]`（与
     `geom_col(fill = list(...))` 走同一条 `fill_values()`）。没有承载 FillSpec 的
     填色标度时原样返回，既有路径不受影响。
+
+    摊开之后 `LayerBuild.mapped_fill` 置真：`params["fill"]` 里虽然是逐行值，
+    但这条美学**仍然是映射**，图例要照建（`guide._is_mapped()` 读那个标记）。
     """
 
     layer = stages.layer

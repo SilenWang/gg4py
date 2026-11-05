@@ -2332,7 +2332,8 @@ class HueScale(DiscreteScale):
         """`values` 里有没有渐变 / 图案（`scale_fill_manual(values = <FillSpec>)`）。
 
         这类值不是颜色串，落不进 `Column`；调用方（`build._assemble` / guide 的
-        键提取）要走「逐行对象」那条路（SIL-833）。
+        键提取）要走「逐行对象」那条路（SIL-833）。颜色项仍然按 `str()` 存
+        （`colours()` 的返回值因此是混合类型），`map()` 遇到 FillSpec 会写占位色。
         """
         from ggcore.fills import FillSpec
 

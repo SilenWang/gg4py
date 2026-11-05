@@ -2,7 +2,8 @@
 
 - 渐变走 skia shader：SVG 后端写出 `<linearGradient>` / `<radialGradient>`
   （`gradientUnits="userSpaceOnUse"`，坐标是节点局部坐标）；
-- 图案走**矢量平铺**（逐 tile 裁剪 + 平移画内容），三路后端都不落位图；
+- 图案：PNG / PDF 走**矢量平铺**（逐 tile 裁剪 + 平移画内容），SVG 后端写真正的
+  `<pattern>`（SIL-833，skia 画布没有图案 API → 占位色 + 序列化后重写）；
 - `extend` 映射到 `spreadMethod`；图案只支持 repeat，别的显式报错。
 """
 

@@ -1384,6 +1384,10 @@ def _draw_layer(
     面板号与面板参数、主题（几何会读 `geom.<class>` 元素）、度量实例。命中时
     返回的是同一份**不可变** grob（`frozen` dataclass），后续遍历照常。
 
+    `tag` 是整层的 `layer_tag`（SIL-833）：写进 grob 后由遍历期继承给每条指令，
+    写 IR 时同标记的指令取并集当填充 bbox。命中缓存时也要保证标签是当前这一层
+    的——缓存键不区分同面板的图层序号，两层内容完全一样时会共用一份 grob。
+
     主题指纹每张场景算一次（`_theme_fingerprint`），不进每个图层的键开销。
     """
     cache = layer_draw_cache()

@@ -6,6 +6,8 @@
 - 矢量后端的文字一律是轮廓：PDF 里没有 `/Font`、SVG 里没有 `<text>`；
 - `pch` 0..25 全部有几何，字符型 pch 走文字；
 - 位图 blob 能解码；
+- 图案填充在 SVG 后端写成真正的 `<pattern>`（SIL-833），PNG / PDF 走逐 tile 的
+  矢量平铺；
 - CLI `render --scene … --out x.{png,svg,pdf}` 三路都出图。
 
 像素级回归在 `tests/test_grob_cases.py`（16 张 grob 快照），曲线求值的 R 对拍在

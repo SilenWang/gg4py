@@ -1,11 +1,13 @@
 """渐变 / pattern 的**写方**口径（SIL-751，`ggcore.fills`）。
 
-三层：
+四层：
 
 1. 单位解析：`npc` 是「被填充对象包围盒的比例」，`pt` 是节点局部坐标直通；
-2. 图案的 tile 以 `(x, y)` 为中心（R `pattern(just = "centre")`）；
+2. 图案的 tile 以 `(x, y)` 为中心（R `pattern(just = "centre")`），内容按**整层
+   bbox** 的 npc 摆（SIL-833）；
 3. 端到端：`geom_col(fill = 渐变)` 与 `theme(panel.background = element_rect(填渐变))`
-   都能落到 IR 的最终几何上，且 `Node` 拒绝「还没解析的规格」。
+   都能落到 IR 的最终几何上，且 `Node` 拒绝「还没解析的规格」；
+4. 逐行填充值 / 标度承载 FillSpec / `group = FALSE`（SIL-833 的 `pattern-fills-*`）。
 """
 
 from __future__ import annotations

@@ -1270,6 +1270,10 @@ def _rewrite_svg_patterns(svg: bytes, patterns: Sequence[TilePattern]) -> bytes:
     画下去；这里按槽位把 `fill` 换掉、定义插到 `<svg>` 后面（`<defs>` 里的
     顺序不影响引用）。内容含 RECT / CIRCLE 之外的原语时退回逐 tile 的写法——
     宁可多画几千条矩形，也不写出一个画错的图案。
+
+    占位色是 `#FE` 开头、后两字节编码槽位；换成 `url(#gpat-N)` 之后产物里不该
+    再有 `#FE01…`（`tests/test_device.py` 里钉住这一条）。内容组平移 `-origin`
+    是因为浏览器 / resvg 把 pattern 内容的坐标原点放在 tile 左上角。
     """
     if not patterns:
         return svg

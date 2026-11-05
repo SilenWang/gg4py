@@ -566,7 +566,8 @@ def fill_alpha(fills: Sequence[Any], alpha: Any) -> tuple[list[Any], list[float]
     `pattern-fills-with-alpha`）。
 
     第二批返回 `None` 表示这一层没有需要单独走 `gpar.alpha` 的行：调用方就别写
-    `alpha` 字段，避免给所有既有图层多一个恒为 1 的 gpar 增量。
+    `alpha` 字段，避免给所有既有图层多一个恒为 1 的 gpar 增量。纯色行的 alpha
+    已经折进颜色，对应的 `alpha` 记 1.0（与父视口的 alpha 相乘不改变结果）。
     """
     from ggcore.fills import FillSpec
 
