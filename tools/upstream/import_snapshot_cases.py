@@ -4805,6 +4805,107 @@ notes = "SIL-793：vdiffr 快照原样纳入；`coord_radial(reverse = \"thetar\
 ]
 
 
+#: SIL-825（M3-1）：annotate 簇的 2 条上游快照。
+#: `annotate()` 的公开 API 与 `annotation_borders()` 的 Utah 数据都在
+#: `ggcore.annotations` / `ggcore.map_data`；这里是它们的快照复刻。
+_ANNOTATE_SPECS: list[dict[str, Any]] = [
+    {
+        "slug": "upstream-annotate-utah",
+        "snapshot": "annotate/annotation-borders-utah.svg",
+        "source": r'''"""上游快照复刻：annotation_borders utah。
+
+源：annotate/annotation-borders-utah.svg（vdiffr 名 "annotation_borders utah"）。
+
+R（4.0 起 `borders()` 是 deprecated 的 `annotation_borders()` 别名）：
+
+    borders("state", "utah")
+
+`maps::map("state", "utah")` 的 59 个点逐点内联在 `ggcore.map_data`
+（本仓不装 maps 包），多边形描边 grey50、不填充；主题是 vdiffr 快照里的
+`theme_test()`，标题是 doppelganger 名。
+"""
+
+from ggcore.plot import annotation_borders, ggplot, labs
+from ggcore.theme import theme_test
+
+
+def build():
+    p = (
+        ggplot()
+        + annotation_borders("state", "utah", fill=None, colour="grey50")
+        + labs(title="annotation_borders utah")
+        + theme_test()
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "annotate"
+features = ["aes-mapping", "theme-complete"]
+ci = true
+title = "上游快照：annotation_borders utah"
+source = "upstream:tests/testthat/_snaps/annotate/annotation-borders-utah.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-825：annotate()/annotation_borders() 落地；maps::map(\"state\", \"utah\") 的 59 个点内联在 ggcore.map_data。"
+""",
+    },
+    {
+        "slug": "upstream-annotate-segment-transform",
+        "snapshot": "annotate/line-matches-points.svg",
+        "source": r'''"""上游快照复刻：line matches points。
+
+源：annotate/line-matches-points.svg（vdiffr 名 "line matches points"）。
+
+R：
+
+    df <- data_frame(x = c(1, 10), y = c(10, 1))
+    ggplot(df, aes(x, y)) +
+      geom_point() +
+      annotate("segment", x = 1, y = 10, xend = 10, yend = 1, colour = "red") +
+      scale_y_reverse(NULL, breaks = NULL) +
+      scale_x_continuous(NULL, breaks = NULL)
+
+判据是 `annotate()` 的位置美学与数据点走**同一套标度**：`scale_y_reverse()`
+之后线段的两个端点仍精确落在两个点上（不是镜像到窗外）。
+"""
+
+from ggcore.plot import (
+    aes,
+    annotate,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_reverse,
+)
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1.0, 10.0], "y": [10.0, 1.0]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + annotate("segment", x=1, y=10, xend=10, yend=1, colour="red")
+        + scale_y_reverse(name=None, breaks=None)
+        + scale_x_continuous(name=None, breaks=None)
+        + labs(title="line matches points")
+        + theme_test()
+    )
+    return {"plot": p, "size": [10, 8]}
+''',
+        "meta": r"""family = "annotate"
+features = ["aes-mapping", "scale-limits", "theme-complete"]
+ci = true
+title = "上游快照：line matches points"
+source = "upstream:tests/testthat/_snaps/annotate/line-matches-points.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-825：annotate() 的位置美学与数据点共用标度（scale_y_reverse 之后线段端点仍落在点上）。"
+""",
+    },
+]
+
+
 def specs() -> list[dict[str, Any]]:
     # `upstream-theme-bw` 是先手写验证过的原型，保留它的 plot.py 不动。
     # 三个 `base_size = 33` 变体实测超阈（geom 缺省尺寸没跟 `theme$pointsize` 走，
@@ -4833,6 +4934,7 @@ def specs() -> list[dict[str, Any]]:
         + _FACET_SPECS
         + _G10_SPECS
         + _theme_g9_specs()
+        + _ANNOTATE_SPECS
     )
 
 

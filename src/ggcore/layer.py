@@ -229,6 +229,10 @@ class Layer:
     params: dict[str, Any] = field(default_factory=dict)
     inherit_aes: bool = True
     show_legend: bool | Mapping[str, bool | None] | None = None
+    #: 映射**不参与轴标题**（上游 `aes_all()` 的 `class "unlabelled"`）。
+    #: `annotate()` 用它：位置美学进 mapping，但 `ggplot() + annotate(...)` 不该
+    #: 凭空长出 "x" / "y" 轴标题（SIL-825）。
+    unlabelled: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "mapping", as_aes(self.mapping))

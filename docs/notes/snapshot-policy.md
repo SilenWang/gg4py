@@ -157,6 +157,7 @@ text_load = Σ  len(text_i) × (font_size_i / 11px)²
 | `text-light` | ≤ 20 | **2.0%** | **1.0%** | 160 | 1.98% | 0.43% |
 | `text-medium` | ≤ 200 | **2.0%** | **1.0%** | 22 | 1.69% | 0.53% |
 | `text-heavy` | > 200 | 2.5% | 1.2% | 5 | 1.77% | 0.33% |
+| `report`（显式） | — | **5.0%** | **1.0%** | 见下 | — | — |
 
 **这次不放宽任何东西**，三个数字说的就是这件事：
 
@@ -169,6 +170,34 @@ text_load = Σ  len(text_i) × (font_size_i / 11px)²
    / `theme-linedraw-large`）超阈的原因是**实现缺口**——geom 缺省尺寸没跟
    `theme$pointsize` 走（4.0 的 `from_theme()`）。SIL-792 补上 `from_theme()` 后
    三条实测 0.86%–1.50%，按 2% 判绿，**没有**用分档把它们放绿。
+
+### `report` 档（SIL-825）
+
+密集报告图（`matrix-report-*`、`scripts/exit_report.py` 这类「分面 × 图例 ×
+标题 / 轴标题同框」的图）与上面三档的成因不同：图级差主要来自**逐行 1px 抗锯齿**
+的文字行与网格线，量级 4.5%（实测 4.48% / 4.53%），2% 的 `text-light` 上限装不下，
+而它们的文字负载并不高——按 `text_load` 推断永远进不了 heavy 档。所以单独一档：
+
+| 档位 | 图级上限 | 均值上限 | 适用 |
+| --- | ---: | ---: | --- |
+| `report` | **5.0%** | **1.0%** | 仅 `matrix-report-*`（`scripts/exit_report.py` 手工对拍时同口径） |
+
+四条约束，缺一不可：
+
+1. **显式声明**：case 的 `meta.toml` 写 `band = "report"`。`cases:matrix` 读这个键，
+   把 5% 作为 `diff --tolerance` 传下去（`tolerance.png` 不写就等于档位上限）；
+   `docs/notes/snapshot-tiers.md` 里带 `*` 的档位就是它。不靠口头约定。
+2. **白名单**：只有 `matrix-report-*` 前缀的 case 能声明 `band = "report"`
+   （`tools/cases/snapshot_tiers.py` 的 `EXPLICIT_BAND_PREFIXES`）；别的 case 写了
+   直接 `⛔ invalid`，矩阵与 `pixi run check` 都会红。
+3. **均值门不放宽**：仍是 1%。`report` 只放图级——报告图的信息密度来自文字与网格，
+   不是「几何可以画错」。
+4. **不影响既有基准**：没写 `band` 的 case 继续按 `text_load` 推断，61 条稀疏基准
+   与后续 case 的 2% / 1% 一个数都没动。
+
+新增 / 修改档位仍是 PR：要同时更新 `tools/cases/snapshot_tiers.py` 的
+`EXPLICIT_BANDS` / `EXPLICIT_BAND_PREFIXES`、本节与 `docs/notes/snapshot-tiers.md`
+（`pixi run tiers:measure` 重生成），并在 PR 里贴出前后实测值。
 
 ### 硬约束
 

@@ -1,0 +1,7 @@
+family = "annotate"
+features = ["aes-mapping", "scale-limits", "theme-complete"]
+ci = true
+title = "上游快照：line matches points"
+source = "upstream:tests/testthat/_snaps/annotate/line-matches-points.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-825：annotate() 的位置美学与数据点共用标度（scale_y_reverse 之后线段端点仍落在点上）。"

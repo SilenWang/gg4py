@@ -87,6 +87,29 @@ BANDS: tuple[tuple[str, float, float, float], ...] = (
     ("text-heavy", float("inf"), 0.025, 0.012),
 )
 
+#: 显式档位（**不由 text_load 推断**）：`meta.toml` 写 `band = "<名字>"` 才选中。
+#: 值同样是 `(名字, 上界, 图级上限, 均值上限)`；上界那一格没有文字负载含义。
+#:
+#: `report` 是密集报告图（`matrix-report-*` / `scripts/exit_report.py` 这类
+#: 「分面 × 图例 × 标题同框」的图）：实测的跨管线差主要来自逐行 1px 抗锯齿的
+#: 文字与网格线，量级 4.5%，2% 的 text-light 上限装不下。**只放图级到 5%**，
+#: 均值仍守全局 1%——密度大不等于几何可以画错。见
+#: `docs/notes/snapshot-policy.md` §report。
+EXPLICIT_BANDS: dict[str, tuple[str, float, float, float]] = {
+    "report": ("report", float("nan"), 0.05, 0.01),
+}
+
+#: 显式档位的适用范围（case 名前缀白名单）：放宽阈值本身是 PR，不能靠
+#: `meta.toml` 一句话把普通 case 也放进去。新增前缀要改这里 + 策略文档。
+EXPLICIT_BAND_PREFIXES: dict[str, tuple[str, ...]] = {
+    "report": ("matrix-report-",),
+}
+
+#: 名字 →（图级上限, 均值上限），文字档与显式档合并后的一张表。
+BAND_CAPS: dict[str, tuple[float, float]] = {
+    band[0]: (band[2], band[3]) for band in (*BANDS, *EXPLICIT_BANDS.values())
+}
+
 
 def band_of(load: float) -> tuple[str, float, float, float]:
     for band in BANDS:
@@ -95,11 +118,48 @@ def band_of(load: float) -> tuple[str, float, float, float]:
     return BANDS[-1]
 
 
-def _declared_tolerance(directory: Path) -> float:
+def declared_band(directory: Path) -> str | None:
+    """`meta.toml` 的 `band = "..."`（没写返回 None，走 text_load 推断）。"""
+    import tomllib
+
+    path = directory / "meta.toml"
+    if not path.is_file():
+        return None
+    meta = tomllib.loads(path.read_text(encoding="utf-8"))
+    value = meta.get("band")
+    return value if isinstance(value, str) else None
+
+
+def explicit_band_error(case_name: str, band: str) -> str | None:
+    """显式档位的静态校验；合法返回 None，否则返回中文原因。"""
+    if band not in EXPLICIT_BANDS:
+        known = " / ".join(sorted(EXPLICIT_BANDS))
+        return f"meta.toml 的 `band = {band!r}` 不认识（显式档只有 {known}）"
+    prefixes = EXPLICIT_BAND_PREFIXES.get(band, ())
+    if prefixes and not any(case_name.startswith(prefix) for prefix in prefixes):
+        allowed = " / ".join(f"`{prefix}*`" for prefix in prefixes)
+        return (
+            f"`band = {band!r}` 只适用于 {allowed} 这类密集报告图；"
+            f"{case_name!r} 请用 text-load 推断的档位（见 docs/notes/snapshot-policy.md）"
+        )
+    return None
+
+
+def _declared_tolerance(directory: Path, *, band: str | None = None) -> float:
+    """case 的**生效**图级容差：显式 `tolerance.png` 优先，否则取档位上限。
+
+    `band = "report"` 且没写 `tolerance` 时就是 report 档的 5%——矩阵传给
+    `diff --tolerance` 的也是这个数，`tiers:check` 再守「声明 ≤ 档位上限」。
+    """
     import tomllib
 
     meta = tomllib.loads((directory / "meta.toml").read_text(encoding="utf-8"))
-    return float((meta.get("tolerance") or {}).get("png", 0.02))
+    explicit = (meta.get("tolerance") or {}).get("png")
+    if isinstance(explicit, (int, float)):
+        return float(explicit)
+    if band is not None:
+        return BAND_CAPS.get(band, (0.02, 0.01))[0]
+    return 0.02
 
 
 def _metrics() -> dict[str, Any]:
@@ -117,7 +177,14 @@ def rows(*, with_ink: bool = False) -> list[dict[str, Any]]:
         if not directory.is_dir() or not expected.is_file():
             continue
         nodes, load = text_stats(expected)
-        name, _, image_cap, mean_cap = band_of(load)
+        explicit = declared_band(directory)
+        if explicit is not None:
+            # 显式档：不按 text_load 推断，档位与适用范围都由 meta.toml 声明的名字决定。
+            name = explicit
+            image_cap, mean_cap = BAND_CAPS.get(explicit, (0.02, 0.01))
+            upper: float | None = None
+        else:
+            name, upper, image_cap, mean_cap = band_of(load)
         item = results.get(directory.name, {})
         metrics = item.get("metrics") or {}
         measured.append(
@@ -126,9 +193,14 @@ def rows(*, with_ink: bool = False) -> list[dict[str, Any]]:
                 "nodes": nodes,
                 "load": load,
                 "band": name,
+                "band_upper": upper,
+                "band_declared": explicit is not None,
+                "band_error": explicit_band_error(directory.name, explicit)
+                if explicit is not None
+                else None,
                 "image_cap": image_cap,
                 "mean_cap": mean_cap,
-                "declared": _declared_tolerance(directory),
+                "declared": _declared_tolerance(directory, band=explicit),
                 "image": metrics.get("image_diff_fraction"),
                 "mean": metrics.get("mean_diff"),
                 "status": item.get("status"),
@@ -150,22 +222,33 @@ def render_doc(measured: list[dict[str, Any]], *, with_ink: bool) -> str:
         "| 档位 | text_load | 图级上限 | 均值上限 | case 数 | 实测最大图级 | 实测最大均值 |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
-    for name, upper, image_cap, mean_cap in BANDS:
+    for name, upper, image_cap, mean_cap in (*BANDS, *EXPLICIT_BANDS.values()):
         members = [row for row in measured if row["band"] == name]
         images = [row["image"] for row in members if row["image"] is not None]
         means = [row["mean"] for row in members if row["mean"] is not None]
-        upper_text = "∞" if upper == float("inf") else f"{upper:g}"
-        lines.append(
-            f"| `{name}` | ≤ {upper_text} | {image_cap:.1%} | {mean_cap:.1%} | {len(members)} "
-            f"| {max(images):.2%} | {max(means):.2%} |"
-            if images
-            else f"| `{name}` | ≤ {upper_text} | {image_cap:.1%} | {mean_cap:.1%} | 0 | — | — |"
-        )
+        if upper != upper:  # NaN：显式档，不由 text_load 推断
+            upper_text = "—（显式声明）"
+        elif upper == float("inf"):
+            upper_text = "∞"
+        else:
+            upper_text = f"≤ {upper:g}"
+        cells = [
+            f"`{name}`",
+            upper_text,
+            f"{image_cap:.1%}",
+            f"{mean_cap:.1%}",
+            str(len(members)),
+        ]
+        cells += [f"{max(images):.2%}" if images else "—", f"{max(means):.2%}" if means else "—"]
+        lines.append("| " + " | ".join(cells) + " |")
     lines.extend(
         [
             "",
             "档位是**上限**：每个 case 仍按 `meta.toml` 的 `tolerance` 判红，"
             "`tiers:check` 只拦「声明超过上限」与「实测超过声明」。",
+            "",
+            '带 `*` 的档位是 `meta.toml` 里 `band = "…"` **显式声明**的（目前只有 '
+            "`report`，白名单 `matrix-report-*`）；其余由 text_load 推断。",
             "",
         ]
     )
@@ -180,10 +263,11 @@ def render_doc(measured: list[dict[str, Any]], *, with_ink: bool) -> str:
         cells = [f"`{row['case']}`", str(row["nodes"]), f"{row['load']:g}"]
         if with_ink:
             cells.append(f"{row['ink']:.2%}" if row["ink"] is not None else "—")
+        band = row["band"] + ("*" if row.get("band_declared") else "")
         cells += [
             f"{row['image']:.2%}" if row["image"] is not None else "—",
             f"{row['mean']:.2%}" if row["mean"] is not None else "—",
-            row["band"],
+            band,
             f"{row['declared']:.1%}",
         ]
         lines.append("| " + " | ".join(cells) + " |")
@@ -199,6 +283,8 @@ def check(measured: list[dict[str, Any]], *, include_measured: bool = False) -> 
     """
     problems = []
     for row in measured:
+        if row.get("band_error"):
+            problems.append(f"{row['case']}: {row['band_error']}")
         if row["declared"] > row["image_cap"] + 1e-12:
             problems.append(
                 f"{row['case']}: 声明 {row['declared']:.1%} 超过 {row['band']} 上限 "

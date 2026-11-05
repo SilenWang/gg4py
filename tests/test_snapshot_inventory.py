@@ -134,7 +134,7 @@ def test_matrix_ledger_must_match_the_inventory() -> None:
     text = (ROOT / "docs" / "cases" / "matrix.md").read_text(encoding="utf-8")
     assert SNAPSHOTS.matrix_drift(text, rows) == []
 
-    drifted = text.replace("| 311 | 272 | 39 | 0 | 39 |", "| 311 | 272 | 39 | 7 | 32 |")
+    drifted = text.replace("| 311 | 274 | 37 | 0 | 37 |", "| 311 | 274 | 37 | 7 | 30 |")
     assert drifted != text
     assert SNAPSHOTS.matrix_drift(drifted, rows)
 

@@ -21,7 +21,7 @@ reason = "SIL-795 已全部纳管 6 条：`geom_bar(stat=\"identity\"|\"count\",
 [groups.annotate]
 issue = "SIL-715"
 owner = "m3"
-reason = "`annotate()` 的边框与线段共形（`annotation_borders()` / `annotation_segment()`）未复刻。"
+reason = "SIL-825 已全部纳管 2 条：`annotate()` / `annotation_borders()` / `borders()` 落地（位置美学进数据+映射、identity/identity/inherit.aes=FALSE/show.legend=FALSE），`maps::map(\"state\", \"utah\")` 的 59 点内联在 `ggcore.map_data`。实测 `annotation-borders-utah` 0.18% / 0.02%、`line-matches-points` 0.45% / 0.14%。"
 
 [groups."coord-cartesian"]
 issue = "SIL-715"
@@ -176,7 +176,7 @@ reason = "SIL-810：17 个 `draw_key_*` 已全部实现（`ggcore.legend_draw`�
 [groups.patterns]
 issue = "SIL-715"
 owner = "m3"
-reason = "pattern fill（grid pattern / `tile_pattern()`）未进 SVG 渲染器。"
+reason = "SIL-825 复核：pattern fill 已能经 `fill=` 进 IR（`TilePattern`），但内容坐标系不对——R 的 `pattern()` 内容按**整层 grob 的 bbox** 折 npc 再按 tile 裁剪，本仓 `TilePatternSpec.resolve()` 把内容画在 tile 局部坐标里，于是 1cm 棋盘整体差半个相位（`single-pattern-fill` 实测 31.02% / 26.36%，两边格宽都是 14.17pt，只是黑格起点差约半块 tile）。其余三条还要：逐行 FillSpec 列表（`fill = patterns` 按行取值）、`alpha` 走 `grid::GridMask`（IR 无 mask 节点）、`scale_fill_manual(values = <FillSpec>)` 在标度里保留 FillSpec。"
 
 [groups."position-stack"]
 issue = "SIL-715"
@@ -992,7 +992,7 @@ case = "upstream-facet-strips-switched"
 # 而 R 的 `pattern()` 内容坐标是**整个图层包围盒**的 npc（`userSpaceOnUse`），
 # 且 tile 锚点取图层 bbox 中心；单条 reason 写明各自卡点。
 [snapshots."patterns/single-pattern-fill.svg"]
-reason = "SIL-796：`geom_col(fill = pattern(...))` 已能渲染（`tile_pattern()` 走 IR `TilePattern`），但相位差 31%——`TilePatternSpec.resolve()` 用单节点 bbox 折 npc，R 的 `pattern()` 内容按**图层 bbox** 的 npc（`userSpaceOnUse`）并锚在图层中心；单根 bar 的 bbox 让每根柱的图案各从自身左下角起算。卡在「图案内容坐标系 = 图层包围盒」。"
+reason = "SIL-825 实测 31.02% / 26.36%（格宽两边都是 14.17pt，差的是相位）：`patterns.toml` 的 case `upstream-patterns-single-pattern-fill` 已能画，但 `TilePatternSpec.resolve()` 把内容画在 tile 局部坐标里，R 的 `pattern()` 内容按**整层 grob 的 bbox** 折 npc（`userSpaceOnUse`）再按 tile 裁剪。修复点只有一处：给 `tile_pattern()` 一个「内容用图层 bbox」的口径，并把 `draw` 的坐标系从 tile 换成 bbox。"
 
 [snapshots."patterns/pattern-fills-no-alpha.svg"]
 reason = "SIL-796：同 `single-pattern-fill`——`linearGradient(group = FALSE)` / `radialGradient(group = FALSE)` 与 `pattern()` 的混合列表已能经 `fill=` 传进 geom，但渐变端点 / 图案相位按单节点 bbox 折，R 按图层 bbox。卡在「图层级填充包围盒」。"
@@ -1114,6 +1114,14 @@ case = "upstream-stat-summary-crossbars-grouped"
 
 [snapshots."stat-sum/summary-with-crossbars-no-grouping.svg"]
 case = "upstream-stat-summary-crossbars"
+
+# annotate 簇（SIL-825，M3-1）：annotate() / annotation_borders() 落地后纳管。
+
+[snapshots."annotate/annotation-borders-utah.svg"]
+case = "upstream-annotate-utah"
+
+[snapshots."annotate/line-matches-points.svg"]
+case = "upstream-annotate-segment-transform"
 
 # 未纳管的 5 条（卡点见各条 reason；hex 两条在上面的分组里已按路径单列）
 

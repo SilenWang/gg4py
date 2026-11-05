@@ -1,0 +1,7 @@
+family = "annotate"
+features = ["aes-mapping", "theme-complete"]
+ci = true
+title = "上游快照：annotation_borders utah"
+source = "upstream:tests/testthat/_snaps/annotate/annotation-borders-utah.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-825：annotate()/annotation_borders() 落地；maps::map(\"state\", \"utah\") 的 59 个点内联在 ggcore.map_data。"
