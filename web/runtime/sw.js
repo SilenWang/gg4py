@@ -11,7 +11,9 @@
 // 边界：只处理同源 GET + `/vendor/` 下的路径。页面、脚本、dist 走浏览器自己的
 // HTTP 缓存，SW 不掺和（否则「warm 命中」到底命中的是谁就说不清了）。
 
-const CACHE = "gg4py-runtime-vendor";
+// SIL-830：缓存名带版本。资产换了（zip → tar、gzip → brotli）之后，旧缓存里的响应
+// 少了「摘掉 Content-Encoding」的修正，必须让它们整体作废，不能靠运行时兜。
+const CACHE = "gg4py-runtime-vendor-v2";
 //: 只接管这些前缀：`/vendor/` 是本工程约定的资产目录。
 const SCOPE = "/vendor/";
 
@@ -22,7 +24,16 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      // 旧版本的缓存（`gg4py-runtime-vendor` / …-v1）直接删：里面的响应是按旧规则
+      // 缓存的，留着只会让 warm 拿到不该拿的字节。
+      for (const key of await caches.keys()) {
+        if (key !== CACHE) await caches.delete(key);
+      }
+      await self.clients.claim();
+    })(),
+  );
 });
 
 async function broadcast(message) {
@@ -32,11 +43,20 @@ async function broadcast(message) {
 
 async function streamAndCache(event, response) {
   const url = new URL(event.request.url);
+  // `content-length` 是**压缩后**的长度，而下面数的 `loaded` 是解码后的（brotli 的
+  // wasm 会报成 9.6 / 2.74 MB）。页面用的是自己按 manifest 算的分母，这个 total 只是
+  // 附带的参考值，不参与百分比。
   const total = Number(response.headers.get("content-length")) || 0;
   if (response.body === null) return response;
 
   const [body, copy] = response.body.tee();
-  const headers = Array.from(response.headers.entries());
+  // 缓存里存的是**解码后**的字节（`response.body` 由浏览器解码，gzip / brotli 都
+  // 一样），所以落缓存时必须把 `Content-Encoding` / `Content-Length` 摘掉：
+  // 带着 `Content-Encoding: br` 存解码后的明文，warm 时回放会被再解一次（SIL-830
+  // 把 wasm / 源码包都换成了 brotli 预压缩，这条从「侥幸」变成「必须」）。
+  const headers = Array.from(response.headers.entries()).filter(
+    ([name]) => !["content-encoding", "content-length"].includes(name.toLowerCase()),
+  );
 
   // 旁路：数字节 → 内存里攒一份 → 攒齐后写 cache。
   (async () => {
@@ -55,7 +75,11 @@ async function streamAndCache(event, response) {
       const cache = await caches.open(CACHE);
       await cache.put(
         event.request,
-        new Response(new Blob(chunks), { status: 200, statusText: "OK", headers }),
+        new Response(new Blob(chunks), {
+          status: 200,
+          statusText: "OK",
+          headers: [...headers, ["Content-Length", String(loaded)]],
+        }),
       );
     } catch (error) {
       await broadcast({ type: "vendor-progress-error", file: url.pathname, message: String(error) });

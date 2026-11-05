@@ -85,7 +85,7 @@ class _Limiter:
 
     为什么不用 CDP 的 `Network.emulateNetworkConditions`：它作用在 **page target**
     上，而这次加载里 13 MB 是 **worker** 自己 fetch 的（pyodide 运行时、stdio、
-    轮子、gg4py.zip）——worker 是独立 target，收不到 page session 的节流。E1 那组
+    轮子、gg4py.tar）——worker 是独立 target，收不到 page session 的节流。E1 那组
     数字之所以被节流到，是因为它的载荷全在 worker 侧的 CDP 会话里也能观测到，
     但「不生效」在结果是看不出来的（只会显得特别快）。所以这里在服务端限速：
     口径更直白，也不依赖 CDP 的 target 语义。
@@ -131,23 +131,44 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         if not target.is_file():
             self.send_error(404)
             return
-        data = target.read_bytes()
         suffix = target.suffix.lower()
-        body = data if suffix in INCOMPRESSIBLE else gzip.compress(data, 6, mtime=0)
+        # 预压缩优先（等价于 nginx 的 `brotli_static on`）：`pyodide:assets` 会把
+        # wasm / 源码包 / asm.mjs 的 `.br` 兄弟一起落盘，静态托管按
+        # `Content-Encoding: br` 回放。**不在请求期压**是被测过的：wasm 9.6 MB 用
+        # gzip 现压要几百毫秒，首字节因此晚到，冷启动数字里混进了服务端 CPU。
+        brotli_path = Path(str(target) + ".br")
+        # `Accept-Encoding: gzip, deflate, br` → 按 token 比，不做子串匹配
+        # （`br` 是 `zstd` 都兜不住的那种短 token，子串匹配容易误判）。
+        accepted = {
+            token.split(";", 1)[0].strip().lower()
+            for token in self.headers.get("Accept-Encoding", "").split(",")
+        }
+        accepts_brotli = "br" in accepted or "*" in accepted
+        if accepts_brotli and brotli_path.is_file():
+            body = brotli_path.read_bytes()
+            decoded = target.stat().st_size
+            encoding = "br"
+        else:
+            data = target.read_bytes()
+            decoded = len(data)
+            body = data if suffix in INCOMPRESSIBLE else gzip.compress(data, 6, mtime=0)
+            encoding = None if body is data else "gzip"
         content_type = CONTENT_TYPES.get(suffix) or mimetypes.guess_type(target.name)[0]
         self.send_response(200)
         self.send_header("Content-Type", content_type or "application/octet-stream")
         self.send_header("Content-Length", str(len(body)))
-        if body is not data:
-            self.send_header("Content-Encoding", "gzip")
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Cache-Control", "no-transform")
         self.end_headers()
         limiter = _Handler.limiter
         _Handler.ledger.append(
             {
                 "path": "/" + target.relative_to(WEB).as_posix(),
-                "decoded_bytes": len(data),
+                "decoded_bytes": decoded,
                 "wire_bytes": len(body),
+                "encoding": encoding or "identity",
             }
         )
         if limiter is None:
@@ -565,6 +586,9 @@ def timing_mode(
             )
             if warm_run.first_plot_ms is not None:
                 warm.append(warm_run.first_plot_ms)
+            # warm 也要有完整进度：缓存命中是瞬时的，进度如果因为「监听器装晚了」
+            # 丢掉最早几个文件，页面会永远停在 87%（SIL-830 的回归点）。
+            assert_progress(warm_run, problems)
             print(
                 f"  {profile['label']:8s} warm   #{index + 1}  {warm_run.first_plot_ms:8.0f} ms  "
                 f"wire {warm_run.wire_bytes / 1e6:6.2f} MB"
@@ -639,8 +663,8 @@ def require_build() -> None:
     missing = []
     if not (VENDOR / "manifest.json").is_file():
         missing.append("web/runtime/vendor/manifest.json")
-    if not (VENDOR / "gg4py.zip").is_file():
-        missing.append("web/runtime/vendor/gg4py.zip")
+    if not (VENDOR / "gg4py.tar").is_file():
+        missing.append("web/runtime/vendor/gg4py.tar")
     if not (VIEWER / "dist" / "render.js").is_file():
         missing.append("web/viewer/dist/render.js")
     if not (VIEWER / "fonts.css").is_file():

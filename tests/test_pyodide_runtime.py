@@ -7,8 +7,9 @@
   浏览器路径就靠它；纯 `textGrob` 快照以前会因为「没有 metrics」直接抛错。
 * **逐条比较**（`run_cases.compare_cases`）真的在看摘要：缺 case、单侧失败、
   哈希不同、度量实现不同，四种差异都必须判红。
-* **打包确定性**：`gg4py.zip` 两次构建字节相同；条目路径从仓库根算起（否则
-  `/app` 下解出来的目录不是 `/app/src/ggcore`）。
+* **打包确定性**：`gg4py.tar` 两次构建字节相同；条目路径从仓库根算起（否则
+  `/app` 下解出来的目录不是 `/app/src/ggcore`）；默认只带 `.pyc`（构建期在
+  Pyodide 里编好，见 SIL-830），数据文件原样保留。
 * **页面接线**：示例声明的 `needs` 都有对应的 wheel 规划、页面只从 `vendor/`
   取资产（无 CDN）、Service Worker 只接管 `vendor/`。
 """
@@ -207,18 +208,42 @@ def test_gate_runs_the_full_case_sweep_by_default() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_zip_is_deterministic_and_repo_shaped(tmp_path: Path) -> None:
-    first = stage.build_zip(tmp_path / "a" / "gg4py.zip")
-    second = stage.build_zip(tmp_path / "b" / "gg4py.zip")
+def test_archive_is_deterministic_and_repo_shaped(tmp_path: Path) -> None:
+    first = stage.build_archive(tmp_path / "a" / "gg4py.tar", bytecode=False)
+    second = stage.build_archive(tmp_path / "b" / "gg4py.tar", bytecode=False)
     assert first["sha256"] == second["sha256"]
     assert first["bytes"] == second["bytes"]
-    import zipfile
+    import tarfile
 
-    names = zipfile.ZipFile(tmp_path / "a" / "gg4py.zip").namelist()
+    with tarfile.open(tmp_path / "a" / "gg4py.tar") as archive:
+        members = archive.getmembers()
+    names = [member.name for member in members]
+    assert names == sorted(names)
     assert names[0].startswith("src/ggcore/")
     assert all(name.startswith("src/") for name in names)
     assert not any("__pycache__" in name or name.endswith(".orig") for name in names)
     assert "src/ggcore/metrics/data/metrics_table_v2.bin" in names
+    # 固定元数据：同一份源码 → 同一个字节，缓存键与 sha256 才有意义。
+    assert {member.mtime for member in members} == {0}
+    assert {member.uid for member in members} == {0}
+
+
+def test_archive_ships_bytecode_and_keeps_data_files(tmp_path: Path) -> None:
+    """默认打包只带 `.pyc`（数据文件照旧）：浏览器里因此不做编译。"""
+    if not (stage.SOURCE / "pyodide.asm.wasm").is_file():
+        pytest.skip("先跑 `pixi run spike:e1:assets`")
+    info = stage.build_archive(tmp_path / "gg4py.tar", bytecode=True)
+    import tarfile
+
+    with tarfile.open(tmp_path / "gg4py.tar") as archive:
+        names = [member.name for member in archive.getmembers()]
+    assert info["bytecode"] is True
+    assert info["bytecode_files"] and info["bytecode_files"] > 80
+    assert not [name for name in names if name.endswith(".py")]
+    assert "src/ggcore/metrics/data/metrics_table_v2.bin" in names
+    # 每个模块都能找到自己的字节码（`src/ggcore/x.py` → `src/ggcore/x.pyc`）。
+    assert "src/ggcore/script.pyc" in names
+    assert any(name.startswith("src/ggio/") and name.endswith(".pyc") for name in names)
 
 
 def test_stage_fonts_keeps_only_small_faces(tmp_path: Path) -> None:
@@ -238,6 +263,69 @@ def test_stage_fonts_keeps_only_small_faces(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # 页面接线（不跑浏览器）
 # ---------------------------------------------------------------------------
+
+
+def test_page_prereloads_the_worker_and_the_sw() -> None:
+    """SIL-830：SW 注册与 worker 预载都在 HTML 解析期，不等 `runtime.js` 下载。
+
+    这两条是首屏预算的一部分（warm 的 3 s 里 `runtime.js` 那一个 RTT 就是 170 ms），
+    而且顺序有讲究：`controller` 为空时（cold）不许起 worker——那时起了它绕开
+    Service Worker，字节进度与 warm 缓存一起丢。
+    """
+    html = (RUNTIME / "index.html").read_text(encoding="utf-8")
+    js = (RUNTIME / "runtime.js").read_text(encoding="utf-8")
+    assert 'navigator.serviceWorker.register("./sw.js"' in html
+    assert "if (!navigator.serviceWorker.controller) return;" in html
+    assert 'new Worker("./worker.js", { type: "module" })' in html
+    assert "__ggWorkerSink" in html and "__ggWorkerSink" in js
+    # SW 的字节进度同样要在解析期就有一个能收的监听器（warm 的 cache 命中是瞬时的，
+    # 装晚了进度就永远停在 87%——这条由 `pyodide:timing` 的 warm 断言兜底）。
+    assert "__ggVendorSink" in html and "__ggVendorSink" in js
+    # 预载的 worker 出错时不能让 `await ready` 一直悬着。
+    assert "__ggWorkerEarlyError" in html and "__ggWorkerEarlyError" in js
+    # cold：worker 必须先过 SW 这道门；warm（已有 controller）不停。
+    assert "navigator.serviceWorker.controller) return" in js
+    assert "await navigator.serviceWorker.ready" in js
+
+
+def test_service_worker_strips_content_encoding_when_caching() -> None:
+    """缓存里是解码后的明文，回放时不能再带 `Content-Encoding: br`。"""
+    sw = (RUNTIME / "sw.js").read_text(encoding="utf-8")
+    assert '"content-encoding"' in sw or "'content-encoding'" in sw
+    assert '"content-length"' in sw or "'content-length'" in sw
+    # 缓存名带版本：换过缓存规则（SIL-830 的 zip → tar / gzip → br）之后旧缓存必须
+    # 整体作废，否则 warm 会拿到按旧规则存的响应。
+    assert 'CACHE = "gg4py-runtime-vendor-v2"' in sw
+    assert "caches.delete(key)" in sw
+
+
+def test_worker_unpacks_a_tar_and_never_waits_for_the_manifest() -> None:
+    worker = (RUNTIME / "worker.js").read_text(encoding="utf-8")
+    assert 'VENDOR + "gg4py.tar"' in worker
+    assert 'unpackArchive(archive, "tar"' in worker
+    # manifest 只在 ready 消息里报版本，不进关键路径。
+    assert "manifestPromise" in worker
+    assert "manifest = await manifestPromise" in worker
+
+
+def test_boot_assets_are_precompressed(tmp_path: Path) -> None:
+    """首屏文件必须带 `.br` 兄弟，且线上字节不超预算。
+
+    判据与 `pixi run pyodide:bytes:check` 同源（同一个 `audit()`），这里只是把它
+    也钉在单元测试里，改预算时两边一起红。
+    """
+    if not (stage.OUT / "manifest.json").is_file():
+        pytest.skip("先跑 `pixi run pyodide:assets`")
+    bytes_report = _module("gg4py_bytes_report", TOOLS / "pyodide" / "bytes_report.py")
+    manifest = bytes_report.load_manifest()
+    problems, totals = bytes_report.audit(manifest)
+    assert problems == []
+    assert totals["boot_wire_bytes"] < totals["boot_bytes"]
+    table = bytes_report.entries(manifest)
+    assert table["pyodide/pyodide.asm.wasm"]["encoding"] == "br"
+    assert table["gg4py.tar"]["encoding"] == "br"
+    # 源码包默认是字节码（体积换 import 时间，见 docs/notes/pyodide.md §10）。
+    assert manifest["archive"]["bytecode"] is True
 
 
 def test_page_loads_every_asset_from_vendor() -> None:

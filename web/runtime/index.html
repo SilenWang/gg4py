@@ -4,6 +4,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>gg4py · 浏览器运行时（Pyodide + ggcore）</title>
+    <script>
+      // SIL-830 · worker 预载：这一段在 **HTML 解析期**就执行，比 `runtime.js` 那个
+      // 模块早一个 RTT。warm（回访）时 Service Worker 已经在管页面，worker 立刻起，
+      // pyodide 的请求照样被 SW 接管（缓存与字节进度都不丢）；cold 时还没有
+      // controller，此刻起 worker 等于绕开 SW，交给 runtime.js 在 `ready` 之后起。
+      //
+      // 预载的 worker 会先发消息（`stage` / `ready`），而接管它的是后加载的模块：
+      // 这里先把消息攒进队列，`__ggWorkerSink(fn)` 被调用时同步回放，然后交棒。
+      (function () {
+        window.__ggPerf = { start: performance.now() };
+        if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return;
+        // SW 的字节进度也可能先于 `runtime.js` 到达（warm 时 cache 命中是瞬时的），
+        // 所以监听器在这儿就装好、消息先攒着，模块接管时同步回放——否则 warm 的
+        // 进度会永远停在「缺 pyodide.mjs + stdlib」的地方（实测 87%）。
+        const vendorQueue = [];
+        let vendorSink = null;
+        navigator.serviceWorker.addEventListener("message", (event) => {
+          if (vendorSink) vendorSink(event.data);
+          else vendorQueue.push(event.data);
+        });
+        window.__ggVendorSink = (fn) => {
+          window.__ggVendorSink = fn;
+          vendorSink = fn;
+          for (const message of vendorQueue.splice(0)) fn(message);
+        };
+        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(() => {});
+        if (!navigator.serviceWorker.controller) return;
+        const worker = new Worker("./worker.js", { type: "module" });
+        const queue = [];
+        let sink = null;
+        worker.addEventListener("message", (event) => {
+          if (sink) sink(event.data);
+          else queue.push(event.data);
+        });
+        // 预载的 worker 出错时页面还没接管：先记下来，`runtime.js` 接管时补报，
+        // 否则 `await ready` 会一直悬着（页面卡在「预热 worker」）。
+        worker.addEventListener("error", (event) => {
+          window.__ggWorkerEarlyError = String((event && event.message) || "worker error");
+        });
+        window.__ggWorkerEarly = worker;
+        window.__ggWorkerSink = (fn) => {
+          window.__ggWorkerSink = fn;
+          sink = fn;
+          for (const message of queue.splice(0)) fn(message);
+        };
+        worker.postMessage({ type: "boot" });
+        window.__ggPerf.worker_early = performance.now();
+      })();
+    </script>
     <!-- 受管字体的 @font-face：`pixi run pyodide:assets` 从 viewer 的字族表里裁出
          ≤ 2 MiB 的拉丁字面（CJK 35 MB 不进首屏，见 tools/pyodide/stage_assets.py）。 -->
     <link rel="stylesheet" href="./vendor/fonts.css" />
