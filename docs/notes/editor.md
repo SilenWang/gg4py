@@ -77,6 +77,10 @@ def build():
 验收预算是 2 s（warm），实测差两个数量级。机器差异见 `docs/notes/pyodide.md` §5：
 跑分以 CI runner 为下限而不是本机。
 
+这里的 warm 数字**包含** M3-5 的增量重算（`docs/notes/performance.md`）：worker 是长
+驻解释器，图层绘制与场景指令两条内容键缓存跨重跑生效，所以「改一行」只重算真变了
+的那部分。缓存可以用 `GG4PY_NO_SCENE_CACHE=1` 关掉做对照。
+
 ## 4. 导出
 
 `web/editor/export.js` 只走浏览器自带的栅格化：`<svg>` → Blob → `<img>` → `<canvas>`

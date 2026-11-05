@@ -20,6 +20,7 @@ stroke * .stroke / 2`（pt）；`pointsGrob` 的缺省 `size = unit(1, "char")` 
 from __future__ import annotations
 
 import math
+import warnings
 from typing import Any
 
 import numpy as np
@@ -35,6 +36,7 @@ from ggcore.geom.base import (
     table_numeric,
 )
 from ggcore.grobs import g_tree, null_grob, points_grob
+from ggcore.perf import DownsampleWarning, resolve_max_points, sample_rows
 from ggcore.units import unit
 from ggcore.viewport import NA
 
@@ -102,38 +104,50 @@ class PointRenderer(GeomRenderer):
         data = build.data
         if data.nrows == 0:
             return null_grob(name="geom_point")
+        # M3-5：显式降采样预算（`geom_point(max_points=…)`）。缺省不降，见
+        # `ggcore.perf` 模块头与 `docs/notes/performance.md`。
+        budget = resolve_max_points(build.params.get("max_points"))
+        if budget is not None:
+            sampled = sample_rows(data, budget)
+            if sampled is not None:
+                warnings.warn(
+                    f"geom_point(): {data.nrows} 行超过 max_points={budget}，"
+                    "按行号等距降采样（画出来的点数比数据少）",
+                    DownsampleWarning,
+                    stacklevel=2,
+                )
+                data = sampled
         x = npc_values(panel, data, "x", "x")
         y = npc_values(panel, data, "y", "y")
-        shapes = np.array([translate_shape(item) for item in _shape_values(data)], dtype=np.int64)
+        shapes = _shape_codes(data)
         size = table_numeric(data, "size", default=1.5)
         stroke = table_numeric(data, "stroke", default=0.5)
         alpha = table_numeric(data, "alpha", default=math.nan)
-        colours = np.array(_colour_values(data, "colour", "black"), dtype=object)
-        fills = np.array(fill_values(data, build.params, None), dtype=object)
+        colours = _colour_values(data, "colour", "black")
+        fills = fill_values(data, build.params, None)
         size_pt = size * POINT_PER_MM + stroke * STROKE_PER_MM / 2.0
         lwd = stroke * STROKE_PER_MM / 2.0
+        # alpha 全是 NA（缺省）时 `alpha_colour()` 原样返回颜色，整列可以直接给
+        # gp，不必逐点调一次 Python 函数。
+        plain_alpha = bool(np.all(np.isnan(alpha)))
 
         grobs: list[Any] = []
         for pch, points_size in _symbol_groups(shapes, size_pt):
             index = (shapes == pch) & (np.round(size_pt, 9) == points_size)
+            group = np.flatnonzero(index)
+            a = None if plain_alpha else alpha[index]
             grobs.append(
                 points_grob(
-                    unit(x[index].tolist(), "native"),
-                    unit(y[index].tolist(), "native"),
+                    unit(x[index], "native"),
+                    unit(y[index], "native"),
                     pch=int(pch),
                     size=unit(points_size, "bigpts"),
                     size_units="bigpts",
                     default_units="native",
                     gp={
-                        "col": [
-                            alpha_colour(item, a)
-                            for item, a in zip(colours[index], alpha[index], strict=True)
-                        ],
-                        "fill": [
-                            alpha_colour(item, a)
-                            for item, a in zip(fills[index], alpha[index], strict=True)
-                        ],
-                        "lwd": lwd[index].tolist(),
+                        "col": _group_colour(colours, group, a),
+                        "fill": _group_colour(fills, group, a),
+                        "lwd": _group_scalar(lwd, group),
                     },
                 )
             )
@@ -142,28 +156,105 @@ class PointRenderer(GeomRenderer):
         return g_tree(*grobs, name="geom_point")
 
 
-def _shape_values(data: Any) -> list[Any]:
-    """shape 列 → 逐行原值；字符串列直接给名字。"""
+def _group_colour(values: Any, group: np.ndarray, alpha: np.ndarray | None) -> Any:
+    """一组的颜色（`col` / `fill`）：整组同值时给标量，否则给逐点列表。
+
+    `alpha` 非空时按 `ggplot2:::alpha()` 折进颜色（`#RRGGBBAA`）。整组同值走标量
+    是热路径的关键：10 万点的默认配色只有 "black" 一个值，
+    逐点建字符串列表再让 `_gpar_deltas()` 分组是纯浪费。
+    """
+    if isinstance(values, str) or not isinstance(values, (list, tuple)):
+        if alpha is None:
+            return values
+        if alpha.size == 1:
+            return alpha_colour(values, alpha[0])
+        return [alpha_colour(values, item) for item in alpha]
+    picked = [values[position] for position in group]
+    if alpha is not None:
+        picked = [alpha_colour(item, a) for item, a in zip(picked, alpha.tolist(), strict=True)]
+    if picked and all(isinstance(item, str) for item in picked) and _all_same(picked):
+        return picked[0]
+    return picked
+
+
+def _group_scalar(values: np.ndarray, group: np.ndarray) -> float | list[float]:
+    picked = values[group]
+    if picked.size == 0:
+        return 0.0
+    first = float(picked[0])
+    if picked.size == 1 or bool(np.all(picked == picked[0])):
+        return first
+    return picked.tolist()
+
+
+def _shape_codes(data: Any) -> np.ndarray:
+    """shape 列 → 逐行 pch（`translate_shape()` 的向量版）。
+
+    数值列整列直接转；字符串列按唯一值查表（`geom_point(shape="circle")` 是一列
+    同一个名字，逐点查表是白费的）。
+    """
     if "shape" not in data:
-        return [19] * data.nrows
+        return np.full(data.nrows, 19, dtype=np.int64)
     column = data.column("shape")
-    values = column.values.tolist()
-    mask = np.asarray(column.na_mask, dtype=bool).tolist()
-    return [19 if missing else value for value, missing in zip(values, mask, strict=True)]
+    values = column.values
+    mask = np.asarray(column.na_mask, dtype=bool)
+    if getattr(values, "dtype", None) is not None and values.dtype.kind in "iuf":
+        codes = np.asarray(values, dtype=np.float64)
+        if np.any(~np.isfinite(codes) & ~mask):
+            raise GeomError("shape 含缺失值（先经 handle_na 删除，或给 `na_rm=True`）")
+        out = np.where(mask, 19, codes).astype(np.int64)
+        return out
+    lookup: dict[Any, int] = {}
+    raw = values.tolist() if hasattr(values, "tolist") else list(values)
+    out = np.empty(data.nrows, dtype=np.int64)
+    for position, (value, missing) in enumerate(zip(raw, mask.tolist(), strict=True)):
+        if missing:
+            out[position] = 19
+            continue
+        code = lookup.get(value)
+        if code is None:
+            code = translate_shape(value)
+            lookup[value] = code
+        out[position] = code
+    return out
 
 
-def _colour_values(data: Any, name: str, default: Any) -> list[Any]:
+def _colour_values(data: Any, name: str, default: Any) -> Any:
+    """逐行颜色：整列同值（没有该列 / 只有一种颜色）时给标量，否则给逐行列表。"""
     if name not in data:
-        return [default] * data.nrows
+        return default
     column = data.column(name)
-    values = column.values.tolist()
+    values = column.values.tolist() if hasattr(column.values, "tolist") else list(column.values)
     mask = np.asarray(column.na_mask, dtype=bool).tolist()
-    return [NA if missing else value for value, missing in zip(values, mask, strict=True)]
+    if any(mask):
+        return [NA if missing else value for value, missing in zip(values, mask, strict=True)]
+    if _all_same(values):
+        return values[0]
+    return values
+
+
+def _all_same(values: list[Any]) -> bool:
+    if not values:
+        return True
+    try:
+        return len(set(values)) == 1
+    except TypeError:  # pragma: no cover - 不可哈希的取值（渐变规格之类）
+        first = values[0]
+        return all(item is first or item == first for item in values[1:])
 
 
 def _symbol_groups(shapes: np.ndarray, sizes: np.ndarray) -> list[tuple[int, float]]:
-    """唯一 `(pch, size)` 组合，保持首次出现顺序（确定性）。"""
+    """唯一 `(pch, size)` 组合，保持首次出现顺序（确定性）。
+
+    整列同组（10 万点散点图的常态）不摊开比较：先试首元素，命中就只返回一组。
+    """
+    if shapes.size == 0:
+        return []
+    rounded = np.round(sizes, 9)
+    first = (int(shapes[0]), float(rounded[0]))
+    if bool(np.all(shapes == shapes[0])) and bool(np.all(rounded == rounded[0])):
+        return [first]
     seen: dict[tuple[int, float], None] = {}
-    for pch, size in zip(shapes.tolist(), np.round(sizes, 9).tolist(), strict=True):
+    for pch, size in zip(shapes.tolist(), rounded.tolist(), strict=True):
         seen.setdefault((int(pch), float(size)), None)
     return list(seen)

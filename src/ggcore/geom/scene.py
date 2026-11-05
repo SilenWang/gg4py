@@ -298,6 +298,7 @@ def scene_from_build(
     grobs.extend(_text_row_grobs(theme, layout, "title"))
 
     prepared_layers = [_prepare_layer(layer) for layer in prepared.layers]
+    theme_key = _theme_fingerprint(theme)
     for panel, params in _panels(prepared):
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover - FacetTable 一定覆盖每个 panel
@@ -310,6 +311,7 @@ def scene_from_build(
             theme,
             metrics,
             panel_size_in=(box.width_cm / CM_PER_INCH, box.height_cm / CM_PER_INCH),
+            theme_key=theme_key,
         )
         if children:
             grobs.append(
@@ -337,12 +339,26 @@ def scene_from_build(
     grobs.extend(_axis_grobs(prepared, theme, layout, metrics, table=table))
     grobs.extend(_legend_grobs(prepared, theme, layout, metrics))
     grobs.extend(_tag_grobs(layout))
-    return scene(grobs, tree).to_ir_scene()
+    return scene(grobs, tree, cache=_scene_cache()).to_ir_scene()
 
 
 # ---------------------------------------------------------------------------
 # 版式：plot.margin / title / legend / axes / panel 区
 # ---------------------------------------------------------------------------
+
+
+def _scene_cache() -> Any:
+    """增量重算的指令缓存（M3-5）；被关掉时返回 `None`。"""
+    from ggcore.perf import scene_cache
+
+    return scene_cache()
+
+
+def layer_draw_cache() -> Any:
+    """增量重算的图层绘制缓存（M3-5）；被关掉时返回 `None`。"""
+    from ggcore.perf import layer_draw_cache as _cache
+
+    return _cache()
 
 
 def _theme_of(build: PlotBuild) -> ResolvedTheme:
@@ -1283,6 +1299,7 @@ def _panel_children(
     metrics: Any,
     *,
     panel_size_in: tuple[float, float] | None = None,
+    theme_key: bytes | None = None,
 ) -> list[Any]:
     children: list[Any] = []
     for name, border_only in (("panel.background", False),):
@@ -1328,7 +1345,7 @@ def _panel_children(
             continue
         geom = _geom_of(layer)
         panel_layer = replace(layer, data=data)
-        grob = geom.draw(panel_layer, draw_params, build.coord, theme, metrics)
+        grob = _draw_layer(panel_layer, geom, panel, draw_params, build, theme, theme_key, metrics)
         if isinstance(grob, (NullGrob, ZeroGrob)):
             continue
         layer_grobs.append(grob)
@@ -1342,6 +1359,52 @@ def _panel_children(
         return [clip_path(*children, x=0.0, y=0.0, width=1.0, height=1.0, name="panel-clip")]
     children.extend(layer_grobs)
     return children
+
+
+def _draw_layer(
+    layer: LayerBuild,
+    geom: Any,
+    panel: int,
+    params: PanelParams,
+    build: PlotBuild,
+    theme: ResolvedTheme,
+    theme_key: bytes | None,
+    metrics: Any,
+) -> Any:
+    """`geom.draw()`，带内容键缓存（M3-5 增量重算）。
+
+    键覆盖 geom 读到的全部输入：图层数据（`_panel_rows` 之后那一份）、图层参数、
+    面板号与面板参数、主题（几何会读 `geom.<class>` 元素）、度量实例。命中时
+    返回的是同一份**不可变** grob（`frozen` dataclass），后续遍历照常。
+
+    主题指纹每张场景算一次（`_theme_fingerprint`），不进每个图层的键开销。
+    """
+    cache = layer_draw_cache()
+    if cache is None:
+        return geom.draw(layer, params, build.coord, theme, metrics)
+    from ggcore.perf import fingerprint, table_fingerprint
+
+    key = (
+        layer.geom,
+        panel,
+        table_fingerprint(layer.data),
+        fingerprint(layer.params),
+        fingerprint(params),
+        theme_key,
+    )
+    cached = cache.get(key, metrics)
+    if cached is not None:
+        return cached
+    grob = geom.draw(layer, params, build.coord, theme, metrics)
+    cache.put(key, grob, metrics, layer.data.nrows)
+    return grob
+
+
+def _theme_fingerprint(theme: ResolvedTheme) -> bytes:
+    """主题的内容指纹（每张场景算一次，进每个图层的键）。"""
+    from ggcore.perf import fingerprint
+
+    return fingerprint(theme.elements)
 
 
 def _grid_positions(

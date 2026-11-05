@@ -496,7 +496,14 @@ def _as_unit(name: str, value: Any, default_units: str) -> Unit:
     if isinstance(value, (int, float)):
         return unit(float(value), default_units)
     if isinstance(value, (list, tuple, np.ndarray)) and not isinstance(value, (str, bytes)):
-        values = list(value)
+        if isinstance(value, np.ndarray):
+            # 大批量几何走这里：数值数组直接交给 `unit()`，不先摊成 10 万个 Python
+            # 标量再 `float()` 一遍（`docs/notes/performance.md`）。
+            if value.ndim == 1 and value.dtype.kind in "iuf":
+                return unit(value.astype(np.float64, copy=False), default_units)
+            values = list(value)
+        else:
+            values = list(value)
         if not values:
             raise GrobError(f"'{name}' must have length > 0")
         try:
@@ -577,6 +584,36 @@ def _is_vector(value: Any, name: str) -> bool:
     return isinstance(value, (list, tuple, np.ndarray))
 
 
+def _is_constant(items: Sequence[Any] | np.ndarray) -> bool:
+    """向量 gp 的一个字段是否**逐元素同值**（含 `NA` 这类哨兵对象的同一个实例）。
+
+    同值时整条向量等价于一个标量增量，遍历期不必建 `count` 个 `Gpar`——10 万点
+    散点图的默认配色（整列 "black"）就靠这一条，见 `docs/notes/performance.md`。
+    """
+    if isinstance(items, np.ndarray):
+        if items.size <= 1:
+            return True
+        try:
+            return bool(np.all(items == items.reshape(-1)[0]))
+        except (TypeError, ValueError):  # pragma: no cover - object 数组里的怪值
+            return False
+    try:
+        return len(set(items)) == 1
+    except TypeError:  # 不可哈希（渐变规格之类）：退回逐元素比较
+        pass
+    if len(items) <= 1:
+        return True
+    first = items[0]
+    for item in items[1:]:
+        if item is first or item == first:
+            continue
+        if isinstance(first, float) and isinstance(item, float):
+            if math.isnan(first) and math.isnan(item):
+                continue
+        return False
+    return True
+
+
 def _gpar_deltas(raw: Gpar | Mapping[str, Any] | None, count: int) -> tuple[Gpar, ...]:
     """`Gpar` / 映射（值可以是向量）→ 逐元素增量。
 
@@ -595,19 +632,29 @@ def _gpar_deltas(raw: Gpar | Mapping[str, Any] | None, count: int) -> tuple[Gpar
         raise GrobError(f"unknown gpar fields: {', '.join(unknown)}")
 
     vectors: dict[str, np.ndarray | tuple[Any, ...]] = {}
+    scalars = dict(raw)
     for name, value in raw.items():
         if _is_vector(value, name):
-            items = list(value)
-            if not items:
+            items = list(value) if not isinstance(value, np.ndarray) else value
+            length = int(items.size) if isinstance(items, np.ndarray) else len(items)
+            if not length:
                 raise GrobError(f"gpar.{name} vector must have length > 0")
-            if len(items) not in (1, count) and count % len(items) != 0:
+            if length not in (1, count) and count % length != 0:
                 raise GrobError(
-                    f"gpar.{name} has length {len(items)}, "
-                    f"which does not recycle to {count} elements"
+                    f"gpar.{name} has length {length}, which does not recycle to {count} elements"
                 )
-            vectors[name] = tuple(items)
+            if length == 1:
+                scalars[name] = items[0] if not isinstance(items, np.ndarray) else items[0].item()
+                continue
+            if _is_constant(items):
+                # 逐元素同值：整条向量等价于一个标量增量，不必建 count 个 `Gpar`
+                # （10 万点散点图的默认配色就是这种形状，见 performance.md）。
+                scalars[name] = items[0] if not isinstance(items, np.ndarray) else items[0].item()
+                continue
+            vectors[name] = tuple(items.tolist()) if isinstance(items, np.ndarray) else tuple(items)
     if not vectors:
-        return (Gpar(**raw),)
+        return (Gpar(**scalars),)
+    raw = scalars
     deltas: list[Gpar] = []
     for index in range(count):
         fields: dict[str, Any] = {}
@@ -1667,11 +1714,13 @@ class _Resolved:
 class _Traverser:
     """深度优先遍历 grob 树，产出扁平指令（场景遍历）。"""
 
-    def __init__(self, tree: ViewportTree) -> None:
+    def __init__(self, tree: ViewportTree, cache: Any = None) -> None:
         self.tree = tree
         self.out: list[Instruction] = []
         self.blobs: dict[str, Blob] = {}
         self._extra_clip: tuple[float, float, float, float] | None = None
+        #: 指令缓存（`ggcore.perf.SceneInstructionCache`）：键是内容不是对象 id。
+        self.cache = cache
 
     # -- 坐标 ---------------------------------------------------------------
 
@@ -1786,7 +1835,14 @@ class _Traverser:
 
     def _visit_leaf(self, grob: Grob) -> None:
         deltas = grob.gps or (Gpar(),)
-        cache: dict[tuple[float, float, float, str, int], _Resolved] = {}
+        cache_key = self._instruction_key(grob)
+        if cache_key is not None and self.cache is not None:
+            cached = self.cache.get(cache_key, self.tree.metrics)
+            if cached is not None:
+                self.out.extend(cached)
+                return
+        start = len(self.out)
+        resolved_cache: dict[tuple[float, float, float, str, int], _Resolved] = {}
         for delta, index in _groups(deltas, grob.count):
             with self.tree.temporary_gpar(delta):
                 gpar = self.tree.gpar
@@ -1799,10 +1855,10 @@ class _Traverser:
                     gpar.fontfamily,
                     int(gpar.font),
                 )
-                resolved = cache.get(key)
+                resolved = resolved_cache.get(key)
                 if resolved is None:
                     resolved = self._resolve(grob)
-                    cache[key] = resolved
+                    resolved_cache[key] = resolved
                 if not resolved.split and len(deltas) > 1:
                     raise GrobError(
                         f"grob {grob.name!r}: {type(grob).__name__} 的向量 gp 表达不了——"
@@ -1827,6 +1883,35 @@ class _Traverser:
                         source=grob.name,
                     )
                 )
+        if cache_key is not None and self.cache is not None:
+            self.cache.put(cache_key, tuple(self.out[start:]), self.tree.metrics)
+
+    # -- 增量重算的键 -------------------------------------------------------
+
+    def _instruction_key(self, grob: Grob) -> tuple[Any, ...] | None:
+        """一条叶子的指令缓存键；这条叶子不适合缓存时返回 `None`。
+
+        键是**内容**：grob 指纹 + 视口路径 + 页面仿射 + 裁剪框 + 生效 gpar。
+        同样的内容必然产出同样的指令（`_resolve_*` 是纯函数），所以命中可以直接
+        复用。下面几类刻意不进缓存：
+
+        - `RasterGrob`：解析时往 blob 表里登记图片，命中会漏掉登记；
+        - 逐元素 gpar（`len(grob.gps) > 64`）：给每个元素建 Gpar 本来就比缓存贵；
+        - 缓存被关掉 / 没有缓存实例（见 `ggcore.perf`）。
+        """
+        if self.cache is None or isinstance(grob, RasterGrob):
+            return None
+        if len(grob.gps) > 64:
+            return None
+        from ggcore.perf import fingerprint
+
+        return (
+            fingerprint(grob),
+            str(self.tree.current.path),
+            self._frame().page().as_tuple(),
+            self._clip(),
+            repr(self.tree.gpar),
+        )
 
     # -- 几何 ---------------------------------------------------------------
 
@@ -2121,14 +2206,22 @@ _RESOLVERS: Mapping[type, Callable[[_Traverser, Any], _Resolved]] = {
 }
 
 
-def scene(grob: GrobLike | Iterable[GrobLike], tree: ViewportTree) -> Scene:
+def scene(
+    grob: GrobLike | Iterable[GrobLike],
+    tree: ViewportTree,
+    *,
+    cache: Any = None,
+) -> Scene:
     """场景遍历：grob 树 → 扁平指令序列（Device 只认这个）。
 
     传入单个 grob / gtable，或它们的可迭代对象（按给出顺序绘制）。遍历时
     push/pop 自己造出来的视口（grob 的 `vp`、`childrenvp`、gtable 单元格），
     结束时视口树回到进来时的状态。
+
+    `cache=` 是增量重算用的指令缓存（`ggcore.perf.SceneInstructionCache`）：
+    按内容键复用叶子解析出的指令。不传就逐条重算。
     """
-    traverser = _Traverser(tree)
+    traverser = _Traverser(tree, cache=cache)
     items: Iterable[GrobLike]
     if isinstance(grob, (Grob, GTable)):
         items = (grob,)

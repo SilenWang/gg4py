@@ -323,6 +323,15 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # M1-kerning：现有 case 的 hinted vs linear/HarfBuzz 推进差（写 metrics-ledger）。
 "metrics:advance" = "PYTHONPATH=src python tools/metrics/text_advance_report.py"
 
+# --- SIL-829 · 性能预算（M3-5）------------------------------------------------
+# 10 万点端到端实测：`run_script`（exec + build_plot + scene_from_plot + ir.encode，
+# 与浏览器编辑器同一条路，度量用 TableMetrics）。打印 cold / warm / 降采样三组
+# 中位数与缓存命中率，口径与实测数字见 docs/notes/performance.md。
+# 不挂进 `check`：CI runner 的 CPU 与这里不同，用它当门禁只会让红绿取决于机器
+# （同 `pyodide:timing` 的理由）。要当预算门禁用就 `perf:100k:check`。
+"perf:100k" = "PYTHONPATH=src python tools/perf/bench_100k.py"
+"perf:100k:check" = "PYTHONPATH=src python tools/perf/bench_100k.py --check 300"
+
 check = { depends-on = [
   "viewer:build",
   "viewer:browsers",

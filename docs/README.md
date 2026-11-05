@@ -49,6 +49,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [`notes/performance.md`](notes/performance.md) | 性能预算：降采样 / 度量缓存 / 增量重算，10 万点端到端口径与实测（M3-5） |
 | [`notes/pyodide.md`](notes/pyodide.md) | CPython 与 Pyodide 的 plot→IR 逐字节一致（M0-10） |
 | [`notes/viewer.md`](notes/viewer.md) | 浏览器查看器：IR → DOM SVG，零 wasm |
 | [`notes/editor.md`](notes/editor.md) | 浏览器代码编辑器：CodeMirror + Pyodide 执行 + 导出（M3-4） |

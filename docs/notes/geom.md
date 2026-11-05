@@ -63,7 +63,7 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 
 | geom | 绘制口径（对 R 4.0.3） |
 | --- | --- |
-| `point` | `pointsGrob`；`size`（mm）+ `stroke` 折成 `fontsize = size * .pt + stroke * .stroke/2`；`col=alpha(colour, alpha)`、`fill=fill_alpha(fill, alpha)`；IR 的 `points.size` 是标量，所以逐点尺寸按 `(pch, size)` 分组画多个 `pointsGrob` |
+| `point` | `pointsGrob`；`size`（mm）+ `stroke` 折成 `fontsize = size * .pt + stroke * .stroke/2`；`col=alpha(colour, alpha)`、`fill=fill_alpha(fill, alpha)`；IR 的 `points.size` 是标量，所以逐点尺寸按 `(pch, size)` 分组画多个 `pointsGrob`。**gg4py 扩展**：`max_points=N` 时按行号等距降采样（缺省不降，`docs/notes/performance.md`） |
 | `line` / `path` | 每个 group 一条 `polylineGrob`；`line` 在 `setup_data()` 里按 `(PANEL, group, x)` 排序，`path` 保持行序；NA 用 `keep_mid_true()`：组内首尾缺失删掉、中间保留并断成两段；`lwd = linewidth * .pt` |
 | `bar` / `col` | 直接用 M1-9 的 `xmin/xmax/ymin/ymax`，画矩形（`just = c("left","top")`）；`fill` 吃 alpha、`col` 不吃（R 的 `fill_alpha()` 只包 fill） |
 | `histogram` | 与柱相同（`stat_bin` 见 `docs/notes/stat.md`；绘制只消费 `x/xmin/xmax/y/ymin/ymax`，`xmin/xmax`/`width` 由 stat 给） |
