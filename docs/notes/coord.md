@@ -719,3 +719,26 @@ gp <- coord$render_bg(pp, theme_grey())
 而 `expected.svg` 里页面级 clip 宽 **575.61**（比值 1.0381，其倒数 0.9633 与
 `428.10 / 441.96 = 0.9686` 同量级）。所以「SVG 坐标 ÷ 0.9686 才可比」这条规则继续有效，
 `polar.point()` 的 0.4 也是对的。
+
+**A/B 实测：把 polar 内容缩 0.9686 会让 5 条快照全部变差 —— 不要复现它（SIL-839）**
+
+把 `CoordRadial.point()` 的 npc 半径乘 0.9686（环境变量开关，默认 1.0），跑 5 条：
+
+| case | 原样 | ×0.9686 |
+| --- | ---: | ---: |
+| `upstream-guide-axis-theta-angle` | 29.67% | **29.87%** |
+| `upstream-coord-polar-three-circles` | 1.14% | **4.71%** |
+| `upstream-scales-numeric-polar` | 1.30% | **3.79%** |
+| `matrix-report-facet-polar-grey` | 4.39% | **12.27%** |
+| `coord-polar-theta-y` | 0.16% | **0.38%** |
+
+**五条全部变差**，其中三条本来绿的变差 3–8 倍。实验已完整回滚（`coord.py` 与推送
+HEAD 逐字节一致）。
+
+**字形也给了独立否证**：`expected.svg` 里 40 处 `font-size: 8.80px`——是**标称值**，
+没有乘 0.9686（否则应是 8.52px）。也就是说期望图里**只有圆的几何小 3.2%，字形没缩**，
+「整张图被等比缩放」这个解释不成立。
+
+**结论**：那个 3.2% 是 svglite 落在圆/多段路径上的输出特性，不是几何差异；
+我们复现它只会让所有 polar 快照变差。`polar.point()` 的 0.4、`_aspect_panel_area()`
+都保持原样，这条 case 的「半径项」正式排除，差异回到面板内容与元素本身。
