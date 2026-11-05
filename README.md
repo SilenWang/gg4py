@@ -1,133 +1,101 @@
 # gg4py
 
-ggplot2 4.0.3 的 Python 对等复刻：语法核心（`ggcore`，纯 Python + numpy）可跑在
-CPython 与浏览器（Pyodide）里，渲染后端在包外。
+A Python port of **ggplot2 4.0.3** — the grammar of graphics rebuilt from scratch, with its
+own intermediate representation and its own renderers (skia → PNG/SVG/PDF on the desktop,
+TypeScript + DOM SVG in the browser). It is **not** a wrapper around matplotlib, plotnine or
+any other plotting system: the grammar core depends on `numpy` alone.
 
-## 快速开始
+中文版：[README.zh-CN.md](README.zh-CN.md)
 
-依赖、任务、环境变量全在 `pixi.toml` 里，不要用 pip/npm 手动装东西。
+## Install and first plot
+
+Dependencies, environments and tasks are managed by [pixi](https://pixi.sh) (`pixi.toml`),
+so there is nothing to `pip install`. Linux x86-64 for now.
 
 ```bash
-pixi install          # 装 dev 环境（默认环境）
-pixi run check        # lint + 测试 + 横切门禁，一条命令全绿
+pixi install
+pixi run ggsave examples/heatmap/plot.py:plot my-first-plot.png
 ```
 
-| 任务 | 作用 |
+`ggsave` picks the device from the extension (`.png`, `.svg`, `.pdf`). The same plot from
+Python — the data is any dict of columns, a pandas DataFrame or an Arrow table:
+
+```python
+from ggskia import ggsave  # skia backend: PNG / SVG / PDF
+from ggcore.plot import aes, geom_point, ggplot, labs
+from ggio.frame import from_dict
+
+df = from_dict({"wt": [1.9, 2.6, 3.2, 3.5, 4.1], "mpg": [31, 26, 21, 18, 15]})
+p = ggplot(df, aes(x="wt", y="mpg")) + geom_point(size=2) + labs(title="First plot")
+ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
+```
+
+## What it draws
+
+Four examples, each a self-contained `plot.py` using nothing but gg4py itself
+(`pixi run examples:<name>` regenerates the files below). Skipped references and the
+capabilities they need are listed in [`docs/examples.md`](docs/examples.md).
+
+**[Heatmap](examples/heatmap/plot.py)** — `geom_tile` + a viridis gradient over a
+12-month × 8-year grid of synthetic temperatures.
+
+![Heatmap](examples/heatmap/heatmap.png)
+
+**[Bump chart](examples/bump-chart/plot.py)** — `geom_line` + `geom_point` with
+`scale_y_reverse()`, so rank 1 sits at the top and crossings stay readable.
+
+![Bump chart](examples/bump-chart/bump-chart.png)
+
+**[Circular barplot with groups](examples/circular-barplot/plot.py)** — bars on a continuous
+axis with a gap between groups, rolled into a ring by `coord_polar()`.
+
+![Circular barplot](examples/circular-barplot/circular-barplot.png)
+
+**[Mirrored density](examples/mirrored-density/plot.py)** — two densities sharing a zero
+baseline: one drawn from `after_stat("density")`, the other from `after_stat("-density")`.
+
+![Mirrored density](examples/mirrored-density/mirrored-density.png)
+
+## How it works
+
+| Layer | Responsibility |
 | --- | --- |
-| `pixi run check` | `lint` + `test` + `gate:*` + `cases:matrix:check`，CI 跑的就是它 |
-| `pixi run lint` | `ruff check` + `ruff format --check` |
-| `pixi run test` | `pytest`（`tests/`） |
-| `pixi run bench` | pytest-benchmark 基线（`.benchmarks/`，不入库） |
-| `pixi run render` | M0-8/9 · `--scene <file.ggir.cbor> --out x.png\|svg\|pdf`，或 `render <case-dir> --format svg --out <case>/current` |
-| `pixi run diff` | M0-9 · 参考图 × 实测图：图级差异 + 平均差异 + 热图 + `--json`（`docs/notes/diff.md`） |
-| `pixi run ggsave` | M1-12 · `<module:plot_fn> out.png\|svg\|pdf\|ir.cbor\|ir.json`，`--width/--height/--units/--dpi`（`docs/notes/io.md`） |
-| `pixi run ir:size` | 10k 点 path 的 IR vs 逐元素 JSON 体积（`docs/notes/ir.md` §10） |
-| `pixi run gate:imports` | X1 · ggcore import 白名单 |
-| `pixi run gate:ir-json` | X1 · IR 禁止逐元素 JSON |
-| `pixi run gate:determinism` | X1 · 同输入同字节 |
-| `pixi run gate:metrics` | X5 · 双端文本度量一致性（uharfbuzz × CanvasKit，M0-7） |
-| `pixi run gate:pyodide` | M0-10 · CPython 与 Pyodide 的 plot→IR 逐字节一致（只跑 node） |
-| `pixi run gate:pyodide:selftest` | M0-10 · 负向对照：故意差 1 比特，门禁必须红 |
-| `pixi run metrics:table` | M0-7 · 重新生成兜底度量表（改字体或规则后） |
-| `pixi run metrics:check-table` | M0-7 · 校验兜底表与当前字体/规则一致 |
-| `pixi run upstream:diff` | X2 · 上游 `R/` 周 diff |
-| `pixi run cases:viewport` | M0-4 · 重画 `docs/cases/viewport-*` 的 PNG 快照（`--check` 只比对） |
-| `pixi run cases:grob` | M0-6 · 重画 `docs/cases/grob-*` 的 PNG 快照（一种原语一张） |
-| `pixi run cases:matrix` | M0-11/9 · 扫三文件 case，真跑 render + diff，写 `docs/cases/matrix.md` 与 `.cases-matrix/report.{md,json}` |
-| `pixi run cases:matrix:check` | M0-11 · 只做静态校验：契约错或矩阵过期即非 0（挂在 `check` 里） |
-| `pixi run cases:device` | M0-8 · 一张手搓图三路出图到 `docs/cases/device-smoke/current/`（`--check` 只验验收） |
-| `pixi run spike:*` | M-1 可行性实验，见 `docs/spike/README.md` |
-| `pixi run -e refs refs:units` | 用 R 4.5.3 重新生成 units 对拍夹具 |
-| `pixi run -e refs refs:gtable` | 用 R 4.5.3 + gtable 0.3.6 重新生成 gtable 对拍夹具 |
-| `pixi run -e refs refs:viewport` | 用 R 4.5.3 重新生成 viewport 对拍夹具 |
-| `pixi run -e refs refs:device` | 用 R 4.5.3 重新生成 xspline / curve 对拍夹具 |
-| `pixi run -e refs refs:device-render` | 用 R 4.5.3 重新生成设备级渲染对拍夹具（PNG + 设备坐标折线） |
-| `pixi run -e refs refs:cases` | M0-9 · 用 R 4.5.3 + ggplot2 4.0.3 + svglite 重新生成 `docs/cases/*/expected.svg` |
+| `src/ggcore/` | The grammar: aes, stats, geoms, scales, coords, facets, guides, themes. Pure Python + numpy, no pandas, no plotting library. Also runs in the browser under Pyodide. |
+| IR (`ggcore.ir`) | Resolved geometry in float32 buffers, serialized as canonical CBOR. The single hand-off between the core and every renderer. |
+| `src/ggio/` | Input adapters: pandas / Arrow / dict of arrays → one columnar table. |
+| `src/ggskia/` | skia-python device → PNG / SVG / PDF for desktop and server rendering. |
+| `web/viewer/` | TypeScript + DOM SVG viewer for the browser — no wasm, no bundler. |
+| `src/ggdiff/` | Differential testing: R reference vs. our output, one rasterizer (resvg), pixel and ink metrics. |
 
-## 环境
+The core is checked, not just claimed: X1 gates forbid any import outside
+`numpy`/stdlib/`contourpy` inside `ggcore`, and the same plot produces byte-identical IR on
+CPython and Pyodide. Rendering parity is measured against 311 upstream SVG snapshots
+generated by ggplot2 4.0.3 itself, plus the browser viewer's DOM output.
 
-- `default` / `dev`：运行期依赖 + pytest / pytest-benchmark / ruff / playwright
-- `prod`：只留运行期依赖（无 pytest、无 ruff、无 playwright）
+## Development
 
-两个环境共用同一个 solve-group，锁文件里只有一套 numpy/skia 版本。CI 的
-`prod-env` job 会断言测试与 lint 工具没有泄漏进 prod。
-
-## 布局
-
-```
-pixi.toml            # 唯一依赖与任务声明（+ pixi.lock）
-pytest.ini           # src 布局：pythonpath = src
-src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条边界）
-  ir/                # IR v0：节点类型表 + CBOR 编解码（docs/notes/ir.md）
-  units.py           # grid::unit 对等单位系统（M0-3）
-  gtable.py          # 表格布局 + null 分配（M0-5）
-  viewport.py        # grid 视口栈：push/pop、变换、裁剪、gpar 继承（M0-4）
-  grobs.py           # grob 模型：18 个构造器 + 场景遍历 → IR（M0-6）
-  metrics/           # 文本度量：run 切分 + MetricProvider + 兜底表（M0-7）
-  device.py          # 设备协议：open / draw_scene / close（M0-8）
-  plotspec.py        # 案例适配层：plot 规格 → grob → IR（M0-9）
-  io.py              # ggsave / save_ir / export_ir_json：落盘编排（M1-12）
-  data.py            # 列式表 ColumnTable / Column：三种输入的归一结果（M1-14）
-  cli/               # 命令行辅助（render / diff 的入口在包外）
-src/ggio/            # 输入适配层：pandas / Arrow / dict → ColumnTable（M1-14）
-src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
-src/ggskia/          # skia 设备（PNG / SVG / PDF）与 render / ggsave 的 CLI（M0-8 / M1-12）
-src/ggdiff/          # 差分：resvg 统一栅格 + 像素判据 + 报告（M0-9）
-tools/gates/         # 横切门禁脚本（X1）
-tools/refs/          # R 侧参考值生成（units / gtable / viewport）
-tools/cases/         # 可视化快照渲染（viewport 快照 M0-4 / grob 快照 M0-6）
-tools/examples/      # 文档与验收用的 plot 模块（`ggsave` 的分面 + 图例图）
-tools/metrics/       # 兜底表生成 + CanvasKit 度量脚本（门禁复用）
-tools/upstream_diff.py  # 上游 R/ 周 diff（X2）
-scripts/             # 出口复现件：exit_report.py / exit_report.R（同一张报告图，M1 验收用）
-benchmarks/          # pytest-benchmark 基线
-tests/               # 单元测试 + 门禁自测
-docs/notes/          # 口径与对照表：upstream / upstream-map / snapshot-policy / gates
-docs/cases/          # 案例资产（规格 / 参考图 / 基线）
-docs/spike/          # M-1 可行性实验与结论
+```bash
+pixi run check     # lint + tests + gates + viewer parity (what CI runs)
+pixi run test      # pytest
+pixi run lint      # ruff check + ruff format --check
 ```
 
-`src/` 布局没有引入构建后端：`pytest.ini` 的 `pythonpath = src` 与任务里的
-`PYTHONPATH=src` 负责把包放上路径。
+Layout, environments and the full task catalogue: [`docs/dev/layout.md`](docs/dev/layout.md).
+Reference reading (module-by-module contracts, gates, snapshot policy): [`docs/README.md`](docs/README.md).
 
-## 口径文档
+## License
 
-- 上游钉版与周 diff：`docs/notes/upstream.md`
-- Python 模块 ↔ 上游 `file:line`：`docs/notes/upstream-map.md`
-- 快照容差与参考图纳管：`docs/notes/snapshot-policy.md`
-- 门禁口径：`docs/notes/gates.md`
-- IR 口径（节点表 / blob / 版本 / 体积）：`docs/notes/ir.md`
-- 度量口径账本：`docs/notes/metrics-ledger.md`
-- 单位口径账本：`docs/notes/units.md`
-- 表格布局口径账本：`docs/notes/gtable.md`
-- 视口口径账本：`docs/notes/viewport.md`
-- grob 口径账本：`docs/notes/grobs.md`
-- 设备口径账本（pt/DPI、文字轮廓、pch 表、曲线求值）：`docs/notes/device.md`
-- 差分管线（R 参考、resvg 统一栅格、2%/1% 判据、JSON 契约）：`docs/notes/diff.md`
-- 落盘口径（ggsave 的单位 / 缺省值 / 三路设备差异 / IR 与 JSON 视图）：`docs/notes/io.md`
-- 输入适配口径（三种输入 / dtype / 分类顺序 / 时间 / 缺失）：`docs/notes/data.md`
-- aes 表达式口径（字符串解析 / 白名单 / 长度语义 / 自动分组）：`docs/notes/aes.md`
-- 坐标口径账本（面板范围 / expand / clip / 等比例 / 根 native）：`docs/notes/coord.md`
-- 位置调整口径（identity / stack / fill / dodge / dodge2 / jitter / jitterdodge / nudge）：`docs/notes/position.md`
-- 第三方资产盘点：`docs/notes/licenses.md`
-
-## 许可证与归属
-
-本项目（gg4py）是 [ggplot2](https://github.com/tidyverse/ggplot2) **4.0.3** 的
-Python 对等复刻：语义层（`src/ggcore/`）、R 侧参考夹具（`tools/refs/*.R` 的产出）、
-案例参考图（`docs/cases/*/expected.svg`）大量移植或生成自上游。钉住的 commit 是
-`cc1444c10edb87650fbe0cb31d56f0da1a255634`（tag `v4.0.3`，见
-`docs/notes/upstream.md`）。
+gg4py is a Python port of [ggplot2](https://github.com/tidyverse/ggplot2) **4.0.3**: the
+semantics, the R-side reference fixtures and the reference plots in `docs/cases/` are
+ported from or generated by the upstream project (pinned commit
+`cc1444c10edb87650fbe0cb31d56f0da1a255634`, tag `v4.0.3`).
 
 | | |
 | --- | --- |
-| 上游 | `tidyverse/ggplot2` 4.0.3（commit `cc1444c1`） |
-| 上游许可 | **MIT**（`DESCRIPTION`：`License: MIT + file LICENSE`；版权 `2025 ggplot2 core developer team`） |
-| 本项目许可 | **MIT**（[`LICENSE`](LICENSE)；版权 `2026 Sylens Wong`） |
-| 第三方资产与依赖 | 盘点见 `docs/notes/licenses.md` |
+| Upstream | `tidyverse/ggplot2` 4.0.3, **MIT** (© 2025 ggplot2 core developer team) |
+| This project | **MIT** ([`LICENSE`](LICENSE), © 2026 Sylens Wong) |
+| Third-party assets | inventory in [`docs/notes/licenses.md`](docs/notes/licenses.md) |
 
-`LICENSE` 里是 MIT 全文，两段版权声明并列（上游一段、本项目一段），没有合并：
-这意味着分发本仓库（含派生的参考图、基线与配置文件）时要同时保留这两行。
-本仓库不含第三方二进制资产（无入库字体、wasm、Pyodide 运行时），字体与浏览器
-资产都是构建期从 pixi / npm 取、`git ls-files` 里看不到——逐项结论与复核命令在
-`docs/notes/licenses.md`。
+Both copyright lines are kept in `LICENSE`; redistributing this repository (including the
+derived reference plots) means keeping both. No third-party binaries are committed —
+fonts, browsers and wasm are fetched at build time by pixi / npm.

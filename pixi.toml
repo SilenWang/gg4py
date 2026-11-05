@@ -5,7 +5,7 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 # ---------------------------------------------------------------------------
-# Environment composition (see README "任务与环境")
+# Environment composition (see docs/dev/layout.md "环境" and "任务")
 #
 #   default / dev : runtime deps + pytest / ruff / playwright (this is the env
 #                   `pixi run check` resolves against)
@@ -77,6 +77,13 @@ diff = "PYTHONPATH=src python -m ggdiff.cli"
 ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
+# 面向读者的示例图（docs/examples.md）：一图一目录，脚本 + PNG + SVG 入库。
+# 任务名与目录同名，`pixi run examples:heatmap` 重画 examples/heatmap/ 的两份产物；
+# 产物确定性（同输入同字节），脚本自己把 src/ 放上 sys.path，所以单独跑也行。
+"examples:heatmap" = "PYTHONPATH=src python examples/heatmap/plot.py"
+"examples:bump-chart" = "PYTHONPATH=src python examples/bump-chart/plot.py"
+"examples:circular-barplot" = "PYTHONPATH=src python examples/circular-barplot/plot.py"
+"examples:mirrored-density" = "PYTHONPATH=src python examples/mirrored-density/plot.py"
 # M1-13：浏览器查看器（IR → DOM SVG，零 wasm）。tsc 从 npm 装到 node_modules
 # （不入库），产物落 web/viewer/dist（不入库）；`pixi run viewer:sample` 生成
 # 手测 / 截图用的 2×2 分面 + 图例场景。测试要真 Chromium，`viewer:browsers`
