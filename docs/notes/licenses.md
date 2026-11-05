@@ -1,6 +1,6 @@
 # 许可与第三方资产盘点（SIL-831）
 
-本仓库转为 public 后补的两件事：根目录的 `LICENSE`（MIT 全文 + 两段版权声明）
+本仓库转为 public 后补的两件事：根目录的 `LICENSE`（标准 MIT 全文，只写本项目版权行）
 与这一份盘点。本文只记录**事实与产地**，不构成法律意见；判据是 `git ls-files`
 里的实际内容，任何人都能按下面的命令复核。
 
@@ -30,14 +30,16 @@ git check-ignore -v web/viewer/fonts/x.ttf node_modules/x \
 | 上游 | `tidyverse/ggplot2` v4.0.3，commit `cc1444c10edb87650fbe0cb31d56f0da1a255634` |
 | 上游许可 | MIT（`DESCRIPTION`：`License: MIT + file LICENSE`） |
 | 上游 `LICENSE` 原文 | `YEAR: 2025` / `COPYRIGHT HOLDER: ggplot2 core developer team`（R 包的两行式写法，MIT 模板在 R 的 `R_HOME` 里） |
-| 本项目许可 | MIT，见根目录 `LICENSE` |
+| 本项目许可 | MIT，见根目录 `LICENSE`（只写本项目版权行） |
 
-`LICENSE` 是 MIT 全文，抬头并列两行版权声明——`2025 ggplot2 core developer team`
-与 `2026 Sylens Wong`，没有合并、没有取其一。上游那行是把 R 包的两行式 `LICENSE`
-按 MIT 模板写成 `Copyright (c) 2025 ...`，年份与持有人原样保留。
+`LICENSE` 是标准 MIT 全文，抬头只有本项目的版权行 `2026 Sylens Wong`。上游的版权行
+（`2025 ggplot2 core developer team`）不写进 `LICENSE`，而是原样放在 README 的
+「Attribution / 致谢与归属」一节——按 MIT 模板写成 `Copyright (c) 2025 ...`，年份与
+持有人照抄 R 包的两行式 `LICENSE`。
 
-为什么必须带上游那行：本仓库的语义层、R 侧夹具、参考图大量移植或生成自它，MIT
-要求“保留版权声明与许可全文”。钉版与升级流程见 `docs/notes/upstream.md`。
+为什么上游声明不能省：本仓库的语义层、R 侧夹具、参考图大量移植或生成自它，MIT
+要求「保留版权声明与许可声明」。它随 README 一起分发，分发本仓库（含派生参考图）时
+必须保留。钉版与升级流程见 `docs/notes/upstream.md`。
 
 ## 入库资产（逐类）
 

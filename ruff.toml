@@ -12,6 +12,9 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 # spike scripts deliberately mutate sys.path before importing local helpers
 "docs/spike/**/*.py" = ["E402"]
 "tests/*.py" = ["E402"]
+# 示例脚本要能 `pixi run python examples/<slug>/plot.py` 直接跑：先把仓库的 src/
+# 放上 sys.path，再 import ggcore（与上面的 spike 脚本同一类刻意写法）。
+"examples/**/*.py" = ["E402"]
 # gtable 的参数名照抄 R 的 `t` / `l` / `b` / `r`（top/left/bottom/right），
 # `l` 在这里就是「左」，不是易混的单字母变量。
 "src/ggcore/gtable.py" = ["E741"]
