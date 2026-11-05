@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**298**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**13**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **13** 条（移交 M3）
+- 已纳管：**299**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**12**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **12** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -17,7 +17,6 @@
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
 | `coord_sf` | m3 | 9 | 8 | 1 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
-| `geom-text` | m3 | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
@@ -38,6 +37,7 @@
 | `geom-raster` | m2-closeout | 12 | 12 | 0 |
 | `geom-sf` | m3 | 10 | 10 | 0 |
 | `geom-smooth` | m2-closeout | 2 | 2 | 0 |
+| `geom-text` | m3 | 1 | 1 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `guide-legend` | m2-closeout | 7 | 7 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 298 | 13 |
+| **合计** | — | 311 | 299 | 12 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -185,6 +185,7 @@
 | `geom-sf/texts-for-north-carolina.svg` | `upstream-geom-sf-texts-for-north-carolina` |
 | `geom-smooth/ribbon-turned-off-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-off` |
 | `geom-smooth/ribbon-turned-on-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-on` |
+| `geom-text/geom-text-with-expressions.svg` | `upstream-geom-text-with-expressions` |
 | `geom-violin/basic.svg` | `upstream-geom-violin-basic` |
 | `geom-violin/continuous-x-axis-many-groups-center-should-be-at-2-0.svg` | `upstream-geom-violin-continuous-x-axis-many-groups` |
 | `geom-violin/continuous-x-axis-single-group-center-should-be-at-1-0.svg` | `upstream-geom-violin-continuous-x-axis-single-group` |
@@ -438,16 +439,6 @@ SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mer
 <details><summary>快照</summary>
 
 - `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>
-
-### `geom-text` — 1 条 · SIL-715 · m3
-
-SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 plotmath 排版（希腊字母 + 上下标 + 根号笔画，逐 glyph 定位、字号 0.7 倍、根号是 path）。本仓的文本层只吃纯文本，没有 plotmath 解析与排版，`geom_text()` 也没有 `parse = TRUE`。
-
-<details><summary>快照</summary>
-
-- `geom-text/geom-text-with-expressions.svg`
 
 </details>
 

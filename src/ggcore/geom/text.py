@@ -60,7 +60,7 @@ from ggcore.geom.base import (
     table_numeric,
     table_strings,
 )
-from ggcore.grobs import g_tree, null_grob, polygon_grob, rect_grob, text_grob
+from ggcore.grobs import g_tree, null_grob, polygon_grob, polyline_grob, rect_grob, text_grob
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
@@ -369,6 +369,108 @@ def _overlap_keep(boxes: list[tuple[float, float, float, float]]) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# geom_text：plotmath（`parse = TRUE`）
+# ---------------------------------------------------------------------------
+
+
+def _math_grobs(
+    labels: list[str],
+    xs: np.ndarray,
+    ys: np.ndarray,
+    hjust: np.ndarray,
+    vjust: np.ndarray,
+    angle: np.ndarray,
+    size_pt: np.ndarray,
+    colours: list[Any],
+    alpha: np.ndarray,
+    families: list[str],
+    faces: list[int],
+    metrics: Any,
+    panel: Any,
+    *,
+    name: str,
+) -> Any | None:
+    """`geom_text(parse = TRUE)`：把每个标签排成 plotmath（SIL-839）。
+
+    口径照 `docs/notes/geom.md`：整块宽度用 `plotmath.layout()` 的 em 数乘字号，
+    块高 = cap（R 的 `strheight`）+ descent + 上标顶出来的那截；`vjust` 折成
+    「盒底在锚点上方 `vjust·H` 处」，基线再上移一个 descent。每段文本用
+    `hjust = 0 / vjust = 0`（左边界 + 基线）落位，这样不同字号的段不会互相影响。
+
+    有一条标签解析不了（或带旋转）就整层回退普通文本——R 的 `parse_safe()` 也是
+    整列回退，不做逐行混合。
+    """
+    from ggcore import plotmath
+
+    if not all(float(item) == 0.0 for item in angle.tolist()):
+        return None
+    if not all(plotmath.is_plausible(label) for label in labels):
+        return None
+    panel_w_pt = _panel_size(panel, "x") * 72.0
+    panel_h_pt = _panel_size(panel, "y") * 72.0
+    if panel_w_pt <= 0 or panel_h_pt <= 0:  # pragma: no cover - 离屏绘制兜底
+        return None
+    grobs: list[Any] = []
+    for index, label in enumerate(labels):
+        size = float(size_pt[index])
+        face = faces[index]
+        family = families[index]
+
+        def measure(text: str, fontsize: float, _face=face, _family=family) -> float:
+            return _measure(metrics, text, fontsize, _face, _family)[0]
+
+        layout = plotmath.layout(label, fontsize=size, measure=measure)
+        cap = _measure(metrics, "Mg", size, face, family)[1]
+        descent = _descent_in(metrics, size, face, family)
+        height = cap + descent + layout.extra_ascent_em * size
+        width = layout.width_em * size
+        left = float(xs[index]) - float(hjust[index]) * width / panel_w_pt
+        # 基线（相对锚点，向上为正）：盒底 = 锚点上方 vjust·H，再上移 descent。
+        base = -float(vjust[index]) * height + descent
+        colour = alpha_colour(colours[index], float(alpha[index]))
+        gp = {
+            "col": colour,
+            "fontfamily": family,
+            "font": face,
+            "lineheight": 1.2,
+        }
+        for run in layout.runs:
+            grobs.append(
+                text_grob(
+                    run.text,
+                    left + run.x_em * size / panel_w_pt,
+                    float(ys[index]) + (base + run.rise_em * size) / panel_h_pt,
+                    hjust=0.0,
+                    vjust=0.0,
+                    gp={**gp, "fontsize": size * run.cex},
+                    name=name,
+                )
+            )
+        for rule in layout.rules:
+            px = [left + x_em * size / panel_w_pt for x_em, _ in rule.points]
+            py = [float(ys[index]) + (base + y_em * size) / panel_h_pt for _, y_em in rule.points]
+            grobs.append(
+                polyline_grob(
+                    px,
+                    py,
+                    default_units="npc",
+                    gp={
+                        "col": colour,
+                        "lwd": rule.lwd,
+                        "lineend": "round",
+                        "linejoin": "round",
+                    },
+                    name=f"{name}.radical",
+                )
+            )
+    if not grobs:
+        return null_grob(name=name)
+    if len(grobs) == 1:
+        return grobs[0]
+    return g_tree(*grobs, name=name)
+
+
 class TextRenderer(GeomRenderer):
     """`geom_text`：逐行文字，`(hjust, vjust, angle)` 相同的行共用一个 text grob。"""
 
@@ -437,6 +539,25 @@ class TextRenderer(GeomRenderer):
             (float(h), float(v), float(a))
             for h, v, a in zip(hjust.tolist(), vjust.tolist(), angle.tolist(), strict=True)
         ]
+        if bool(build.params.get("parse", False)):
+            math_tree = _math_grobs(
+                labels,
+                x,
+                y,
+                hjust,
+                vjust,
+                angle,
+                size_pt,
+                colours,
+                alpha,
+                families,
+                faces,
+                metrics,
+                panel,
+                name="geom_text",
+            )
+            if math_tree is not None:
+                return math_tree
         groups: dict[tuple[float, float, float], list[int]] = {}
         for index, key in enumerate(keys):
             groups.setdefault(key, []).append(index)
