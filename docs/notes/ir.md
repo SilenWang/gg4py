@@ -298,9 +298,17 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 - 多行节点（一个 `rectGrob` 画三根柱子）只有**一整层包围盒**：R 也是这样解析的
   （`geom_col()` 的三行共用一个多行 grob，svglite 写三条**坐标相同**的
   `<linearGradient>`，实测见 `docs/cases/viewer-gradient-linear/expected.svg`）。
-- `pattern.content` 的原语用**与节点几何同一个局部坐标**（不是 tile 相对坐标）。
-  窗口是 `[origin, origin + size)`；第 `(i, j)` 块 = 内容 + `(i·w, j·h)`，裁到窗口。
-  这与 R `grid::pattern()`、SVG `patternContentUnits="userSpaceOnUse"` 一致。
+- **一层拆成多条指令时 bbox 取并集**（SIL-833）：IR 里逐元素 gpar 会把一层拆成
+  多条节点（逐行填充、极坐标的逐柱多边形），写 IR 之前按图层的并集求包围盒
+  （`Grob.layer_tag` → `Scene._layer_boxes()`）。R 那边一层的全部元素本来就在
+  **一个** grob 里，npc 的分母就是那个 grob 的 bbox——只有这么做图案相位才对得上。
+- 渐变的 `group = FALSE`（R `linearGradient(group = )` 的同名量）是**逐元素**口径：
+  每个元素各用各的 bbox，不参与图层的并集。`pattern()` 没有这个参数，恒为整层。
+- `pattern.content` 的原语用**与节点几何同一个局部坐标**（不是 tile 相对坐标），
+  并且是**按被填充 grob 的 bbox 摆一次**、所有 tile 共用：tile 只决定裁剪窗口与
+  重复周期，相位由内容与 bbox 的相对位置决定。窗口是 `[origin, origin + size)`；
+  第 `(i, j)` 块 = 内容 + `(i·w, j·h)`，裁到窗口。这与 R `grid::pattern()`、
+  SVG `patternContentUnits="userSpaceOnUse"` 一致。
 - `pattern` 的 tile 以写方的 `(x, y)` 为**中心**（grid `just = "centre"`），所以
   `origin = 中心 − size/2`。
 - `stop.offset` 必须单调不减、`0..1`；颜色分量必须是 `0..255` 的整数；线性渐变的
@@ -316,6 +324,7 @@ bulk 数据永远是**原始 float32 小端字节**，不做逐元素 JSON，也
 | SVG `spreadMethod` | **已修**（SIL-767 §3）：skia 的序列化器不写它，设备在序列化之后按 IR 的 `extend` 补写；`pad` 是 SVG 缺省值、不写 | `tests/test_skia_fill.py::test_gradient_extend_is_written_to_svg_as_spread_method` |
 | SVG focal 渐变 | **已修**（SIL-767 §2）：skia 把两圆锥渐变的 `cx/cy/r`（start 圆）与 `fx/fy/fr`（end 圆）写反，设备按 IR 重写成规范形式（`cx/cy/r` = `center`/`radius`，`fx/fy/fr` = `focal`） | `::test_radial_gradient_with_focal_point`、`::test_focal_gradient_svg_rasterizes_the_way_png_renders`（resvg 像素对照） |
 | 图案只支持 `extend = repeat` | `pad` / `reflect` 在 skia 侧显式 `DeviceError`，浏览器侧 `<pattern>` 本身只有平铺语义 | `::test_pattern_rejects_non_repeat_extend` |
+| SVG 图案写真正的 `<pattern>` | **已修**（SIL-833）：skia 的画布没有图案 API，所以绘图时先用占位色把形状画下去，序列化之后由 `_rewrite_svg_patterns()` 换成 `url(#gpat-N)` + `<pattern>` 定义（与 svglite 同结构）。逐 tile「画内容 + 矩形裁剪」的写法在 tile 边界上有半像素覆盖率，和参考图整块 tile 拼接对不上：`single-pattern-fill` 实测 14.65% → 1.24% | `tests/test_skia_fill.py::test_pattern_is_drawn_as_vectors_not_a_bitmap`、`tests/test_device.py::test_svg_writes_a_pattern_element_for_tiled_fills` |
 
 SVG 侧的两处修法都落在 `ggskia.skia` 的序列化**之后**（`_rewrite_svg_gradients`）：
 skia 把视口变换写成元素上的 `transform="matrix(…)"`，渐变坐标仍是节点局部坐标，
