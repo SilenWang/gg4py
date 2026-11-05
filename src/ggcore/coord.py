@@ -1555,19 +1555,23 @@ def _graticule_side_labels(
         threshold = thres_low + 0.001 * span
         accept_start = orth_start < threshold
         accept_end = orth_end < threshold
-    # `label_graticule` 的字母直接决定「哪条边由哪一类线出标签」（上游语义）：
-    #   S → 下边收经线（E）的下端、N → 上边收经线的上端、
-    #   W → 左边收纬线（N）的左端、E → 右边收纬线的右端。
-    letter = {"bottom": "S", "top": "N", "left": "W", "right": "E"}[side]
-    if letter not in label_graticule:
-        return []
     types = np.array([line.type for line in lines], dtype=object)
-    want = "E" if axis == "x" else "N"
-    accept = accept_start if side in ("bottom", "left") else accept_end
-    idx = [int(i) for i in np.flatnonzero((types == want) & accept)]
-    use_start = side in ("bottom", "left")
-    idx_start = idx if use_start else []
-    idx_end = [] if use_start else idx
+    # 上游对**每个** aesthetic 累加 `label_graticule` 的四条规则，所以同一个
+    # ViewScale 会同时产出 start 端和 end 端的标签：
+    #   S → 经线（E）的 start 端、W → 纬线（N）的 start 端（都进 idx_start）
+    #   N → 经线（E）的 end 端、  E → 纬线（N）的 end 端（都进 idx_end）
+    # 四边的差别只来自 `orth`（bottom/top 用 y，left/right 用 x）和
+    # `position` 决定的阈值方向，不来自字母映射。
+    idx_start: list[int] = []
+    idx_end: list[int] = []
+    if "S" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "E") & accept_start)]
+    if "W" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "N") & accept_start)]
+    if "N" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "E") & accept_end)]
+    if "E" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "N") & accept_end)]
     rows = [
         SfGraticuleLabel(
             x=float(lines[i].x_start),
