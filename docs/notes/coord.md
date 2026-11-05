@@ -259,8 +259,7 @@ M0 交接的遗留口径在本任务收口：
 - theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
   0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
 
-**polar 网格当前的实测缺口（SIL-839，待修）**：`guide-axis-theta-with-angle-adapting-to-theta`
-（口径已按上游测试修正：默认 `theme_grey()`，见 `theme.md` 第 6 条）在 55.2% 时，
+**polar 网格当前的实测缺口（SIL-839，待修）**：`guide-axis-theta-with-angle-adapting-to-theta`（口径已按上游测试修正：默认 `theme_grey()`，见 `theme.md` 第 6 条）在 55.2% 时，
 逐项数是：
 
 | 元素 | expected.svg | 我们的 SVG |
@@ -425,3 +424,11 @@ coord 族的案例（`docs/cases/coord-*`，12 条，全部 `ci = true`）：
 | `coord-radial-partial` / `coord-radial-inner` | partial arc / 甜甜圈 |
 | `coord-sec-axis` | 右侧次轴 + 标题 |
 | `coord-quickmap` | 经纬度的等距圆柱近似 |
+
+**数 SVG 要用 `pixi run svg:stats -- a.svg b.svg`**（SIL-839）：颜色先归一化
+（`white` / `#FFFFFF` / `rgb()` / `grey60`）再按 `(stroke, stroke-width)` 分组，
+两个 SVG 并列打出差异。手数连通两轮栽在 `#FFFFFF` vs `white` 上。
+注意它数的是**元素数**：R 的 `element_render(..., id.lengths = rep(2, n))` 会把
+theta 的 35 条次辐条合成**一个** `<polyline>`，我们的设备每条一组元素——所以
+「`#FFFFFF 0.53` 23 vs 35」这种差首先是分组差，必须再数线段（`points` 个数 / 2）
+才能判断几何是否真的多画了。

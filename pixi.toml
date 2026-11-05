@@ -115,6 +115,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 静态校验（不渲染）：契约错 → 非 0；矩阵过期 → 非 0。挂进 `check`，所以普通
 # CI job 就能守住「新增 case 必须重生成矩阵」。真渲染/比对仍走 `cases:matrix`。
 "cases:matrix:check" = "PYTHONPATH=src python tools/cases/matrix.py --check --no-run"
+# SIL-839：SVG 笔画 / 填充统计。颜色先归一化（`white` / `#FFFFFF` / `rgb()` /
+# `grey60`）再按 `(stroke, stroke-width)` 分组计数，两个 SVG 并列打出差异。
+# 手数 SVG 连着栽过两次（svglite 写 `#FFFFFF`、我们的设备写 `white`），以后统一用它。
+# 用法：`pixi run svg:stats -- a.svg b.svg`。
+"svg:stats" = "python tools/cases/svg_stats.py"
 # SIL-745：API 覆盖率门禁（M2 出口验收）。分母钉在上游 v4.0.3 的 NAMESPACE
 # （快照 tools/gates/upstream_api.json），分子是注册表 ∪ ggcore.plot 命名空间；
 # 每个分类 ≥ 90%，缺口必须登记 issue 归口。`api:coverage` 重写 docs/notes/api-coverage.md，
