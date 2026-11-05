@@ -258,6 +258,24 @@ M0 交接的遗留口径在本任务收口：
   被画两遍（细线压在粗线下，SVG 里两份都在）；
 - theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
   0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
+
+**polar 网格当前的实测缺口（SIL-839，待修）**：`guide-axis-theta-with-angle-adapting-to-theta`
+（口径已按上游测试修正：默认 `theme_grey()`，见 `theme.md` 第 6 条）在 55.2% 时，
+逐项数是：
+
+| 元素 | expected.svg | 我们的 SVG |
+| --- | --- | --- |
+| `fill: #EBEBEB` 的 panel 背景 | 1 个 polygon | **1 个 rect ✓**（scene 里也是 1 个 `(235,235,235,255)`） |
+| `stroke: #FFFFFF` 网格线 | **47 条** | **0 条** |
+| `stroke: #333333` | 40 条 | 46 条 |
+
+所以「背景 rect 缺失」不成立——背景两条路径（scene / SVG）都在。缺的是 **polar 的
+网格线**：`theme_grey()` 的 `panel.grid = element_line(colour = paper)`（白）与
+`panel.grid.major` 的 `linewidth = rel(0.1)` 都在，但 `_polar_grid_grobs()` 一条
+都没产出。下一步查这一步（`theme.get("panel.grid.major.x"/".y")` 的解析结果、
+`paint()` 对白的返回值、以及 `polar_theta_ticks()` 是否为空导致早退），改完必须
+跑全量 `cases:matrix`（polar 背景/网格影响所有 polar 快照，`matrix-report-facet-polar-grey`
+当前 4.39% 不能破线）。
 - r 轴在 `left` 槽，位置 `r_rescale(r) + 0.5`（`r.axis.inside` 时不上槽）；
 - `aspect = 1`（polar）或 `diff(bbox$y)/diff(bbox$x)`（radial）作用在**每个
   panel 单元格**上：spacing / strip 不变，整块居中（R 的 `respect`）。
