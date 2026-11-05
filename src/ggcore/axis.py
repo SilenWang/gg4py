@@ -613,11 +613,17 @@ def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     return AxisTicks(side, tuple(values), tuple(texts))
 
 
-def polar_theta_ticks(scale: Any, params: Any) -> tuple[tuple[float, float, str], ...]:
-    """theta 轴的标签锚点：`(x_npc, y_npc, text)`，半径 0.45（外圈 0.05 留给标签）。
+def polar_theta_ticks(scale: Any, params: Any) -> tuple[tuple[float, float, str, float], ...]:
+    """theta 轴的标签锚点：`(x_npc, y_npc, text, theta)`，半径 0.45（外圈 0.05 留给标签）。
 
     满圆时首尾两个标签（0 与 2π 是同一个位置）按上游 `render_fg()` 的规则合并成
     `"a/b"`：`ends_apart < 0.05` 才合并。
+
+    `theta`（弧度）与位置一起返回：上游 `GuideAxisTheta` 是拿位置反解
+    `atan2(x - 0.5, y - 0.5)`，但 `atan2(sin θ, cos θ)` 只是 θ 的近似——glibc 与
+    emscripten 的 libm 在这里能差 1 ULP，于是同一份代码在桌面与浏览器里写出不同的
+    `angle`（SIL-824 的全量 case 门禁抓到 `upstream-geom-hex-polar`）。角度本来就是
+    从 `theta_angle()` 线性算出来的，直接带出去即可，不必绕一圈。
     """
     polar = params.polar
     if polar is None or scale is None:
@@ -645,11 +651,11 @@ def polar_theta_ticks(scale: Any, params: Any) -> tuple[tuple[float, float, str]
             texts = [f"{texts[0]}/{texts[-1]}", *texts[1:-1]]
             angles = angles[:-1]
     (x0, x1), (y0, y1) = polar.bbox
-    out: list[tuple[float, float, str]] = []
+    out: list[tuple[float, float, str, float]] = []
     for angle, text in zip(angles, texts, strict=True):
         px = 0.45 * math.sin(angle) + 0.5
         py = 0.45 * math.cos(angle) + 0.5
-        out.append(((px - x0) / (x1 - x0), (py - y0) / (y1 - y0), text))
+        out.append(((px - x0) / (x1 - x0), (py - y0) / (y1 - y0), text, angle))
     return tuple(out)
 
 

@@ -1315,8 +1315,7 @@ def polar_axis_grobs(
     grobs: list[Any] = []
     if guide.minor_ticks:
         grobs.extend(_theta_minor_tick_grobs(scale, params, theme, box, name=f"{name}.minor"))
-    for index, (x, y, text) in enumerate(entries):
-        theta = math.atan2(x - 0.5, y - 0.5)
+    for index, (x, y, text, theta) in enumerate(entries):
         angle = base_angle - math.degrees(theta)
         angle = angle % 360.0
         if 90.0 < angle < 270.0:

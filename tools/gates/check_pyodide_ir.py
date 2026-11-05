@@ -1,16 +1,23 @@
-"""M0-10 门禁 · 同一份 plot → IR，CPython 与 Pyodide 逐字节一致。
+"""M0-10 / SIL-824 门禁 · 同一份代码，CPython 与 Pyodide 逐字节一致。
 
-两边跑的是同一个入口 `tools/gates/pyodide/run_ir.py`、同一份 `plot.json`：
+两个相位，各跑一遍两端：
 
-    CPython : cbor2（C 扩展）         → .gate-pyodide/cpython.ir
-    Pyodide : ggcore.ir._cbor（纯 Python）→ .gate-pyodide/pyodide.ir
+1. **冒烟**（M0-10）：同一份 plot → IR，CPython 走 cbor2、Pyodide 走
+   `ggcore.ir._cbor`，字节必须相同；另有边角取值 scene（NaN 位型 / ±Inf / -0.0 /
+   64 位 int 上界）与等值线（contourpy）产物。
+2. **全量 case**（SIL-824）：`docs/cases/*/plot.py` 全部在两端各跑一遍
+   `build_scene()` + `encode()`，逐条比 IR 的 sha256 与字节数——这是「ggcore
+   全量在 Pyodide 跑通」的证据，不再是 plot→IR 冒烟。
 
-两个 CBOR 实现不同，字节必须相同——这才是「内核能进浏览器」的证据。门禁只跑
-node（不需要浏览器），见 `docs/notes/pyodide.md`。
+    CPython : cbor2（C 扩展）            → .gate-pyodide/cpython-cases.json
+    Pyodide : ggcore.ir._cbor（纯 Python）→ .gate-pyodide/pyodide-cases.json
 
-用法：
-    pixi run gate:pyodide                  # 正片：差异为空才绿
-    pixi run gate:pyodide:selftest         # 负向自测：故意差 1 字节，门禁必须红
+两端都用 `ggcore.metrics.fallback.TableMetrics` 量文字（浏览器里没有 skia /
+HarfBuzz，宽度只能来自兜底表），所以比的是同一份版式 + 同一份几何。
+
+用例：
+    pixi run gate:pyodide                  # 正片：两个相位都必须无差异
+    pixi run gate:pyodide:selftest         # 负向自测：每个相位都故意差一位，门禁必须红
 
 退出码：0 = 判定通过；1 = 判定失败（有差异 / 该红没红）；2 = 环境不完整。
 """
@@ -31,12 +38,17 @@ REPO = Path(__file__).resolve().parents[2]
 HARNESS = REPO / "tools" / "gates" / "pyodide"
 RUNNER = HARNESS / "run_ir.py"
 NODE_RUNNER = HARNESS / "run_ir.mjs"
+CASES_RUNNER = HARNESS / "run_cases.py"
+CASES_NODE_RUNNER = HARNESS / "run_cases.mjs"
+CASES = REPO / "docs" / "cases"
 SRC = REPO / "src"
 ASSETS = REPO / "docs" / "spike" / "e1_coldstart" / "static" / "pyodide"
 DEFAULT_OUT = REPO / ".gate-pyodide"
 
 #: 负向自测翻转的字节位置；node 侧按文件长度取模，小文件也安全。
 DEFAULT_INJECT_OFFSET = 512
+#: 负向自测翻转摘要的 case：任取一条，摘要改一个字符即可（不必真跑一遍全长 case）。
+DEFAULT_INJECT_CASE = "geom-point-basic"
 
 
 def first_diff(left: bytes, right: bytes) -> int | None:
@@ -97,6 +109,72 @@ def run_pyodide(out_dir: Path, inject_offset: int | None) -> tuple[bytes, bytes,
     )
 
 
+def run_cases_cpython(out_dir: Path) -> dict:
+    """CPython 侧：全量 case → IR 摘要（不写 IR 本体，见 `run_cases.py`）。"""
+    out = out_dir / "cpython-cases.json"
+    env = dict(os.environ)
+    paths = [str(SRC)] + [part for part in env.get("PYTHONPATH", "").split(os.pathsep) if part]
+    env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(paths))
+    subprocess.run(
+        [sys.executable, str(CASES_RUNNER), "--out", str(out), "--cases", str(CASES)],
+        check=True,
+        env=env,
+        cwd=REPO,
+    )
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def run_cases_pyodide(out_dir: Path, inject_case: str | None) -> dict:
+    node = shutil.which("node")
+    if node is None:
+        raise SystemExit("gate:pyodide: `node` 不在 PATH 上（应该由 pixi 提供 nodejs）")
+    out = out_dir / "pyodide-cases.json"
+    command = [node, str(CASES_NODE_RUNNER), "--out", str(out)]
+    if inject_case is not None:
+        command += ["--inject-case", inject_case]
+    subprocess.run(command, check=True, cwd=REPO)
+    return json.loads(out.read_text(encoding="utf-8"))
+
+
+def aggregate_digest(report: dict) -> str:
+    """`(case, sha256)` 排序后拼起来的摘要：报告里给一行「全量一起」的指纹。"""
+    digest = hashlib.sha256()
+    for name in sorted(report["cases"]):
+        digest.update(name.encode())
+        digest.update(report["cases"][name]["sha256"].encode())
+        digest.update(b"\x00")
+    return digest.hexdigest()
+
+
+def compare_cases(cpython: dict, pyodide: dict, *, limit: int = 20) -> tuple[bool, list[str]]:
+    """逐条比两端摘要；返回 (是否完全一致, 差异说明)。"""
+    problems: list[str] = []
+    left = cpython["cases"]
+    right = pyodide["cases"]
+    for name in sorted(set(left) - set(right)):
+        problems.append(f"{name}: CPython 有、Pyodide 没有")
+    for name in sorted(set(right) - set(left)):
+        problems.append(f"{name}: Pyodide 有、CPython 没有")
+    for name in sorted(set(left) & set(right)):
+        a = left[name]
+        b = right[name]
+        if a["sha256"] != b["sha256"] or a["bytes"] != b["bytes"]:
+            problems.append(
+                f"{name}: IR 不同（cpython {a['bytes']} B {a['sha256'][:16]}… / "
+                f"pyodide {b['bytes']} B {b['sha256'][:16]}…）"
+            )
+    # 失败的 case 两端必须一致地失败：一端算出 scene、另一端抛异常，同样是差异。
+    for name in sorted(set(cpython["failed"]) - set(pyodide["failed"])):
+        problems.append(f"{name}: 只有 CPython 侧失败 —— {cpython['failed'][name]}")
+    for name in sorted(set(pyodide["failed"]) - set(cpython["failed"])):
+        problems.append(f"{name}: 只有 Pyodide 侧失败 —— {pyodide['failed'][name]}")
+    if cpython["metrics"] != pyodide["metrics"]:
+        problems.append(
+            f"度量实现不同：{cpython['metrics']} / {pyodide['metrics']}（比的是两套版式）"
+        )
+    return (not problems), problems[:limit]
+
+
 def require_assets() -> None:
     if (
         not (ASSETS / "pyodide.mjs").is_file()
@@ -127,7 +205,7 @@ def describe(meta: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="X? Pyodide smoke: plot -> IR byte equality.")
+    parser = argparse.ArgumentParser(description="X? Pyodide gate: IR byte equality.")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     parser.add_argument(
         "--inject-diff",
@@ -136,19 +214,32 @@ def main(argv: list[str] | None = None) -> int:
         help="负向自测：让 Pyodide 侧产出的第 N 个字节翻一位",
     )
     parser.add_argument(
+        "--inject-case",
+        default=None,
+        help="负向自测：把这条 case 的全量摘要改一个字符（默认取 --expect-diff 时的一条）",
+    )
+    parser.add_argument(
         "--expect-diff",
         action="store_true",
-        help="负向自测的判定口径：这次必须比对失败（门禁红）才算通过",
+        help="负向自测的判定口径：这次每个相位都必须比对失败（门禁红）才算通过",
+    )
+    parser.add_argument(
+        "--no-cases",
+        action="store_true",
+        help="只跑冒烟相位（调试用；正式判定必须全量）",
     )
     parser.add_argument(
         "--repeat",
         type=int,
         default=1,
-        help="Pyodide 侧跑几次（每次都要过），并报告加载耗时中位数（M3-9 基线）",
+        help="Pyodide 侧冒烟跑几次（每次都要过），并报告加载耗时中位数（M3-9 基线）",
     )
     args = parser.parse_args(argv)
-    if args.expect_diff and args.inject_diff is None:
-        args.inject_diff = DEFAULT_INJECT_OFFSET
+    if args.expect_diff:
+        if args.inject_diff is None:
+            args.inject_diff = DEFAULT_INJECT_OFFSET
+        if args.inject_case is None and not args.no_cases:
+            args.inject_case = DEFAULT_INJECT_CASE
 
     require_assets()
     out_dir = args.out_dir.resolve()
@@ -207,7 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         and meta["contour_filled"] == cpython_meta["contour_filled"]
         for meta in runs
     )
-    identical = (
+    smoke_identical = (
         bad_run is None
         and bad_edge_run is None
         and contour_same
@@ -239,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
             f"filled {sorted({meta['contour_filled']['sha256'][:16] for meta in runs})}",
             file=sys.stderr,
         )
-    if identical:
+    if smoke_identical:
         print("  diff    : none")
 
     if len(runs) > 1:
@@ -253,30 +344,68 @@ def main(argv: list[str] | None = None) -> int:
             f"({len(runs)} runs)"
         )
 
+    cases_identical: bool | None = None
+    if not args.no_cases:
+        cpython_cases = run_cases_cpython(out_dir)
+        pyodide_cases = run_cases_pyodide(out_dir, args.inject_case)
+        cases_identical, problems = compare_cases(cpython_cases, pyodide_cases)
+        total = len(cpython_cases["cases"]) + len(cpython_cases["failed"])
+        print(
+            f"  cases   : {len(cpython_cases['cases'])}/{total} built, "
+            f"{len(cpython_cases['failed'])} failed, "
+            f"{cpython_cases['total_bytes']} B IR, "
+            f"sha256 {aggregate_digest(cpython_cases)[:16]}… "
+            f"({cpython_cases['metrics']}, pyodide {pyodide_cases['run_ms']:.0f} ms)"
+        )
+        if not cases_identical:
+            for problem in problems:
+                print(f"    case diff: {problem}", file=sys.stderr)
+
+    red = (not smoke_identical) or cases_identical is False
     if args.expect_diff:
-        if identical:
+        if not red:
             print(
-                "gate:pyodide:selftest FAIL — 注入的 1 字节差异没有被发现，门禁是瞎的",
+                "gate:pyodide:selftest FAIL — 注入的差异没有被发现，门禁是瞎的",
                 file=sys.stderr,
             )
             return 1
-        print("gate:pyodide:selftest ok — 注入的 1 字节差异被判定为红（负向对照成立）")
+        if cases_identical is not None and cases_identical:
+            # 冒烟相位红了但全量相位没红：说明逐条比较这一段是瞎的。
+            print(
+                "gate:pyodide:selftest FAIL — 注入的 case 摘要差异没有被发现",
+                file=sys.stderr,
+            )
+            return 1
+        print("gate:pyodide:selftest ok — 注入的差异被判定为红（负向对照成立）")
         return 0
 
-    if identical:
-        print("gate:pyodide: ok — CPython 与 Pyodide 的 IR 字节完全一致")
+    if smoke_identical and cases_identical is not False:
+        scope = (
+            "IR 字节完全一致"
+            if cases_identical is None
+            else f"冒烟 + {len(pyodide_cases['cases'])} 条 case 的 IR 字节完全一致"
+        )
+        print(f"gate:pyodide: ok — CPython 与 Pyodide 的 {scope}")
         return 0
 
-    if bad_run is None and bad_edge_run is None and not contour_same:
+    if not smoke_identical and bad_run is None and bad_edge_run is None and not contour_same:
         print(
             "gate:pyodide: FAIL — 等值线（contourpy）产物在两端不一致，见上面的 contour diff",
             file=sys.stderr,
         )
         return 1
 
+    if not smoke_identical:
+        print(
+            "gate:pyodide: FAIL — CPython 与 Pyodide 的冒烟 IR 字节不一致"
+            f"（第一个差异在 byte {offset}，见 .gate-pyodide/）",
+            file=sys.stderr,
+        )
+        return 1
+
     print(
-        "gate:pyodide: FAIL — CPython 与 Pyodide 的 IR 字节不一致"
-        f"（第一个差异在 byte {offset}，见 .gate-pyodide/）",
+        "gate:pyodide: FAIL — 有 case 的两端 IR 不一致"
+        f"（{len(problems)} 条，见上面的 case diff 与 .gate-pyodide/）",
         file=sys.stderr,
     )
     return 1
