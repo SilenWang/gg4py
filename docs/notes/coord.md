@@ -242,10 +242,20 @@ M0 交接的遗留口径在本任务收口：
 
 渲染（`ggcore.geom.scene`）：
 
+- **断点走面板范围**（SIL-839）：R 的 `scale$break_info(range)` 拿到的是
+  `setup_panel_params()` 里展开后的 `theta.range` / `r.range`，所以
+  `coord_polar()` 的两条轴都**不展开**——`y` 数据 0.25..0.8 的 r 断点是
+  0.3/0.4/…/0.8 六条（每 0.1），不是标度自己的 5% 展开范围给出的
+  0.4/0.6/0.8 三条。`ggcore.axis.polar_axis_breaks()` / `polar_minor_breaks()`
+  负责这件事；直接调 `scale.breaks()` 会让 r 圈少一半、theta 辐条错位
+  （`matrix-report-facet-polar-grey` 图级 8.54% → 4.45%）；
 - 背景网格换成「theta 辐条 + r 同心圆」：辐条 `0 → 0.45`（radial 从内半径
   到 0.4），圆按 **`r` 的主断点**采样 100 点（polar 额外画 0.45 外圈）。
   R 的 `CoordPolar$render_bg()` 只渲染 `panel.grid.major.<r>`：theta 有 minor
-  辐条，r **没有** minor 圆——`panel.grid.minor.<r>` 在 polar 下不消费（SIL-790）；
+  辐条，r **没有** minor 圆——`panel.grid.minor.<r>` 在 polar 下不消费（SIL-790）。
+  theta 的次辐条序列是 `scales::regular_minor_breaks()` 的原样输出（「每段
+  左端点 + 中点」再补最后一个主断点），**包含主断点本身**，所以每条主辐条会
+  被画两遍（细线压在粗线下，SVG 里两份都在）；
 - theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
   0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
 - r 轴在 `left` 槽，位置 `r_rescale(r) + 0.5`（`r.axis.inside` 时不上槽）；
@@ -260,6 +270,13 @@ theta 标签行。标签行高来自 `titleGrob`（`grobheight + |cos θ|·desce
 `axis-b = 6.94 pt`），见 `ggcore.axis.polar_axis_row_cm()`。修前按 0 处理，
 带轴的 polar 图面板比 R 大 6.8 pt，同心圆全部错位（`numeric-polar` 图级
 5.24% → 1.78%）。轴文字是 `element_blank()` 时只剩刻度长度。
+
+`coord_radial()` **没有**这一行（SIL-839）：它的 `render_axis_h()` 在
+`r.axis.inside = FALSE`（整圆时的默认值）才委托给 `CoordCartesian`，而 radial
+的 `panel_params` 只有 `theta` / `r` 两组 view scale、没有 `x`，于是左右两侧
+拿到的都是 `zeroGrob()`。R 的 gtable 实测（`guide-axis-theta with angle adapting`，
+10×8in）：row 10（`axis-b`）= 0，只有 row 11（`xlab-b`）= 12.97pt。theta 标签
+永远画在面板里，不占行列。
 
 ## 10. `coord_munch()`
 

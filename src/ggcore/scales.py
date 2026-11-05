@@ -1424,6 +1424,16 @@ class ContinuousScale(ScaleBase):
                 out.append(float(value))
         return tuple(out)
 
+    def raw_breaks_in(self, low: float, high: float) -> tuple[float, ...]:
+        """给定范围内的**未 censor** 断点（R `Scale$get_breaks(range)`）。
+
+        `break_info()` 先拿未 censor 的主断点去算次断点（`get_breaks_minor(b=major)`），
+        再 censor 主断点；极坐标的 theta 次网格要靠这条序列（见
+        `ggcore.axis.polar_minor_breaks`）。
+        """
+        low, high = sorted((float(low), float(high)))
+        return tuple(float(value) for value in self._raw_breaks((low, high)))
+
     def labels_in(self, breaks: Sequence[float | None]) -> tuple[str | None, ...]:
         """给定断点的标签（与 :meth:`breaks_in` 配套；R `get_labels(breaks)`）。"""
         if self.labels_disabled:

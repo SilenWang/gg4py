@@ -280,3 +280,60 @@ def test_axis_extent_counts_every_line_of_a_multiline_label() -> None:
     assert single == pytest.approx(line)
     assert five == pytest.approx(line + 4 * pitch)
     assert five > 4 * single
+
+
+class _PolarPanel:
+    """极坐标面板的最小替身：只要 `theta_range` / `r_range`（R 的面板范围）。"""
+
+    def __init__(self, theta: tuple[float, float], r: tuple[float, float]) -> None:
+        self.theta_range = theta
+        self.r_range = r
+
+
+def test_polar_breaks_use_the_panel_range_not_the_scale_expansion() -> None:
+    """极坐标断点走 R 的 `break_info(range)`：两条轴都**不做** 5% 展开。
+
+    `matrix-report-facet-polar-grey` 的同心圆：y 数据 0.25..0.8，R 从面板范围
+    得到 0.3 / 0.4 / … / 0.8 六圈（每 0.1）；拿标度自己的 5% 展开范围算只剩
+    0.4 / 0.6 / 0.8 三圈，整张图差 8.5%。theta 同理（0.3/0.5/0.7/0.9 而不是
+    0.25/0.5/0.75）。
+    """
+    from ggcore.axis import polar_axis_breaks
+    from ggcore.scales import PositionContinuousScale
+
+    y = PositionContinuousScale("y")
+    y.train(Column("float", np.array([0.25, 0.8])))
+    panel = _PolarPanel((0.15, 0.9), (0.25, 0.8))
+
+    breaks, labels = polar_axis_breaks(y, panel, "r")
+    assert breaks == pytest.approx((0.3, 0.4, 0.5, 0.6, 0.7, 0.8))
+    assert labels == ("0.3", "0.4", "0.5", "0.6", "0.7", "0.8")
+    # 标度自己的口径（expanded_limits 上的 5% 展开）仍然只有三条。
+    assert y.breaks() == (None, pytest.approx(0.4), pytest.approx(0.6), pytest.approx(0.8))
+
+    x = PositionContinuousScale("x")
+    x.train(Column("float", np.array([0.15, 0.9])))
+    breaks_x, _ = polar_axis_breaks(x, panel, "theta")
+    assert breaks_x == (None, pytest.approx(0.3), pytest.approx(0.5), pytest.approx(0.7), 0.9)
+
+
+def test_polar_minor_breaks_keep_major_positions_like_regular_minor_breaks() -> None:
+    """`scales::regular_minor_breaks()` 是「每段左端点 + 中点」再补最后一个主断点。
+
+    所以次断点**包含主断点**；`CoordPolar$render_bg()` 直接用这条序列画 theta
+    细辐条（主辐条因此被画两遍），不会像 `guide_grid()` 那样 `setdiff`。
+    """
+    from ggcore.axis import polar_minor_breaks
+    from ggcore.scales import PositionContinuousScale
+
+    x = PositionContinuousScale("x")
+    x.train(Column("float", np.array([0.15, 0.9])))
+    panel = _PolarPanel((0.15, 0.9), (0.25, 0.8))
+
+    values = polar_minor_breaks(x, panel, "theta")
+    assert values == pytest.approx((0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9))
+
+    # 显式 minor_breaks 用用户给的那组（只按面板范围过滤）。
+    y = PositionContinuousScale("y", {"minor_breaks": (1.25, 2.75, 9.0)})
+    y.train(Column("float", np.array([1.0, 3.0])))
+    assert polar_minor_breaks(y, _PolarPanel((1.0, 3.0), (1.0, 3.0)), "r") == (1.25, 2.75)
