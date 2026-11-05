@@ -14,6 +14,7 @@ from ggcore.plot import (
     ggplot,
     guide_axis_theta,
     guides,
+    labs,
     scale_x_continuous,
 )
 from ggcore.theme import element_line, theme
@@ -35,5 +36,6 @@ def build():
             }
         )
         + theme(**{"axis.line": element_line(colour="black")})
+        + labs(title="guide_axis_theta with angle adapting to theta")
     )
     return {"plot": p, "size": [10, 8]}
