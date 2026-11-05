@@ -266,3 +266,67 @@ def test_fill_spec_resolves_against_the_whole_layer_bbox() -> None:
     for pattern in patterns:
         # 中心 (72, 72) 减半块 tile（宽 0.05×115.2、高 0.05×57.6）
         assert pattern.origin == pytest.approx((69.12, 70.56))
+
+
+def test_gradient_group_flag_is_part_of_the_spec() -> None:
+    """`group = FALSE` 是 R 的逐元素口径：每个元素各用各的 bbox（SIL-833）。"""
+    layer = plot_linear_gradient(["#000000", "#FFFFFF"])
+    element = plot_linear_gradient(["#000000", "#FFFFFF"], group=False)
+    assert layer.group is True
+    assert element.group is False
+    # 同一份 bbox 下两者解析结果相同——差别只在**用谁的 bbox**（见 Scene）。
+    assert layer.resolve(BOX) == element.resolve(BOX)
+
+
+def test_per_row_fill_list_becomes_per_row_specs() -> None:
+    """`fill = list(渐变, 图案, "black")` → 逐行的填充（R 的按模回收）。"""
+    spec = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 0.25, 0.25, "#000000")],
+        width=0.1,
+        height=0.1,
+    )
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="v"))
+        + geom_col(fill=[plot_linear_gradient(["#000000", "#FFFFFF"], group=False), spec])
+        + scale_x_discrete()
+        + scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + theme_void()
+        + theme(**{"legend.position": "none"})
+    )
+    scene = build_scene({"plot": p, "size": [4, 3]})
+    kinds = [type(fill).__name__ for _, fill in _fills(scene)]
+    assert "LinearGradient" in kinds
+    assert "TilePattern" in kinds
+
+
+def test_manual_scale_can_carry_fill_specs() -> None:
+    """`scale_fill_manual(values = <FillSpec>)`：标度映射后仍是填充对象。"""
+    from ggcore.plot import scale_fill_manual
+
+    spec = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 0.25, 0.25, "#000000")],
+        width=0.1,
+        height=0.1,
+    )
+    gradient = plot_linear_gradient(["#000000", "#FFFFFF"])
+    p = (
+        ggplot(to_column_table(DATA), aes(x="cls", y="v", fill="cls"))
+        + geom_col()
+        + scale_fill_manual(values=[gradient, spec, "black"])
+        + scale_x_discrete()
+        + scale_y_continuous(limits=(0, 1), expand=(0, 0))
+        + theme_void()
+    )
+    build = build_plot(p)
+    fills = build.layers[0].params["fill"]
+    assert isinstance(fills, tuple)
+    assert isinstance(fills[0], type(gradient))
+    assert isinstance(fills[1], type(spec))
+    # 摊成逐行值之后仍然是**映射**：图例照建（`mapped_fill`）。
+    assert build.layers[0].mapped_fill is True
+    from ggcore.guide import build_guides
+
+    guides = [guide for guide in build_guides(build) if "fill" in guide.aesthetics]
+    assert guides
+    keys = [key.values.get("fill") for key in guides[0].keys]
+    assert any(isinstance(key, TilePattern | type(gradient)) for key in keys)

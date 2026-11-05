@@ -587,6 +587,13 @@ def _float_column(values: np.ndarray) -> Column:
     return Column("float", np.where(missing, 0.0, values), na_mask=missing)
 
 
+def _fill_value(value: Any) -> Any:
+    """`values=` 的一项：颜色折成字符串，渐变 / 图案原样留着。"""
+    from ggcore.fills import FillSpec
+
+    return value if isinstance(value, FillSpec) else str(value)
+
+
 def _str_column(values: Sequence[str | None]) -> Column:
     items = list(values)
     missing = np.array([item is None for item in items], dtype=bool)
@@ -2289,17 +2296,17 @@ class HueScale(DiscreteScale):
 
     def __init__(self, aesthetic: str, params: Mapping[str, Any] | None = None) -> None:
         super().__init__(aesthetic, params)
-        self._values: list[str] | None = None
-        self._value_map: Mapping[str, str] | None = None
+        self._values: list[Any] | None = None
+        self._value_map: Mapping[str, Any] | None = None
         self._palette: Callable[[int], Sequence[str | None]] | None = None
         explicit = self._param("values")
         if explicit is not None:
             if isinstance(explicit, Mapping):
                 self._value_map = MappingProxyType(
-                    {str(name): str(value) for name, value in explicit.items()}
+                    {str(name): _fill_value(value) for name, value in explicit.items()}
                 )
             else:
-                self._values = [str(value) for value in explicit]
+                self._values = [_fill_value(value) for value in explicit]
         else:
             custom = self._param("palette")
             if callable(custom):
@@ -2320,8 +2327,25 @@ class HueScale(DiscreteScale):
             direction=float(self._param("direction", 1.0)),
         )
 
-    def colours(self, levels: Sequence[str]) -> list[str | None]:
-        """按水平名给颜色；`None` = 该水平没有颜色（调用方落 `na.value`）。"""
+    @property
+    def has_fill_specs(self) -> bool:
+        """`values` 里有没有渐变 / 图案（`scale_fill_manual(values = <FillSpec>)`）。
+
+        这类值不是颜色串，落不进 `Column`；调用方（`build._assemble` / guide 的
+        键提取）要走「逐行对象」那条路（SIL-833）。
+        """
+        from ggcore.fills import FillSpec
+
+        values = list(self._values or ())
+        if self._value_map is not None:
+            values += list(self._value_map.values())
+        return any(isinstance(value, FillSpec) for value in values)
+
+    def colours(self, levels: Sequence[str]) -> list[Any]:
+        """按水平名给颜色；`None` = 该水平没有颜色（调用方落 `na.value`）。
+
+        渐变 / 图案（`has_fill_specs`）原样返回，不折成字符串。
+        """
         if self._value_map is not None:
             colours = [self._value_map.get(level) for level in levels]
             if levels and all(colour is None for colour in colours):
@@ -2343,7 +2367,7 @@ class HueScale(DiscreteScale):
         assert self._palette is not None
         return list(self._palette(len(levels)))
 
-    def palette(self, n: int) -> list[str]:
+    def palette(self, n: int) -> list[Any]:
         """前 n 个水平用的颜色（位置口径；命名 values 按插入序取）。"""
         if self._value_map is not None:
             return list(self._value_map.values())[:n]
@@ -2365,10 +2389,17 @@ class HueScale(DiscreteScale):
         codes = self.codes(column, na_as_level=False)
         out: list[str | None] = []
         for code in codes.tolist():
-            colour: str | None = None
+            colour: Any = None
             if not math.isnan(code) and int(code) - 1 < len(colours):
                 colour = colours[int(code) - 1]
             out.append(str(na_value) if colour is None and na_value is not None else colour)
+        if self.has_fill_specs:
+            # 渐变 / 图案落不进字符串列：这一列只是占位（真正的填充由
+            # `build._assemble` 摊成 `layer.params["fill"]`，见 `has_fill_specs`）。
+            out = [
+                None if item is None else (item if isinstance(item, str) else "black")
+                for item in out
+            ]
         return _str_column(out)
 
 

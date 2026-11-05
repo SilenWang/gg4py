@@ -1,0 +1,7 @@
+family = "patterns"
+features = ["pattern-fill", "gradient-fill", "scale"]
+ci = true
+title = "上游快照：填充值经标度（scale_fill_manual + FillSpec）"
+source = "upstream:tests/testthat/_snaps/patterns/pattern-fills-through-scale.svg"
+tolerance = { png = 0.02 }
+notes = """`scale_fill_manual(values = rev(patterns))`：标度承载 FillSpec（`HueScale.has_fill_specs`），逐行摊成填充值、图例键各拿一个（SIL-833）。"""

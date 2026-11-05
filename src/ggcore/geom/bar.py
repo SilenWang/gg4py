@@ -32,6 +32,7 @@ from ggcore.geom.base import (
     GeomRenderer,
     alpha_colour,
     default_size,
+    fill_alpha,
     fill_values,
     flip_data,
     lty_value,
@@ -138,6 +139,18 @@ class BarRenderer(GeomRenderer):
                 lineend=lineend,
                 name=f"geom_{self.name}",
             )
+        # 渐变 / 图案的 alpha 走 gpar.alpha（逐行），纯色仍折进颜色。
+        fill_column, alpha_column = fill_alpha(fills, alpha)
+        gp: dict[str, Any] = {
+            "col": colours,
+            "fill": fill_column,
+            "lwd": (linewidth * POINT_PER_MM).tolist(),
+            "lty": lty_value(linetype[0]) if linetype else 1,
+            "linejoin": linejoin,
+            "lineend": lineend,
+        }
+        if alpha_column is not None:
+            gp["alpha"] = alpha_column
         return rect_grob(
             x=((xmin + xmax) / 2.0).tolist(),
             y=((ymin + ymax) / 2.0).tolist(),
@@ -146,16 +159,7 @@ class BarRenderer(GeomRenderer):
             just="centre",
             default_units="native",
             name=f"geom_{self.name}",
-            gp={
-                "col": colours,
-                "fill": [
-                    alpha_colour(item, value) for item, value in zip(fills, alpha, strict=True)
-                ],
-                "lwd": (linewidth * POINT_PER_MM).tolist(),
-                "lty": lty_value(linetype[0]) if linetype else 1,
-                "linejoin": linejoin,
-                "lineend": lineend,
-            },
+            gp=gp,
         )
 
 
@@ -186,6 +190,7 @@ def _munch_rects(
         xs = [xmin[index], xmin[index], xmax[index], xmax[index]]
         ys = [ymin[index], ymax[index], ymax[index], ymin[index]]
         px, py, ids = munch_xy(panel, xs, ys, [0, 0, 0, 0], closed=True)
+        fill_gp, alpha_gp = fill_alpha([fills[index]], [alpha[index]])
         polygons.append(
             polygon_grob(
                 px.tolist(),
@@ -194,7 +199,8 @@ def _munch_rects(
                 default_units="native",
                 name=name,
                 gp=gpar(
-                    fill=alpha_colour(fills[index], alpha[index]),
+                    fill=fill_gp[0],
+                    **({} if alpha_gp is None else {"alpha": alpha_gp[0]}),
                     col=colours[index],
                     lwd=float(linewidth[index]) * POINT_PER_MM,
                     lty=lty_value(linetype[index]),
@@ -372,6 +378,7 @@ class AreaRenderer(GeomRenderer):
             if upper_x.size + lower_x.size == 0:
                 continue
             first = rows[0]
+            fill_gp, alpha_gp = fill_alpha([fill[first]], [alpha[first]])
             poly_x = np.concatenate([upper_x, lower_x])
             poly_y = np.concatenate([upper_y, lower_y])
             if flip:
@@ -384,9 +391,10 @@ class AreaRenderer(GeomRenderer):
                     id=[int(item) for item in np.concatenate([upper_id, lower_id]).tolist()],
                     default_units="native",
                     gp=gpar(
-                        fill=alpha_colour(fill[first], alpha[first]),
+                        fill=fill_gp[0],
                         col=NA,
                         lwd=0.0,
+                        **({} if alpha_gp is None else {"alpha": alpha_gp[0]}),
                     ),
                 )
             )

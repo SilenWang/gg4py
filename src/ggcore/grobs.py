@@ -1662,17 +1662,28 @@ def _layer_boxes(
     bbox。IR 里一层可能拆成多条指令（逐元素 gpar、极坐标的逐柱多边形），这里按
     `layer_tag` + 视口路径取并集，逐条指令再各自用自己的 bbox 就会相位错位。
 
-    只统计带填充规格的指令：并集只服务它们的解析，其余图层的并集没人读，
-    给一条几万点的 path 量包围盒是白花时间。
+    并集统计的是**整个图层**的几何（不含 `group = FALSE` 的渐变：R 的
+    `linearGradient(group = FALSE)` 每个元素各用各的 bbox，`pattern-fills-*`
+    的形状）。先挑出「有 group 填充规格」的图层，其余图层不量包围盒——给一条
+    几万点的 path 量包围盒是白花时间。
     """
+    wanted = {
+        (item.layer, item.vp)
+        for item in instructions
+        if item.layer
+        and isinstance(item.gpar.fill, fills.FillSpec)
+        and getattr(item.gpar.fill, "group", True)
+    }
+    if not wanted:
+        return {}
     boxes: dict[tuple[str, str], list[float]] = {}
     for item in instructions:
-        if not item.layer or not isinstance(item.gpar.fill, fills.FillSpec):
+        key = (item.layer, item.vp)
+        if key not in wanted:
             continue
         bbox = fills.node_bbox(item.kind, item.bufs, item.params)
         if bbox is None:
             continue
-        key = (item.layer, item.vp)
         current = boxes.get(key)
         if current is None:
             boxes[key] = list(bbox)
@@ -1725,7 +1736,11 @@ class Scene:
             # `VpPath` 用 `::` 分段，最后一截就是最深视口自己的名字。
             name = item.vp.rsplit("::", 1)[-1] if item.vp else ""
             key = (item.transform, item.clip, name)
-            node = item.to_node(fill_box=boxes.get((item.layer, item.vp)) if item.layer else None)
+            fill = item.gpar.fill
+            grouped = isinstance(fill, fills.FillSpec) and getattr(fill, "group", True)
+            node = item.to_node(
+                fill_box=boxes.get((item.layer, item.vp)) if item.layer and grouped else None
+            )
             if groups and groups[-1][:3] == key:
                 groups[-1][3].append(node)
             else:

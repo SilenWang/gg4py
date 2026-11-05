@@ -196,7 +196,7 @@ def test_pattern_content_is_written_in_local_coordinates() -> None:
     svg = _svg(_scene(_rect(10.0, 10.0, 60.0, 60.0, PATTERN)))
     assert "<clipPath" in svg
     assert re.search(r'<g transform="translate\([-\d. ]+\)">', svg) is not None
-    assert "patternContentUnits=\"userSpaceOnUse\"" in svg
+    assert 'patternContentUnits="userSpaceOnUse"' in svg
 
 
 def test_pattern_rejects_non_repeat_extend() -> None:

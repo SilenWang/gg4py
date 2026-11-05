@@ -988,19 +988,20 @@ reason = "SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现
 [snapshots."facet-strips/switched-facet-strips.svg"]
 case = "upstream-facet-strips-switched"
 
-# patterns 4 条：`single-pattern-fill` 已在 SIL-833 纳管（内容按整层 bbox 折 npc
-# + SVG 后端写真正的 `<pattern>`）；余下三条的卡点在各条 reason 里。
+# patterns 4 条全部纳管（SIL-833）：内容按整层 grob 的 bbox 折 npc、SVG 后端写
+# 真正的 `<pattern>`、逐行 FillSpec 列表 / `scale_fill_manual(values = <FillSpec>)`
+# / 逐行 alpha 都落到了 IR。
 [snapshots."patterns/single-pattern-fill.svg"]
 case = "upstream-patterns-single-pattern-fill"
 
 [snapshots."patterns/pattern-fills-no-alpha.svg"]
-reason = "SIL-833 复核：`fill = list(linearGradient(group = FALSE), radialGradient(group = FALSE), pattern(...), \"black\")` 是**逐行**的 FillSpec 列表。图层填充包围盒已经做完（`layer_tag` + `Scene.to_ir_scene()` 取并集），但 `build.finish()` 把 FillSpec 挡在数据列之外（`Column` 没有 object kind），逐行混合列表仍落不进 IR——要先给数据列一个「填充规格」的承载方式（按行拆节点或 IR 加逐行 fill）。"
+case = "upstream-patterns-pattern-fills-no-alpha"
 
 [snapshots."patterns/pattern-fills-with-alpha.svg"]
-reason = "SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4, 0.2)` 在 R 里走 `grid::GridMask`（svglite 写 `<mask style='mask-type:alpha'>`）；IR 没有 mask 节点，`alpha_colour()` 对 FillSpec 也不折 alpha（只接受颜色串）。要先给 IR / 两个设备加 alpha mask 原语。"
+case = "upstream-patterns-pattern-fills-with-alpha"
 
 [snapshots."patterns/pattern-fills-through-scale.svg"]
-reason = "SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。"
+case = "upstream-patterns-pattern-fills-through-scale"
 
 # ---------------------------------------------------------------------------
 # G7a（SIL-795）：小簇 A 的 37 条几何 / stat 快照

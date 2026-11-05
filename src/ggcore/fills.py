@@ -105,7 +105,15 @@ def _span(value: float | int, length: float, units: str) -> float:
 
 
 class FillSpec:
-    """待解析的填充规格：`resolve(bbox)` → `ggcore.ir` 的 fill 对象。"""
+    """待解析的填充规格：`resolve(bbox)` → `ggcore.ir` 的 fill 对象。
+
+    `group` 是 R `grid::linearGradient(group = )` 的同名量：True（缺省）时整层
+    grob 共用一份 bbox（ggplot2 把一层画成一个 grob），False 时**逐元素**各用
+    自己的 bbox。图案（`TilePatternSpec`）恒为 True——`pattern()` 没有 `group`
+    参数，内容本来就按被填充 grob 的 bbox 折（SIL-833）。
+    """
+
+    group: bool = True
 
     def resolve(self, bbox: Box) -> ir.Fill:
         raise NotImplementedError
@@ -120,6 +128,7 @@ class LinearGradientSpec(FillSpec):
     y2: float
     units: str = "npc"
     extend: ir.Extend = ir.Extend.PAD
+    group: bool = True
 
     def resolve(self, bbox: Box) -> ir.LinearGradient:
         x0, y0, x1, y1 = bbox
@@ -145,6 +154,7 @@ class RadialGradientSpec(FillSpec):
     fr: float = 0.0
     units: str = "npc"
     extend: ir.Extend = ir.Extend.PAD
+    group: bool = True
 
     def resolve(self, bbox: Box) -> ir.RadialGradient:
         x0, y0, x1, y1 = bbox
@@ -213,8 +223,13 @@ def linear_gradient(
     y2: float = 1.0,
     units: str = "npc",
     extend: str = "pad",
+    group: bool = True,
 ) -> LinearGradientSpec:
-    """线性渐变；缺省从左下到右上（grid 的缺省 npc 口径，y 向下即左上到右下）。"""
+    """线性渐变；缺省从左下到右上（grid 的缺省 npc 口径，y 向下即左上到右下）。
+
+    `group=False` 是 R 的逐元素口径：每个元素（每根柱子）各用**自己的** bbox 折
+    npc，而不是整层 grob 的 bbox。
+    """
     return LinearGradientSpec(
         stops=_colours(colours, stops),
         x1=float(x1),
@@ -223,6 +238,7 @@ def linear_gradient(
         y2=float(y2),
         units=units,
         extend=_extend(extend),
+        group=bool(group),
     )
 
 
@@ -238,6 +254,7 @@ def radial_gradient(
     fr: float = 0.0,
     units: str = "npc",
     extend: str = "pad",
+    group: bool = True,
 ) -> RadialGradientSpec:
     """径向渐变；缺省圆心在被填充对象正中、半径是短边的一半（grid 的缺省）。"""
     return RadialGradientSpec(
@@ -250,6 +267,7 @@ def radial_gradient(
         fr=float(fr),
         units=units,
         extend=_extend(extend),
+        group=bool(group),
     )
 
 

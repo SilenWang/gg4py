@@ -4,9 +4,9 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**295**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**16**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **16** 条（移交 M3）
+- 已纳管：**298**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**13**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **13** 条（移交 M3）
 
 ## 按簇 burndown
 
@@ -14,7 +14,6 @@
 | --- | --- | ---: | ---: | ---: |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `guide-axis` | m3 | 23 | 19 | 4 |
-| `patterns` | m3 | 4 | 1 | 3 |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
 | `coord_sf` | m3 | 9 | 8 | 1 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
@@ -45,6 +44,7 @@
 | `guides` | m2-closeout | 45 | 45 | 0 |
 | `labels` | m2-closeout | 6 | 6 | 0 |
 | `legend-draw` | m2-closeout | 1 | 1 | 0 |
+| `patterns` | m3 | 4 | 4 | 0 |
 | `position-stack` | m2-closeout | 1 | 1 | 0 |
 | `scale_date` | m2-closeout | 8 | 8 | 0 |
 | `scales-breaks-labels` | m2-closeout | 13 | 13 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 295 | 16 |
+| **合计** | — | 311 | 298 | 13 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -280,6 +280,9 @@
 | `labels/tag-in-plot-as-character.svg` | `upstream-labels-tag-in-plot-as-character` |
 | `labels/tag-in-plot-as-numeric.svg` | `upstream-labels-tag-in-plot-as-numeric` |
 | `legend-draw/all-legend-keys.svg` | `upstream-legend-draw-all-keys` |
+| `patterns/pattern-fills-no-alpha.svg` | `upstream-patterns-pattern-fills-no-alpha` |
+| `patterns/pattern-fills-through-scale.svg` | `upstream-patterns-pattern-fills-through-scale` |
+| `patterns/pattern-fills-with-alpha.svg` | `upstream-patterns-pattern-fills-with-alpha` |
 | `patterns/single-pattern-fill.svg` | `upstream-patterns-single-pattern-fill` |
 | `position-stack/area-stacking.svg` | `upstream-position-stack-area` |
 | `scale_date/dates-along-x-default-breaks.svg` | `upstream-scale-date-dates-along-x-default-breaks` |
@@ -485,35 +488,5 @@ SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一
 <details><summary>快照</summary>
 
 - `guide-axis/stacked-radial-axes.svg`
-
-</details>
-
-### `patterns` — 1 条 · SIL-715 · m3
-
-SIL-796：`scale_fill_manual(values = rev(patterns))`（值里有 FillSpec）需要标度映射后仍保留 `FillSpec` 并走图层 bbox 解析；当前 `map_scales()` 只保证纯色字符串的映射，图案列表在标度里会被当普通 fill 值落盘。卡在「标度承载 FillSpec」+ 图层级 bbox。
-
-<details><summary>快照</summary>
-
-- `patterns/pattern-fills-through-scale.svg`
-
-</details>
-
-### `patterns` — 1 条 · SIL-715 · m3
-
-SIL-796：除上面的图层级 bbox 外，pattern 的 `alpha = c(0.8, 0.6, 0.4, 0.2)` 在 R 里走 `grid::GridMask`（svglite 写 `<mask style='mask-type:alpha'>`）；IR 没有 mask 节点，`alpha_colour()` 对 FillSpec 也不折 alpha（只接受颜色串）。要先给 IR / 两个设备加 alpha mask 原语。
-
-<details><summary>快照</summary>
-
-- `patterns/pattern-fills-with-alpha.svg`
-
-</details>
-
-### `patterns` — 1 条 · SIL-715 · m3
-
-SIL-833 复核：`fill = list(linearGradient(group = FALSE), radialGradient(group = FALSE), pattern(...), "black")` 是**逐行**的 FillSpec 列表。图层填充包围盒已经做完（`layer_tag` + `Scene.to_ir_scene()` 取并集），但 `build.finish()` 把 FillSpec 挡在数据列之外（`Column` 没有 object kind），逐行混合列表仍落不进 IR——要先给数据列一个「填充规格」的承载方式（按行拆节点或 IR 加逐行 fill）。
-
-<details><summary>快照</summary>
-
-- `patterns/pattern-fills-no-alpha.svg`
 
 </details>

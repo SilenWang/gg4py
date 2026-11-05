@@ -1,0 +1,7 @@
+family = "patterns"
+features = ["pattern-fill", "gradient-fill", "alpha"]
+ci = true
+title = "上游快照：逐行混合填充 + 逐行 alpha"
+source = "upstream:tests/testthat/_snaps/patterns/pattern-fills-with-alpha.svg"
+tolerance = { png = 0.02 }
+notes = """纯色的 alpha 折进 `#RRGGBBAA`；渐变 / 图案走 `gpar.alpha`（R 的 `fill_alpha()` + `GridMask`），设备把它乘到整个填充上（SIL-833）。"""
