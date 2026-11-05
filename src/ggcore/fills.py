@@ -8,16 +8,21 @@ IR 里没有单位（`docs/notes/ir.md` §1），所以这些对象只是**待�
 
 单位口径（对标 grid）：
 
-| `units` | 渐变端点 / 图案 tile 的位置 | 径向半径 |
+| `units` | 渐变端点 / 图案 tile 的尺寸与位置 | 径向半径 |
 | --- | --- | --- |
 | `"npc"`（缺省） | 被填充对象包围盒的比例（0..1） | `r × min(宽, 高)` |
 | `"pt"` | 节点局部坐标的 pt（与几何同一坐标系） | pt |
 
 图案的 tile 以 `(x, y)` 为**中心**对齐（R `pattern()` 的 `just = "centre"`），
-窗口是 `[origin, origin + size)`，内容按**与几何同一个局部坐标系**给（不是 tile
-相对坐标）——这与 `patternContentUnits="userSpaceOnUse"` 一致，两个渲染器都能
-直接吃。R 的 pt 口径 tile 在 svglite 里会被乘 `72/72.27`（那是 svglite 的换算
-怪癖，见 `docs/notes/ir.md` §6.1），所以参考图产线用 npc 口径。
+窗口是 `[origin, origin + size)`。`x` / `y` 的锚点单位由 `anchor_units` 单独给
+（缺省 `"npc"`）——R 的 `width` / `height` 可以是 `unit(1, "cm")` 这种绝对单位，
+而 `x` / `y` 仍留在缺省的 npc 上，两者不必同单位。
+
+图案**内容**的坐标系与 tile 无关（SIL-833）：R 的 `pattern()` 内容按**被填充 grob
+的 bbox** 折 npc，再按 tile 窗口裁剪，所以 `draw(bbox)` 收到的是整层 grob 的
+包围盒（本地坐标），内容照它摆一次，所有 tile 共用这份几何——这才是 R 的相位。
+IR 仍是 `patternContentUnits="userSpaceOnUse"` 的绝对几何，两个渲染器都能直接吃。
+`pattern_npc_rect()` 就是「按 bbox 的 npc 摆一块矩形」的便捷写法。
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from ggcore import ir
 from ggcore.ir import Node
 
 __all__ = [
+    "Box",
     "FillSpec",
     "LinearGradientSpec",
     "RadialGradientSpec",
@@ -37,6 +43,7 @@ __all__ = [
     "linear_gradient",
     "node_bbox",
     "pattern_circle",
+    "pattern_npc_rect",
     "pattern_rect",
     "radial_gradient",
     "tile_pattern",
@@ -169,6 +176,7 @@ class TilePatternSpec(FillSpec):
     x: float = 0.5
     y: float = 0.5
     units: str = "npc"
+    anchor_units: str = "npc"
     extend: ir.Extend = ir.Extend.REPEAT
 
     def resolve(self, bbox: Box) -> ir.TilePattern:
@@ -178,11 +186,12 @@ class TilePatternSpec(FillSpec):
         if width <= 0 or height <= 0:
             raise ValueError(f"pattern 的 tile 尺寸必须为正，收到 {width!r} × {height!r}")
         # tile 以 (x, y) 为中心：origin = 中心 - 半个 tile（y 向下，与几何一致）。
-        left = _position(self.x, x0, x1, self.units) - width / 2
-        top = _position_y(self.y, y0, y1, self.units) - height / 2
-        tile = (left, top, left + width, top + height)
+        left = _position(self.x, x0, x1, self.anchor_units) - width / 2
+        top = _position_y(self.y, y0, y1, self.anchor_units) - height / 2
         return ir.TilePattern(
-            content=tuple(self.draw(tile)),
+            # 内容是**被填充 grob 的 bbox** 里的几何（R 的 npc 口径），不是 tile
+            # 局部坐标：同一层的每块 tile 共用这一份，相位才与 R 一致（SIL-833）。
+            content=tuple(self.draw(bbox)),
             size=(width, height),
             origin=(left, top),
             extend=self.extend,
@@ -252,14 +261,20 @@ def tile_pattern(
     x: float = 0.5,
     y: float = 0.5,
     units: str = "npc",
+    anchor_units: str = "npc",
     extend: str = "repeat",
 ) -> TilePatternSpec:
-    """平铺图案：`draw(tile)` 收到 tile 窗口在**节点局部坐标**里的矩形。
+    """平铺图案：`draw(bbox)` 收到**被填充 grob 的包围盒**（节点局部坐标）。
 
-    内容用节点局部坐标（不是 tile 相对坐标）是刻意的：R `grid::pattern()` 与
-    SVG `patternContentUnits="userSpaceOnUse"` 都是这个口径，三个渲染器不用
-    各自发明一套 tile 坐标变换。`draw` 里通常直接用 `pattern_rect` /
-    `pattern_circle` 往 `tile` 上摆。
+    内容按包围盒摆一次、所有 tile 共用（R `pattern()` 的内容坐标系，SIL-833）：
+    内容不是 tile 局部坐标，也不是逐 tile 各画一份——tile 只决定**裁剪窗口与
+    重复周期**，相位由内容与 bbox 的相对位置决定。`draw` 里通常用
+    :func:`pattern_npc_rect` 按 bbox 的 npc 摆矩形（R 里写 `rectGrob(x = …)` 的
+    那个口径），或用 :func:`pattern_rect` / :func:`pattern_circle` 直接给局部坐标。
+
+    `x` / `y` 是 tile 的锚点（tile 的中心），单位由 `anchor_units` 单独给；
+    `width` / `height` 用 `units`（R 的 `pattern(width = unit(1, "cm"))` 就是
+    `units="pt"` + 绝对 pt 尺寸）。
     """
     return TilePatternSpec(
         draw=draw,
@@ -268,6 +283,7 @@ def tile_pattern(
         x=float(x),
         y=float(y),
         units=units,
+        anchor_units=anchor_units,
         extend=_extend(extend),
     )
 
@@ -298,6 +314,35 @@ def pattern_rect(
         gpar=_pattern_gpar(fill, colour, lwd),
         bufs={"rect": ir.f32([list(rect)])},
     )
+
+
+def pattern_npc_rect(
+    bbox: Box,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    fill: Any = None,
+    *,
+    colour: Any = None,
+    lwd: float = 1.0,
+) -> Node:
+    """按**包围盒的 npc** 摆一块矩形（R `rectGrob(x, y, width, height)` 的口径）。
+
+    `(x, y)` 是矩形中心、`width` / `height` 是 bbox 的比例，**y 向上**（npc 0 =
+    底边，与 grid / R 一致）；IR 的局部坐标 y 向下，这里翻一次。R 的
+    `pattern(rectGrob(c(0.25, 0.75), c(0.25, 0.75), width = 0.5, height = 0.5))`
+    就是两次 `pattern_npc_rect(bbox, 0.25, 0.25, 0.5, 0.5, …)`。
+    """
+    x0, y0, x1, y1 = bbox
+    span_x = x1 - x0
+    span_y = y1 - y0
+    left = x0 + (float(x) - float(width) / 2) * span_x
+    right = left + float(width) * span_x
+    centre_y = y1 - float(y) * span_y
+    top = centre_y - float(height) * span_y / 2
+    bottom = centre_y + float(height) * span_y / 2
+    return pattern_rect((left, top, right, bottom), fill, colour=colour, lwd=lwd)
 
 
 def pattern_circle(

@@ -16,7 +16,7 @@ from ggcore.build import build_plot
 from ggcore.fills import (
     linear_gradient,
     node_bbox,
-    pattern_rect,
+    pattern_npc_rect,
     radial_gradient,
     tile_pattern,
 )
@@ -72,9 +72,9 @@ def test_radial_focal_point_is_resolved_too() -> None:
 def test_pattern_tile_is_centred_on_the_nominal_point() -> None:
     seen: list[tuple[float, float, float, float]] = []
 
-    def draw(tile: tuple[float, float, float, float]) -> list[Node]:
-        seen.append(tile)
-        return [pattern_rect(tile, "#E45756")]
+    def draw(bbox: tuple[float, float, float, float]) -> list[Node]:
+        seen.append(bbox)
+        return [pattern_npc_rect(bbox, 0.5, 0.5, 0.2, 0.1, "#E45756")]
 
     fill = tile_pattern(draw, width=0.2, height=0.1)
     resolved = fill.resolve(BOX)
@@ -82,19 +82,50 @@ def test_pattern_tile_is_centred_on_the_nominal_point() -> None:
     # 中心 (60, 120)，tile 20 × 20 → 左上角 (50, 110)
     assert resolved.size == pytest.approx((20.0, 20.0))
     assert resolved.origin == pytest.approx((50.0, 110.0))
-    assert seen == [(50.0, 110.0, 70.0, 130.0)]
+    # 内容拿到的是**整层 bbox**（不是 tile 窗口）：R `pattern()` 的内容坐标系
+    assert seen == [BOX]
     assert resolved.content[0].bufs["rect"].tolist() == [[50.0, 110.0, 70.0, 130.0]]
 
 
-def test_pattern_pt_size_and_origin() -> None:
-    """`units="pt"` 时 x / y / width / height 都是 pt 绝对坐标（R 的 `default.units`）。"""
+def test_pattern_content_spans_the_whole_bbox() -> None:
+    """内容是 bbox npc，不是 tile 局部坐标（SIL-833 的相位口径）。
+
+    同一份内容被每块 tile 裁剪，所以内容跨整个 bbox：`rectGrob(x = 0.25, y =
+    0.25, width = 0.5, height = 0.5)` 画出 bbox 的左下四分之一（局部 y 向下）。
+    """
     fill = tile_pattern(
-        lambda tile: [pattern_rect(tile, "#000000")],
+        lambda bbox: [pattern_npc_rect(bbox, 0.25, 0.25, 0.5, 0.5, "#000000")],
+        width=0.2,
+        height=0.1,
+    )
+    resolved = fill.resolve(BOX)
+    assert resolved.content[0].bufs["rect"].tolist() == [[10.0, 120.0, 60.0, 220.0]]
+
+
+def test_pattern_pt_size_with_an_npc_anchor() -> None:
+    """`units="pt"` 只决定 tile 尺寸；锚点默认仍是 bbox 的 npc（R 的缺省）。"""
+    fill = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 1.0, 1.0, "#000000")],
+        width=8.0,
+        height=8.0,
+        units="pt",
+    )
+    resolved = fill.resolve(BOX)
+    assert resolved.size == pytest.approx((8.0, 8.0))
+    # bbox 中心 (60, 120) − 半块 tile
+    assert resolved.origin == pytest.approx((56.0, 116.0))
+
+
+def test_pattern_pt_anchor() -> None:
+    """`anchor_units="pt"` 时 `x` / `y` 是节点局部坐标（R 的 `default.units`）。"""
+    fill = tile_pattern(
+        lambda bbox: [pattern_npc_rect(bbox, 0.5, 0.5, 1.0, 1.0, "#000000")],
         width=8.0,
         height=8.0,
         x=60.0,
         y=120.0,
         units="pt",
+        anchor_units="pt",
     )
     resolved = fill.resolve(BOX)
     assert resolved.size == pytest.approx((8.0, 8.0))
@@ -192,3 +223,46 @@ def test_build_keeps_the_fill_spec_out_of_the_data_columns() -> None:
     assert build.layers[0].params["fill"] is spec
     column = build.layers[0].data.column("fill")
     assert all(isinstance(value, str) for value in column.values.tolist())
+
+
+def test_fill_spec_resolves_against_the_whole_layer_bbox() -> None:
+    """逐元素的填充规格共用**整层**包围盒（SIL-833）。
+
+    R 的 `pattern()` 内容按被填充 grob 的 bbox 折 npc；ggplot2 把一层的全部元素
+    画成一个 grob。IR 里一层可能拆成多条指令（逐元素 gpar），所以 `Scene` 写 IR
+    前按 `layer_tag` 取并集——只按单条指令的 bbox 折，图案的相位会逐元素漂移。
+    """
+    from dataclasses import replace
+
+    from ggcore.grobs import g_tree, rect_grob, scene
+    from ggcore.viewport import Device, ViewportTree, gpar, viewport
+
+    boxes: list[tuple[float, float, float, float]] = []
+
+    def make(tag: str) -> object:
+        def draw(bbox: tuple[float, float, float, float]) -> list[Node]:
+            boxes.append(bbox)
+            return [pattern_npc_rect(bbox, 0.5, 0.5, 0.1, 0.1, "#000000")]
+
+        return tile_pattern(draw, width=0.05, height=0.05)
+
+    first, second = make("a"), make("b")
+    tree = ViewportTree(Device(2.0, 2.0))
+    tree.push(viewport("page", clip="off"))
+    left = replace(
+        rect_grob(0.2, 0.5, 0.2, 0.4, gp=gpar(fill=first), name="left"), layer_tag="layer-0"
+    )
+    right = replace(
+        rect_grob(0.8, 0.5, 0.2, 0.4, gp=gpar(fill=second), name="right"), layer_tag="layer-0"
+    )
+    ir_scene = scene(g_tree(left, right, name="layer"), tree).to_ir_scene()
+
+    # 两条矩形是 npc 0.1..0.3 与 0.7..0.9（144pt 页面）：整层包围盒是两者的并集。
+    assert len(boxes) == 2
+    for bbox in boxes:
+        assert bbox == pytest.approx((14.4, 43.2, 129.6, 100.8))
+    patterns = [fill for _, fill in _fills(ir_scene) if isinstance(fill, TilePattern)]
+    assert len(patterns) == 2
+    for pattern in patterns:
+        # 中心 (72, 72) 减半块 tile（宽 0.05×115.2、高 0.05×57.6）
+        assert pattern.origin == pytest.approx((69.12, 70.56))

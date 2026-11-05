@@ -464,3 +464,53 @@ def test_bad_raster_blob_fails_cleanly_in_every_backend(tmp_path: Path) -> None:
         assert result.returncode == 2, (suffix, result.returncode, result.stderr)
         assert "位图解码失败" in result.stderr
         assert not target.exists()
+
+
+# ---------------------------------------------------------------------------
+# 图案填充（SIL-833）：SVG 后端写真正的 `<pattern>`
+# ---------------------------------------------------------------------------
+
+
+def _pattern_scene() -> ir.Scene:
+    """一个 10pt 见方的棋盘 tile 填满一条矩形。"""
+    from ggcore.fills import pattern_npc_rect, tile_pattern
+    from ggcore.grobs import rect_grob
+
+    spec = tile_pattern(
+        lambda bbox: [
+            pattern_npc_rect(bbox, 0.5, 0.5, 0.2, 0.2, "#000000"),
+            pattern_npc_rect(bbox, 0.5, 0.5, 0.1, 0.1, "#FFFFFF"),
+        ],
+        width=10.0,
+        height=10.0,
+        units="pt",
+    )
+    tree = ViewportTree(Device(2.0, 2.0))
+    tree.push(viewport("page", clip="off"))
+    return scene(rect_grob(0.5, 0.5, 0.6, 0.6, gp=gpar(fill=spec)), tree).to_ir_scene()
+
+
+def test_svg_writes_a_pattern_element_for_tiled_fills() -> None:
+    """SVG 里的图案是 `<pattern>`，不是逐 tile 的「内容 + 裁剪矩形」。
+
+    光栅器按 tile 拼 `<pattern>`；我们自己逐 tile 画时 tile 边界上的半像素覆盖率
+    与参考图对不上（棋盘格每条边都差一点，见 SIL-833 的 `single-pattern-fill`）。
+    """
+    ir_scene = _pattern_scene()
+    svg = SkiaSvgDevice(*ir_scene.size).render(ir_scene).decode("utf-8")
+    assert "<pattern " in svg
+    assert 'patternContentUnits="userSpaceOnUse"' in svg
+    assert 'fill="url(#gpat-0)"' in svg
+    # 占位色不能漏到产物里
+    assert "#FE01" not in svg
+    # 内容仍按节点局部坐标写：内容组平移到 tile 原点（`-origin`）
+    assert '<g transform="translate(' in svg
+
+
+def test_raster_device_still_tiles_patterns_by_hand() -> None:
+    """PNG / PDF 没有 `<pattern>` 可用，走逐 tile 的矢量写法，出的图不能是空的。"""
+    ir_scene = _pattern_scene()
+    png = SkiaRasterDevice(*ir_scene.size).render(ir_scene)
+    pixels = png_pixels(png)
+    assert ink(pixels) > 200  # tile 内容真的画出来了
+    assert ink(pixels) < pixels[:, :, :3].size // 3  # 不是整块涂黑
