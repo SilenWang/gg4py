@@ -168,6 +168,17 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 不挂进 `check`：CI runner 的 CPU 与这里不同，用它当门禁只会让红绿取决于机器。
 "pyodide:timing" = { cmd = "python tools/pyodide/check_runtime.py --measure --runs 3", depends-on = ["pyodide:assets", "viewer:browsers"] }
 
+# --- SIL-826 · 浏览器代码编辑器（M3-4）----------------------------------------
+# CodeMirror 6 打成**一个** ES module（`web/editor/dist/editor.js`，不入库）：
+# 页面按需 import，和渲染器并行下载。`tsc --noEmit` 先做类型检查，esbuild 再打包
+# ——两者都从 pixi 管的 nodejs 走，没有全局安装。
+"editor:build" = { cmd = "npm install --no-save --no-package-lock typescript codemirror@^6 @codemirror/lang-python@^6 esbuild@^0.25 && npx tsc -p web/editor && npx esbuild web/editor/src/editor.ts --bundle --format=esm --minify --outfile=web/editor/dist/editor.js", depends-on = ["viewer:build"] }
+# 端到端验收：编辑器出图、warm 重跑 ≤ 2 s、错误有 traceback、示例库全跑通、
+# 导出 PNG 与屏幕逐像素相同、同一脚本两端 IR 逐字节相同、代码留在 localStorage。
+"editor:check" = { cmd = "python tools/editor/check_editor.py", depends-on = ["editor:build", "pyodide:assets", "viewer:browsers"] }
+# 本地手测：一个静态服务（web/ 为根），打开 http://127.0.0.1:8000/editor/ 就能用。
+"editor:serve" = { cmd = "python tools/editor/serve.py", depends-on = ["editor:build", "pyodide:assets"] }
+
 [feature.dev.pypi-dependencies]
 pytest = ">=9.2.0, <10"
 pytest-benchmark = ">=5.2.0, <6"
@@ -328,6 +339,7 @@ check = { depends-on = [
   "gate:pyodide:selftest",
   "gate:libm-noise",
   "pyodide:runtime",
+  "editor:check",
   "gate:cbor",
   "cases:matrix:check",
   "api:coverage:check",

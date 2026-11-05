@@ -14,6 +14,13 @@
 //      所以 numpy 的下载时机等于「第一次真的要出图」。
 //
 // 页面只拿两样东西：IR 字节（transferable）与一份元数据（摘要 / 版本 / 耗时）。
+//
+// SIL-826（M3-4）之后这里也是**编辑器**的执行器：`run-source` 跑任意用户源码，走
+// `ggcore.script.run_script`（与桌面端同一个函数，IR 才能逐字节一致），stdout /
+// stderr 逐行回推，错误回一份只有用户栈帧的 traceback。两条路径共用同一个
+// worker，是因为「浏览器里跑代码」只该有一个执行器——否则运行时页与编辑器页
+// 会用两份不同的加载顺序，量出来的耗时也不能互相引用。
+
 
 import { loadPyodide } from "./vendor/pyodide/pyodide.mjs";
 
@@ -120,6 +127,42 @@ GG_RESULT = json.dumps({
 data
 `;
 
+// --- SIL-826：编辑器（任意源码）------------------------------------------------
+// `detect_needs` 与 `run_script` 都在 ggcore 里（`ggcore/script.py`），桌面端跑的是
+// 同一个函数——「同一段脚本两端 IR 逐字节相同」才不是一句口号。
+const PY_EDITOR_NEEDS = `
+import json
+from ggcore.script import detect_needs
+GG_NEEDS = json.dumps(detect_needs(GG_SOURCE))
+`;
+
+const PY_EDITOR_RUN = `
+import ast, json
+from ggcore.script import ScriptError, run_script
+
+_error = None
+_result = None
+try:
+    variables = {}
+    if GG_INLINE_DATA:
+        try:
+            variables["DATA"] = ast.literal_eval(GG_INLINE_DATA)
+        except (ValueError, SyntaxError) as exc:
+            raise ScriptError("数据面板里的内联数据不是合法的 Python 字面量：%s" % (exc,))
+    _result = run_script(GG_SOURCE, filename=GG_PATH, variables=variables)
+except ScriptError as exc:
+    _error = exc.as_dict()
+except BaseException as exc:
+    import traceback
+    _error = {
+        "message": "%s: %s" % (type(exc).__name__, exc),
+        "traceback": traceback.format_exc(),
+    }
+GG_ERROR = json.dumps(_error)
+GG_META = json.dumps(_result.meta if _result is not None else {})
+GG_IR = _result.ir_bytes if _result is not None else b""
+`;
+
 async function boot() {
   const started = now();
   manifest = await (await fetch(VENDOR + "manifest.json")).json();
@@ -134,12 +177,21 @@ async function boot() {
   timings.runtime_ms = now() - started;
   stage("runtime-ready", `pyodide ${pyodide.version}`);
 
+  // 编辑器要看到用户 `print()` 的东西：stdout / stderr 逐行回推（batched 是
+  // Pyodide 的「按行缓冲」口径，不会把一句 print 拆成几次消息）。
+  pyodide.setStdout({ batched: (text) => post({ type: "stdout", text }) });
+  pyodide.setStderr({ batched: (text) => post({ type: "stderr", text }) });
+
   const unpackStart = now();
   stage("archive", "gg4py.zip");
   const archive = await archivePromise;
   timings.archive_fetch_ms = now() - archiveStart;
   pyodide.unpackArchive(archive, "zip", { extractDir: "/app" });
   timings.archive_ms = now() - unpackStart;
+  // 编辑器把数据面板的 CSV 写到 `/app/data.csv`，脚本用相对路径 `data.csv` 读它
+  // ——桌面端（`tools/editor/check_editor.py`）在临时目录里放同名文件跑同一段
+  // 代码，两端都不需要在源码里写死绝对路径。
+  pyodide.runPython('import os; os.chdir("/app")');
 
   stage("ready", "运行时就绪（数值栈尚未加载）");
   post({
@@ -222,6 +274,71 @@ async function runDemo({ name, source }) {
   );
 }
 
+// --- 编辑器：任意用户源码 -----------------------------------------------------
+
+/**
+ * 跑一段用户代码，回 `editor-result`（IR 字节 + 元数据）或 `editor-error`。
+ *
+ * 包按「静态扫描 + 显式 needs」加载：numpy 一定先装（ggcore 自己 import 它，
+ * 不装就连 `detect_needs` 都 import 不了），其余按扫描结果补。
+ */
+async function runSource({ source, path, csv, inlineData }) {
+  const started = now();
+  const scriptPath = path || "/app/editor_script.py";
+  pyodide.globals.set("GG_SOURCE", source);
+  pyodide.globals.set("GG_PATH", scriptPath);
+  pyodide.globals.set("GG_INLINE_DATA", inlineData || null);
+
+  // 数据面板的 CSV：写进虚拟文件系统，脚本用相对路径 `data.csv` 读（cwd = /app）。
+  if (typeof csv === "string" && csv.length > 0) {
+    pyodide.FS.writeFile("/app/data.csv", new TextEncoder().encode(csv));
+    stage("data", "data.csv");
+  } else if (pyodide.FS.analyzePath("/app/data.csv").exists) {
+    pyodide.FS.unlink("/app/data.csv");
+  }
+
+  const packagesMs = await loadPackages(["numpy"]);
+  const coreMs = await ensureCore();
+  pyodide.runPython(PY_EDITOR_NEEDS);
+  const needs = JSON.parse(pyodide.globals.get("GG_NEEDS"));
+  const extraMs = await loadPackages(["numpy", ...needs]);
+
+  stage("run", "editor");
+  const runStart = now();
+  pyodide.runPython(PY_EDITOR_RUN);
+  const error = JSON.parse(pyodide.globals.get("GG_ERROR"));
+  const meta = JSON.parse(pyodide.globals.get("GG_META"));
+  const runMs = now() - runStart;
+
+  if (error !== null) {
+    post({ type: "editor-error", ...error, run_ms: runMs, total_ms: now() - started });
+    return;
+  }
+
+  const proxy = pyodide.globals.get("GG_IR");
+  const bytes = proxy instanceof Uint8Array ? proxy : proxy.toJs();
+  if (typeof proxy.destroy === "function") proxy.destroy();
+  const payload = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  post(
+    {
+      type: "editor-result",
+      meta: {
+        ...meta,
+        needs,
+        run_ms: runMs,
+        packages_ms: packagesMs + extraMs,
+        core_import_ms: coreMs,
+        worker_total_ms: now() - started,
+        pyodide: pyodide.version,
+        python: ggcoreInfo?.python ?? null,
+        packages: [...loaded],
+      },
+      payload,
+    },
+    [payload],
+  );
+}
+
 self.onmessage = async (event) => {
   const message = event.data || {};
   try {
@@ -231,6 +348,10 @@ self.onmessage = async (event) => {
     }
     if (message.type === "run") {
       await runDemo(message);
+      return;
+    }
+    if (message.type === "run-source") {
+      await runSource(message);
       return;
     }
     throw new Error(`unknown message: ${message.type}`);

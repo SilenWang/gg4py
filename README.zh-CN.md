@@ -65,6 +65,7 @@ ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
 | `src/ggio/` | 输入适配：pandas / Arrow / dict of arrays → 同一张列式表。 |
 | `src/ggskia/` | skia-python 设备 → PNG / SVG / PDF，桌面与服务端渲染走这条腿。 |
 | `web/viewer/` | 浏览器查看器：TypeScript 直接生成 DOM SVG，零 wasm、零打包器。 |
+| `web/editor/` | 浏览器代码编辑器：CodeMirror 6 + Pyodide 执行 + 同一个 DOM SVG 渲染器，导出 SVG / PNG / JPG。一个静态页面，无后端（[docs/notes/editor.md](docs/notes/editor.md)）。 |
 | `src/ggdiff/` | 对拍：R 参考图 × 实测图，统一用 resvg 栅格化，比像素也比墨量。 |
 
 这些边界不是口头约定：X1 门禁把 `ggcore` 能 import 的包限制在标准库 / numpy /

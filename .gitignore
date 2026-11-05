@@ -58,3 +58,8 @@ dist/
 # SIL-824：浏览器运行时的自托管资产（`pixi run pyodide:assets` 生成）与实测产物
 web/runtime/vendor/
 .pyodide-runtime/
+
+# SIL-826：浏览器代码编辑器。CodeMirror 的 esbuild 产物与验收产物都不入库
+# （`pixi run editor:build` / `pixi run editor:check` 重新生成）。
+web/editor/dist/
+.editor-check/

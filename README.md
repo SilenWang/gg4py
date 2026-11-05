@@ -65,6 +65,7 @@ baseline: one drawn from `after_stat("density")`, the other from `after_stat("-d
 | `src/ggio/` | Input adapters: pandas / Arrow / dict of arrays → one columnar table. |
 | `src/ggskia/` | skia-python device → PNG / SVG / PDF for desktop and server rendering. |
 | `web/viewer/` | TypeScript + DOM SVG viewer for the browser — no wasm, no bundler. |
+| `web/editor/` | Browser code editor: CodeMirror 6 + Pyodide execution + the same DOM SVG renderer, plus SVG / PNG / JPG export. One static page, no backend ([docs/notes/editor.md](docs/notes/editor.md)). |
 | `src/ggdiff/` | Differential testing: R reference vs. our output, one rasterizer (resvg), pixel and ink metrics. |
 
 The core is checked, not just claimed: X1 gates forbid any import outside
