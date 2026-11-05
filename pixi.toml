@@ -112,6 +112,10 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # M0-11: 案例库覆盖矩阵 + CI 报告。扫 docs/cases 的三文件 case，渲染/比对走
 # render / diff 两个任务名；静态矩阵 docs/cases/matrix.md 入库，`--check` 守新鲜度。
 "cases:matrix" = "PYTHONPATH=src python tools/cases/matrix.py"
+# SIL-839：case 复刻完整性审计。比 `expected.svg` 的 `font-size` 多重集与我们 IR 里
+# text 节点的 `size` 多重集——`theme_test()` 写错、`plot.title` 漏掉这类「case 复刻
+# 不全」的错误，靠逐条盯 diff 要几十轮，这条不栅格化、不依赖字体，几分钟全暴露。
+"cases:audit" = "PYTHONPATH=src python tools/cases/audit.py"
 # 静态校验（不渲染）：契约错 → 非 0；矩阵过期 → 非 0。挂进 `check`，所以普通
 # CI job 就能守住「新增 case 必须重生成矩阵」。真渲染/比对仍走 `cases:matrix`。
 "cases:matrix:check" = "PYTHONPATH=src python tools/cases/matrix.py --check --no-run"
