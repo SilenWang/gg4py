@@ -375,6 +375,7 @@ check = { depends-on = [
   "editor:check",
   "gate:cbor",
   "cases:matrix:check",
+  "cases:audit",
   "api:coverage:check",
   "snapshots:check",
   "snapshots:report:check",

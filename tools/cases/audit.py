@@ -56,6 +56,12 @@ def ours_sizes(case: Path) -> Counter[float] | None:
 
 
 def main() -> int:
+    baseline = CASES / "audit-baseline.txt"
+    known = (
+        {line.strip() for line in baseline.read_text(encoding="utf-8").splitlines() if line.strip()}
+        if baseline.is_file()
+        else set()
+    )
     rows: list[tuple[int, str, Counter[float], Counter[float]]] = []
     checked = skipped = 0
     for case in sorted(CASES.iterdir()):
@@ -79,14 +85,19 @@ def main() -> int:
             rows.append((sum(missing.values()) + sum(extra.values()), case.name, missing, extra))
 
     rows.sort(key=lambda row: (-row[0], row[1]))
-    print(f"cases:audit — 检查 {checked} 个 case，跳过 {skipped} 个，不匹配 {len(rows)} 个")
+    new = [row for row in rows if row[1] not in known]
+    print(
+        f"cases:audit — 检查 {checked} 个 case，跳过 {skipped} 个，不匹配 {len(rows)} 个"
+        f"（基线内 {len(rows) - len(new)}，新增 {len(new)}）"
+    )
     for delta, name, missing, extra in rows:
-        print(f"  {name}  差 {delta} 个文本")
+        tag = "（基线）" if name in known else "（新增）"
+        print(f"  {name}  差 {delta} 个文本 {tag}")
         if missing:
             print(f"    期望有、我们没有: {dict(sorted(missing.items()))}")
         if extra:
             print(f"    我们有、期望没有: {dict(sorted(extra.items()))}")
-    return 1 if rows else 0
+    return 1 if new else 0
 
 
 if __name__ == "__main__":
