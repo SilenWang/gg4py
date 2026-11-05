@@ -90,6 +90,8 @@ numpy / skia 版本；只有包集合不同。
 | `diff` | 参考图 × 实测图：图级差异 + 平均差异 + 热图 + `--json`（`docs/notes/diff.md`） |
 | `ir:size` | 10k 点 path 的 IR vs 逐元素 JSON 体积（`docs/notes/ir.md`） |
 | `examples:<slug>` | 重画 `examples/<slug>/` 的 PNG + SVG（`docs/examples.md`） |
+| `perf:100k` | 10 万点端到端实测（cold / warm / 降采样 + 缓存命中率，`docs/notes/performance.md`） |
+| `perf:100k:check` | 同上，但 cold 中位数 ≥ 300 ms 即非 0（预算门禁，不挂进 `check`） |
 
 ### 3.3 横切门禁（X1 / X5）
 

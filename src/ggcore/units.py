@@ -70,6 +70,13 @@ POINTS_PER_INCH = 72.27
 BIGPOINTS_PER_INCH = 72.0
 """R 的 `bigpts`（1/72 in）。CSS 的 px→pt 换算用的是这个口径。"""
 
+BULK_CONVERT_THRESHOLD = 256
+"""`convert_unit()` 走批量路径的最小长度（单 kind 的仿射换算）。
+
+小于它的单位向量保持逐元素路径：数值上与 R 的标量实现逐位相同，改动只在
+大批量几何上才有意义（见 `docs/notes/performance.md`）。
+"""
+
 
 class UnitError(ValueError):
     """单位构造或换算失败；消息尽量贴近 R 的 conditionMessage。"""
@@ -250,6 +257,34 @@ def unit(
     if not declared:
         raise UnitError("'x' and 'units' must have length > 0")
     count = max(amounts.size, len(declared))
+
+    # 单 kind + 单长度（几何层最常见的形状：`unit(x, "native")` 一次 10 万个点）
+    # 走摊平路径：`amounts.tolist()` 一次换完，省掉逐元素 `amounts[i % n]` 的
+    # numpy 标量索引。回收语义与下面那条一样，只是没有第二个 kind 要循环。
+    if len(declared) == 1 and amounts.size == count:
+        name = declared[0]
+        if name in _STRING_KINDS:
+            if data is None:
+                raise UnitError("no string supplied for 'strwidth/height' unit")
+            texts = [data] if isinstance(data, str) else list(data)  # type: ignore[arg-type]
+            if not texts or (len(texts) != 1 and len(texts) < count):
+                raise UnitError(
+                    "data must be either NULL, have length 1, "
+                    "or match the length of the final unit vector"
+                )
+            if not all(isinstance(text, str) for text in texts):
+                raise UnitError("no string supplied for 'strwidth/height' unit")
+            values = amounts.tolist()
+            return Unit(
+                tuple(
+                    UnitElement(value, name, texts[index % len(texts)])
+                    for index, value in enumerate(values)
+                )
+            )
+        if data is not None:
+            raise UnitError(f"unit {name!r} does not take data")
+        return Unit(tuple(UnitElement(value, name) for value in amounts.tolist()))
+
     names = [declared[index % len(declared)] for index in range(count)]
     values = [float(amounts[index % amounts.size]) for index in range(count)]
 
@@ -821,6 +856,53 @@ def _convert_element(
     return _from_inches(inches, to_kind, axis=axis_to, measure=measure_to, ctx=ctx)
 
 
+def _convert_bulk(
+    target: Unit,
+    from_code: int,
+    to_code: int,
+    to_kind: str,
+    ctx: UnitContext,
+    *,
+    axis_from: str,
+) -> np.ndarray | None:
+    """单 kind 的大数组批量换算；不是这种形状就返回 `None`（调用方走逐元素）。
+
+    换算对 `amount` 是**仿射**的（`npc` / `native` / `cm` / `bigpts` / `lines` /
+    `char` … 都是「乘一个系数再加/减一个常数」），所以截距与斜率各量一次就够，
+    剩下的交给 numpy。`sum` / `min` / `max` 复合单位与 `strwidth` / `strheight`
+    （逐元素文本不同）不是仿射形状，留在标量路径上。
+
+    阈值刻意设得比「大数组」低一档：10 万点的 `geom_point` 每次要换算 20 万
+    个元素，逐元素 Python 调用是这里最大的单项成本（`docs/notes/performance.md`）。
+    """
+    elements = target.elements
+    if len(elements) < BULK_CONVERT_THRESHOLD:
+        return None
+    kind = elements[0].kind
+    if kind in _COMPOUND_KINDS or kind in _STRING_KINDS:
+        return None
+    for element in elements:
+        if element.kind != kind:
+            return None
+    this_cm, _ = _this_other(ctx, axis_from)
+    relative = (
+        kind in _RELATIVE_KINDS
+        and to_kind in _RELATIVE_KINDS
+        and (from_code, to_code) in _REL_CODES
+    )
+    if relative and this_cm < 1e-6:
+        return None
+    try:
+        base = _convert_element(UnitElement(0.0, kind), from_code, to_code, to_kind, ctx)
+        step = _convert_element(UnitElement(1.0, kind), from_code, to_code, to_kind, ctx) - base
+    except UnitError:
+        return None
+    amounts = np.fromiter(
+        (element.amount for element in elements), dtype=np.float64, count=len(elements)
+    )
+    return base + step * amounts
+
+
 def convert_unit(
     target: Unit,
     to: str | Sequence[str],
@@ -849,10 +931,21 @@ def convert_unit(
     if not target.elements:
         return np.empty(0, dtype=np.float64) if value_only else Unit()
 
-    values = np.empty(len(target), dtype=np.float64)
-    for index, element in enumerate(target.elements):
-        to_kind = names[index % len(names)]
-        values[index] = _convert_element(element, from_code, to_code, to_kind, ctx)
+    values: np.ndarray | None = None
+    if len(names) == 1:
+        values = _convert_bulk(
+            target,
+            from_code,
+            to_code,
+            names[0],
+            ctx,
+            axis_from=axis_from,
+        )
+    if values is None:
+        values = np.empty(len(target), dtype=np.float64)
+        for index, element in enumerate(target.elements):
+            to_kind = names[index % len(names)]
+            values[index] = _convert_element(element, from_code, to_code, to_kind, ctx)
     if not value_only:
         out_names: str | list[str] = names[0]
         if len(names) > 1:

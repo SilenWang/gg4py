@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,11 +53,13 @@ __all__ = [
     "Backend",
     "SaveError",
     "SaveResult",
+    "backend_metrics",
     "export_ir_json",
     "ggsave",
     "ir_json_view",
     "register_backend",
     "registered_backend",
+    "reset_backend_metrics",
     "save_ir",
 ]
 
@@ -162,6 +165,30 @@ def registered_backend() -> Backend | None:
     return _BACKEND
 
 
+#: 每个线程一份后端度量实例（M3-5 的度量缓存）。`MetricProvider` 的缓存无锁，
+#: 跨线程共用一份会互相踩；同一线程里反复 ggsave 才有复用价值——`ggskia` 的
+#: `ShaperMetrics` 里有 `TextShaper` 的字形缓存，重建一份等于把缓存清零。
+_METRICS_LOCAL = threading.local()
+
+
+def backend_metrics() -> Any:
+    """后端提供的度量实例：同一线程内复用一份（没有后端时返回 `None`）。"""
+    backend = _BACKEND
+    if backend is None or backend.metrics is None:
+        return None
+    cached = getattr(_METRICS_LOCAL, "value", None)
+    if cached is not None and cached[0] is backend:
+        return cached[1]
+    metrics = backend.metrics()
+    _METRICS_LOCAL.value = (backend, metrics)
+    return metrics
+
+
+def reset_backend_metrics() -> None:
+    """丢掉本线程缓存的度量实例（换字体 / 换后端 / 实测冷启动时用）。"""
+    _METRICS_LOCAL.value = None
+
+
 def _backend_or_error() -> Backend:
     if _BACKEND is None:
         raise SaveError(
@@ -216,8 +243,8 @@ def _inches(width: Any, height: Any, units: str) -> tuple[str, float, float]:
 def _scene(plot: Any, width_in: float, height_in: float, metrics: Any) -> ir.Scene:
     """`ggplot` → `ir.Scene`；`metrics` 缺省取注册后端的那一份。"""
     resolved = metrics
-    if resolved is None and _BACKEND is not None and _BACKEND.metrics is not None:
-        resolved = _BACKEND.metrics()
+    if resolved is None:
+        resolved = backend_metrics()
     return scene_from_plot(plot, width_in=width_in, height_in=height_in, metrics=resolved)
 
 
