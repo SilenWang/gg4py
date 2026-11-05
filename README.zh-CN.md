@@ -83,6 +83,16 @@ pixi run lint      # ruff check + ruff format --check
 目录职责、环境与全部任务：[`docs/dev/layout.md`](docs/dev/layout.md)。实现口径、门禁、
 快照策略等逐份文档：[`docs/README.md`](docs/README.md)。
 
+## 开发方式
+
+仓库里的设计、代码、测试与文档全部由**同一个模型**产出——**DeepSeek**
+（[deepseek-ai](https://github.com/deepseek-ai)）——经由下面这几个开源工具协作完成：
+
+- [OpenCode](https://github.com/anomalyco/opencode)：终端里的编码 agent
+- [Reasonix](https://github.com/esengine/DeepSeek-Reasonix)：编码 agent
+- [Codex](https://github.com/openai/codex)：OpenAI 的终端编码 agent
+- [Multica](https://github.com/multica-ai/multica)：任务看板与 agent 编排
+
 ## 许可证
 
 MIT，全文见 [`LICENSE`](LICENSE)。© 2026 Sylens Wong。

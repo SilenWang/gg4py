@@ -83,6 +83,17 @@ pixi run lint      # ruff check + ruff format --check
 Layout, environments and the full task catalogue: [`docs/dev/layout.md`](docs/dev/layout.md).
 Reference reading (module-by-module contracts, gates, snapshot policy): [`docs/README.md`](docs/README.md).
 
+## How this was built
+
+Every design decision, line of code, test and doc page here was produced by a **single
+model — DeepSeek** ([deepseek-ai](https://github.com/deepseek-ai)) — working through
+open-source agent tooling:
+
+- [OpenCode](https://github.com/anomalyco/opencode) — terminal coding agent
+- [Reasonix](https://github.com/esengine/DeepSeek-Reasonix) — coding agent
+- [Codex](https://github.com/openai/codex) — OpenAI's terminal coding agent
+- [Multica](https://github.com/multica-ai/multica) — issue board and agent orchestration
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE). © 2026 Sylens Wong.
