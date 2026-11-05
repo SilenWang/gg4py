@@ -134,7 +134,16 @@ def test_matrix_ledger_must_match_the_inventory() -> None:
     text = (ROOT / "docs" / "cases" / "matrix.md").read_text(encoding="utf-8")
     assert SNAPSHOTS.matrix_drift(text, rows) == []
 
-    drifted = text.replace("| 311 | 274 | 37 | 0 | 37 |", "| 311 | 274 | 37 | 7 | 30 |")
+    summary = SNAPSHOTS.ledger(rows)
+    current = (
+        f"| {summary['total']} | {summary['imported']} | {summary['gaps']} | "
+        f"{summary['by_owner']['m2-closeout']} | {summary['by_owner']['m3']} |"
+    )
+    planted = (
+        f"| {summary['total']} | {summary['imported']} | {summary['gaps']} | 7 | "
+        f"{summary['gaps'] - 7} |"
+    )
+    drifted = text.replace(current, planted)
     assert drifted != text
     assert SNAPSHOTS.matrix_drift(drifted, rows)
 
