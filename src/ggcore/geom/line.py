@@ -30,6 +30,7 @@ from ggcore.geom.base import (
     table_numeric,
 )
 from ggcore.grobs import g_tree, null_grob, polyline_grob, segments_grob
+from ggcore.munch import munch_steps
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
@@ -122,7 +123,7 @@ def _munch_path(
                 out_src.append(previous)
             else:
                 distance = math.hypot((x1 - x0) / x_span, (y1 - y0) / y_span)
-                steps = max(1, math.ceil(distance / float(segment_length)))
+                steps = munch_steps(distance, segment_length)
                 for step in range(1, steps + 1):
                     ratio = step / steps
                     out_x.append(x0 + (x1 - x0) * ratio)

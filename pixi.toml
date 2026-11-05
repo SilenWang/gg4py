@@ -5,7 +5,7 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 # ---------------------------------------------------------------------------
-# Environment composition (see docs/dev/layout.md "环境" and "任务")
+# Environment composition (see README "任务与环境")
 #
 #   default / dev : runtime deps + pytest / ruff / playwright (this is the env
 #                   `pixi run check` resolves against)
@@ -77,13 +77,6 @@ diff = "PYTHONPATH=src python -m ggdiff.cli"
 ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 诊断：10k 点 path 的 IR 体积 vs 逐元素 JSON（docs/notes/ir.md 的数字来源）。
 "ir:size" = "PYTHONPATH=src python tools/ir_size_report.py"
-# 面向读者的示例图（docs/examples.md）：一图一目录，脚本 + PNG + SVG 入库。
-# 任务名与目录同名，`pixi run examples:heatmap` 重画 examples/heatmap/ 的两份产物；
-# 产物确定性（同输入同字节），脚本自己把 src/ 放上 sys.path，所以单独跑也行。
-"examples:heatmap" = "PYTHONPATH=src python examples/heatmap/plot.py"
-"examples:bump-chart" = "PYTHONPATH=src python examples/bump-chart/plot.py"
-"examples:circular-barplot" = "PYTHONPATH=src python examples/circular-barplot/plot.py"
-"examples:mirrored-density" = "PYTHONPATH=src python examples/mirrored-density/plot.py"
 # M1-13：浏览器查看器（IR → DOM SVG，零 wasm）。tsc 从 npm 装到 node_modules
 # （不入库），产物落 web/viewer/dist（不入库）；`pixi run viewer:sample` 生成
 # 手测 / 截图用的 2×2 分面 + 图例场景。测试要真 Chromium，`viewer:browsers`
@@ -163,6 +156,17 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "spike:e1:browsers" = "PLAYWRIGHT_BROWSERS_PATH=$PWD/.playwright-browsers playwright install chromium"
 "spike:e1:assets" = "npm install --no-save --no-package-lock --prefix docs/spike/e1_coldstart/.npm pyodide@314.0.7 && python docs/spike/e1_coldstart/fetch_assets.py"
 "spike:e1" = { cmd = "python -u docs/spike/e1_coldstart/run_e1.py", depends-on = ["spike:e1:assets"] }
+
+# --- SIL-824 · 浏览器运行时（Pyodide + 全量 ggcore，资产自托管） ---------------
+# 把运行时资产落到 `web/runtime/vendor/`：pyodide 运行时 + 轮子（复用 E1 的本地副本，
+# 不重复下载）、ggcore/ggio 源码 zip（确定性打包）、受管字体里的拉丁字面。
+"pyodide:assets" = { cmd = "python tools/pyodide/stage_assets.py", depends-on = ["spike:e1:assets", "viewer:build"] }
+# 端到端验收：整轮只许本站请求（另有「阻断站外」重载）、numpy/contourpy/pandas 懒加载、
+# 可见加载进度、三个示例的 IR 与 CPython 逐字节相同。挂进 `check`。
+"pyodide:runtime" = { cmd = "python tools/pyodide/check_runtime.py", depends-on = ["pyodide:assets", "viewer:browsers"] }
+# 加载耗时实测：服务端按 Fast 4G 限速，冷启动 / warm 各跑 3 次；数字进 docs/notes/pyodide.md。
+# 不挂进 `check`：CI runner 的 CPU 与这里不同，用它当门禁只会让红绿取决于机器。
+"pyodide:timing" = { cmd = "python tools/pyodide/check_runtime.py --measure --runs 3", depends-on = ["pyodide:assets", "viewer:browsers"] }
 
 [feature.dev.pypi-dependencies]
 pytest = ">=9.2.0, <10"
@@ -278,9 +282,18 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # M0-10: 同一份 plot → IR 在 CPython（cbor2）与 Pyodide（ggcore 自带纯 Python
 # 编码器）上各跑一次，逐字节比较。只要 node，不需要浏览器；资产复用 E1 的
 # `spike:e1:assets`（pyodide 运行时 + numpy 轮子，均来自本地目录）。
+# SIL-824：「ggcore 全量在 Pyodide 跑通」的门禁：冒烟（plot→IR + 边角取值 + 等值线）
+# 之外，把 `docs/cases/*/plot.py` 全部在两端各跑一遍，逐条比 IR 的 sha256。
+# 两端都走 `ggcore.metrics.fallback.TableMetrics`（浏览器里没有 skia / HarfBuzz）。
 "gate:pyodide" = { cmd = "python tools/gates/check_pyodide_ir.py", depends-on = ["spike:e1:assets"] }
 # 负向对照：让 Pyodide 侧故意差 1 个比特，门禁必须判红才说明它真的在看字节。
+# 负向对照覆盖两个相位：冒烟翻一个字节、全量相位翻一条 case 的摘要，两者都必须红。
 "gate:pyodide:selftest" = { cmd = "python tools/gates/check_pyodide_ir.py --expect-diff", depends-on = ["spike:e1:assets"] }
+# SIL-824 返工：IR 的逐字节确定性不能依赖宿主 libm。`gate:pyodide` 比的是「同一台
+# 机器上的两个运行时」；这一道把 math/numpy 的三角与指数函数整体偏 ±1 ULP，模拟
+# 「换一台 glibc / CPU 不同的 runner」，全量 case 的 IR 必须逐条不变。2026-11-05 那
+# 3 条 coord_sf case 就是本机全绿、CI 红——本机复现不了，只能主动注入噪声。
+"gate:libm-noise" = "PYTHONPATH=src python tools/gates/check_libm_noise.py"
 # `_cbor` 与 cbor2 的 canonical 等价性（SIL-646）：9330 个取值，含 NaN 全部位型、
 # ±Inf、负数分支、23/24/255/256/65535/65536 长度头、嵌套容器与随机模糊。
 # 两类按设计不写的取值（bignum tag、memoryview）断言「必须抛 CBORError」。
@@ -313,6 +326,8 @@ check = { depends-on = [
   "gate:metrics",
   "gate:pyodide",
   "gate:pyodide:selftest",
+  "gate:libm-noise",
+  "pyodide:runtime",
   "gate:cbor",
   "cases:matrix:check",
   "api:coverage:check",
