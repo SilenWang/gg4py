@@ -83,17 +83,15 @@ pixi run lint      # ruff check + ruff format --check
 目录职责、环境与全部任务：[`docs/dev/layout.md`](docs/dev/layout.md)。实现口径、门禁、
 快照策略等逐份文档：[`docs/README.md`](docs/README.md)。
 
-## 许可证与归属
+## 许可证
 
-本项目是 [ggplot2](https://github.com/tidyverse/ggplot2) **4.0.3** 的对等复刻：语义层、
-R 侧参考夹具与 `docs/cases/` 里的参考图，移植或生成自上游（钉住的 commit
-`cc1444c10edb87650fbe0cb31d56f0da1a255634`，tag `v4.0.3`）。
+MIT，全文见 [`LICENSE`](LICENSE)。© 2026 Sylens Wong。
 
-| | |
-| --- | --- |
-| 上游 | `tidyverse/ggplot2` 4.0.3，**MIT**（© 2025 ggplot2 core developer team） |
-| 本项目 | **MIT**（[`LICENSE`](LICENSE)，© 2026 Sylens Wong） |
-| 第三方资产 | 盘点见 [`docs/notes/licenses.md`](docs/notes/licenses.md) |
+## 致谢与归属
 
-`LICENSE` 里两段版权声明并列保留；分发本仓库（含派生的参考图）时两行都要留。仓库里
-不含第三方二进制资产——字体、浏览器与 wasm 都是构建期由 pixi / npm 取的。
+本项目是 [ggplot2](https://github.com/tidyverse/ggplot2) **4.0.3**（commit
+`cc1444c10edb87650fbe0cb31d56f0da1a255634`，tag `v4.0.3`，© 2025 ggplot2 core developer
+team，MIT）的 Python 对等复刻：语义层、R 侧参考夹具与 `docs/cases/` 里的参考图，移植或
+生成自上游，其版权声明按 MIT 要求在此保留。第三方资产盘点见
+[`docs/notes/licenses.md`](docs/notes/licenses.md)（字体 / wasm / 浏览器都是构建期由
+pixi、npm 取的，不入库）。
