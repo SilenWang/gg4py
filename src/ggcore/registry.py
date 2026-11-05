@@ -103,6 +103,10 @@ __all__: list[str] = [
     "bind_plot",
     "construct",
     "entry_name",
+    "geom_default_aes",
+    "geom_default_overrides",
+    "geom_sf_label",
+    "geom_sf_text",
     "register",
     "register_coord",
     "register_facet",
@@ -116,6 +120,7 @@ __all__: list[str] = [
     "registered",
     "required_aes_groups",
     "unregister",
+    "update_geom_defaults",
 ]
 
 #: 每个种类的有序注册表。用 dict 的插入序，保证遍历稳定。
@@ -750,6 +755,25 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
         "blank": GeomSpec((), {}),
         "rug": GeomSpec((), _LINE_DEFAULTS),
         "map": GeomSpec(("map_id",), {**_RECT_DEFAULTS, "fill": "grey20"}),
+        # -- M3-2 空间几何 ------------------------------------------------------
+        # `GeomSf$default_aes`：shape / colour / fill / size / linewidth 都是
+        # NULL（按几何类型在绘制期取 GeomPoint / GeomLine / GeomPolygon 的缺省），
+        # 只有 linetype（from_theme）与 stroke 是固定值。
+        "sf": GeomSpec(
+            ("geometry",),
+            {
+                "shape": None,
+                "colour": None,
+                "fill": None,
+                "size": None,
+                "linewidth": None,
+                "linetype": FromTheme("linetype"),
+                "alpha": None,
+                "stroke": 0.5,
+            },
+            "sf",
+            "identity",
+        ),
         # -- M2-7 长尾 B：文本 / 点 / 分布 / 2D 族 ---------------------------------
         # 默认美学照 4.0.3 的 `from_theme(...)`：`theme_grey()$geom` 解析后
         # ink = black、paper = white、accent = #3366FF、fontsize = 3.87mm；
@@ -1043,6 +1067,9 @@ STAT_NAMES: tuple[str, ...] = (
     "binhex",
     "summary2d",
     "density2d",
+    # M3-2：空间统计（几何 → bbox / 代表点）
+    "sf",
+    "sf_coordinates",
 )
 
 #: 2D 族的旧别名 → 正名。
@@ -1088,6 +1115,8 @@ STAT_GEOMS: Mapping[str, str] = MappingProxyType(
         "connect": "path",
         "manual": "point",
         "ydensity": "violin",
+        "sf": "rect",
+        "sf_coordinates": "point",
     }
 )
 
@@ -1209,10 +1238,91 @@ GUIDE_NAMES: tuple[str, ...] = (
 )
 
 
+#: `update_geom_defaults()` 的运行时覆盖（`geom` 名 → default_aes 覆盖表）。
+#: 与上游一样，只影响**之后构造**的图层；`None` 表示恢复内置缺省。
+_GEOM_DEFAULT_OVERRIDES: dict[str, dict[str, Any]] = {}
+
+
+def geom_default_overrides(name: str) -> Mapping[str, Any]:
+    """`update_geom_defaults()` 设过的覆盖值（不含内置 `from_theme()` 表达式）。"""
+    return MappingProxyType(dict(_GEOM_DEFAULT_OVERRIDES.get(name, {})))
+
+
+def geom_default_aes(name: str) -> Mapping[str, Any]:
+    """某个 geom 当前的缺省美学（内置 values + `update_geom_defaults()` 覆盖）。"""
+    spec = GEOM_SPECS.get(name)
+    if spec is None:
+        return MappingProxyType({})
+    return MappingProxyType({**spec.default_aes, **_GEOM_DEFAULT_OVERRIDES.get(name, {})})
+
+
+def update_geom_defaults(geom: str, new: Any = None) -> None:
+    """`update_geom_defaults("point", aes(colour = "blue"))` 的对等物。
+
+    `geom` 是几何名（`"point"` / `"line"` …），`new` 是 `{aesthetic: 值}` 或
+    `aes(...)`；`None` 表示恢复内置缺省。参数值按 `Geom$default_aes` 的静态值
+    处理（与 R 的 `update_geom_defaults(geom, aes(...))` 一致）。
+    """
+    name = str(geom)
+    if name not in GEOM_SPECS:
+        raise ValueError(f"未知的 geom {geom!r}；可用：{', '.join(sorted(GEOM_SPECS))}")
+    if new is None:
+        _GEOM_DEFAULT_OVERRIDES.pop(name, None)
+        return
+    values = dict(new)
+    unknown = set(values) - set(GEOM_SPECS[name].default_aes)
+    if unknown:
+        raise ValueError(
+            f"geom_{name} 没有这些美学：{', '.join(sorted(unknown))}"
+            f"（可用：{', '.join(GEOM_SPECS[name].default_aes)}）"
+        )
+    _GEOM_DEFAULT_OVERRIDES.setdefault(name, {}).update(values)
+
+
+def _sf_label_factory(geom_name: str) -> Callable[..., Layer]:
+    """`geom_sf_label()` / `geom_sf_text()`：GeomLabel / GeomText + `stat_sf_coordinates`。
+
+    上游这两个函数就是 `layer_sf(geom = GeomLabel/GeomText, stat =
+    "sf_coordinates", position = "nudge")`——几何本身是既有的 label / text，
+    sf 的部分只在 stat（几何 → 代表点）与图例类型。
+    """
+
+    def factory(
+        mapping: Any = None,
+        data: Any = None,
+        *,
+        stat: Stat | str | None = None,
+        position: Position | str | None = None,
+        inherit_aes: bool = True,
+        show_legend: bool | None = None,
+        **params: Any,
+    ) -> Layer:
+        spec = GEOM_SPECS[geom_name]
+        return Layer(
+            geom=Geom(
+                name=geom_name,
+                required_aes=spec.required_aes,
+                default_aes={**spec.default_aes, **_GEOM_DEFAULT_OVERRIDES.get(geom_name, {})},
+                non_missing_aes=spec.non_missing_aes,
+                optional_aes=spec.optional_aes,
+            ),
+            stat=as_stat(stat, "sf_coordinates"),
+            position=as_position(position, "nudge"),
+            mapping=as_aes(mapping),
+            data=data,
+            params=params,
+            inherit_aes=inherit_aes,
+            show_legend=show_legend,
+        )
+
+    return factory
+
+
 def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
     """`geom_<name>(...)` → `Layer`（不画图）。
 
     参数路由（M1-3 的约定）：`**params` 只进 `Layer.params`，不往 stat 传。
+    `update_geom_defaults()` 改过的缺省值在这里合并（每次构造时读，改完立即生效）。
     """
 
     def factory(
@@ -1242,7 +1352,7 @@ def _geom_layer_factory(name: str, spec: GeomSpec) -> Callable[..., Layer]:
             geom=Geom(
                 name=name,
                 required_aes=spec.required_aes,
-                default_aes=spec.default_aes,
+                default_aes={**spec.default_aes, **_GEOM_DEFAULT_OVERRIDES.get(name, {})},
                 non_missing_aes=spec.non_missing_aes,
                 optional_aes=spec.optional_aes,
             ),
@@ -1676,6 +1786,7 @@ def _register_defaults() -> None:
             register_geom(name, _geom_layer_factory(name, spec))
         else:
             register_geom(name, _reference_layer_factory(name, spec, defaults))
+
     for name in STAT_NAMES:
         register_stat(name, _stat_layer_factory(name))
     for name in POSITION_NAMES:
@@ -1704,6 +1815,14 @@ def _register_defaults() -> None:
 
 
 _register_defaults()
+
+# M3-2：`geom_sf_text()` / `geom_sf_label()` 不是独立几何，是 `GeomText` /
+# `GeomLabel` + `stat_sf_coordinates` 的组合（上游 `layer_sf()`）。它们不进
+# geom 注册表（注册表的不变式是「每个 geom 名都有自己的绘制实现」），只作为
+# 模块函数导出。
+geom_sf_text = _sf_label_factory("text")
+geom_sf_label = _sf_label_factory("label")
+
 
 #: 内置名单快照：第三方 `register_*()` 默认不能覆盖这些名字。
 for _kind in KINDS:

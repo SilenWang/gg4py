@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete", "legend"]
+ci = true
+title = "上游快照：geom_sf point legend"
+source = "upstream:tests/testthat/_snaps/geom-sf/geom-sf-point-legend.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：geom_sf 的图例类型由几何类型决定（point → key glyph）。"

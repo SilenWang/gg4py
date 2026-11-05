@@ -61,6 +61,15 @@ from ggcore.scales import (
     ScaleSet,
     expand_range,
 )
+from ggcore.sf import (
+    CRS,
+    GraticuleLine,
+    SfError,
+    calc_limits_bbox,
+    st_crs,
+    st_graticule,
+    st_transform_xy,
+)
 
 __all__ = [
     "AXES",
@@ -521,6 +530,10 @@ class PanelParams:
     cont_ranges: Mapping[str, tuple[float, float]] = field(default_factory=dict)
     #: 极坐标 / 径向坐标的几何（线性坐标为 None）。
     polar: PolarGeometry | None = None
+    #: `coord_sf` 的空间几何：CRS / graticule / 轴刻度（线性坐标为 None）。
+    sf: Any = None
+    #: `coord_map` 的投影几何：投影参数 + 投影后的范围（其余坐标为 None）。
+    map_geom: Any = None
     #: 面板在页面上的实际尺寸（英寸）：场景装配时填入，`geom_text` 的
     #: `check_overlap` 与 `geom_label` 的字号 → npc 换算要用它。构建设置里没有
     #: 它是正常的（构建阶段还不知道版式）。
@@ -586,6 +599,10 @@ class PanelParams:
         """
         if self.polar is not None:
             return False
+        if self.sf is not None and getattr(self.sf, "default_crs", None) is not None:
+            # `CoordSf$is_linear()`：用 default_crs 时非 sf 图层的直线要按经线 /
+            # 纬线细分（coord_munch），所以不是线性坐标。
+            return False
         return all(spec.name == "identity" for spec in self.trans.values())
 
     @property
@@ -626,6 +643,8 @@ class PanelParams:
         """一条轴上的数值（标度空间）→ 面板 npc（含 `reverse`，不含极坐标）。"""
         if self.polar is not None:
             raise CoordError("极坐标的映射是二维的：用 `transform_column()` / `project_xy()`")
+        if self.map_geom is not None:
+            raise CoordError("coord_map 的映射是二维的：用 `transform_column()` / `project_xy()`")
         low, high = self._range_for(axis)
         span = float(high) - float(low)
         if span == 0:
@@ -641,6 +660,19 @@ class PanelParams:
 
     def position_of(self, axis: str, value: float) -> float:
         """单个数值 → npc（断点 / 网格线用；`value` 已在标度空间）。"""
+        if self.map_geom is not None:
+            boundary = self.x_range[0] if axis == "y" else self.y_range[0]
+            if axis == "x":
+                px, _ = self.map_geom.project(
+                    np.array([float(value)], dtype=np.float64),
+                    np.array([boundary], dtype=np.float64),
+                )
+            else:
+                _, px = self.map_geom.project(
+                    np.array([boundary], dtype=np.float64),
+                    np.array([float(value)], dtype=np.float64),
+                )
+            return float(px[0])
         return float(self.npc(axis, np.array([value], dtype=np.float64))[0])
 
     def transform(self, column: Column, aesthetic: str = "x") -> Column:
@@ -676,9 +708,25 @@ class PanelParams:
             theta = xs if self.polar.theta_axis == "x" else ys
             radius = ys if self.polar.theta_axis == "x" else xs
             return self.polar.project(theta, radius)
+        if self.map_geom is not None:
+            return self.map_geom.project(xs, ys)
+        if self.sf is not None:
+            # `CoordSf$transform()`：非 sf 图层的 x / y 先投影到目标 CRS。
+            source = self.sf.default_crs if self.sf.default_crs is not None else self.sf.crs
+            inf_x = np.isinf(xs)
+            inf_y = np.isinf(ys)
+            xs, ys = st_transform_xy(xs, ys, self.sf.crs, source)
+        else:
+            inf_x = inf_y = None
         if self.flipped:
-            return self.npc("x", ys), self.npc("y", xs)
-        return self.npc("x", xs), self.npc("y", ys)
+            px, py = self.npc("x", ys), self.npc("y", xs)
+        else:
+            px, py = self.npc("x", xs), self.npc("y", ys)
+        if inf_x is not None:
+            # `squish_infinite()`：±Inf 夹到面板两端（不是删掉）。
+            px = np.where(inf_x, np.where(xs > 0, 1.0, 0.0), px)
+            py = np.where(inf_y, np.where(ys > 0, 1.0, 0.0), py)
+        return px, py
 
     def transform_column(self, table: ColumnTable, name: str, axis: str) -> Column:
         """一列位置数据 → 屏幕 `axis` 的 npc（flip / 极坐标都在这里适配）。
@@ -693,6 +741,17 @@ class PanelParams:
         if source not in table:
             raise CoordError(f"coord_flip 需要对侧位置列 {source!r}，数据里没有")
         column = table.column(source)
+        if self.sf is not None or self.map_geom is not None:
+            if source not in X_AES + Y_AES:
+                raise CoordError(f"{name!r} 不是位置列，投影坐标无从映射")
+            xs = _values(table.column("x")) if "x" in table else None
+            ys = _values(table.column("y")) if "y" in table else None
+            if xs is None or ys is None:
+                raise CoordError("投影坐标需要 x / y 两列配对")
+            px, py = self.project_xy(xs, ys)
+            out = px if axis == "x" else py
+            mask = ~np.isfinite(out)
+            return Column("float", np.nan_to_num(out, nan=0.0), na_mask=mask)
         if self.polar is not None:
             theta_axis = self.polar.theta_axis
             theta_family = X_AES if theta_axis == "x" else Y_AES
@@ -876,8 +935,12 @@ class CoordBase:
             )
         return MappingProxyType({axis: self._axis_panel(scales, axis).range for axis in AXES})
 
-    def panel_params(self, scales: ScaleSet) -> PanelParams:
-        """解析后的完整面板参数（范围 / limits / clip / ratio / transform）。"""
+    def panel_params(self, scales: ScaleSet, layers: Any = None) -> PanelParams:
+        """解析后的完整面板参数（范围 / limits / clip / ratio / transform）。
+
+        `layers` 是各层的 `scaled` 表（`ColumnTable` 序列），只有 `coord_sf`
+        用它确定数据 CRS；其余坐标忽略。
+        """
         resolved = {axis: self._axis_panel(scales, axis) for axis in AXES}
         params = PanelParams(
             x_range=resolved["x"].range,
@@ -1028,9 +1091,9 @@ class FlipCoord(CartesianCoord):
 
     name: str = field(default="flip", init=False)
 
-    def panel_params(self, scales: ScaleSet) -> PanelParams:
+    def panel_params(self, scales: ScaleSet, layers: Any = None) -> PanelParams:
         # slots dataclass 会重建类，零参 super() 拿不到新类；显式走基类。
-        base = CartesianCoord.panel_params(self, scales)
+        base = CartesianCoord.panel_params(self, scales, layers)
         return replace(
             base,
             x_range=base.y_range,
@@ -1230,43 +1293,393 @@ class RadialCoord(CoordBase):
 
 
 @dataclass(frozen=True, slots=True)
-class SfCoord(CoordBase):
-    """`coord_sf()`：最小可用（identity 投影）。
+class SfGeometry:
+    """`coord_sf()` 的解析结果（挂在 :attr:`PanelParams.sf` 上）。
 
-    真正的投影 / graticule / sf 几何归 M3-2。这里 `crs` / `default_crs` /
-    `datum` 只要给了非空值就报 :class:`CoordError`，消息点名 M3-2，不静默
-    当 identity 画错图。
+    - `crs` / `default_crs`：目标坐标系与非 sf 图层的缺省坐标系；
+    - `graticule`：面板 bbox 内的经纬网（坐标已在目标 CRS），面板网格与轴刻度
+      都从它派生；
+    - `ticks`：四个轴位的 `(目标 CRS 下的位置, 标签)`，由
+      `view_scales_from_graticule()` 的贴边判定得到。
+    """
+
+    crs: CRS | None = None
+    default_crs: CRS | None = None
+    datum: CRS | None = None
+    graticule: tuple[GraticuleLine, ...] = ()
+    ticks: Mapping[str, tuple[tuple[float, str], ...]] = MappingProxyType({})
+
+    @property
+    def is_longlat(self) -> bool:
+        return self.crs is not None and self.crs.is_longlat
+
+
+@dataclass(frozen=True, slots=True)
+class MapGeometry:
+    """`coord_map()` 的解析结果：投影参数 + 投影后的范围（`x.proj` / `y.proj`）。"""
+
+    projection: str
+    params: tuple[float, ...]
+    orientation: tuple[float, float, float]
+    x_proj: tuple[float, float]
+    y_proj: tuple[float, float]
+
+    def project(self, xs: Any, ys: Any) -> tuple[np.ndarray, np.ndarray]:
+        from ggcore.sf import mapproject
+
+        px, py = mapproject(
+            xs, ys, projection=self.projection, params=self.params, orientation=self.orientation
+        )
+        x0, x1 = self.x_proj
+        y0, y1 = self.y_proj
+        return ((px - x0) / (x1 - x0), (py - y0) / (y1 - y0))
+
+
+def _sf_data_crs(layers: Any) -> CRS | None:
+    """第一层带 CRS 的几何列 → 数据 CRS（上游 `CoordSf$determine_crs()`）。"""
+    if not layers:
+        return None
+    for table in layers:
+        if table is None or "geometry" not in table:
+            continue
+        column = table.column("geometry")
+        for item, missing in zip(
+            column.values.tolist(), np.asarray(column.na_mask, dtype=bool).tolist(), strict=True
+        ):
+            if missing or item is None:
+                continue
+            crs = getattr(item, "crs", None)
+            if crs is not None:
+                return crs
+    return None
+
+
+def _sf_geometry_bbox(layers: Any, target: CRS | None) -> tuple[float, float, float, float] | None:
+    """所有 sf 图层的几何 bbox（投到 `target` 后）。"""
+    boxes: list[tuple[float, float, float, float]] = []
+    if not layers:
+        return None
+    for table in layers:
+        if table is None or "geometry" not in table:
+            continue
+        column = table.column("geometry")
+        for item, missing in zip(
+            column.values.tolist(), np.asarray(column.na_mask, dtype=bool).tolist(), strict=True
+        ):
+            if missing or item is None or item.is_empty:
+                continue
+            geometry = item if target is None or item.crs == target else item.transform(target)
+            try:
+                boxes.append(geometry.bbox())
+            except SfError:  # pragma: no cover - 空几何
+                continue
+    if not boxes:
+        return None
+    return (
+        min(box[0] for box in boxes),
+        min(box[1] for box in boxes),
+        max(box[2] for box in boxes),
+        max(box[3] for box in boxes),
+    )
+
+
+def _parse_label_axes(value: Any) -> Mapping[str, str]:
+    """`parse_axes_labeling()`：`"--EN"` 或 `{"bottom": "E", ...}`。"""
+    sides = ("top", "right", "bottom", "left")
+    if value is None:
+        return MappingProxyType(dict(zip(sides, "--EN", strict=True)))
+    if isinstance(value, str):
+        text = value
+        if len(text) != 4:
+            raise CoordError(f"label_axes 必须是 4 个字符（top/right/bottom/left），收到 {value!r}")
+        return MappingProxyType(dict(zip(sides, text, strict=True)))
+    if isinstance(value, Mapping):
+        return MappingProxyType({side: str(value.get(side, "-")) for side in sides})
+    raise CoordError(f"label_axes 只接受字符串或映射，收到 {type(value).__name__}")
+
+
+def _parse_label_graticule(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return tuple(value)
+    raise CoordError(f"label_graticule 只接受字符串，收到 {type(value).__name__}")
+
+
+def _view_scale_ticks(
+    lines: Sequence[GraticuleLine],
+    axis: str,
+    side: str,
+    label: str,
+    label_graticule: Sequence[str],
+    ranges: Mapping[str, tuple[float, float]],
+) -> tuple[tuple[float, str], ...]:
+    """`view_scales_from_graticule()`：一条轴上的刻度位置 + 标签。"""
+    orth = "y" if axis == "x" else "x"
+    thres_low, thres_high = ranges[orth]
+    span = thres_high - thres_low
+    orth_start = np.array([getattr(line, f"{orth}_start") for line in lines], dtype=float)
+    orth_end = np.array([getattr(line, f"{orth}_end") for line in lines], dtype=float)
+    if side in ("top", "right"):
+        threshold = thres_low + 0.999 * span
+        accept_start = orth_start > threshold
+        accept_end = orth_end > threshold
+    else:
+        threshold = thres_low + 0.001 * span
+        accept_start = orth_start < threshold
+        accept_end = orth_end < threshold
+    if not bool(np.any(accept_start | accept_end)):
+        eps = math.sqrt(2.2250738585072014e-308)
+        subtract = 90.0 if side in ("top", "bottom") else 0.0
+        straight = np.array(
+            [
+                abs(line.angle_start - subtract) < eps and abs(line.angle_end - subtract) < eps
+                for line in lines
+            ],
+            dtype=bool,
+        )
+        accept_start = straight
+        accept_end = np.zeros(len(lines), dtype=bool)
+
+    types = np.array([line.type for line in lines], dtype=object)
+    idx_start: list[int] = [int(i) for i in np.flatnonzero((types == label) & accept_start)]
+    idx_end: list[int] = [int(i) for i in np.flatnonzero((types == label) & accept_end)]
+    if "S" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "E") & accept_start)]
+    if "N" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "E") & accept_end)]
+    if "W" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "N") & accept_start)]
+    if "E" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "N") & accept_end)]
+
+    idx_start = list(dict.fromkeys(idx_start))
+    idx_end = list(dict.fromkeys(idx_end))
+    attr = "x" if axis == "x" else "y"
+    positions = [getattr(lines[i], f"{attr}_start") for i in idx_start] + [
+        getattr(lines[i], f"{attr}_end") for i in idx_end
+    ]
+    labels = [lines[i].label for i in idx_start] + [lines[i].label for i in idx_end]
+    pairs = sorted(zip(positions, labels, strict=True), key=lambda item: item[0])
+    return tuple((float(position), str(text)) for position, text in pairs)
+
+
+def _sf_axis_ticks(
+    lines: Sequence[GraticuleLine],
+    ranges: Mapping[str, tuple[float, float]],
+    label_axes: Mapping[str, str],
+    label_graticule: Sequence[str],
+) -> dict[str, tuple[tuple[float, str], ...]]:
+    out: dict[str, tuple[tuple[float, str], ...]] = {}
+    for side in ("bottom", "left", "top", "right"):
+        axis = "x" if side in ("bottom", "top") else "y"
+        # `label_axes` 是 "--EN" 时 top / right 的 label 是 "-"（没有主轴标签），
+        # 但 `label_graticule = "NSWE"` 仍可以在这些边上加标签——上游
+        # `view_scales_from_graticule()` 的两套来源是**相加**的，不能提前返回。
+        label = label_axes.get(side, "-")
+        out[side] = _view_scale_ticks(lines, axis, side, label, label_graticule, ranges)
+    return out
+
+
+@dataclass(frozen=True, slots=True)
+class SfCoord(CoordBase):
+    """`coord_sf()`：真实空间坐标（EPSG:4326 / 3857 / 3347）。
+
+    与 `R/coord-sf.R` 对齐的三件事：
+
+    1. **CRS**：`crs` 缺省取第一层几何的 CRS；`default_crs` 是非 sf 图层的
+       坐标系（NULL = 与 `crs` 相同）；
+    2. **范围**：比例尺 limits 先按 `lims_method`（cross / box / orthogonal /
+       geometry_bbox）投到 `crs`，再 5% expand；经纬度数据的面板比例是
+       `1/cos(中心纬度)`；
+    3. **graticule**：面板 bbox 内的经纬网，grid 与轴标签都从它派生（
+       `st_graticule()` 的移植在 :mod:`ggcore.sf`）。
     """
 
     crs: Any = None
     default_crs: Any = None
-    datum: Any = None
+    datum: Any = 4326
     lims_method: str = "cross"
+    label_graticule: Any = None
+    label_axes: Any = None
     ndiscr: int = 100
+    default: bool = False
     name: str = field(default="sf", init=False)
 
     def __post_init__(self) -> None:
         CoordBase.__post_init__(self)
-        requested = [
-            name for name in ("crs", "default_crs", "datum") if getattr(self, name) is not None
-        ]
-        if requested:
+        st_crs(self.crs) if self.crs is not None else None
+        st_crs(self.default_crs) if self.default_crs is not None else None
+        st_crs(self.datum) if self.datum is not None else None
+        if self.lims_method not in ("cross", "box", "orthogonal", "geometry_bbox"):
             raise CoordError(
-                f"coord_sf({', '.join(requested)}) 需要真实的空间投影，M2-1 只做注册与最小可用"
-                "（identity 投影）；投影 / graticule / sf 几何归 M3-2，见 docs/notes/coord.md"
+                f"lims_method 只能是 cross / box / orthogonal / geometry_bbox，"
+                f"收到 {self.lims_method!r}"
             )
+        _parse_label_axes(self.label_axes)
+        _parse_label_graticule(self.label_graticule)
+        if isinstance(self.ndiscr, bool) or int(self.ndiscr) < 2:
+            raise CoordError(f"ndiscr 至少是 2，收到 {self.ndiscr!r}")
 
-    def _decorate(self, params: PanelParams) -> PanelParams:
-        # CoordSf$aspect(): 非经纬度数据 ratio = 1 → 面板高/宽 = y 跨度 / x 跨度。
-        return replace(params, ratio=1.0)
+    # -- 参数 -------------------------------------------------------------
+
+    def get_default_crs(self) -> CRS | None:
+        return None if self.default_crs is None else st_crs(self.default_crs)
+
+    def _label_axes(self) -> Mapping[str, str]:
+        return _parse_label_axes(self.label_axes)
+
+    def _label_graticule(self) -> tuple[str, ...]:
+        value = self.label_graticule
+        if value is None and self.label_axes is None:
+            return ()
+        return _parse_label_graticule(value)
+
+    # -- 面板参数 ---------------------------------------------------------
+
+    def panel_params(self, scales: ScaleSet, layers: Any = None) -> PanelParams:
+        data_crs = _sf_data_crs(layers)
+        target = st_crs(self.crs) if self.crs is not None else data_crs
+        default = self.get_default_crs()
+        scales_obj = {axis: scales.scale(axis) for axis in AXES}
+        base: dict[str, tuple[float, float]] = {}
+        for axis in AXES:
+            scale = scales_obj[axis]
+            if scale is not None and bool(getattr(scale, "discrete", False)):
+                raise CoordError(
+                    f"coord_sf 的 {axis} 轴需要连续位置标度；离散位置在空间坐标里没有意义"
+                )
+            coord_limit = getattr(self, f"{axis}lim")
+            if coord_limit is not None:
+                values = [float(value) for value in coord_limit]
+                base[axis] = (min(values), max(values))
+            else:
+                limits = scales.limits(axis) if scale is not None else (0.0, 1.0)
+                if limits is None or len(tuple(limits)) != 2:
+                    limits = (0.0, 1.0)
+                low, high = float(limits[0]), float(limits[1])
+                base[axis] = (min(low, high), max(low, high))
+        source = default if default is not None else target
+        if target is not None and source is not None and target != source:
+            xs, ys = calc_limits_bbox(base["x"], base["y"], target, source, self.lims_method)
+            finite = np.isfinite(xs) & np.isfinite(ys)
+            if not bool(finite.any()):
+                raise CoordError(
+                    "coord_sf 的 x/y limits 在投影后不是有限值；"
+                    '考虑 lims_method = "geometry_bbox" 或 default_crs = None'
+                )
+            base["x"] = (float(np.min(xs[finite])), float(np.max(xs[finite])))
+            base["y"] = (float(np.min(ys[finite])), float(np.max(ys[finite])))
+
+        # 上游 `setup_panel_params()` 在「没有显式 limits」时把几何的 bbox 并进
+        # 标度范围：投影后的 limits 只是近似（bbox 的四条边在非线性变换下不是
+        # 直线），并上真实 bbox 才不会把图形切掉。
+        if (
+            target is not None
+            and self.xlim is None
+            and self.ylim is None
+            and not self._has_explicit_limits(scales_obj)
+        ):
+            geometry_bbox = _sf_geometry_bbox(layers, target)
+            if geometry_bbox is not None:
+                xmin, ymin, xmax, ymax = geometry_bbox
+                base["x"] = (min(base["x"][0], xmin), max(base["x"][1], xmax))
+                base["y"] = (min(base["y"][0], ymin), max(base["y"][1], ymax))
+
+        ranges: dict[str, tuple[float, float]] = {}
+        for axis in AXES:
+            expansion = self._expansion(scales_obj[axis], axis)
+            low, high = expand_range(base[axis][0], base[axis][1], expansion.mult, expansion.add)
+            if high <= low:
+                low, high = low - 0.5, high + 0.5
+            ranges[axis] = (low, high)
+
+        lon, lat = self._explicit_breaks(scales_obj)
+        lines = st_graticule(
+            (ranges["x"][0], ranges["y"][0], ranges["x"][1], ranges["y"][1]),
+            target,
+            datum=self.datum,
+            lon=lon,
+            lat=lat,
+            ndiscr=int(self.ndiscr),
+        )
+        ticks = _sf_axis_ticks(lines, ranges, self._label_axes(), self._label_graticule())
+        ratio = 1.0
+        if target is not None and target.is_longlat:
+            mid = (ranges["y"][0] + ranges["y"][1]) / 2.0
+            if abs(mid) >= 90.0:
+                raise CoordError(f"coord_sf 的中心纬度 {mid:g} 不在 (-90, 90) 内")
+            ratio = 1.0 / math.cos(math.radians(mid))
+
+        params = PanelParams(
+            x_range=ranges["x"],
+            y_range=ranges["y"],
+            x_limits=base["x"],
+            y_limits=base["y"],
+            clip=self.clip,
+            ratio=ratio,
+            coord="sf",
+            discrete=MappingProxyType({"x": False, "y": False}),
+            reverse=MappingProxyType({axis: self._reverse_flag(axis) for axis in AXES}),
+            trans=MappingProxyType({}),
+            cont_ranges=MappingProxyType(ranges),
+        )
+        return replace(
+            params,
+            sf=SfGeometry(
+                crs=target,
+                default_crs=default,
+                datum=None if self.datum is None else st_crs(self.datum),
+                graticule=tuple(lines),
+                ticks=MappingProxyType(ticks),
+            ),
+        )
+
+    def _has_explicit_limits(self, scales_obj: Mapping[str, Any]) -> bool:
+        """标度上有没有显式 `limits`（有就不把几何 bbox 并进范围）。"""
+        for scale in scales_obj.values():
+            if scale is not None and hasattr(scale, "_has_param") and scale._has_param("limits"):
+                return True
+        return False
+
+    def _explicit_breaks(
+        self, scales_obj: Mapping[str, Any]
+    ) -> tuple[Sequence[float] | None, Sequence[float] | None]:
+        """`sf_breaks()`：显式 breaks 视为经纬度；`breaks = NULL` → 该方向无线。"""
+        out: list[Sequence[float] | None] = []
+        for axis in AXES:
+            scale = scales_obj[axis]
+            if scale is None or not hasattr(scale, "_has_param"):
+                out.append(None)
+                continue
+            if not scale._has_param("breaks"):
+                out.append(None)
+                continue
+            value = scale._param("breaks")
+            if value is None:
+                out.append(())
+                continue
+            if callable(value):
+                out.append(None)
+                continue
+            try:
+                out.append(tuple(float(item) for item in value if item is not None))
+            except (TypeError, ValueError):
+                out.append(None)
+        return out[0], out[1]
+
+    def _decorate(self, params: PanelParams) -> PanelParams:  # pragma: no cover - 不走这里
+        return params
 
 
 @dataclass(frozen=True, slots=True)
 class MapCoord(CoordBase):
-    """`coord_map()`：最小可用（只支持 `projection = "identity"`）。
+    """`coord_map()`：mapproj 投影（M3-2 实现球面 mercator）。
 
-    上游默认 `projection = "mercator"` 需要 mapproj；M2-1 只做注册，遇到真实
-    投影报错并点名 M3-2。
+    `CoordMap$setup_panel_params()` 的口径：在数据范围（经纬度）上铺 50×50 网格，
+    用 `mapproj::mapproject()` 投影，投影后范围的宽高比就是面板比例；`transform()`
+    把投影值 rescale 到 `x.proj` / `y.proj`。非 mercator 的投影（`gilbert` /
+    `ortho` / `conic` …）需要 mapproj 全量，本仓不引入，显式报错。
     """
 
     projection: str = "mercator"
@@ -1276,16 +1689,65 @@ class MapCoord(CoordBase):
 
     def __post_init__(self) -> None:
         CoordBase.__post_init__(self)
-        if str(self.projection) not in ("identity", "none"):
+        if str(self.projection) not in ("identity", "none", "mercator"):
             raise CoordError(
-                f"coord_map(projection = {self.projection!r}) 需要 mapproj 投影，M2-1 只做"
-                '注册与最小可用（projection = "identity"）；真正的空间能力归 M3-2'
+                f"coord_map(projection = {self.projection!r}) 尚未实现：M3-2 只移植了 "
+                'mapproj 的 "mercator"（其余投影需要 mapproj 全量，见 docs/notes/sf.md）'
             )
         if self.orientation is not None:
-            raise CoordError(f"coord_map(orientation = {self.orientation!r}) 尚未实现（M3-2）")
+            items = tuple(self.orientation)
+            if len(items) != 3:
+                raise CoordError(
+                    f"orientation 必须是 (latitude, longitude, rotation) 三元组，收到 {items!r}"
+                )
 
-    def _decorate(self, params: PanelParams) -> PanelParams:
-        return replace(params, ratio=1.0)
+    def panel_params(self, scales: ScaleSet, layers: Any = None) -> PanelParams:
+        from ggcore.sf import mapproject
+
+        base = CoordBase.panel_params(self, scales)
+        orientation = self._orientation(base)
+        grid = np.linspace(0.0, 1.0, 50)
+        xs = base.x_range[0] + (base.x_range[1] - base.x_range[0]) * np.repeat(grid, 50)
+        ys = base.y_range[0] + (base.y_range[1] - base.y_range[0]) * np.tile(grid, 50)
+        px, py = mapproject(
+            xs,
+            ys,
+            projection=str(self.projection),
+            params=tuple(self.parameters or ()),
+            orientation=orientation,
+        )
+        finite = np.isfinite(px) & np.isfinite(py)
+        if not bool(finite.any()):
+            raise CoordError(
+                f"coord_map({self.projection!r}) 投影失败：数据范围 {base.x_range!r} × "
+                f"{base.y_range!r} 全部落在投影定义域外"
+            )
+        x_proj = (float(np.min(px[finite])), float(np.max(px[finite])))
+        y_proj = (float(np.min(py[finite])), float(np.max(py[finite])))
+        x_span = base.x_range[1] - base.x_range[0]
+        y_span = base.y_range[1] - base.y_range[0]
+        x_proj_span = x_proj[1] - x_proj[0]
+        y_proj_span = y_proj[1] - y_proj[0]
+        if x_proj_span == 0 or y_proj_span == 0 or x_span == 0 or y_span == 0:
+            raise CoordError("coord_map 的投影范围退化成 0，无法计算面板比例")
+        ratio = (y_proj_span / x_proj_span) * (x_span / y_span)
+        geometry = MapGeometry(
+            projection=str(self.projection),
+            params=tuple(float(item) for item in (self.parameters or ())),
+            orientation=tuple(float(item) for item in orientation),
+            x_proj=x_proj,
+            y_proj=y_proj,
+        )
+        return replace(base, ratio=ratio, map_geom=geometry)
+
+    def _orientation(self, params: PanelParams) -> tuple[float, float, float]:
+        if self.orientation is not None:
+            items = tuple(float(item) for item in self.orientation)
+            return (items[0], items[1], items[2])
+        return (90.0, 0.0, (params.x_range[0] + params.x_range[1]) / 2.0)
+
+    def _decorate(self, params: PanelParams) -> PanelParams:  # pragma: no cover - 走 panel_params
+        return params
 
 
 @dataclass(frozen=True, slots=True)
@@ -1442,7 +1904,6 @@ def coord_from_component(component: Any) -> CoordBase:
         ("r_axis_inside", "r.axis.inside"),
         ("rotate_angle", "rotate.angle"),
         ("inner_radius", "inner.radius"),
-        ("label_graticule", "label_graticule"),
     ):
         if old in params and new in _COORD_PARAMS[name]:
             if new in params:

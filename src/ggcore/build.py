@@ -171,6 +171,8 @@ STAT_DEFAULT_AES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
         # 这里内联是因为 build 在 import 期不能反向 import stat_longtail）。
         "qq": (("x", "theoretical"), ("y", "sample")),
         "ecdf": (("x", "ecdf"), ("y", "ecdf")),
+        # `StatSfCoordinates$default_aes = aes(x = after_stat(x), y = after_stat(y))`
+        "sf_coordinates": (("x", "x"), ("y", "y")),
     }
 )
 
@@ -263,6 +265,8 @@ def _column_from_values(values: Any) -> Column:
             missing = np.array([item is None for item in items], dtype=bool)
             data = np.array(["" if item is None else item for item in items], dtype=object)
             return Column("str", data, na_mask=missing)
+        if any(type(item).__module__ == "ggcore.sf" for item in items if item is not None):
+            return _geometry_column(items)
         missing = _is_missing_array(array)
         data = np.array(
             [0.0 if flag else float(item) for item, flag in zip(items, missing, strict=True)],
@@ -270,6 +274,24 @@ def _column_from_values(values: Any) -> Column:
         )
         return Column("float", data, na_mask=missing)
     raise BuildError(f"不支持的 aes 结果类型 {array.dtype}")
+
+
+def _geometry_column(items: list[Any]) -> Column:
+    """object 列 → geometry 列（M3-2）：元素必须是 ggcore.sf.Geometry。"""
+    from ggcore.sf import Geometry
+
+    missing = np.array([item is None for item in items], dtype=bool)
+    data = np.empty(len(items), dtype=object)
+    for index, item in enumerate(items):
+        if item is None:
+            data[index] = Geometry("point", ())
+        elif isinstance(item, Geometry):
+            data[index] = item
+        else:
+            raise BuildError(
+                f"geometry 列里出现了 {type(item).__name__}；几何列只收 ggcore.sf.Geometry"
+            )
+    return Column("geometry", data, na_mask=missing)
 
 
 def _gather_column(column: Column, indices: np.ndarray) -> Column:
@@ -376,6 +398,17 @@ def compute_aesthetics(
     if table.nrows == 0 and layer.stat.name == "function":
         table = ColumnTable([("group", Column("int", np.array([1.0])))], nrows=1)
     mapping = _resolve_mapping(plot, layer)
+    # `LayerSf$setup_layer()`：sf 图层没有显式 `aes(geometry = ...)` 时，自动映射
+    # 数据里的 `geometry` 列（geom_sf / geom_sf_text / geom_sf_label 的标志是
+    # stat 为 sf / sf_coordinates）。
+    if (
+        "geometry" not in mapping
+        and layer.stat.name in ("sf", "sf_coordinates")
+        and "geometry" in table
+    ):
+        merged = dict(mapping)
+        merged["geometry"] = "geometry"
+        mapping = as_aes(merged)
     nrows = table.nrows
 
     columns: list[tuple[str, Column]] = []
@@ -487,6 +520,7 @@ def compute_stat(
     *,
     scales: Any = None,
     raw: ColumnTable | None = None,
+    coord: Any = None,
 ) -> ColumnTable:
     """阶段 2：按 `layer.stat.name` 算统计量（实现见 :mod:`ggcore.stat`）。
 
@@ -500,7 +534,7 @@ def compute_stat(
         return _EMPTY
     from ggcore.stat import compute_stat as _compute
 
-    return _compute(layer, aesthetics, scales=scales, raw=raw)
+    return _compute(layer, aesthetics, scales=scales, raw=raw, coord=coord)
 
 
 # ---------------------------------------------------------------------------
@@ -1056,13 +1090,15 @@ def _compute_stages(
     index: int,
     raw: ColumnTable | None = None,
     scales: Any = None,
+    coord: Any = None,
 ) -> _Stages:
     """阶段 2–4：输入是已经过位置标度第一次编码的 `Aesthetics`。
 
     `raw` 是映射前的美学表（同 :func:`compute_position` 的 `raw`）；`scales` 是
-    stat 需要的面板标度（`stat_bin` 的断点范围）。
+    stat 需要的面板标度（`stat_bin` 的断点范围）；`coord` 给 `stat_sf` 用
+    （bbox 要回到 `default_crs`）。
     """
-    statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw)
+    statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw, coord=coord)
     mapped = map_statistic(layer, statistic, aesthetics)
     positioned = compute_position(layer, mapped, index, raw)
     return _Stages(index, layer, aesthetics, statistic, mapped, positioned)
@@ -1196,12 +1232,13 @@ def _compute_panel_stages(
     panels: np.ndarray,
     raw: ColumnTable | None = None,
     scales: Any = None,
+    coord: Any = None,
 ) -> _Stages:
     """阶段 2–4：stat 按 PANEL 分组；position 整层调用一次（自己拆面板）。"""
     if aesthetics.empty:
         return _Stages(index, layer, aesthetics, _EMPTY, _EMPTY, _EMPTY)
     if layer.stat.name == "identity":
-        statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw)
+        statistic = compute_stat(layer, aesthetics, scales=scales, raw=raw, coord=coord)
     else:
         statistic = _concat_tables(
             [
@@ -1210,6 +1247,7 @@ def _compute_panel_stages(
                     replace(aesthetics, table=_slice_table(aesthetics.table, rows), empty=False),
                     scales=_scales_for(scales, panel),
                     raw=raw,
+                    coord=coord,
                 )
                 for panel, rows in _panel_slices(panels)
             ]
@@ -1298,6 +1336,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         return _build_plot_facets(plot, facet)
     layout = facet.compute_layout([])
     scales = ScaleSet(plot.scales)
+    coord = coord_from_component(plot.coordinates)
     raw = [compute_aesthetics(plot, layer, index) for index, layer in enumerate(plot.layers)]
     # 位置标度映射前的美学表：geom 的 `setup_params()` 用它判断离散位置
     # （R 的 `is_mapped_discrete()`，M1-7 的横向 geom）。
@@ -1307,7 +1346,7 @@ def build_plot(plot: ggplot) -> PlotBuild:
         _train(scales, aesthetics.table)
     mapped = [map_position(scales, aesthetics) for aesthetics in raw]
     stages = [
-        _compute_stages(aesthetics, layer, index, raw_tables[index], scales)
+        _compute_stages(aesthetics, layer, index, raw_tables[index], scales, coord=coord)
         for index, (aesthetics, layer) in enumerate(zip(mapped, plot.layers, strict=True))
     ]
     # 第二段训练用 position 之后的数据（含 xmin/xmax/ymin/ymax），见 build_layer。
@@ -1316,9 +1355,8 @@ def build_plot(plot: ggplot) -> PlotBuild:
     for staged in stages:
         _train(scales, staged.positioned)
     builds = tuple(_assemble(staged, scales, plot.theme) for staged in stages)
-    coord = coord_from_component(plot.coordinates)
-    panel_params = coord.panel_params(scales)
     scaled = tuple(build.scaled for build in builds)
+    panel_params = coord.panel_params(scales, layers=scaled)
     panel_params = panel_params.with_counts(
         out_of_bounds=count_out_of_bounds(panel_params, scaled),
         dropped=count_dropped(scaled),
@@ -1429,7 +1467,7 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     ]
     stages = [
         _compute_panel_stages(
-            aesthetics, layer, index, maps[index].panels, raw_tables[index], scales
+            aesthetics, layer, index, maps[index].panels, raw_tables[index], scales, coord=coord
         )
         for index, (aesthetics, layer) in enumerate(zip(mapped, layers, strict=True))
     ]
@@ -1473,10 +1511,10 @@ def _build_plot_facets(plot: ggplot, facet: FacetBase) -> PlotBuild:
     panels: list[PanelBuild] = []
     for panel in layout.panel_ids:
         panel_scales = scales.for_panel(panel)
-        panel_params = coord.panel_params(panel_scales)
         panel_tables = tuple(
             per_panel[panel] for per_panel in scaled_by_panel if panel in per_panel
         )
+        panel_params = coord.panel_params(panel_scales, layers=panel_tables)
         panel_params = panel_params.with_counts(
             out_of_bounds=count_out_of_bounds(panel_params, panel_tables),
             dropped=count_dropped(panel_tables),

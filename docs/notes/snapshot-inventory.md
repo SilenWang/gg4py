@@ -4,27 +4,26 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**274**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**37**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **37** 条（移交 M3）
+- 已纳管：**294**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**17**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **17** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `geom-sf` | m3 | 10 | 0 | 10 |
-| `coord_sf` | m3 | 9 | 0 | 9 |
 | `coord-polar` | m3 | 11 | 7 | 4 |
 | `guide-axis` | m3 | 23 | 19 | 4 |
 | `patterns` | m3 | 4 | 0 | 4 |
-| `coord-map` | m3 | 2 | 0 | 2 |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
+| `coord_sf` | m3 | 9 | 8 | 1 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
 | `geom-text` | m3 | 1 | 0 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
 | `coord-flip` | m2-closeout | 1 | 1 | 0 |
+| `coord-map` | m3 | 2 | 2 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
 | `draw-key` | m2-closeout | 6 | 6 | 0 |
 | `facet-` | m2-closeout | 4 | 4 | 0 |
@@ -38,6 +37,7 @@
 | `geom-path` | m2-closeout | 5 | 5 | 0 |
 | `geom-polygon` | m2-closeout | 2 | 2 | 0 |
 | `geom-raster` | m2-closeout | 12 | 12 | 0 |
+| `geom-sf` | m3 | 10 | 10 | 0 |
 | `geom-smooth` | m2-closeout | 2 | 2 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 274 | 37 |
+| **合计** | — | 311 | 294 | 17 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -74,6 +74,8 @@
 | `coord-cartesian/expand-range.svg` | `upstream-coord-cartesian-expand-range` |
 | `coord-cartesian/reversed-cartesian-coords.svg` | `upstream-coord-cartesian-reversed` |
 | `coord-flip/turning-off-secondary-title-with-coord-flip.svg` | `upstream-coord-flip-sec-title` |
+| `coord-map/coord-map-switched-scale-position.svg` | `upstream-coord-map-coord-map-switched-scale-position` |
+| `coord-map/usa-mercator.svg` | `upstream-coord-map-usa-mercator` |
 | `coord-polar/racetrack-plot-closed-and-has-center-hole.svg` | `upstream-coord-polar-racetrack-hole` |
 | `coord-polar/racetrack-plot-closed-and-no-center-hole.svg` | `upstream-coord-polar-racetrack-no-hole` |
 | `coord-polar/rays-circular-arcs-and-spiral-arcs.svg` | `upstream-coord-polar-rays` |
@@ -84,6 +86,14 @@
 | `coord-transform/basic-coord-transform-plot.svg` | `upstream-coord-transform-basic` |
 | `coord-transform/reversed-transformed-coords.svg` | `upstream-coord-transform-reversed` |
 | `coord-transform/sec-axis-with-coord-transform.svg` | `upstream-coord-transform-sec-axis` |
+| `coord_sf/limits-specified-in-long-lat.svg` | `upstream-coord-sf-limits-specified-in-long-lat` |
+| `coord_sf/limits-specified-in-projected-coords.svg` | `upstream-coord-sf-limits-specified-in-projected-coords` |
+| `coord_sf/no-breaks.svg` | `upstream-coord-sf-no-breaks` |
+| `coord_sf/no-panel-grid.svg` | `upstream-coord-sf-no-panel-grid` |
+| `coord_sf/non-sf-geoms-using-long-lat.svg` | `upstream-coord-sf-non-sf-geoms-using-long-lat` |
+| `coord_sf/non-sf-geoms-using-projected-coords.svg` | `upstream-coord-sf-non-sf-geoms-using-projected-coords` |
+| `coord_sf/reversed-sf-coords.svg` | `upstream-coord-sf-reversed-sf-coords` |
+| `coord_sf/sf-polygons.svg` | `upstream-coord-sf-sf-polygons` |
 | `draw-key/appropriate-colour-key-with-alpha-key-as-lines.svg` | `upstream-draw-key-appropriate-colour` |
 | `draw-key/circle-glyphs-of-2cm-size.svg` | `upstream-draw-key-circle-2cm` |
 | `draw-key/horizontal-boxplot-and-crossbar.svg` | `upstream-draw-key-horizontal-boxplot-crossbar` |
@@ -163,6 +173,16 @@
 | `geom-raster/discrete-positions.svg` | `upstream-geom-raster-discrete-positions` |
 | `geom-raster/irregular-categorical.svg` | `upstream-geom-raster-irregular-categorical` |
 | `geom-raster/rectangle-fallback.svg` | `upstream-geom-raster-rectangle-fallback` |
+| `geom-sf/geom-sf-line-legend.svg` | `upstream-geom-sf-line-legend` |
+| `geom-sf/geom-sf-point-legend.svg` | `upstream-geom-sf-point-legend` |
+| `geom-sf/geom-sf-polygon-legend.svg` | `upstream-geom-sf-polygon-legend` |
+| `geom-sf/labels-for-north-carolina.svg` | `upstream-geom-sf-labels-for-north-carolina` |
+| `geom-sf/mixed-geometry-types.svg` | `upstream-geom-sf-mixed-geometry-types` |
+| `geom-sf/north-carolina-county-boundaries-with-arrow.svg` | `upstream-geom-sf-north-carolina-county-boundaries-with-arrow` |
+| `geom-sf/north-carolina-county-boundaries-with-more-than-one-arrow.svg` | `upstream-geom-sf-north-carolina-county-boundaries-with-more-than-one-arrow` |
+| `geom-sf/north-carolina-county-boundaries.svg` | `upstream-geom-sf-north-carolina-county-boundaries` |
+| `geom-sf/spatial-points.svg` | `upstream-geom-sf-spatial-points` |
+| `geom-sf/texts-for-north-carolina.svg` | `upstream-geom-sf-texts-for-north-carolina` |
 | `geom-smooth/ribbon-turned-off-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-off` |
 | `geom-smooth/ribbon-turned-on-in-geom-smooth.svg` | `upstream-geom-smooth-ribbon-on` |
 | `geom-violin/basic.svg` | `upstream-geom-violin-basic` |
@@ -337,17 +357,6 @@
 
 ## 已知缺口
 
-### `coord-map` — 2 条 · SIL-715 · m3
-
-`coord_map()` 只做注册与最小可用；mapproj 投影与经纬度变换归 M3-2 空间能力。
-
-<details><summary>快照</summary>
-
-- `coord-map/coord-map-switched-scale-position.svg`
-- `coord-map/usa-mercator.svg`
-
-</details>
-
 ### `coord-polar` — 1 条 · SIL-715 · m3
 
 SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。
@@ -388,21 +397,13 @@ SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次�
 
 </details>
 
-### `coord_sf` — 9 条 · SIL-715 · m3
+### `coord_sf` — 1 条 · SIL-715 · m3
 
-空间坐标（`coord_sf`）的 graticule / crs 归 M3-2。
+SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；剩 `coord-sf-with-custom-guides` 是 plotmath 度数表达式 + `guide_none(angle)` / `n.dodge` 的自定义 guide 组合，版面差 2.85%（节点间 ≤ 2%），见 docs/notes/sf.md 的已知差异。
 
 <details><summary>快照</summary>
 
 - `coord_sf/coord-sf-with-custom-guides.svg`
-- `coord_sf/limits-specified-in-long-lat.svg`
-- `coord_sf/limits-specified-in-projected-coords.svg`
-- `coord_sf/no-breaks.svg`
-- `coord_sf/no-panel-grid.svg`
-- `coord_sf/non-sf-geoms-using-long-lat.svg`
-- `coord_sf/non-sf-geoms-using-projected-coords.svg`
-- `coord_sf/reversed-sf-coords.svg`
-- `coord_sf/sf-polygons.svg`
 
 </details>
 
@@ -433,25 +434,6 @@ SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mer
 <details><summary>快照</summary>
 
 - `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>
-
-### `geom-sf` — 10 条 · SIL-715 · m3
-
-空间几何（`geom_sf*`）归 M3-2；M2 尚未注册 sf 的 list-column 解析。
-
-<details><summary>快照</summary>
-
-- `geom-sf/geom-sf-line-legend.svg`
-- `geom-sf/geom-sf-point-legend.svg`
-- `geom-sf/geom-sf-polygon-legend.svg`
-- `geom-sf/labels-for-north-carolina.svg`
-- `geom-sf/mixed-geometry-types.svg`
-- `geom-sf/north-carolina-county-boundaries-with-arrow.svg`
-- `geom-sf/north-carolina-county-boundaries-with-more-than-one-arrow.svg`
-- `geom-sf/north-carolina-county-boundaries.svg`
-- `geom-sf/spatial-points.svg`
-- `geom-sf/texts-for-north-carolina.svg`
 
 </details>
 

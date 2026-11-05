@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "projection", "theme-complete"]
+ci = true
+title = "上游快照：non-sf-geoms-using-long-lat"
+source = "upstream:tests/testthat/_snaps/coord_sf/non-sf-geoms-using-long-lat.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：EPSG:3347（Statistics Canada Lambert）+ default_crs 的混层绘制。"

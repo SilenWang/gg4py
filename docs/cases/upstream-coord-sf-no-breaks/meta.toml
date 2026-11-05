@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：no breaks"
+source = "upstream:tests/testthat/_snaps/coord_sf/no-breaks.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：breaks = NULL 时 graticule 的经线 / 纬线全部清空（无刻度、无标签）。"

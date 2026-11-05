@@ -1,0 +1,7 @@
+family = "geom-sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：mixed-geometry-types"
+source = "upstream:tests/testthat/_snaps/geom-sf/mixed-geometry-types.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：geom_sf 的空间几何绘制。"

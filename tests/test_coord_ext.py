@@ -493,13 +493,16 @@ def test_coord_munch_densifies_edges_on_polar() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_sf_and_map_report_the_missing_spatial_capability() -> None:
-    with pytest.raises(CoordError, match="M3-2"):
-        coord_from_component(registry.coord_sf(crs="EPSG:4326"))
-    with pytest.raises(CoordError, match="M3-2"):
-        coord_from_component(registry.coord_map(projection="mercator"))
-    with pytest.raises(CoordError, match="M3-2"):
-        coord_from_component(registry.coord_map(projection="identity", orientation=(90, 0, 0)))
+def test_sf_and_map_accept_the_ported_projections() -> None:
+    # M3-2：EPSG:4326 / 3857 / 3347 与 mapproj mercator 都落地；不认识的 CRS /
+    # 投影仍然显式报错（不静默当 identity）。
+    sf_coord = coord_from_component(registry.coord_sf(crs="EPSG:4326", default_crs=4326))
+    assert isinstance(sf_coord, SfCoord)
+    assert isinstance(coord_from_component(registry.coord_map(projection="mercator")), MapCoord)
+    with pytest.raises(CoordError, match="尚未实现"):
+        coord_from_component(registry.coord_map(projection="gilbert"))
+    with pytest.raises(ValueError, match="不支持的 CRS"):
+        coord_from_component(registry.coord_sf(crs="EPSG:27700"))
     # identity 投影可用：与 coord_fixed(ratio = 1) 同一套范围 + 等比例
     identity = coord_from_component(registry.coord_map(projection="identity"))
     assert isinstance(identity, MapCoord)

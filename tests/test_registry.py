@@ -43,6 +43,7 @@ EXPECTED = {
         "rug",
         "map",
         # M2-7 长尾 B（SIL-735）
+        "sf",
         "text",
         "label",
         "jitter",
@@ -99,6 +100,8 @@ EXPECTED = {
         "manual",
         "spoke",
         "ydensity",
+        "sf",
+        "sf_coordinates",
     ),
     "position": (
         "identity",

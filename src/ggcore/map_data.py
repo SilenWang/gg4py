@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ggcore.map_data_usa import USA as _USA
+
 __all__ = ["STATE_UTAH", "map_frame"]
 
 #: `maps::map("state", "utah")` 的 lon / lat（逐点，闭合）。
@@ -151,8 +153,11 @@ STATE_UTAH: dict[str, list[float]] = {
 }
 
 #: `(database, regions)` → 内联的多边形（`group` 从 1 起，与 `map_data()` 同）。
-_DATABASES: dict[tuple[str, str], dict[str, list[float]]] = {
+#: 值可以是单多边形（`{"x": ..., "y": ...}`），也可以是多边形组
+#: （`{"groups": (((x, y), ...), ...)}`，M3-2 的 `map("usa", fill = TRUE)`）。
+_DATABASES: dict[tuple[str, str], Any] = {
     ("state", "utah"): STATE_UTAH,
+    ("usa", "."): {"groups": _USA},
 }
 
 
@@ -168,15 +173,18 @@ def map_frame(
     `xlim` / `ylim` 只做**保留框内点**的裁剪（与 `maps::map()` 的取框语义一致：
     落在框外的点不画；本仓不做线段与框的求交，因为内置数据量只有一份）。
     """
-    polygon = _DATABASES.get((database, regions))
-    if polygon is None:
+    entry = _DATABASES.get((database, regions))
+    if entry is None:
         known = ", ".join(f'("{db}", "{rg}")' for db, rg in sorted(_DATABASES))
         raise NotImplementedError(
-            f"annotation_borders() 只内置了 {known} 这一份地图数据（maps 是外部数据包，"
+            f"annotation_borders() 只内置了 {known} 这几份地图数据（maps 是外部数据包，"
             "完整移植归 M3-2 的空间能力）；需要别的区域请把 lon/lat 直接交给 "
             "annotate('polygon', x=..., y=..., group=...)"
         )
+    if isinstance(entry, dict) and "groups" in entry:
+        return _frame_from_groups(entry["groups"], xlim=xlim, ylim=ylim)
 
+    polygon = entry
     xs: list[float] = []
     ys: list[float] = []
     inside: list[bool] = []
@@ -196,3 +204,22 @@ def map_frame(
         "y": [y for y, keep in zip(ys, inside, strict=True) if keep],
         "group": [1.0] * sum(inside),
     }
+
+
+def _frame_from_groups(
+    groups: Any, *, xlim: Any = None, ylim: Any = None
+) -> dict[str, list[float]]:
+    """多多边形 → `{x, y, group}`（`group` 从 1 起，与 `map_data()` 同）。"""
+    xs: list[float] = []
+    ys: list[float] = []
+    ids: list[float] = []
+    for index, group in enumerate(groups, start=1):
+        for x, y in group:
+            if xlim is not None and not (float(xlim[0]) <= x <= float(xlim[1])):
+                continue
+            if ylim is not None and not (float(ylim[0]) <= y <= float(ylim[1])):
+                continue
+            xs.append(float(x))
+            ys.append(float(y))
+            ids.append(float(index))
+    return {"x": xs, "y": ys, "group": ids}

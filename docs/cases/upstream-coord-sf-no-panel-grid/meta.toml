@@ -1,0 +1,7 @@
+family = "coord_sf"
+features = ["coord-sf", "theme-complete"]
+ci = true
+title = "上游快照：no panel grid"
+source = "upstream:tests/testthat/_snaps/coord_sf/no-panel-grid.svg"
+tolerance = { png = 0.02 }
+notes = "M3-2：coord_sf 的面板网格来自 graticule，panel.grid 为 blank 时一条都不画。"

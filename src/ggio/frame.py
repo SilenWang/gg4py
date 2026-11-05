@@ -222,6 +222,8 @@ def _classify(value: Any) -> str:
         return "float"
     if isinstance(value, str):
         return "str"
+    if _is_geometry(value):
+        return "geometry"
     if isinstance(value, np.datetime64):
         return "datetime"
     if isinstance(value, np.timedelta64):
@@ -247,7 +249,19 @@ _FAMILY = {
     "datetime": "datetime",
     "date": "date",
     "timedelta": "timedelta",
+    "geometry": "geometry",
 }
+
+
+def _is_geometry(value: Any) -> bool:
+    """`ggcore.sf.Geometry` 的鸭子判定（避免 ggio → ggcore.sf 的导入顺序问题）。"""
+    return type(value).__module__ == "ggcore.sf" and type(value).__name__ == "Geometry"
+
+
+def _empty_geometry() -> Any:
+    from ggcore.sf import Geometry
+
+    return Geometry("point", ())
 
 
 def _datetime_seconds(value: Any) -> float:
@@ -277,6 +291,11 @@ def _infer_objects(values: Sequence[Any], name: str) -> Column:
     mask = np.fromiter((_is_missing(item) for item in items), dtype=bool, count=len(items))
     present = [item for item, missing in zip(items, mask, strict=True) if not missing]
     if not present:
+        if name == "geometry":
+            data = np.empty(len(items), dtype=object)
+            for index in range(len(items)):
+                data[index] = _empty_geometry()
+            return Column("geometry", data, na_mask=mask)
         return Column("float", np.zeros(len(items), dtype=np.float64), na_mask=mask)
 
     try:
@@ -290,6 +309,12 @@ def _infer_objects(values: Sequence[Any], name: str) -> Column:
             "同一列要么数值、要么字符串、要么日期时间"
         )
     family = families.pop()
+
+    if family == "geometry":
+        data = np.empty(len(items), dtype=object)
+        for index, (item, missing) in enumerate(zip(items, mask, strict=True)):
+            data[index] = _empty_geometry() if missing else item
+        return Column("geometry", data, na_mask=mask)
 
     if family == "bool":
         data = np.fromiter(
