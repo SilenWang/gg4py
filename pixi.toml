@@ -168,6 +168,26 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "docs:guide" = "PYTHONPATH=src python tools/docs/guide_examples.py"
 "docs:guide:check" = "PYTHONPATH=src python tools/docs/guide_examples.py --quiet"
 
+# SIL-828（M3-7）：文档 / gallery 链接检查。示例图画廊（docs/examples.md、README*.md）
+# 的外链判 200、本地目标存在、文档里写的 `pixi run …` 任务存在、示例资产齐全；
+# 35 图核对页只查它写的任务；加 `-- --viewer-gallery <gallery.html>` 还能把 viewer
+# 卡片链接过一遍本地静态服务判 200。
+# 与 `gallery:check` 的分工：那个查 viewer `gallery.html` 的卡片契约（含 IR / 缩略图），
+# 这个查文档与示例里的外链、相对路径和 `pixi run` 入口，两者不是同一份资产。
+# 不挂进 `check`：外链是第三方站点，CI 不该因为它抽风变红；无网时用 `-- --offline`。
+"docs:links" = "python tools/gallery/links.py"
+
+# --- SIL-828 · gallery 示例图（M3-7）-----------------------------------------
+# `examples/<name>/` 下每个目录是一张只依赖本体的图：`plot.py` 重画同目录的
+# PNG / SVG（产物入库，README 与 docs/examples.md 直接引用）。文档里把
+# `pixi run examples:<name>` 写成入口（README「What it draws」、docs/examples.md、
+# 各 `plot.py` 的 docstring），所以任务名必须与目录名一一对应——`docs:links`
+# 会核对这层对应关系，新增示例时在这里加一行。
+"examples:heatmap" = "PYTHONPATH=src python examples/heatmap/plot.py"
+"examples:bump-chart" = "PYTHONPATH=src python examples/bump-chart/plot.py"
+"examples:circular-barplot" = "PYTHONPATH=src python examples/circular-barplot/plot.py"
+"examples:mirrored-density" = "PYTHONPATH=src python examples/mirrored-density/plot.py"
+
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
 

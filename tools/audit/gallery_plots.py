@@ -10,12 +10,16 @@
     pixi run audit:gallery fig01 fig07
     pixi run audit:gallery --list
 
-三态（`VERDICTS`）与审计表一致：
+四态（`VERDICTS`）与审计表一致：
 
 - `ok`：画得出，视觉等价（可能要在写法上绕一下，注释里写明）；
 - `diff`：画得出但差异明显（注释里写归因）；
-- `missing`：画不出（缺什么能力写在注释里）。这类函数故意调用尚不存在的
-  API，运行器把真实报错收集进报告，作为「确实没有」的证据。
+- `out`：**不做**——第三方扩展包的布局 / 几何（patchwork / ggforce / ggstream /
+  ggExtra / ggraph / treemapify 一类），按 2026-11-04 的决策只在文档里给本体等价写法；
+- `missing`：画不出（缺本体能力；缺什么写在注释里）。
+
+`out` / `missing` 的函数故意调用尚不存在的 API，运行器把真实报错收集进输出，
+作为「确实没有」的证据；哪天同名能力真落地了，运行器会打 `STALE` 并判非 0。
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from typing import Any
 import numpy as np
 
 from ggcore.arrow import arrow
+from ggcore.map_data import map_frame
 from ggcore.plot import (
     aes,
     coord_fixed,
@@ -49,6 +54,7 @@ from ggcore.plot import (
     geom_label,
     geom_line,
     geom_point,
+    geom_polygon,
     geom_rect,
     geom_ribbon,
     geom_segment,
@@ -77,7 +83,7 @@ from ggcore.plot import (
     theme_void,
 )
 from ggcore.theme import theme
-from ggio.frame import from_dict
+from ggio.frame import from_dict, to_column_table
 
 __all__ = ["FIGURES", "VERDICTS", "main"]
 
@@ -756,31 +762,64 @@ def fig31_multi_legend_inside() -> Any:
 
 
 def fig32_marginal_scatter() -> Any:
-    """r-graph-gallery「Scatter with marginal distribution」：缺版面组合。"""
+    """r-graph-gallery「Scatter with marginal distribution」：不做（ggExtra / patchwork 版面组合）。
+
+    本体不做多图版面组合（2026-11-04 决策），等价写法是主图 + 另出一张边缘分布图：
+    主图 `geom_point()` + `geom_smooth()`，边缘用 `geom_histogram()` 或
+    `geom_density()` 单独出一张（两张图并列放在文档里，或前端排版，不拼 gtable）。
+    """
     from ggcore.plot import ggExtraMarginal
 
     return ggExtraMarginal()
 
 
 def fig33_choropleth_map() -> Any:
-    """r-graph-gallery「Choropleth map」：投影 / graticule 未实现。"""
-    data = from_dict({"lon": [2.0, 3.0, 4.0], "lat": [46.0, 47.0, 48.0], "value": [1.0, 2.0, 3.0]})
+    """r-graph-gallery「Choropleth map」：usa 多边形按区域填色，走 coord_sf 的 EPSG:3857。
+
+    R 侧通常写 `coord_sf(crs = 3857)` 或 PROJ 的其它投影；本仓只内置 4 个 CRS
+    （4326 / CRS84 / 3857 / 3347，见 `docs/notes/sf.md`），这里取 3857——同一张分级
+    地图的墨卡托版本，不引入 PROJ。数值按区域就地生成，验的是「多边形 + 投影 +
+    连续填充 + 图例」这条路径。
+    """
+    frame = map_frame("usa", ".")
+    groups = sorted(set(frame["group"]))
+    values = {group: 1.0 + (index * 1.7) % 5.0 for index, group in enumerate(groups)}
+    data = to_column_table(
+        {
+            "x": frame["x"],
+            "y": frame["y"],
+            "group": [str(group) for group in frame["group"]],
+            "value": [values[group] for group in frame["group"]],
+        }
+    )
     return (
-        ggplot(data, aes(x="lon", y="lat", fill="value"))
-        + geom_point()
-        + coord_sf(crs="ESRI:54009")
+        ggplot(data, aes(x="x", y="y", group="group", fill="value"))
+        + geom_polygon(colour="grey40", linewidth=0.2)
+        + scale_fill_gradient(low="#f7fbff", high="#08306b", name="指数")
+        + coord_sf(crs="EPSG:3857")
+        + labs(title="Choropleth (EPSG:3857)")
+        + theme_void()
     )
 
 
 def fig34_network_graph() -> Any:
-    """r-graph-gallery「Network graph」：缺边 / 节点的图布局。"""
+    """r-graph-gallery「Network graph」：不做（ggraph 布局），节点坐标自己算后画线段。
+
+    等价写法：按圆形 / 层次布局自己算节点坐标，节点 `geom_point()`、
+    标签 `geom_text()`、边 `geom_segment()`（或 `geom_curve()` 加弧）——
+    力导向布局本身是图算法，不在本体范围内。
+    """
     from ggcore.plot import geom_edge_link
 
     return geom_edge_link()
 
 
 def fig35_treemap() -> Any:
-    """r-graph-gallery「Treemap」：缺 squarify 布局 + 矩形层级几何。"""
+    """r-graph-gallery「Treemap」：不做（treemapify 的 squarify 布局）。
+
+    等价写法：占比用堆叠条 / 分组柱表达；要矩形版式就自己算矩形坐标，
+    用 `geom_rect(aes(xmin, xmax, ymin, ymax, fill))` 画（层级标签自己算位置）。
+    """
     from ggcore.plot import geom_treemap
 
     return geom_treemap()
@@ -828,7 +867,9 @@ FIGURES: dict[str, Any] = {
     "fig35": fig35_treemap,
 }
 
-#: 三态。`missing` 的函数必须失败；`ok` / `diff` 必须成功。
+#: 四态。`missing` / `out` 的函数必须失败（没有同名 API 就是证据）；`ok` / `diff` 必须成功。
+#: - `out`：按 2026-11-04 的决策**不做**（第三方扩展包的布局 / 几何），只在文档里给
+#:   本体等价写法——函数仍保留，用来钉住「我们确实没实现这个同名 API」。
 VERDICTS: dict[str, str] = {
     "fig01": "ok",
     "fig02": "ok",
@@ -839,7 +880,7 @@ VERDICTS: dict[str, str] = {
     "fig07": "diff",
     "fig08": "ok",
     "fig09": "ok",
-    "fig10": "missing",
+    "fig10": "out",
     "fig11": "ok",
     "fig12": "ok",
     "fig13": "ok",
@@ -851,20 +892,20 @@ VERDICTS: dict[str, str] = {
     "fig19": "ok",
     "fig20": "ok",
     "fig21": "ok",
-    "fig22": "missing",
+    "fig22": "out",
     "fig23": "ok",
     "fig24": "ok",
     "fig25": "ok",
     "fig26": "ok",
-    "fig27": "missing",
+    "fig27": "out",
     "fig28": "ok",
     "fig29": "ok",
     "fig30": "ok",
     "fig31": "ok",
-    "fig32": "missing",
-    "fig33": "missing",
-    "fig34": "missing",
-    "fig35": "missing",
+    "fig32": "out",
+    "fig33": "ok",
+    "fig34": "out",
+    "fig35": "out",
 }
 
 
@@ -905,13 +946,13 @@ def main(argv: list[str] | None = None) -> int:
         expected = VERDICTS[name]
         try:
             plot = fn()
-            if expected == "missing":
-                # 缺能力的函数如果**成功**了，说明缺口已经被补上，审计表要更新。
+            if expected in ("missing", "out"):
+                # 不做 / 画不出的函数如果**成功**了，说明能力已经补上，审计表要更新。
                 # 只构造对象还不够（coord_sf 的投影校验在构建期），所以真构建一次。
                 from ggcore.build import build_plot
 
                 build_plot(plot)
-                print(f"STALE {name}  已能构建，但审计表记为 missing")
+                print(f"STALE {name}  已能构建，但审计表记为 {expected}")
                 failures += 1
                 continue
             result = ggsave(plot, out / f"{name}.svg", width=6, height=4)
@@ -920,6 +961,9 @@ def main(argv: list[str] | None = None) -> int:
             detail = f"{type(exc).__name__}: {exc}".splitlines()[0]
             if expected == "missing":
                 print(f"MISS  {name}  {detail}")
+            elif expected == "out":
+                # 第三方扩展：确认我们没有同名 API（报错就是证据），不算失败。
+                print(f"OUT   {name}  {detail}")
             else:
                 failures += 1
                 print(f"FAIL  {name}  {detail}")
