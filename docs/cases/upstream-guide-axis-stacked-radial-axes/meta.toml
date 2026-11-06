@@ -1,0 +1,7 @@
+family = "guide-axis"
+features = ["guide-axis-stack", "guide-axis-theta", "coord-radial"]
+ci = false
+title = "上游快照：stacked radial axes"
+source = "upstream:tests/testthat/_snaps/guide-axis/stacked-radial-axes.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻（17.8% → 2.91% / 1.17%，未到 2% 档，不自行放宽）：guide_axis_stack(axis_theta) 的多层半径偏移与 r / r.sec 面板内叠放轴已做；剩下两条旋转 r 轴标签沿轴向的落点。"

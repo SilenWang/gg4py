@@ -61,6 +61,7 @@ __all__ = [
     "polar_axis_breaks",
     "polar_axis_row_cm",
     "polar_minor_breaks",
+    "polar_r_ticks",
     "sec_axis",
     "secondary_ticks",
     "text_line_cm",
@@ -635,12 +636,26 @@ def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     """极坐标的 r 轴（`left`）：`r_rescale(r, r.range) + 0.5`（上游同式）。
 
     theta 轴没有 gtable 槽（R 的 `render_axis_h()` 给的是 `zeroGrob()`），
-    标签画在面板里，由 :func:`polar_theta_ticks` 提供。
+    标签画在面板里，由 :func:`polar_theta_ticks` 提供。`r.axis.inside` 为真时
+    这条轴不占 gtable 槽（返回值空），但断点仍由 :func:`polar_r_ticks` 提供——
+    面板内的旋转轴要用同一组位置（SIL-844）。
     """
     polar = params.polar
     if side in ("bottom", "top"):
         return AxisTicks(side, (), ())
     if bool(getattr(polar, "r_axis_inside", False)):
+        return AxisTicks(side, (), ())
+    return polar_r_ticks(scale, params, side)
+
+
+def polar_r_ticks(scale: Any, params: Any, side: str = "left") -> AxisTicks:
+    """r 轴的断点 / 标签（不管 `r.axis.inside`）。
+
+    位置是 `r_rescale(r, r.range) + 0.5`（面板 npc），与上游
+    `CoordRadial$transform()` 对 r 轴 key 的结果一致。
+    """
+    polar = params.polar
+    if polar is None:
         return AxisTicks(side, (), ())
     axis = params.screen_axis(side)
     values: list[float] = []

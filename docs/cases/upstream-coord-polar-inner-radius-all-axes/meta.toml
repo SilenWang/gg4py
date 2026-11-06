@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "coord-polar", "guide-axis", "guide-axis-theta"]
+ci = true
+title = "上游快照：inner.radius with all axes"
+source = "upstream:tests/testthat/_snaps/coord-polar/inner-radius-with-all-axes.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻：radial 次轴槽（r.sec / theta.sec）+ 逐 guide theme= 着色。"

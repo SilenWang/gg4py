@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "coord-polar", "guide-axis", "guide-axis-theta"]
+ci = true
+title = "上游快照：partial with all axes"
+source = "upstream:tests/testthat/_snaps/coord-polar/partial-with-all-axes.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻（35.0% → 1.00% / 0.21%）：theta = y 的 partial arc 环形扇区背景 + r.axis.inside = TRUE 的面板内旋转轴 + r.sec / theta.sec 次轴槽与逐 guide theme=。"

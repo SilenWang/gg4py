@@ -2261,8 +2261,16 @@ _BASELINE_FRACTIONS: tuple[float, ...] = (0.0, 0.5, 1.0)
 
 
 def _nearest(fractions: Sequence[float], value: float) -> int:
-    """最近的枚举下标（IR 的 anchor/baseline 是枚举，任意 just 靠平移 pos 折进去）。"""
-    return min(range(len(fractions)), key=lambda index: abs(fractions[index] - value))
+    """最近的枚举下标（IR 的 anchor/baseline 是枚举，任意 just 靠平移 pos 折进去）。
+
+    先把 `value` 落到 1e-6 网格再比距离：`just` 常常正好落在两个 fraction 的中点
+    （theta 标签的 `vjust = 0.5 - cos(...) / 2` 就是 0.25 / 0.75），宿主 `libm` 的
+    ±1 ULP 会让「到两边的距离」翻个大小，枚举随之翻转、pos 平移半个行高——IR 的
+    字节就漂了（`gate:libm-noise`，SIL-844）。平局取**较小**下标，与 `hjust = 0.25`
+    这类精确中点的既有口径一致（`geom_text(hjust = 0.25)` 仍折到 left 锚点）。
+    """
+    value = round(float(value), 6)
+    return min(range(len(fractions)), key=lambda index: (abs(fractions[index] - value), index))
 
 
 _RESOLVERS: Mapping[type, Callable[[_Traverser, Any], _Resolved]] = {

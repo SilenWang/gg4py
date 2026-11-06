@@ -30,6 +30,7 @@ R 的 pdf 设备用 Helvetica 的回退度量（0.959em），本仓用 svglite �
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
@@ -63,6 +64,7 @@ __all__ = [
     "guide_for",
     "minor_breaks_log",
     "polar_axis_grobs",
+    "polar_r_axis_inside_grobs",
 ]
 
 #: `title=waiver()` 的对等物（轴 guide 的标题不参与绘制，保留以便转写）。
@@ -235,6 +237,7 @@ def guide_axis_stack(
     title: Any = AUTO,
     spacing: Any = None,
     angle: float | None = None,
+    theme: Any = None,
 ) -> AxisGuide:
     """`guide_axis_stack(guide_axis(), guide_axis_logticks())`：从内到外叠放。"""
     items = [first, *guides]
@@ -270,6 +273,7 @@ def guide_axis_stack(
         title=title,
         guides=tuple(parsed),
         spacing=spacing,
+        theme=theme,
     )
 
 
@@ -311,6 +315,11 @@ def axis_guide_from_component(component: Any) -> AxisGuide | None:
 
     字符串也认（`guides(x = "axis_theta")`）：按注册名构造成组件再走同一条路。
     """
+    if isinstance(component, AxisGuide):
+        # 已经是 `ggcore.axis_guide` 的解析产物：原样返回（`guides(x =
+        # guide_axis(theme = …))` 用 `ggcore.axis_guide.guide_axis()` 构造时，
+        # 逐 guide 的 `theme=` / `angle=` 才不会在转写里丢掉）。
+        return component
     if isinstance(component, str):
         from ggcore import registry as _registry
 
@@ -340,6 +349,8 @@ def axis_guide_from_component(component: Any) -> AxisGuide | None:
             "cap",
             "position",
             "order",
+            # 逐 guide 主题：`guide_axis(theme = theme(axis.line.r = …))`。
+            "theme",
         }
         cleaned = {key.replace(".", "_"): value for key, value in params.items() if key in allowed}
         return factory(**cleaned)
@@ -376,6 +387,7 @@ def axis_guide_from_component(component: Any) -> AxisGuide | None:
             title=params.get("title", AUTO),
             spacing=params.get("spacing"),
             angle=params.get("angle"),
+            theme=params.get("theme"),
         )
     raise ValueError(
         f"未知的轴 guide {name!r}；已实现：axis / axis_logticks / axis_stack / axis_theta / none"
@@ -435,6 +447,12 @@ class AxisGuideTicks:
     longest: float | None = None
     #: 子 guide 的叠放（`guide_axis_stack`）；空表示单层。
     children: tuple[AxisGuideTicks, ...] = field(default_factory=tuple)
+    #: 标签锚点（`hjust` / `vjust`）；`None` = 由 `angle` + 方位推（R 的
+    #: `label_angle_heuristic()`）。guide 的 `angle` 是 waiver 时 R **原样保留**
+    #: 主题元素自己的 `hjust` / `vjust`——`axis.text.r` 就是靠这条居中
+    #: （`hjust = 0.5`），与 `axis.text.y` 的 `hjust = 1` 不同（SIL-844）。
+    hjust: float | None = None
+    vjust: float | None = None
 
 
 def _normal_angle(value: float | None) -> float:
@@ -635,6 +653,12 @@ def axis_guide_ticks(
         ticks = axis_ticks(scale, params, side, secondary=secondary)
     text = _text_element(theme, side)
     angle = _normal_angle(guide.angle if guide.angle is not None else getattr(text, "angle", None))
+    # `label_angle_heuristic()`：`params$angle` 是 waiver 时元素原样返回（保留
+    # `axis.text.*` 自己的 hjust / vjust）；给了 angle 才按角度重算。
+    hjust = vjust = None
+    if guide.angle is None and isinstance(text, ElementText):
+        hjust = None if text.hjust is None else float(text.hjust)
+        vjust = None if text.vjust is None else float(text.vjust)
     labels = tuple(
         AxisLabel(position, label)
         for position, label in zip(ticks.positions, ticks.labels, strict=True)
@@ -662,6 +686,8 @@ def axis_guide_ticks(
         check_overlap=bool(guide.check_overlap),
         n_dodge=int(guide.n_dodge),
         longest=longest,
+        hjust=hjust,
+        vjust=vjust,
     )
 
 
@@ -1004,12 +1030,17 @@ def axis_guide_grobs(
     metrics: Any = None,
     name: str = "axis",
     draw_labels: bool = True,
+    degree_labels: bool = False,
 ) -> list[Any]:
     """一条轴的刻度线 + 标签（页面 cm 坐标，y 向上）。
 
     `draw_labels=False` 只去掉标签（刻度 / 轴线照画）：`facet_grid(axes = "all",
     axis.labels = "margins")` 的内面板走这条口径（R 的 `censor_labels()` 把
     内面板的 `draw_labels` 置空，轴带本身仍留刻度位置）。
+
+    `degree_labels=True`（`coord_sf(label_graticule=)`）：把 `"80°W"` 拆成
+    `"80"` / `"°"` / `"W"` 三个节点，沿旋转后的基线依次摆放——上游的标签是
+    plotmath 表达式（`"80" * degree * W`），`textGrob()` 逐节点排版。
     """
     from ggcore.axis import font_int, margin_sides_cm, paint
     from ggcore.grobs import segments_grob, text_grob
@@ -1070,6 +1101,10 @@ def axis_guide_grobs(
             )
         row_size = (height if horizontal else width) + margin_cross
         hjust, vjust = _anchor(layer.angle, side)
+        if layer.hjust is not None:
+            hjust = layer.hjust
+        if layer.vjust is not None:
+            vjust = layer.vjust
         if max_tick < 0:
             # 负的 `axis.ticks.length` 把刻度画进面板内侧，标签也随之压在内侧：
             # 锚点换成对面那一侧的口径（R 的 `measure_grobs()` 用 spacer 吸收
@@ -1130,9 +1165,41 @@ def axis_guide_grobs(
         # 标签：n.dodge 分行；第一行贴刻度，其余向外推一行（负刻度时向面板内侧推）。
         inside = max_tick < 0
         sign = 1.0 if inside else -1.0
+        # guide 的 `angle` 是 waiver 时，R 的 `label_angle_heuristic()` 原样返回
+        # 主题元素——标签于是走 `titleGrob()` 的 margin 盒（宽 = margin_l + 文字 +
+        # margin_r），锚点由元素自己的 hjust / vjust 决定。水平 / 垂直居中
+        # （`axis.text.r` 的 hjust = 0.5）比「贴边」多退半个文字宽，差这半格整条
+        # r 轴会偏 4.9pt（SIL-844）。只剩 0 / 180 度：旋转标签的 just 还要过
+        # `rotate_just()`，那条路径仍走旧的贴边口径。
+        precise = (layer.hjust is not None or layer.vjust is not None) and (
+            abs(layer.angle % 180.0) < 1e-9
+        )
         for label, dodge in visible:
             offset_out = max_tick + layer_offset
-            if horizontal:
+            if precise:
+                from ggcore.axis import text_block_cm
+
+                own_w = text_width_cm(label.text, size, metrics, element.family or "")
+                own_h = text_block_cm(label.text, size, getattr(element, "lineheight", None))
+                if horizontal:
+                    x = box.x_cm + label.position * box.width_cm
+                    if side == "top":
+                        y = box.y_cm + box.height_cm + offset_out + mb + vjust * own_h
+                    else:
+                        y = box.y_cm - offset_out - mt - (1.0 - vjust) * own_h
+                else:
+                    y = box.y_cm + label.position * box.height_cm
+                    if side == "right":
+                        x = box.right + offset_out + hjust * (own_w + ml) + ml * (1.0 - hjust)
+                    else:
+                        x = box.x_cm - offset_out - (1.0 - hjust) * (own_w + mr) - mr * hjust
+                if dodge:
+                    # 第 2..n 行继续**向外**（与贴边口径同一个 `sign`）。
+                    if horizontal:
+                        y -= sign * dodge * row_size
+                    else:
+                        x -= sign * dodge * row_size
+            elif horizontal:
                 x = box.x_cm + label.position * box.width_cm
                 if side == "top":
                     y = box.y_cm + box.height_cm + offset_out - sign * mb - sign * dodge * row_size
@@ -1144,6 +1211,23 @@ def axis_guide_grobs(
                     x = box.right + offset_out - sign * ml - sign * dodge * row_size
                 else:
                     x = box.x_cm - offset_out + sign * mr + sign * dodge * row_size
+            if degree_labels:
+                grobs.extend(
+                    _degree_label_grobs(
+                        label.text,
+                        x,
+                        y,
+                        hjust=hjust,
+                        vjust=vjust,
+                        angle=layer.angle,
+                        gp=gp,
+                        family=element.family or "",
+                        size=size,
+                        metrics=metrics,
+                        name=f"{name}.text-{layer_index}",
+                    )
+                )
+                continue
             grobs.append(
                 text_grob(
                     label.text,
@@ -1157,6 +1241,77 @@ def axis_guide_grobs(
                     name=f"{name}.text-{layer_index}",
                 )
             )
+    return grobs
+
+
+#: `"80°W"` 的形态（`coord_sf(label_graticule=)` 的 plotmath 标签）。
+_DEGREE_LABEL = re.compile(r"^(?P<number>[-+0-9.]+)(?P<degree>°)(?P<dir>[NSEW])$")
+
+
+def _degree_label_grobs(
+    text: str,
+    x: float,
+    y: float,
+    *,
+    hjust: float,
+    vjust: float,
+    angle: float,
+    gp: Mapping[str, Any],
+    family: str,
+    size: float,
+    metrics: Any,
+    name: str,
+) -> list[Any]:
+    """把 `"80°W"` 拆成三个节点，沿旋转后的基线依次摆放。
+
+    上游的轴标签是 plotmath 表达式 `"80" * degree * W`：`textGrob()` 把三个
+    节点沿基线排开（`rotate(45)` 时每个节点各是一个 `<text>`，`textLength` 是
+    自己的宽度）。这里按同一口径：节点 k 的起点 = 左端点 + 前面各节点的宽度，
+    全部用 `hjust = 0`，`vjust` 与整条标签一致。
+    """
+    from ggcore.grobs import text_grob
+    from ggcore.viewport import gpar
+
+    match = _DEGREE_LABEL.match(text)
+    if match is None:
+        return [
+            text_grob(
+                text,
+                x,
+                y,
+                hjust=hjust,
+                vjust=vjust,
+                rot=angle,
+                default_units="cm",
+                gp=gpar(**gp),
+                name=name,
+            )
+        ]
+    parts = [match.group("number"), match.group("degree"), match.group("dir")]
+    widths = [text_width_cm(part, size, metrics, family) for part in parts]
+    total = sum(widths)
+    radians = math.radians(angle % 360.0)
+    # 基线方向按我们自己的 rot 口径（渲染端写 `rotate(-rot)`）。
+    ux, uy = math.cos(radians), math.sin(radians)
+    left_x = x - hjust * total * ux
+    left_y = y - hjust * total * uy
+    grobs: list[Any] = []
+    advance = 0.0
+    for index, (part, width) in enumerate(zip(parts, widths, strict=True)):
+        grobs.append(
+            text_grob(
+                part,
+                left_x + advance * ux,
+                left_y + advance * uy,
+                hjust=0.0,
+                vjust=vjust,
+                rot=angle,
+                default_units="cm",
+                gp=gpar(**gp),
+                name=f"{name}-part{index}",
+            )
+        )
+        advance += width
     return grobs
 
 
@@ -1332,6 +1487,12 @@ def _anchor(angle: float, side: str) -> tuple[float, float]:
 #: 翻档（SIL-824 返工）。1e-6 度远小于任何渲染端的可见分辨率。
 ANGLE_DECIMALS = 6
 
+#: theta 标签 `hjust` / `vjust` 的量化位数。这两个值是 `sin` / `cos` 的连续结果，
+#: 会原样进 IR；不量化的话宿主 libm 的 1 ULP 差会让 `0.5` 变成 `0.49999999…`，
+#: 被 IR 的 baseline 映射放大成整整一行的偏移（SIL-844 的
+#: `upstream-coord-polar-axes-at-90-225` 在 `gate:libm-noise` 上就是这样漂的）。
+JUST_DECIMALS = 9
+
 
 def polar_axis_grobs(
     scale: Any,
@@ -1373,10 +1534,45 @@ def polar_axis_grobs(
     polar = getattr(params, "polar", None)
     if polar is None or scale is None or box.width_cm <= 0:
         return []
+    guide = guide or AxisGuide(name="axis_theta")
+    if guide.is_stack and guide.guides:
+        # `guide_axis_stack("axis_theta", …)`：每一层都画一遍，沿半径逐层外推
+        # `spacing + 上一层 offset`（上游 `GuideAxisStack$draw()` 的 theta 分支；
+        # `spacing` 缺省 2.25pt，`offset` 是那一层的刻度长 + 文字 margin）。
+        spacing = guide.spacing if isinstance(guide.spacing, (int, float)) else 2.25
+        accumulated = stack_offset_cm
+        stacked: list[Any] = []
+        for layer_index, child in enumerate(guide.guides):
+            stacked.extend(
+                polar_axis_grobs(
+                    scale,
+                    params,
+                    theme,
+                    box,
+                    child,
+                    metrics=metrics,
+                    name=f"{name}-{layer_index}",
+                    secondary=secondary,
+                    stack_offset_cm=accumulated,
+                )
+            )
+            # `spacing` 是 pt（缺省 2.25），`accumulated` 是 cm；这一层的占位是
+            # 标签盒沿半径的投影（上游 `GuideAxisTheta$measure_grobs()` 的
+            # `max(height)`），不是「刻度 + margin」。
+            accumulated += float(spacing) / _POINT_PER_MM / 10.0 + _theta_ring_extent(
+                theme, scale, params, box, child, metrics
+            )
+        return stacked
     entries = polar_theta_ticks(scale, params)
     if not entries:
         return []
-    guide = guide or AxisGuide(name="axis_theta")
+    if getattr(guide, "theme", None) is not None:
+        # `guides(theta.sec = guide_axis_theta(theme = theme(...)))`：只改这一条
+        # theta 轴的 `axis.line.theta` / `axis.text.theta`（上游 `GuideAxis$setup_elements`
+        # 把 guide 自己的 theme 合并到用户主题上再取元素名）。
+        from ggcore.guide import guide_theme
+
+        theme = guide_theme(theme, guide)
     element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
     grobs: list[Any] = []
 
@@ -1388,15 +1584,21 @@ def polar_axis_grobs(
     else:
         key_radius = 0.45
     thetas = np.asarray([entry[3] for entry in entries], dtype=np.float64)
-    if secondary:
-        thetas = thetas + math.pi
+    # `theta.sec` 的 key 与主轴**同角**、只是落在内半径上；`+π` 只参与
+    # 「沿半径的方向」（刻度朝内、标签压进弧内、文字角度反向），不改位置
+    # （上游 `GuideAxisTheta$transform()` 先算 x/y，之后才 `key$theta + pi`）。
+    directions = thetas + math.pi if secondary else thetas
 
     tick_cm = tick_length_cm(theme, "bottom")
     text_margin = 0.0
     if isinstance(element, ElementText):
         margins = margin_sides_cm(getattr(element, "margin", None))
         text_margin = max(margins) if margins else 0.0
-    offset = (max(0.0, tick_cm) + text_margin + stack_offset_cm) / box.width_cm
+    # `stack_offset_cm` 只进 `layer_radius`：整层（轴线 / 刻度 / 标签）一起外推，
+    # 与上游 `build_decor()` / `theta_tickmarks()` / `build_labels()` 各加一次同义。
+    offset = (max(0.0, tick_cm) + text_margin) / box.width_cm
+    # 叠放的整层（轴线 / 刻度 / 标签）沿半径向外挪，不只是标签。
+    layer_radius = key_radius + stack_offset_cm / box.width_cm
 
     # 轴线 / 刻度只在 `coord_radial()` 上补：`coord_polar()` 的 `render_fg()`
     # 只画 theta 标签（`matrix-report-facet-polar-grey` 等 7 条已纳管 case 就是
@@ -1405,7 +1607,7 @@ def polar_axis_grobs(
     line_gp = _line_gp(line_element) if line_element is not None else None
     if line_gp is not None and len(thetas) > 1:
         angles = _arc_angles(thetas, cap=guide.cap, tick=tick_cm / box.width_cm)
-        xs, ys = polar.point(angles, np.full(angles.shape, key_radius))
+        xs, ys = polar.point(angles, np.full(angles.shape, layer_radius))
         grobs.append(
             polyline_grob(
                 [box.x_cm + float(value) * box.width_cm for value in np.asarray(xs)],
@@ -1421,8 +1623,11 @@ def polar_axis_grobs(
     tick_gp = _line_gp(tick_element) if polar.radial and tick_element is not None else None
     if tick_gp is not None and tick_cm > 0:
         step = tick_cm / box.width_cm
-        x0, y0 = polar.point(thetas, np.full(thetas.shape, key_radius))
-        x1, y1 = polar.point(thetas + math.pi * 0, np.full(thetas.shape, key_radius + step))
+        x0, y0 = polar.point(thetas, np.full(thetas.shape, layer_radius))
+        # 刻度从 key 沿 `directions` 伸出去：与标签同理，方向在 npc 空间里加
+        # `sin/cos`，不能直接换角度再取点（那会横跨圆心连成弦）。
+        x1 = np.asarray(x0, dtype=np.float64) + np.sin(directions) * step
+        y1 = np.asarray(y0, dtype=np.float64) + np.cos(directions) * step
         grobs.append(
             segments_grob(
                 [box.x_cm + float(value) * box.width_cm for value in np.asarray(x0)],
@@ -1451,10 +1656,18 @@ def polar_axis_grobs(
         "lineheight": float(element.lineheight or 1.2),
     }
     # `coord_polar()` 的标签历史口径就是网格外圈 0.45（不加 offset），保持不动；
-    # 只有 `coord_radial()` 走 R 的「key + offset」。
-    label_radius = key_radius + offset if polar.radial else key_radius
+    # 只有 `coord_radial()` 走 R 的「key + offset」——offset 在 **npc 空间**里沿
+    # `sin/cos(direction)` 加（上游 `build_labels()` 的 `xoffset` / `yoffset`），
+    # 部分弧的 bbox 非正方形时这与「半径 + offset」不等价。
+    key_x, key_y = polar.point(thetas, np.full(thetas.shape, layer_radius))
+    label_radius = layer_radius + offset if polar.radial else layer_radius
     xs, ys = polar.point(thetas, np.full(thetas.shape, label_radius))
-    for index, theta in enumerate(thetas):
+    for index, theta in enumerate(directions):
+        position_x = float(xs[index])
+        position_y = float(ys[index])
+        if polar.radial:
+            position_x = float(key_x[index]) + math.sin(float(theta)) * offset
+            position_y = float(key_y[index]) + math.cos(float(theta)) * offset
         if base_angle is None:
             # waiver：不随 theta 转，直接用 `axis.text.theta$angle`（R 同）。
             angle = element_angle
@@ -1463,13 +1676,17 @@ def polar_axis_grobs(
             if 90.0 < angle < 270.0:
                 angle += 180.0
         radians = math.radians(angle)
-        hjust = 0.5 - math.sin(float(theta) + radians) / 2.0
-        vjust = 0.5 - math.cos(float(theta) + radians) / 2.0
+        # 这两个值是 `sin` / `cos` 的连续结果，会原样进 IR。宿主 libm 的末位差
+        # 会让 0.5 变成 0.4999999999999999，再被 IR 的 baseline 映射放大成整行
+        # 偏移（SIL-844：`r.axis.inside` 的 theta 标签在 `gate:libm-noise` 上漂）。
+        # 与 `ANGLE_DECIMALS` 同口径，量化到 9 位小数消掉 1 ULP 噪声。
+        hjust = round(0.5 - math.sin(float(theta) + radians) / 2.0, JUST_DECIMALS)
+        vjust = round(0.5 - math.cos(float(theta) + radians) / 2.0, JUST_DECIMALS)
         grobs.append(
             text_grob(
                 entries[index][2],
-                box.x_cm + float(xs[index]) * box.width_cm,
-                box.y_cm + float(ys[index]) * box.height_cm,
+                box.x_cm + position_x * box.width_cm,
+                box.y_cm + position_y * box.height_cm,
                 hjust=hjust,
                 vjust=vjust,
                 rot=angle,
@@ -1515,3 +1732,234 @@ def _arc_angles(thetas: np.ndarray, *, cap: str, tick: float) -> np.ndarray:
         if cap in ("both", "lower", "bottom"):
             start -= step
     return np.linspace(start, stop, 100)
+
+
+def _theta_ring_extent(
+    theme: ResolvedTheme,
+    scale: Any,
+    params: Any,
+    box: CellBox,
+    guide: AxisGuide,
+    metrics: Any,
+) -> float:
+    """`guide_axis_stack()` 叠放时，这一层 theta 轴沿半径占的宽度（cm）。
+
+    上游 `GuideAxisTheta$measure_grobs()`：把每个标签的盒（文字 + 四周 margin）
+    的四个角按「位置角 + 文字角」投影到半径方向，取最大值。R 用它决定下一层
+    再往外推多少（`offset <- offset + spacing + grobs[[i]]$offset`）。
+    """
+    from ggcore.axis import margin_sides_cm, polar_theta_ticks, text_block_cm, text_width_cm
+
+    entries = polar_theta_ticks(scale, params)
+    element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
+    if not entries or not isinstance(element, ElementText):
+        return 0.0
+    mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
+    size = float(element.size or 0.0)
+    lineheight = getattr(element, "lineheight", None)
+    base_angle = None if guide.angle is None else float(guide.angle)
+    element_angle = float(getattr(element, "angle", 0.0) or 0.0)
+    extent = 0.0
+    for entry in entries:
+        theta = float(entry[3])
+        angle = (
+            element_angle
+            if base_angle is None
+            else round((base_angle - math.degrees(theta)) % 360.0, ANGLE_DECIMALS)
+        )
+        if base_angle is not None and 90.0 < angle < 270.0:
+            angle += 180.0
+        rad = math.radians(angle)
+        rot = theta + rad
+        width = text_width_cm(entry[2], size, metrics, element.family or "") + ml + mr
+        height = text_block_cm(entry[2], size, lineheight) + mt + mb
+        hjust = 0.5 - math.sin(rot) / 2.0
+        vjust = 0.5 - math.cos(rot) / 2.0
+        xmin, xmax = -width * hjust, width * (1.0 - hjust)
+        ymin, ymax = -height * vjust, height * (1.0 - vjust)
+        for x in (xmin, xmax):
+            for y in (ymin, ymax):
+                extent = max(extent, x * math.sin(rot) + y * math.cos(rot))
+    return extent
+
+
+def polar_r_axis_inside_grobs(
+    theme: ResolvedTheme,
+    ticks: AxisGuideTicks,
+    box: CellBox,
+    guide: AxisGuide | None,
+    *,
+    angle: float,
+    position: str = "left",
+    bbox: tuple[tuple[float, float], tuple[float, float]] = ((0.0, 1.0), (0.0, 1.0)),
+    name: str = "axis-r",
+    metrics: Any = None,
+) -> list[Any]:
+    """`r.axis.inside` 的旋转 r 轴（上游 `CoordRadial$render_fg()` + `rotate_r_axis()`）。
+
+    R 把 r 轴按「贴面板边的竖轴」画好，再把整个 grob 绕**面板中心**转
+    `-axis_rotation`（`rotate_r_axis()`）：轴因此落在 theta 角 `angle` 的方向上，
+    刻度朝内侧（左轴）/ 外侧（右轴），文字保持水平（viewport 的 `-angle` 与
+    `params$angle` 抵消）。这里直接在那个旋转后的坐标系里算坐标：
+
+    - 轴线：半径 `inner_radius[0] .. inner_radius[1]`（decor 的 `±Inf` 折成 donut
+      两端）；`cap=` 时收到最外两根 key；
+    - 刻度 / 标签沿「轴的 +x 方向」（npc 里 `(cos a, -sin a)`）偏移
+      `tick` / `tick + margin`，左轴取负、右轴取正；
+    - 锚点取 `_anchor(角度, 位置)`：90° 左轴 → `hjust = 0.5`，225° 右轴 → `hjust = 1`；
+    - 叠放（`guide_axis_stack`）：第 i 层再沿同一方向推
+      `Σ(上一层外向占位 + spacing)`，`spacing` 缺省是 `axis.ticks.length`。
+
+    `bbox` 是 partial arc 的外接框：R 的 key 位置先过 `CoordRadial$transform()`，
+    再在面板 npc 里绕中心旋转，所以这里也先把半径折成 npc 再加偏移。
+    """
+    from ggcore.axis import font_int, margin_sides_cm, paint, tick_length_cm
+    from ggcore.grobs import segments_grob, text_grob
+    from ggcore.viewport import gpar
+
+    if box.width_cm <= 0 or box.height_cm <= 0:
+        return []
+    guide = guide or AxisGuide()
+    element = _text_element(theme, position)
+    blank_text = isinstance(element, ElementBlank) or not isinstance(element, ElementText)
+    size = 0.0 if blank_text else float(element.size or 0.0)
+    gp = (
+        {}
+        if blank_text
+        else {
+            "col": paint(element.colour) or "black",
+            "fontsize": size or 11.0,
+            "fontfamily": element.family or "",
+            "font": font_int(element.face),
+            "lineheight": float(element.lineheight or 1.2),
+        }
+    )
+    if blank_text:
+        mt = mr = mb = ml = 0.0
+    else:
+        mt, mr, mb, ml = margin_sides_cm(element.margin)
+
+    (bx0, bx1), (by0, by1) = bbox
+    span_x = (bx1 - bx0) or 1.0
+    span_y = (by1 - by0) or 1.0
+    width_cm, height_cm = box.width_cm, box.height_cm
+    sin_a, cos_a = math.sin(angle), math.cos(angle)
+    sign = 1.0 if position == "right" else -1.0
+    margin_cross = ml if position == "right" else mr
+
+    norm = math.hypot(cos_a * width_cm, sin_a * height_cm) or 1.0
+    cross = (cos_a * width_cm / norm, -sin_a * height_cm / norm)
+
+    def point_cm(radius: float) -> tuple[float, float]:
+        nx = (radius * sin_a + 0.5 - bx0) / span_x
+        ny = (radius * cos_a + 0.5 - by0) / span_y
+        return (box.x_cm + nx * width_cm, box.y_cm + ny * height_cm)
+
+    tick_cm = tick_length_cm(theme, position)
+    layers: list[tuple[AxisGuideTicks, float]] = []
+    if ticks.children:
+        offset = 0.0
+        for child in ticks.children:
+            layers.append((child, offset))
+            # 上游 `GuideAxisStack$draw()` 的非 theta 分支用 gtable 并排：
+            # 层间距离 = `grobWidth(上一层)` + `spacing`，而 `grobWidth` 是整段
+            # 轴 grob 的外框宽——`axis.text.r` 的 margin 是**两侧各 2.2pt**
+            # （`axis.text.y` 只留右侧），`_guide_extent()` 只折了一侧，所以这里
+            # 再补两侧的差。实测（`stacked-radial-axes` 上游 SVG）：两层标签的
+            # x 差 22.04pt，补之前我们 17.55pt。
+            step = (
+                _guide_extent(theme, child, position, metrics, stack_gap=tick_cm)
+                + tick_cm
+                + 2.0 * margin_cross
+            )
+            offset += step
+    else:
+        layers = [(ticks, 0.0)]
+
+    # `theme_suffix = "r"`：这条轴只读 `axis.line.r`（上游 `GuideAxis$setup_elements()`
+    # 拼出来的元素名就是 `axis.line.r`）。`theme_grey()` 里它继承 `axis.line.y`，
+    # 但 `axis.line.y` 本身是 NULL 定义——上游 svglite 的实测快照里**没有**这两条
+    # 旋转轴线的描边，所以这里也不兜底到 `axis.line`。
+    line_element = theme.get("axis.line.r")
+    line_gp = _line_gp(line_element)
+    cap = str(getattr(guide, "cap", "none") or "none")
+
+    grobs: list[Any] = []
+    for layer_index, (layer, layer_offset) in enumerate(layers):
+        radii = [label.position - 0.5 for label in layer.labels]
+        if line_gp is not None:
+            low, high = 0.0, 0.5
+            if radii:
+                low, high = min(radii), max(radii)
+            if cap in (None, "none") or not radii:
+                low, high = 0.0, 0.5
+            x0, y0 = point_cm(low)
+            x1, y1 = point_cm(high)
+            grobs.append(
+                segments_grob(
+                    [x0],
+                    [y0],
+                    [x1],
+                    [y1],
+                    default_units="cm",
+                    gp=line_gp,
+                    name=f"{name}.line-{layer_index}",
+                )
+            )
+        # 刻度：同一档合成一个 segments grob（与 `axis_guide_grobs()` 同口径）。
+        groups: dict[tuple[str, float, int], list[Any]] = {}
+        for mark in layer.marks:
+            mark_style = _tick_line(theme, position, mark)
+            if mark_style is None or mark.length_cm <= 0:
+                continue
+            groups.setdefault(mark_style, []).append(mark)
+        for group_index, ((colour, lwd, lty), marks) in enumerate(groups.items()):
+            xs: list[float] = []
+            ys: list[float] = []
+            xs2: list[float] = []
+            ys2: list[float] = []
+            for mark in marks:
+                px, py = point_cm(mark.position - 0.5)
+                base = sign * layer_offset
+                tip = sign * (layer_offset + mark.length_cm)
+                xs.extend([px + base * cross[0], px + base * cross[0]])
+                ys.extend([py + base * cross[1], py + base * cross[1]])
+                xs2.extend([px + tip * cross[0], px + tip * cross[0]])
+                ys2.extend([py + tip * cross[1], py + tip * cross[1]])
+            grobs.append(
+                segments_grob(
+                    xs,
+                    ys,
+                    xs2,
+                    ys2,
+                    default_units="cm",
+                    gp=gpar(col=colour, lwd=lwd, lty=lty),
+                    name=f"{name}.ticks-{layer_index}-{group_index}",
+                )
+            )
+        if blank_text:
+            continue
+        # 角度先落到 `ANGLE_DECIMALS` 网格再选锚点：`math.degrees()` 是宿主 libm
+        # 函数，±1 ULP 会让正好落在 45° 扇区边界上的角度（如 `r.axis.inside =
+        # c(90, 225)` 的 225°）在 `_anchor()` 里翻到另一侧，标签整条跳 4pt，IR
+        # 的字节随之漂移（`gate:libm-noise` 抓到的就是这一处）。
+        hjust, vjust = _anchor(round(_normal_angle(math.degrees(angle)), ANGLE_DECIMALS), position)
+        reach = tick_cm + margin_cross
+        for label, dodge in _visible_labels(layer, element, metrics, axis_length_cm=box.width_cm):
+            px, py = point_cm(label.position - 0.5)
+            shift = sign * (layer_offset + reach + dodge * reach)
+            grobs.append(
+                text_grob(
+                    label.text,
+                    px + shift * cross[0],
+                    py + shift * cross[1],
+                    hjust=hjust,
+                    vjust=vjust,
+                    rot=0.0,
+                    default_units="cm",
+                    gp=gpar(**gp),
+                    name=f"{name}.text-{layer_index}",
+                )
+            )
+    _ = (mt, mb)
+    return grobs

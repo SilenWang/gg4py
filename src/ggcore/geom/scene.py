@@ -47,12 +47,14 @@ from ggcore.axis import (
     polar_axis_breaks,
     polar_axis_row_cm,
     polar_minor_breaks,
+    polar_r_ticks,
     text_line_cm,
     text_width_cm,
     tick_length_cm,
 )
 from ggcore.axis_guide import (
     AUTO,
+    AxisGuide,
     axis_guide_extent,
     axis_guide_grobs,
     axis_guide_ticks,
@@ -60,6 +62,7 @@ from ggcore.axis_guide import (
     axis_line_range,
     guide_for,
     polar_axis_grobs,
+    polar_r_axis_inside_grobs,
 )
 from ggcore.build import _STAT_DEFAULT_AES, LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
@@ -689,8 +692,11 @@ def plot_layout(
         y_side = _scale_side(scale_left_layout, "left")
         ticks_x = axis_ticks(scale_bottom_layout, params, x_side)
         ticks_y = axis_ticks(scale_left_layout, params, y_side)
+        radial = params.polar is not None and bool(getattr(params.polar, "radial", False))
         guide_x = guide_for(build, "x")
-        guide_y = guide_for(build, "y")
+        # `coord_radial()` 的主 r 轴读 `guides(r = ...)`（上游 `setup_panel_guides()`
+        # 只登记 r / theta / r.sec / theta.sec 四个位置），直角坐标才读 `y`。
+        guide_y = guide_for(build, "r") if radial else guide_for(build, "y")
         if params.polar is not None:
             # θ 标签画在面板里，但 `axis-b` 行不一定在：
             # - `coord_polar()`：上游 `render_axis_h()` 给 `draw_axis(NA, "", "bottom")`，
@@ -729,7 +735,7 @@ def plot_layout(
                 x_axis = max(x_axis, extent_x)
         # `coord_radial()` 的 r 轴走 `theme_suffix = "r"`（`axis.text.r` 两侧都有
         # margin、`hjust = 0.5`），与直角坐标的 `axis.text.y` 不同。
-        axis_theme = _radial_axis_theme(theme, params)
+        axis_theme = _axis_guide_theme(theme, params, guide_y)
         guide_ticks_y = axis_guide_ticks(
             scale_left_layout,
             params,
@@ -741,6 +747,10 @@ def plot_layout(
         extent_y = axis_guide_extent(
             axis_theme, guide_ticks_y, guide_y, side=y_side, metrics=metrics
         )
+        if radial and params.polar.r_axis_inside:
+            # 面板内的 r 轴不占 gtable 列（上游 `render_axis_v()` 给的是
+            # `zeroGrob()`）：轴标签画在面板里，axis-l / axis-r 两列宽度为 0。
+            extent_y = 0.0
         if y_side == "right":
             y_axis_right = max(y_axis_right, extent_y)
             y_title_right = max(
@@ -754,6 +764,41 @@ def plot_layout(
             )
         else:
             y_axis = max(y_axis, extent_y)
+        if radial:
+            # `guides(r.sec = guide_axis(...))`：径向的次 r 轴占一条 **axis-r 列**
+            # （上游 `setup_panel_guides()` 把 r / r.sec 排成 left / right 两个
+            # `panel_params$guides` 位置，轴线由 `panel_guides_grob(position)`
+            # 画进 gtable 的同名槽）。缺这条列整表会横移一个轴宽（SIL-843 实测
+            # 8.45pt）。`r.axis.inside` 为真时两条 r 轴都在面板里，不占列。
+            guide_rsec = guide_for(build, "r.sec")
+            if guide_rsec is not None:
+                # 标题始终占一列（`axis.title.y.right`）——即使 r.sec 画在面板里
+                # （`r.axis.inside`），R 的 ylab-r 列照样在。
+                y_title_right = max(
+                    y_title_right,
+                    axis_title_extent(
+                        theme,
+                        "right",
+                        _guide_title(guide_rsec, None),
+                        metrics=metrics,
+                    ),
+                )
+            if guide_rsec is not None and not params.polar.r_axis_inside:
+                rsec_theme = _axis_guide_theme(theme, params, guide_rsec)
+                ticks_rsec = axis_guide_ticks(
+                    scale_left_layout,
+                    params,
+                    "right",
+                    guide_rsec,
+                    rsec_theme,
+                    base=ticks_y,
+                )
+                y_axis_right = max(
+                    y_axis_right,
+                    axis_guide_extent(
+                        rsec_theme, ticks_rsec, guide_rsec, side="right", metrics=metrics
+                    ),
+                )
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
         right_scale = _panel_scale(build, panel, params.scale_key("right"))
         if has_secondary_axis(build, "x", top_scale):
@@ -1419,6 +1464,10 @@ def _draw_layer(
         table_fingerprint(layer.data),
         fingerprint(layer.params),
         fingerprint(params),
+        # `coord_radial(rotate.angle = TRUE)` 改的是 geom 读到的 `angle` 美学，
+        # 不体现在 `PanelParams` 上（`polar` 里没有这个字段），漏进键里会让
+        # 同一份数据的两张图共用一份 grob。
+        bool(getattr(build.coord, "rotate_angle", False)),
         theme_key,
     )
     cached = cache.get(key, metrics)
@@ -1923,6 +1972,21 @@ def _radial_axis_theme(theme: Any, params: Any) -> Any:
     return AxisSuffixTheme(theme, "r")
 
 
+def _axis_guide_theme(theme: Any, params: Any, guide: Any) -> Any:
+    """一条轴 guide 的主题：`plot_theme %+% guide$theme`，再套 radial 的 `.r` 后缀。
+
+    顺序照上游 `GuideAxis$setup_elements()`：先拼 `theme_suffix`，再由
+    `Guide$setup_elements()` 把 guide 自己的 `theme=` 合进用户主题（`add_theme()`
+    的 override 优先）。所以逐 guide 的 `element_line(colour = "orchid")` 能盖住
+    `axis.line.r`（SIL-844 的 inner-radius 快照）。
+    """
+    from ggcore.guide import guide_theme
+
+    if guide is not None and getattr(guide, "theme", None) is not None:
+        theme = guide_theme(theme, guide)
+    return _radial_axis_theme(theme, params)
+
+
 def _scale_side(scale: Any, default: str) -> str:
     """`scale_*_continuous(position = ...)`：主轴画在哪一边（缺省 bottom / left）。
 
@@ -1949,12 +2013,21 @@ def _axis_grobs(
     grobs: list[Any] = []
     guide_x = guide_for(build, "x")
     guide_y = guide_for(build, "y")
-    x_title = _guide_title(guide_x, _axis_title_text(build, "x"))
-    y_title = _guide_title(guide_y, _axis_title_text(build, "y"))
     for panel, params in _panels(build):
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover
             continue
+        radial = params.polar is not None and bool(getattr(params.polar, "radial", False))
+        if radial:
+            # 与 `plot_layout()` 同一口径：radial 的主 r 轴读 `guides(r = ...)`。
+            guide_y = guide_for(build, "r")
+        x_title = _guide_title(guide_x, _axis_title_text(build, "x"))
+        y_title = _guide_title(guide_y, _axis_title_text(build, "y"))
+        guide_rsec = guide_for(build, "r.sec") if radial else None
+        if guide_rsec is not None:
+            rsec_title = _guide_title(guide_rsec, None)
+        else:
+            rsec_title = None
         # `switch = "both"`：换到面板下方的 strip 与轴之间、换到左侧的 strip 与
         # 轴之间都还隔着 strip 行 / 列（R 把轴 seam 在 strip 之外）。轴带贴着
         # 整张分面表的外沿，不贴面板本身。
@@ -2003,10 +2076,12 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-x-{panel}",
                     draw_labels=label_bottom,
+                    degree_labels=params.sf is not None,
                 )
             )
-        if draw_left:
-            axis_theme = _radial_axis_theme(theme, params)
+        inside_r_axes = radial and bool(params.polar.r_axis_inside)
+        if draw_left and not inside_r_axes:
+            axis_theme = _axis_guide_theme(theme, params, guide_y)
             gy = axis_guide_ticks(scale_left, params, y_side, guide_y, axis_theme, base=ticks_y)
             grobs.extend(
                 axis_guide_grobs(
@@ -2017,8 +2092,44 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-y-{panel}",
                     draw_labels=label_left,
+                    degree_labels=params.sf is not None,
                 )
             )
+        if inside_r_axes:
+            # `r.axis.inside` 为真（或给了 theta 角度）：r / r.sec 两条轴都画在
+            # 面板里，绕面板中心转到 `axis_rotation` 的角度（上游
+            # `CoordRadial$render_fg()` 的 `rotate_r_axis()`）。
+            rotation = params.polar.axis_rotation
+            # `guides(r = ...)` 缺省时 R 仍画默认 r 轴（`guide_axis()`）；
+            # `guide_for()` 返回 None 只是「没有显式登记」，不是「没有轴」。
+            for axis_guide_obj, axis_side, axis_angle, axis_name in (
+                (guide_y or AxisGuide(), "left", rotation[0], f"axis-r-{panel}"),
+                (guide_rsec or AxisGuide(), "right", rotation[1], f"axis-r-sec-{panel}"),
+            ):
+                if axis_guide_obj is None or axis_guide_obj.name == "none":
+                    continue
+                inside_theme = _axis_guide_theme(theme, params, axis_guide_obj)
+                inside_ticks = axis_guide_ticks(
+                    scale_left,
+                    params,
+                    axis_side,
+                    axis_guide_obj,
+                    inside_theme,
+                    base=polar_r_ticks(scale_left, params, axis_side),
+                )
+                grobs.extend(
+                    polar_r_axis_inside_grobs(
+                        inside_theme,
+                        inside_ticks,
+                        cell,
+                        axis_guide_obj,
+                        angle=float(axis_angle),
+                        position=axis_side,
+                        bbox=params.polar.bbox,
+                        name=axis_name,
+                        metrics=metrics,
+                    )
+                )
         # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推；
         # guide 优先级与主轴一致：`guides(x.sec = ...)` → `dup_axis(guide = ...)`
         # → 默认 `guide_axis()`（R 的 `scale$secondary.axis$guide`）。
@@ -2047,6 +2158,7 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-x-sec-{panel}",
                     draw_labels=label_top,
+                    degree_labels=params.sf is not None,
                 )
             )
         if has_secondary_axis(build, "y", scale_right) and draw_right:
@@ -2068,18 +2180,49 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-y-sec-{panel}",
                     draw_labels=label_right,
+                    degree_labels=params.sf is not None,
+                )
+            )
+        # `guides(r.sec = ...)`：径向的次 r 轴画进 axis-r 槽（`right_cell`），
+        # 断点与主 r 轴同源（上游 `panel_params$r.sec` 是同一个 r 标度的次视图），
+        # 轴线 / 刻度 / 文字都读 `axis.*.r`，再叠 guide 自己的 `theme=`。
+        gy_rsec = None
+        if radial and guide_rsec is not None and not params.polar.r_axis_inside:
+            rsec_theme = _axis_guide_theme(theme, params, guide_rsec)
+            gy_rsec = axis_guide_ticks(
+                scale_left, params, "right", guide_rsec, rsec_theme, base=ticks_y
+            )
+            grobs.extend(
+                axis_guide_grobs(
+                    rsec_theme,
+                    gy_rsec,
+                    right_cell,
+                    guide_rsec,
+                    metrics=metrics,
+                    name=f"axis-r-sec-{panel}",
+                )
+            )
+            grobs.extend(
+                axis_line_grobs(
+                    rsec_theme,
+                    cell,
+                    name=f"axis-line-r-sec-{panel}",
+                    ranges={"right": axis_line_range(guide_rsec, gy_rsec)},
+                    sides=("right",),
                 )
             )
         line_sides = (
-            *((x_side,) if draw_bottom else ()),
-            *((y_side,) if draw_left else ()),
+            # `coord_radial()`：x / y 两条轴都不画（上游 `render_axis_h/v()` 在这
+            # 种面板里给的是一对 zeroGrob，轴线只由 r / theta 的 guide 自带）。
+            *((x_side,) if draw_bottom and not radial else ()),
+            *((y_side,) if draw_left and not inside_r_axes else ()),
             *(("top",) if gx_top is not None else ()),
             *(("right",) if gy_right is not None else ()),
         )
         if line_sides:
             grobs.extend(
                 axis_line_grobs(
-                    _radial_axis_theme(theme, params),
+                    _axis_guide_theme(theme, params, guide_y),
                     cell,
                     name=f"axis-line-{panel}",
                     ranges={
@@ -2172,6 +2315,20 @@ def _axis_grobs(
             else layout.y_axis_cm,
             metrics=metrics,
             name="axis-title-y",
+        )
+        if grob is not None:
+            grobs.append(grob)
+    if rsec_title:
+        # `guides(r.sec = guide_axis(title = "right"))`：右轴标题（`axis.title.y.right`）。
+        fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
+        grob = axis_title_grob(
+            theme,
+            "right",
+            rsec_title,
+            fake,
+            labels_extent_cm=layout.y_axis_right_cm,
+            metrics=metrics,
+            name="axis-title-r-sec",
         )
         if grob is not None:
             grobs.append(grob)
@@ -2334,7 +2491,11 @@ def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> 
     outer = float(polar.inner_radius[1])
     inner = float(polar.inner_radius[0])
     steps = 179  # R 的 `coord_munch()` 在满圆上的采样点数（外圆 179 段）
-    angles = np.linspace(0.0, 2.0 * math.pi, steps)
+    arc = tuple(polar.arc)
+    full = abs(arc[1] - arc[0]) >= 1.999 * math.pi
+    angles = (
+        np.linspace(arc[0], arc[1], steps) if not full else np.linspace(0.0, 2.0 * math.pi, steps)
+    )
     xo, yo = polar.point(angles, np.full(angles.shape, outer))
     xs = [float(value) for value in np.asarray(xo)]
     ys = [float(value) for value in np.asarray(yo)]
@@ -2343,7 +2504,7 @@ def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> 
         xi, yi = polar.point(angles[::-1], np.full(angles.shape, inner))
         xs.extend(float(value) for value in np.asarray(xi))
         ys.extend(float(value) for value in np.asarray(yi))
-        ids.extend([2] * (len(xs) - len(ids)))
+        ids.extend([1 if not full else 2] * (len(xs) - len(ids)))
     return path_grob(
         xs,
         ys,
