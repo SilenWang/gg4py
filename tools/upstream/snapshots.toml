@@ -51,7 +51,7 @@ reason = "SIL-793 已把 3 条全部纳管：log10 / log2 的 `coord_transform()
 [groups."coord_sf"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；剩 `coord-sf-with-custom-guides` 是 plotmath 度数表达式 + `guide_none(angle)` / `n.dodge` 的自定义 guide 组合，版面差 2.85%（节点间 ≤ 2%），见 docs/notes/sf.md 的已知差异。"
+reason = "SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；SIL-849 补齐最后一条 `coord-sf-with-custom-guides`（`n.dodge` 的第 2..n 列只占文字盒、不再叠 margin，面板左移的 1.1pt 随之归零；实测 1.42% / 0.29%，见 docs/notes/sf.md）。9 条全部纳管，本簇不再有缺口。"
 
 [groups."draw-key"]
 issue = "SIL-715"
@@ -146,7 +146,7 @@ reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先�
 [groups."guide-axis"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放）。剩 3 条：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`）、`stacked-radial-axes`（叠放已做，标签落点 2.91% / 1.17%，未到 2% 档），owner 记 m3。逐条 reason 见下。"
+reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放），SIL-849 把 `stacked-radial-axes` 收进 2% 档（1.62% / 0.49%）。剩 2 条：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`），owner 记 m3。逐条 reason 见下。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -760,7 +760,7 @@ reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x
 case = "upstream-guide-axis-stacked-axes"
 
 [snapshots."guide-axis/stacked-radial-axes.svg"]
-reason = "SIL-844：叠放本身已做——`guide_axis_stack('axis_theta', …)` 的多层半径偏移按上游 `measure_grobs()` 的标签盒投影累加（第二个 theta 圈外推 7.2pt），`r` / `r.sec` 两条叠放轴在面板内按 45° / 315° 旋转（`rotate_r_axis()`），partial arc 的 `panel.background` 也改成环形扇区。复刻成 case（`upstream-guide-axis-stacked-radial-axes`，ci = false）后实测 **2.94% / 1.18%**：版式、圆环、网格、轴线与刻度全对，叠放层间距已按上游 `grobWidth + spacing` 对齐（两层 r 标签的 x 差 **22.03pt**，上游 22.04）。残余是两层 r 标签的 **y 同向偏 ~3pt**（更像面板框 / 外边距，不是逐轴公式）与 theta 第二圈的半径。整条未到 2% 档，按 SIL-844 的约定不自行放宽阈值，移交 leader 决定。见 docs/notes/guide.md §8.5。"
+case = "upstream-guide-axis-stacked-radial-axes"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
 reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。"
@@ -1188,6 +1188,9 @@ case = "upstream-coord-sf-reversed-sf-coords"
 
 [snapshots."coord_sf/sf-polygons.svg"]
 case = "upstream-coord-sf-sf-polygons"
+
+[snapshots."coord_sf/coord-sf-with-custom-guides.svg"]
+case = "upstream-coord-sf-coord-sf-with-custom-guides"
 
 [snapshots."coord-map/coord-map-switched-scale-position.svg"]
 case = "upstream-coord-map-coord-map-switched-scale-position"

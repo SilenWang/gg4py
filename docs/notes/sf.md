@@ -77,10 +77,15 @@ plotmath，轴标签是单段文本 `36.25°N`。宽度折算按上游 `degree` 
 
 ## 5. 已知差异
 
-- **`coord-sf-with-custom-guides` 未纳管**：`label_graticule = "NSWE"` +
-  `guide_none()` / `guide_axis(angle=45)` / `n.dodge = 2` 的组合，图级差
-  2.85%（> 2% 阈值）。面板位置与刻度集合一致，差异集中在旋转后的度数标签与
-  自定义 guide 的文字排布；其余 20 条空间快照全部纳管。
+- `coord-sf-with-custom-guides`（`label_graticule = "NSWE"` + `guide_none()` /
+  `guide_axis(angle=45)` / `n.dodge = 2` 的组合）已纳管：SIL-849 修掉 `n.dodge`
+  的分行口径后 2.83% → **1.56% / 0.32%**。`n.dodge` 的每一行 / 列在 R 里是独立
+  gtable 轨道，尺寸**逐组**量（组 k = 下标 `k, k+n, …` 的标签取最大值）——
+  右轴两组是 20.11 / 22.10pt，之前一律按全局最大值算，整条轴带宽多 2pt、整表
+  宽 2pt，面板因此左移 1.1pt（`y_axis_right_cm` 50.1 → 49.3）。修完面板与上游
+  重合（clip 左边界 157.144 vs 157.15）、三条轴带的标签残差都 ≤ 0.15pt。
+  剩余差异是 `°` 的推进（本仓 0.4em、上游 svglite 的 `degree` 0.376em，每个
+  度数标签 0.21px）与字形边缘。
 - `point_on_surface()` 用面积重心近似 GEOS 的极值内点算法；对凹多边形标签
   位置最多差几个像素（`texts/labels-for-north-carolina` 实测 0.9%）。
 - `format()` 只实现数值分支（共同小数位 + 前导空格补齐），足够覆盖 graticule

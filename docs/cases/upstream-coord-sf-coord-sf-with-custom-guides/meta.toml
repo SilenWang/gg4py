@@ -1,7 +1,7 @@
 family = "coord_sf"
 features = ["coord-sf", "projection", "guide"]
-ci = false
+ci = true
 title = "上游快照：coord_sf() with custom guides"
 source = "upstream:tests/testthat/_snaps/coord_sf/coord-sf-with-custom-guides.svg"
 tolerance = { png = 0.02 }
-notes = "M3-2：label_graticule = \"NSWE\" 的四边度数标签 + 自定义 guide。**未纳管**：图级差 2.85%（阈值 2%），差异在旋转后的度数标签与自定义 guide 的文字排布；保留为复现用例。" 
+notes = "SIL-849：`n.dodge` 的轨道宽逐组量（右轴两组 20.11 / 22.10pt，上游 gtable 实测 49.34pt），右轴带宽 50.1 → 49.3pt，整表随之不再左移 1.1pt；图级 2.83% → 1.56% / 0.32%。"
