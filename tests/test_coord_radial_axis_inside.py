@@ -128,6 +128,20 @@ def test_r_axis_inside_scalar_and_bool() -> None:
     assert params.polar.axis_rotation == pytest.approx(params.polar.arc)
 
 
+def test_r_axis_inside_out_of_range_angles_are_squished() -> None:
+    """越界角度按 `oob_squish(…, only.finite = FALSE)` 夹到 theta 范围端点。
+
+    上游 `setup_panel_params()` 的顺序是 `transform()` → `oob_squish()` →
+    `theta_rescale()`；少了夹，`r.axis.inside = c(-1000, 1000)` 会把 r 轴转到
+    arc 之外（partial arc 下直接跑到面板外）。
+    """
+    _build, params = _first_panel(
+        radial(start=0.25 * math.pi, end=0.75 * math.pi, r_axis_inside=(-1000.0, 1000.0))
+    )
+    polar = params.polar
+    assert polar.axis_rotation == pytest.approx(polar.arc)
+
+
 def test_r_sec_takes_an_axis_r_column_only_when_outside() -> None:
     """`guides(r.sec = …)` 在面板外时占一条 axis-r 列；`r.axis.inside` 为真时不占。
 

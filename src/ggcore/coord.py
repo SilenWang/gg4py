@@ -1326,9 +1326,12 @@ class RadialCoord(CoordBase):
             values = self.r_axis_inside
             if isinstance(values, (int, float)):
                 values = (float(values), float(values))
-            angles = theta_rescale(
-                np.asarray([float(values[0]), float(values[1])]), theta_range, arc, 1.0
-            )
+            # 上游先 `oob_squish(…, only.finite = FALSE)` 再 `theta_rescale()`：
+            # 越界角度夹到 theta 范围的两端（否则会外推出 arc 之外的角度，
+            # 轴转到面板外）。±Inf 也按端点夹。
+            raw = np.asarray([float(values[0]), float(values[1])], dtype=np.float64)
+            squished = np.clip(raw, theta_range[0], theta_range[1])
+            angles = theta_rescale(squished, theta_range, arc, 1.0)
             axis_rotation = (float(angles[0]), float(angles[1]))
         polar = PolarGeometry(
             theta_axis=theta_axis,
