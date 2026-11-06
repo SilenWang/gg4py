@@ -139,6 +139,7 @@ numpy / skia 版本；只有包集合不同。
 | `viewer:browsers` | 把 Chromium 装进仓库（`$HOME` 只读） |
 | `viewer:sample` / `viewer:shot` | 生成手测场景 / 截图 |
 | `viewer:cases` / `viewer:cases:ci` | case → IR → DOM SVG → 与 expected.svg 像素对拍；CI 跑 12 条 |
+| `gallery:check` | 先 `viewer:cases` 生成 gallery，再逐条请求 gallery.html 的链接（含 scene IR）并核对卡片 ↔ case |
 | `viewer:parity` / `viewer:parity:ci` | skia SVG 与 DOM SVG 两条腿的语义对拍（`docs/notes/viewer-parity.md`） |
 | `spike:corpus` / `spike:e1` / `e2` / `e3` | M-1 可行性实验，见 `docs/spike/README.md` |
 | `assets:canvaskit` / `spike:assets` | 取 CanvasKit（npm，wasm） |

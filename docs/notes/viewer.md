@@ -224,6 +224,14 @@ plot.py → ggcore.plotspec → IR(.ggir.cbor)
 `../index.html?scene=gallery/<case>.ggir.cbor`（资产在 `web/viewer/gallery/`），
 点进去就是同一套 hover / 图例开关。
 
+**gallery 链接检查（SIL-828）**：`pixi run viewer:cases` 之后跑
+`pixi run gallery:check`。它起一个 `web/viewer/` 静态服务器，把 gallery.html 里的
+每个 `<a href>` / `<img src>` 按浏览器实际请求的 URL 逐条 GET（卡片还额外请求
+viewer 随后 `fetch()` 的 scene IR），并核对「每个合法 case 都有卡片、卡片不指向已删
+case」；任何非 200 / 空响应 / 文件缺失都非 0 退出。全量输出可直接贴 PR，`--json`
+给机读结果。它不挂进 `check`：CI 不跑全量 `viewer:cases`，没有 gallery 资产时跑它
+只会永远红。
+
 2026-11-03 全量结果（82 条三文件 case）：**pass 82 / fail 0 / error 0 / skip 0**。
 M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 `viewer-pch-all` 0.48% / `viewer-alpha-fill` 0.00% / `viewer-alpha-overlap` 0.00%），

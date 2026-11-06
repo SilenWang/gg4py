@@ -195,14 +195,20 @@ pixi run cases:matrix --case geom-point-basic   # 只跑一个 case
 
 | 产物 | 入库 | 内容 |
 | --- | --- | --- |
-| `docs/cases/matrix.md` | 是（生成物，`--check` 守新鲜度） | **静态**覆盖视图：族 × 特性、缺口、清单、来源 |
+| `docs/cases/matrix.md` | 是（生成物，`--check` 守新鲜度） | **静态**覆盖视图：族 × 特性、覆盖缺口、必铺组合网格、清单、来源 |
 | `.cases-matrix/report.md` / `.json` | 否（`.gitignore`） | **运行时**结论：哪个 case 红、差多少、按族汇总、为什么待落地。**永远完整，不截断** |
 | GHA step summary | —（CI 贴到 PR 页） | 报告（CI 目前直接贴 `report.md`）；想要 ≤60 行的短版本就用 `--summary` |
 
 矩阵是静态的，只由仓库内容决定，所以能 `--check` 逐字节比对；红绿随渲染能力变化，
 写进报告，由 CI 贴到 PR 的 step summary（失败 case 名同时以 `::error` 注解出现）。
-族 × 特性的聚合视图只在 `matrix.md`（覆盖缺口、清单都在那里）；运行时报告给的是
-红绿与「按族汇总」的 case 数 / 红数，并在开头直接指向 `matrix.md`。
+族 × 特性的聚合视图只在 `matrix.md`；运行时报告给的是红绿与「按族汇总」的
+case 数 / 红数，并在开头直接指向 `matrix.md`。
+
+**覆盖缺口的口径（SIL-828）**：只数「`taxonomy.toml` 登记了却没有 case 的族 /
+特性」和「`[[required_combos]]` 声明必铺但没有 case 覆盖的组合格」；族 × 特性表里的
+`—` 只是「该族不使用这个特性」，不是缺口。组合网格（分面 × 坐标 10 格、图例
+位置 × 方向 × 个数 16 格）的声明与 `tests/test_cases_matrix_combos.py` 共用同一份
+`required_combos`，`cases:matrix` 会把每格的 `已覆盖 / 格子` 打在 `matrix.md` 里。
 
 `report.md` 不受行数限制：上游验收资产是 314 份 SVG，案例库必然超过几十个，按行数
 截断会把逐 case 表和「需要修的 case」整节切掉，红名单就没人看得到。CI 的 publish
