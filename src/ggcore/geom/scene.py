@@ -1463,6 +1463,10 @@ def _draw_layer(
         table_fingerprint(layer.data),
         fingerprint(layer.params),
         fingerprint(params),
+        # `coord_radial(rotate.angle = TRUE)` 改的是 geom 读到的 `angle` 美学，
+        # 不体现在 `PanelParams` 上（`polar` 里没有这个字段），漏进键里会让
+        # 同一份数据的两张图共用一份 grob。
+        bool(getattr(build.coord, "rotate_angle", False)),
         theme_key,
     )
     cached = cache.get(key, metrics)
@@ -2071,6 +2075,7 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-x-{panel}",
                     draw_labels=label_bottom,
+                    degree_labels=params.sf is not None,
                 )
             )
         inside_r_axes = radial and bool(params.polar.r_axis_inside)
@@ -2086,6 +2091,7 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-y-{panel}",
                     draw_labels=label_left,
+                    degree_labels=params.sf is not None,
                 )
             )
         if inside_r_axes:
@@ -2149,6 +2155,7 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-x-sec-{panel}",
                     draw_labels=label_top,
+                    degree_labels=params.sf is not None,
                 )
             )
         if has_secondary_axis(build, "y", scale_right) and draw_right:
@@ -2170,6 +2177,7 @@ def _axis_grobs(
                     metrics=metrics,
                     name=f"axis-y-sec-{panel}",
                     draw_labels=label_right,
+                    degree_labels=params.sf is not None,
                 )
             )
         # `guides(r.sec = ...)`：径向的次 r 轴画进 axis-r 槽（`right_cell`），
@@ -2482,8 +2490,8 @@ def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> 
     steps = 179  # R 的 `coord_munch()` 在满圆上的采样点数（外圆 179 段）
     arc = tuple(polar.arc)
     full = abs(arc[1] - arc[0]) >= 1.999 * math.pi
-    angles = np.linspace(arc[0], arc[1], steps) if not full else np.linspace(
-        0.0, 2.0 * math.pi, steps
+    angles = (
+        np.linspace(arc[0], arc[1], steps) if not full else np.linspace(0.0, 2.0 * math.pi, steps)
     )
     xo, yo = polar.point(angles, np.full(angles.shape, outer))
     xs = [float(value) for value in np.asarray(xo)]

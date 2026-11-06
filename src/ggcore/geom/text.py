@@ -471,6 +471,22 @@ def _math_grobs(
     return g_tree(*grobs, name=name)
 
 
+def _rotate_theta(panel: Any, data: ColumnTable) -> np.ndarray:
+    """每行的 theta 角（弧度）；`coord_radial(rotate.angle = TRUE)` 用。
+
+    theta 取自 theta 轴那一列（`theta = "x"` 时是 x），经 `theta_angle()` 折成
+    弧度——与 `CoordRadial$transform()` 里 `data$theta` 同源，不必从画布位置
+    反解 `atan2()`（那会在 glibc / emscripten 之间差 1 ULP）。
+    """
+    polar = panel.polar
+    column = polar.theta_axis
+    if column not in data:
+        return np.zeros(data.nrows, dtype=np.float64)
+    values = table_numeric(data, column, default=math.nan)
+    angles = np.asarray(polar.theta_angle(values), dtype=np.float64)
+    return np.where(np.isfinite(values), angles, 0.0)
+
+
 class TextRenderer(GeomRenderer):
     """`geom_text`：逐行文字，`(hjust, vjust, angle)` 相同的行共用一个 text grob。"""
 
@@ -485,10 +501,28 @@ class TextRenderer(GeomRenderer):
         y = npc_values(panel, data, "y", "y")
         labels = _strings(data, "label")
         angle = table_numeric(data, "angle", default=0.0)
+        raw_hjust = _raw_just(data, "hjust")
+        raw_vjust = _raw_just(data, "vjust")
+        if getattr(coord, "rotate_angle", False) and getattr(panel, "polar", None) is not None:
+            # `coord_radial(rotate.angle = TRUE)`：`flip_data_text_angle()`——把
+            # `angle` 美学按行相减 `theta`，落在 (90, 270) 的再翻 180 度，并把
+            # `hjust` / `vjust` 同时取反（否则文字会背对圆心）。
+            theta_values = _rotate_theta(panel, data)
+            rotated = (angle - np.degrees(theta_values)) % 360.0
+            flipped = (rotated > 90.0) & (rotated < 270.0)
+            angle = np.where(flipped, rotated + 180.0, rotated)
+            raw_hjust = [
+                1.0 - float(value) if bool(flip) else value
+                for value, flip in zip(raw_hjust, flipped, strict=True)
+            ]
+            raw_vjust = [
+                1.0 - float(value) if bool(flip) else value
+                for value, flip in zip(raw_vjust, flipped, strict=True)
+            ]
         # `compute_just()` 的 a / b 是 `coord$transform()` 之后的 npc（SIL-765）：
         # 与 0.5 比较的是画布位置，不是数据坐标（limits 不是 0..1 时方向会反）。
-        hjust = compute_just(_raw_just(data, "hjust"), x, y, angle)
-        vjust = compute_just(_raw_just(data, "vjust"), y, x, angle)
+        hjust = compute_just(raw_hjust, x, y, angle)
+        vjust = compute_just(raw_vjust, y, x, angle)
         size_pt = _text_pt(table_numeric(data, "size", default=3.87), build.params)
         colours = _values(data, "colour", "black")
         alpha = table_numeric(data, "alpha", default=math.nan)
