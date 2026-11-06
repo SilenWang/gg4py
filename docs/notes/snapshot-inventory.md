@@ -429,7 +429,7 @@ SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_log
 
 ### `guide-axis` — 1 条 · SIL-715 · m3
 
-SIL-844：叠放本身已做——`guide_axis_stack('axis_theta', …)` 的多层半径偏移按上游 `measure_grobs()` 的标签盒投影累加（第二个 theta 圈外推 7.2pt），`r` / `r.sec` 两条叠放轴在面板内按 45° / 315° 旋转（`rotate_r_axis()`），partial arc 的 `panel.background` 也改成环形扇区。复刻成 case（`upstream-guide-axis-stacked-radial-axes`，ci = false）后实测 **2.91% / 1.17%**：版式、圆环、网格、轴线与刻度全对，剩下的是两条旋转 r 轴**标签沿轴向**的落点（我们的标签比上游外/内各差 4~10pt）与 42 个标签的字形宽度（本仓字体栈的 digit 0.636em vs svglite 的 0.556em）。整条未到 2% 档，按 SIL-844 的约定不自行放宽阈值，移交 leader 决定。见 docs/notes/guide.md §8.5。
+SIL-844：叠放本身已做——`guide_axis_stack('axis_theta', …)` 的多层半径偏移按上游 `measure_grobs()` 的标签盒投影累加（第二个 theta 圈外推 7.2pt），`r` / `r.sec` 两条叠放轴在面板内按 45° / 315° 旋转（`rotate_r_axis()`），partial arc 的 `panel.background` 也改成环形扇区。复刻成 case（`upstream-guide-axis-stacked-radial-axes`，ci = false）后实测 **2.94% / 1.18%**：版式、圆环、网格、轴线与刻度全对，叠放层间距已按上游 `grobWidth + spacing` 对齐（两层 r 标签的 x 差 **22.03pt**，上游 22.04）。残余是两层 r 标签的 **y 同向偏 ~3pt**（更像面板框 / 外边距，不是逐轴公式）与 theta 第二圈的半径。整条未到 2% 档，按 SIL-844 的约定不自行放宽阈值，移交 leader 决定。见 docs/notes/guide.md §8.5。
 
 <details><summary>快照</summary>
 
