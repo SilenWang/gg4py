@@ -4,17 +4,16 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**304**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**7**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **7** 条（移交 M3）
+- 已纳管：**306**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**5**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **5** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `guide-axis` | m3 | 23 | 20 | 3 |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
-| `coord_sf` | m3 | 9 | 8 | 1 |
+| `guide-axis` | m3 | 23 | 21 | 2 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
@@ -23,6 +22,7 @@
 | `coord-map` | m3 | 2 | 2 | 0 |
 | `coord-polar` | m3 | 11 | 11 | 0 |
 | `coord-transform` | m2-closeout | 3 | 3 | 0 |
+| `coord_sf` | m3 | 9 | 9 | 0 |
 | `draw-key` | m2-closeout | 6 | 6 | 0 |
 | `facet-` | m2-closeout | 4 | 4 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 304 | 7 |
+| **合计** | — | 311 | 306 | 5 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -90,6 +90,7 @@
 | `coord-transform/basic-coord-transform-plot.svg` | `upstream-coord-transform-basic` |
 | `coord-transform/reversed-transformed-coords.svg` | `upstream-coord-transform-reversed` |
 | `coord-transform/sec-axis-with-coord-transform.svg` | `upstream-coord-transform-sec-axis` |
+| `coord_sf/coord-sf-with-custom-guides.svg` | `upstream-coord-sf-coord-sf-with-custom-guides` |
 | `coord_sf/limits-specified-in-long-lat.svg` | `upstream-coord-sf-limits-specified-in-long-lat` |
 | `coord_sf/limits-specified-in-projected-coords.svg` | `upstream-coord-sf-limits-specified-in-projected-coords` |
 | `coord_sf/no-breaks.svg` | `upstream-coord-sf-no-breaks` |
@@ -223,6 +224,7 @@
 | `guide-axis/guides-specified-in-guides.svg` | `upstream-guide-axis-guides-specified` |
 | `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
 | `guide-axis/stacked-axes.svg` | `upstream-guide-axis-stacked-axes` |
+| `guide-axis/stacked-radial-axes.svg` | `upstream-guide-axis-stacked-radial-axes` |
 | `guide-axis/thick-axis-lines.svg` | `upstream-guide-axis-thick-axis-lines` |
 | `guide-colorbar/combined-colour-and-fill-aesthetics.svg` | `upstream-guide-colorbar-combined-aesthetics` |
 | `guide-colorbar/customized-colorbar.svg` | `upstream-guide-colorbar-customized` |
@@ -367,16 +369,6 @@
 
 ## 已知缺口
 
-### `coord_sf` — 1 条 · SIL-715 · m3
-
-SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；剩 `coord-sf-with-custom-guides` 是 plotmath 度数表达式 + `guide_none(angle)` / `n.dodge` 的自定义 guide 组合，版面差 2.85%（节点间 ≤ 2%），见 docs/notes/sf.md 的已知差异。
-
-<details><summary>快照</summary>
-
-- `coord_sf/coord-sf-with-custom-guides.svg`
-
-</details>
-
 ### `facet-labels` — 1 条 · SIL-715 · m3
 
 SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。
@@ -424,15 +416,5 @@ SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_log
 <details><summary>快照</summary>
 
 - `guide-axis/logtick-axes-with-customisation.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m3
-
-SIL-844：叠放本身已做——`guide_axis_stack('axis_theta', …)` 的多层半径偏移按上游 `measure_grobs()` 的标签盒投影累加（第二个 theta 圈外推 7.2pt），`r` / `r.sec` 两条叠放轴在面板内按 45° / 315° 旋转（`rotate_r_axis()`），partial arc 的 `panel.background` 也改成环形扇区。复刻成 case（`upstream-guide-axis-stacked-radial-axes`，ci = false）后实测 **2.94% / 1.18%**：版式、圆环、网格、轴线与刻度全对，叠放层间距已按上游 `grobWidth + spacing` 对齐（两层 r 标签的 x 差 **22.03pt**，上游 22.04）。残余是两层 r 标签的 **y 同向偏 ~3pt**（更像面板框 / 外边距，不是逐轴公式）与 theta 第二圈的半径。整条未到 2% 档，按 SIL-844 的约定不自行放宽阈值，移交 leader 决定。见 docs/notes/guide.md §8.5。
-
-<details><summary>快照</summary>
-
-- `guide-axis/stacked-radial-axes.svg`
 
 </details>

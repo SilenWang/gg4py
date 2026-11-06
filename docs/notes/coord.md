@@ -488,6 +488,17 @@ theta 的 35 条次辐条合成**一个** `<polyline>`，我们的设备每条�
 修法（尚未实施）：把 angle≠0 轴标签的旋转 extent 固定部分从 25.42 提到 26.22
 （`_label_stats` 的 `cross` 项），再跑全量矩阵确认没有别的角度轴被带偏。
 
+**SIL-849 定论：这 1.10pt 在 `n.dodge` 的轨道宽度上，不在旋转 extent**
+
+上面的「+1.10」在 SIL-849 修掉 `n.dodge` 的分行口径后归零：面板左边界变成
+**157.144**（上游 157.15，差 0.006）、宽 383.605（上游 383.48）。右轴是
+`guide_axis(n.dodge = 2)`，上游 `GuideAxis$measure_grobs()` 把每个 dodge 组的
+标签 grob 写进**独立 gtable 轨道**，轨道宽逐组量（`width_cm(grobs$labels)`，
+组 k = 下标 `k, k+n, …` 取最大值）；之前一律按全局最大值，右轴带宽多 2pt、
+整表宽 2pt，「居中」把面板往左推了 1.1pt（`y_axis_right_cm` 50.1 → 49.3，
+refs 里 `ggplotGrob()` 实测 1.7404cm = 49.34pt）。`y_axis`（axis-l）的
+25.42 vs 26.22 是另一笔账（旋转 extent 与 margin 的耦合，见下），与这里的 1.1pt 无关。
+
 **`0.8pt` 归因到哪一类：隔离实验的第一轮（SIL-839，未收敛）**
 
 思路是拿 0°/90° 的已绿 case 比 `axis-l` 列宽——0° 时 `cross` 只吃 `line`，

@@ -400,19 +400,26 @@ SVG 逐值量过，见 `docs/cases/upstream-guide-axis-theta-angle`）：
 | partial arc 的 `panel.background` | `guide_grid(square = FALSE)` 的 4 个 ±Inf 角点经 `coord_munch()` 投到 bbox，partial arc 下折成**一段**闭合的环形扇区 | `_radial_panel_background()`：`arc < 2π` 时一段子路径（外弧 + 内弧回程），满圆才是两段（`rule = "evenodd"`） |
 | 叠放的径向偏移 | `GuideAxisStack$draw()` 的 theta 分支：`offset <- offset + spacing + grobs[[i]]$offset`，`grobs[[i]]$offset` 来自 `measure_grobs()`（标签盒沿半径的投影）；`spacing` 缺省 2.25pt | `polar_axis_grobs()` 的 stack 分支：逐层累加 `_theta_ring_extent()`（标签盒沿半径投影 + `spacing`），第二层起按累积量外推 key 半径 |
 
-仍然没到 2% 档的两条（不自行放宽阈值，见 `tools/upstream/snapshots.toml` 的单条
-`reason`）：
+SIL-849 把剩下两条也收进 2% 档（`ci = true`），量到的口径补进上表的两行：
 
-- `guide-axis/stacked-radial-axes`：**2.94% / 1.18%**（`ci = false`）。版式、圆环、
-  网格、轴线、刻度已对位；叠放层间距已按上游 `grobWidth + spacing` 对齐（两层 r 标签
-  的 x 差 **22.03pt**，上游 22.04，`axis.text.r` 的 margin 是两侧各 2.2pt）。残余是
-  两层 r 标签的 **y 同向偏 ~3pt**（更像面板框 / 外边距）与 theta 第二圈的半径；
-- `coord_sf/coord-sf-with-custom-guides`：**2.83% / 0.92%**。`"80°W"` 已经拆成
-  `"80"` / `"°"` / `"W"` 三个字符节点（`_degree_label_grobs()`，各自 `rotate(45)`
-  + 自己的 advance）。**digit / `W` 的宽度与字距和上游完全一致**：`80` = 9.79px =
-  2 × 0.556em，字符间距 6.92 / 2.34 分毫不差；只有 `°` 的 advance 差 0.21px
-  （0.4em vs 0.376em）。真实残余是面板整体左移 0.99pt（`y_axis_cm` 少 0.99、
-  `y_axis_right_cm` 多 0.72）。
+- `guide-axis/stacked-radial-axes`：**1.62% / 0.49%**（原 2.94% / 1.18%）。三处：
+  1. `theta.sec` 的叠放方向是**反的**——上游 `GuideAxisTheta$transform()` 先给 key 的
+     theta 加 `π`，之后 `build_decor()` / `theta_tickmarks()` / `build_labels()` 都用
+     `sin/cos(theta + π)` 加 `stack_offset`，第二圈因此落在内半径**里侧**
+     （实测 125.39pt → 103.33pt）。之前一律向外推，两条 `theta.sec` 标签错 40pt；
+  2. `measure_grobs()` 的 margin 是 `rep(max(margin), 4)`（四个方向都取最大值），
+     不是只用元素自己那一侧的 `t = 2.2pt`；theta 第二圈的步长因此差 3.3pt；
+  3. 旋转 r 轴的层间方向：`rotate_r_axis()` 的 viewport 旋转在**设备空间**里是刚性的，
+     45° 不随面板长宽比（bbox 1 × 0.8536）变形。之前按 `width/height` 归一化成
+     40.5°，第二层标签错 6.4pt；`+2 × margin` 的补偿也是多余的（上游列宽只含一次
+     margin）。现在两层 r 标签逐值对到 0.65pt、第一层 0.3pt。
+- `coord_sf/coord-sf-with-custom-guides`：**1.56% / 0.32%**（原 2.83% / 0.92%）。
+  `n.dodge = 2` 的第 2..n 列在 R 里是独立 gtable 轨道，尺寸**逐组**量
+  （`width_cm(grobs$labels)`：组 k = 下标 `k, k+n, …` 取最大值，再加该元素的
+  cross margin）。之前一律按全局最大值，右轴带宽多 2pt、整表宽 2pt，面板因此
+  左移 1.1pt（`y_axis_right_cm` 50.1 → 49.3，上游实测 49.34）。修完面板左边界
+  157.144（上游 157.15）、左 / 上 / 右三条轴带的标签残差都 ≤ 0.15pt。`°` 的
+  advance 差 0.21px 未动（本仓 0.4em、上游 plotmath `degree` 0.376em），单独一层。
 
 | `legend.frame` / 高级图例盒子主题 | 只画 `legend.frame` 的描边与 `legend.box.background` 的矩形；`legend.box.just` / `legend.box` / `legend.box.margin` 已参与行列分配 |
 | 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。`display = "gradient"` 同样落成 15 条矩形，由 `docs/cases/guide-colourbar-gradient` 钉住视觉（图级 1.48%） |
