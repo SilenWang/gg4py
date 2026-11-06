@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "cases"))
 
-import audit  # noqa: E402
+import audit
 
 
 def test_text_lines_counts_each_line() -> None:
