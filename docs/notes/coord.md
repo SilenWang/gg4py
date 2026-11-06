@@ -220,8 +220,12 @@ M0 交接的遗留口径在本任务收口：
   `continuous_range` 是反变换回标度空间的结果（断点用它）。
 - 刻度位置：`rescale(trans(break), range)`；标签仍是未变换的断点文本。
 - 已实现的名字：`identity` / `log` / `log2` / `log10` / `log1p` / `exp` /
-  `sqrt` / `reciprocal` / `reverse`，也接受函数（函数没有逆变换，涉及反演时
-  报 `CoordError`）。其余（`boxcox` / `logit` / `probit` …）点名报错。
+  `sqrt` / `reciprocal` / `reverse` / `pseudo_log`，也接受函数（函数没有逆变换，
+  涉及反演时报 `CoordError`）和 **`ggcore.scales` 的变换对象**——
+  `coord_transform(x = transform_pseudo_log())` 与
+  `coord_transform(x = transform_compose(transform_log10(), transform_reverse()))`
+  都直接走 R 的写法（`as_coord_transform()` 适配一层，量化口径不变）。
+  其余（`boxcox` / `logit` / `probit` …）点名报错。
 - 定义域外（`log10` 的 0 / 负值）在范围计算阶段就报错，不静默画 NaN。
 
 ## 9. `coord_polar` / `coord_radial`

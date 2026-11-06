@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "guide-axis-logticks", "coord-trans", "transform-compose", "transform-pseudo-log"]
+ci = true
+title = "上游快照：logtick axes with customisation"
+source = "upstream:tests/testthat/_snaps/guide-axis/logtick-axes-with-customisation.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-856：`transform_compose(log10, reverse)` + `coord_transform(pseudo_log)` 两条变换链路；标题是 doppelganger 名。"

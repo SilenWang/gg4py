@@ -214,6 +214,36 @@ def test_trans_sqrt_is_axis_local() -> None:
     assert params.is_linear is False
 
 
+def test_trans_pseudo_log_object_and_name() -> None:
+    """`coord_transform(x = transform_pseudo_log())`（SIL-856）。
+
+    R 的 `coord_transform()` 直接收 scales 的变换对象；这里认
+    `ggcore.scales` 的变换对象、注册名 `"pseudo_log"`，以及任意组合
+    （`transform_compose()` 的返回值也能这么传给 coord）。
+    """
+    from ggcore.scales import transform_compose, transform_log10, transform_pseudo_log
+
+    for value in (transform_pseudo_log(), "pseudo_log"):
+        coord = TransCoord(x=value)
+        assert coord.x.name == "pseudo_log"
+        assert coord.x.apply(np.array([0.0]))[0] == pytest.approx(0.0)
+        assert coord.x.apply(np.array([1.0]))[0] == pytest.approx(math.asinh(0.5))
+        assert coord.x.invert(np.array([math.asinh(0.5)]))[0] == pytest.approx(1.0)
+
+    composed = as_coord_transform(transform_compose(transform_log10(), transform_pseudo_log()))
+    assert composed.name == "composition(log10,pseudo_log)"
+
+    _, params = params_of(continuous_plot() + registry.coord_transform(x=transform_pseudo_log()))
+    low, high = math.asinh(1.513 / 2.0), math.asinh(5.424 / 2.0)
+    margin = 0.05 * (high - low)
+    assert params.x_range == pytest.approx((low - margin, high + margin))
+    # 连续范围（标度空间）是伪对数反解回来的数据值（断点 / guide 用）
+    assert params.continuous_ranges["x"] == pytest.approx(
+        (2.0 * math.sinh(low - margin), 2.0 * math.sinh(high + margin))
+    )
+    assert params.position_of("x", 0.0) == pytest.approx((-low + margin) / ((high - low) * 1.1))
+
+
 def test_trans_rejects_unknown_and_unsupported_names() -> None:
     with pytest.raises(CoordError, match="尚未实现"):
         coord_from_component(registry.coord_transform(x="boxcox"))

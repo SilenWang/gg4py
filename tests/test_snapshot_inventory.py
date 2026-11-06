@@ -116,20 +116,26 @@ def test_group_owner_that_stops_at_m2_closeout_is_red(monkeypatch: pytest.Monkey
     """只改单条 owner、group owner 停在 m2-closeout（本次漂移的来源）→ `snapshots:check` 红。
 
     SIL-844 把 `coord-polar` 的 11 条全部纳管、SIL-849 又把 `coord_sf` 的最后一条
-    收进来之后，这两簇都不再有缺口；换成一簇仍有缺口的（`guide-axis`）。
+    收进来、SIL-856 再收掉 `guide-axis` 之后，这几簇都不再有缺口；这里取**第一簇
+    仍有缺口**的（按簇名排序，当前的唯一一簇是 `geom-hline-vline-abline`）。
+    全部缺口清零时这条契约没有意义，直接 skip。
     """
+    rows = SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), SNAPSHOTS.load_dispositions())
+    clusters = sorted({row["cluster"] for row in rows if not row["case"]})
+    if not clusters:
+        pytest.skip("台账里已经没有缺口簇了：没有可复现「group owner 漂移」的对象")
+    cluster = clusters[0]
+
     dispositions = SNAPSHOTS.load_dispositions()
-    dispositions["groups"]["guide-axis"]["owner"] = "m2-closeout"
+    dispositions["groups"][cluster]["owner"] = "m2-closeout"
     rows = SNAPSHOTS.resolve(SNAPSHOTS.load_manifest(), dispositions)
-    moved = [row["path"] for row in rows if row["cluster"] == "guide-axis" and not row["case"]]
+    moved = [row["path"] for row in rows if row["cluster"] == cluster and not row["case"]]
     assert moved
     for path in moved:
         dispositions["snapshots"].setdefault(path, {})["owner"] = "m3"
     monkeypatch.setattr(SNAPSHOTS, "load_dispositions", lambda: dispositions)
     problems, _ = SNAPSHOTS.check()
-    assert any("guide-axis" in problem and "m2-closeout" in problem for problem in problems), (
-        problems
-    )
+    assert any(cluster in problem and "m2-closeout" in problem for problem in problems), problems
 
 
 def test_matrix_ledger_must_match_the_inventory() -> None:

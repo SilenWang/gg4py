@@ -444,7 +444,9 @@ size_area / size_binned_area / radius / size_ordinal / alpha_ordinal / alpha_man
 
 | 项 | 状态 |
 | --- | --- |
-| `trans = "log1p" / "pseudo_log" / "reciprocal" / "logit" / "probit" / "asn" / "atanh"` | 未实现；构造时报错并点名后续任务 |
+| `trans = "log1p" / "reciprocal" / "logit" / "probit" / "asn" / "atanh"` | 未实现；构造时报错并点名后续任务 |
+| `trans = "pseudo_log"` / `transform_pseudo_log(sigma, base)` | SIL-856 已实现：`asinh(x / (2σ)) / ln(base)`，逆变换 `2σ·sinh(y·ln(base))`。上游不传 `breaks`，断点仍是 `extended_breaks()`（在数据空间取，再变换回来），所以 `x = -100..100` 的断点是 -100/-50/0/50/100，不是等距的伪对数位置 |
+| `transform_compose(...)` | SIL-856 已实现：正向按顺序、反向逆序；**断点取第一个变换的**（`compose(log10, reverse)` 仍是十次幂）；`domain` 由第一个变换的 domain 推过去再推回来，交集为空时报 `ScaleError`。字符串 / `("log", base)` / 变换对象三种写法都收 |
 | `trans = "log2"` / `"exp"` / `("log", base)` / `("exp", base)` | SIL-790 已实现：`_Log(base)` / `_Exp(base)`。`log2` 的断点走 `breaks_log(base = 2)`（2 的幂）；`exp` 与上游 `transform_exp()` 一样不传 breaks / domain，断点仍在数据空间。`"exp"` 单独写等于自然底 |
 | `space != "Lab"` 的渐变插值 | 上游 4.0.3 已废弃；这里报 `ScaleError` |
 | secondary axis（`sec.axis`） | M2-1 已实现（`sec_axis()` / `dup_axis()`，见 `docs/notes/coord.md` §12）；标度侧只存引用，断点 / 标签在 `ggcore.axis` |

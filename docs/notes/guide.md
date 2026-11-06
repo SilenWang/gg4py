@@ -537,21 +537,20 @@ R 4.0.3 里 `guides(x.sec = guide_axis(...))` 会画一条**恒等**的次轴（
 - `secondary_ticks()` 的恒等分支：`breaks` 里带 `None` 时先 zip 再过滤，否则
   `labels` 比 `positions` 长（离散次轴 `zip(strict=True)` 直接抛异常）。
 
-### 12.4 尚未对等（2 条）
+### 12.4 尚未对等（0 条；2026-11-06 收口）
 
 SIL-810 收掉 `n.dodge` 进版式、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标
 `axis_theta`（5 条）。SIL-817 收掉 `align facet labels, facets vertical`。
-SIL-820 又收掉 6 条（见 §12.6）。剩下 2 条同属一个子系统：
+SIL-820 又收掉 6 条（见 §12.6）。最后 3 条由后面的任务收掉：
 
-| 卡点 | 影响 |
+| 曾经的卡点 | 收口 |
 | --- | --- |
-| 径向坐标的 full-bleed 面板（R 的 panel 是 575.61×576、标题与两条轴标题画在面板内）+ `guide_axis_theta(angle=)` 的锚点 | `guide_axis_theta with angle adapting to theta`（48.7%） |
-| 同一套 radial 版面 + `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | `stacked radial axes`（现在直接抛 ValueError） |
+| 径向坐标的 full-bleed 面板 + `guide_axis_theta(angle=)` 的锚点 | SIL-843（`guide-axis-theta-with-angle-adapting-to-theta`，1.9%） |
+| 同一套 radial 版面 + `guide_axis_stack` 在 theta 方向的两圈 `stack_offset` | SIL-843 / SIL-844（轴体系 / 叠放）、SIL-849 收进 2% 档（1.62% / 0.49%） |
+| `guides-with-minor-ticks` 的 plotmath 两段落字 | SIL-855（`10^2`，0.62% / 0.15%） |
+| `logtick-axes-with-customisation` 的两个复合变换 | SIL-856（见 §12.8，1.97% / 0.73%） |
 
-两条要一起做：单独补叠放、面板仍是收缩版式，快照照样红。估工 3–4 个工作日
-（`plot_layout()` 的 radial 口径 1.5–2 天、theta 轴 1 天、叠放 0.5 天、
-6 条 `coord-polar`/radial 快照回归 0.5–1 天），并要新增 radial 版面的单测；
-SIL-820 只写结论、未动 `owner`，等 leader 决定留在 M2 还是移交 m3。
+`guide-axis` 簇的 23 条上游快照现在全部纳管，`snapshots.toml` 里本簇缺口为 0。
 
 ### 12.5 SIL-816：stretchy key 与逐边 justification
 
@@ -621,3 +620,26 @@ SIL-820 只写结论、未动 `owner`，等 leader 决定留在 M2 还是移交 
   axis-t 行才对得上（以前整条轴带塌成 0，标签压进面板、面板上移 12.8pt）。
 - 上游 `guide-axis/guides-with-minor-ticks` 0.62% / 0.15%、
   `facet-labels/parsed-facet-labels` 0.15% / 0.02%。
+
+### 12.8 SIL-856：guide 自己的标题与两个复合变换
+
+`guide-axis/logtick-axes-with-customisation` 的四条轴标题都不是 `labs()` 给的，
+而是**每条 guide 自己的 `title=`**：
+
+- `guide_axis_logticks()` 补上 `title` / `angle` / `theme` / `position`
+  （R 里由 `...` 继承 `GuideAxis`；以前这四个参数会被忽略，标题退回标度名
+  "x" / "y"）。注册表工厂的 `allowed` 同步补登记。
+- 次轴（`x.sec` / `y.sec`）没有 `sec_axis()` 时，标题取
+  `_guide_title(secondary_axis_guide(...), None)`——`snapshots.toml` 里记的
+  「恒等次轴（没有标题）」只适用于 guide 不带 `title=` 的情形。
+
+图本身靠两处新能力（详见 `docs/notes/scales.md` §11）：
+
+- `transform_compose(...)`：`scale_y_continuous(transform =
+  transform_compose(transform_log10(), transform_reverse()))` 的断点仍走
+  `breaks_log()`（第一个变换的 breaks）、标签在数据空间格式化、映射按复合顺序；
+- `transform_pseudo_log()`：`coord_transform(x = transform_pseudo_log())` 直接收
+  `ggcore.scales` 的变换对象（`as_coord_transform()` 适配一层），面板范围在
+  伪对数空间 expand、`continuous_range` 再反解回数据空间给断点 / logticks 用。
+
+上游快照 1.97% / 0.73%（差异集中在 11pt 轴标题的字形宽度，面板与刻度位置逐点对齐）。

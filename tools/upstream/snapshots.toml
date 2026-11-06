@@ -146,7 +146,7 @@ reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先�
 [groups."guide-axis"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放），SIL-849 把 `stacked-radial-axes` 收进 2% 档（1.62% / 0.49%），SIL-855 把 plotmath 接进文本层后 `guides-with-minor-ticks`（`label_math()` 的 `10^2` 两段落字）也纳管（0.62% / 0.15%）。剩 1 条：`transform_compose` / `pseudo_log`（`logtick-axes-with-customisation`），owner 记 m3。逐条 reason 见下。"
+reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放），SIL-849 把 `stacked-radial-axes` 收进 2% 档（1.62% / 0.49%），SIL-855 把 plotmath 接进文本层后 `guides-with-minor-ticks`（`label_math()` 的 `10^2` 两段落字）也纳管（0.62% / 0.15%），SIL-856 补上 `transform_compose()`（断点 / 标签 / 映射走同一个变换对象）、`transform_pseudo_log()` 与 `coord_transform(x = <scales 变换对象>)` 后 `logtick-axes-with-customisation` 纳管（1.97% / 0.73%），本簇缺口清零。逐条 reason 见下。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -763,7 +763,7 @@ case = "upstream-guide-axis-stacked-axes"
 case = "upstream-guide-axis-stacked-radial-axes"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
-reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。"
+case = "upstream-guide-axis-logtick-axes-with-customisation"
 
 [snapshots."guide-axis/guide-axis-theta-in-cartesian-coordinates.svg"]
 case = "upstream-guide-axis-theta-cartesian"

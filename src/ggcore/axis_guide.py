@@ -205,13 +205,19 @@ def guide_axis_logticks(
     expanded: bool = True,
     cap: str = "none",
     *,
+    title: Any = AUTO,
+    angle: float | None = None,
+    theme: Any = None,
+    position: str | None = None,
     preserve: str | None = None,
     order: float = 0.0,
 ) -> AxisGuide:
     """对数轴次刻度。
 
     4.0.3 的参数是 `long` / `mid` / `short` / `cap` / `expanded`；
-    `preserve` 是本仓为「保留最外两段」提供的别名（`"top"` → `cap="upper"`、
+    `title` / `angle` / `theme` / `position` 与 `guide_axis()` 同义（R 里由
+    `...` 继承 `GuideAxis` 的参数，`guide_axis_logticks(title = ...)` 是最常见的
+    写法）；`preserve` 是本仓为「保留最外两段」提供的别名（`"top"` → `cap="upper"`、
     `"bottom"` → `cap="lower"`、`"both"` → `cap="both"`），见 docs/notes/guide.md。
     """
     del order
@@ -221,6 +227,10 @@ def guide_axis_logticks(
         raise ValueError("guide_axis_logticks 只支持 base 10 的 prescale.base")
     return AxisGuide(
         name="axis_logticks",
+        title=title,
+        angle=angle,
+        theme=theme,
+        position=position,
         long=float(long),
         mid=float(mid),
         short=float(short),
@@ -365,6 +375,10 @@ def axis_guide_from_component(component: Any) -> AxisGuide | None:
             "cap",
             "preserve",
             "order",
+            "title",
+            "angle",
+            "theme",
+            "position",
         }
         cleaned = {key.replace(".", "_"): value for key, value in params.items() if key in allowed}
         return guide_axis_logticks(**cleaned)

@@ -4,16 +4,15 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**308**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**3**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **3** 条（移交 M3）
+- 已纳管：**309**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**2**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **2** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
-| `guide-axis` | m3 | 23 | 22 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
@@ -39,6 +38,7 @@
 | `geom-smooth` | m2-closeout | 2 | 2 | 0 |
 | `geom-text` | m3 | 1 | 1 | 0 |
 | `geom-violin` | m2-closeout | 14 | 14 | 0 |
+| `guide-axis` | m3 | 23 | 23 | 0 |
 | `guide-colorbar` | m2-closeout | 3 | 3 | 0 |
 | `guide-legend` | m2-closeout | 7 | 7 | 0 |
 | `guides` | m2-closeout | 45 | 45 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 308 | 3 |
+| **合计** | — | 311 | 309 | 2 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -224,6 +224,7 @@
 | `guide-axis/guide-titles-with-coord-transform.svg` | `upstream-guide-axis-guide-titles-with-coord-transform` |
 | `guide-axis/guides-specified-in-guides.svg` | `upstream-guide-axis-guides-specified` |
 | `guide-axis/guides-with-minor-ticks.svg` | `upstream-guide-axis-guides-with-minor-ticks` |
+| `guide-axis/logtick-axes-with-customisation.svg` | `upstream-guide-axis-logtick-axes-with-customisation` |
 | `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
 | `guide-axis/stacked-axes.svg` | `upstream-guide-axis-stacked-axes` |
 | `guide-axis/stacked-radial-axes.svg` | `upstream-guide-axis-stacked-radial-axes` |
@@ -388,15 +389,5 @@ SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mer
 <details><summary>快照</summary>
 
 - `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m3
-
-SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。
-
-<details><summary>快照</summary>
-
-- `guide-axis/logtick-axes-with-customisation.svg`
 
 </details>
