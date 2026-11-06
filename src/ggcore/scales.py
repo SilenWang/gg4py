@@ -46,7 +46,7 @@ from typing import Any
 
 import numpy as np
 
-from ggcore import scales_date
+from ggcore import plotmath, scales_date
 from ggcore.components import Scale
 from ggcore.data import Column, ColumnTable
 from ggcore.palettes import (
@@ -86,6 +86,7 @@ __all__ = [
     "hex_to_lab",
     "hue_pal",
     "lab_to_hex",
+    "label_math",
     "new_transform",
     "pretty_breaks",
     "scale_from_component",
@@ -2637,7 +2638,9 @@ def _apply_labels(
             )
         out: list[str | None] = []
         for value in data_values:
-            out.append(None if value is None else str(labels.pop(0)))
+            # `plotmath.MathText` 是 `str` 子类：保留标记（`label_math()` 的回调
+            # 返回 plotmath 源串，`str()` 会把多段 run 的信息抹掉）。
+            out.append(None if value is None else _as_label(labels.pop(0)))
         return tuple(out)
     if isinstance(requested, Mapping):
         out: list[str | None] = []
@@ -2658,7 +2661,51 @@ def _apply_labels(
     values = list(requested)
     if len(values) != len(breaks):
         raise ScaleError(f"labels 有 {len(values)} 项，breaks 有 {len(breaks)} 项（上游要求等长）")
-    return tuple(None if value is None else str(value) for value in values)
+    return tuple(None if value is None else _as_label(value) for value in values)
+
+
+def _as_label(value: Any) -> str:
+    """标签取值 → `str`；`MathText` 原样保留（不把 plotmath 标记抹成普通文本）。"""
+    return value if isinstance(value, str) else str(value)
+
+
+def label_math(
+    expr: Any = "10^.x",
+    format: Any = None,
+) -> Callable[[Sequence[Any]], list[str]]:
+    """`scales::label_math()`：断点 → plotmath 表达式（缺省 `10^.x`）。
+
+    - `expr` 是 plotmath 源串模板，`.x` 换成格式化后的断点（`10^.x` + 断点 2
+      → `10^2`）；也可以给回调 `f(值文本) -> 源串`。
+    - `format` 是逐值的格式化回调（上游 `format = force` 即 R 的 `format()`）；
+      不给时按 R 的 `format()` 口径取 7 位有效数字。
+
+    返回的每一项都带 `plotmath.MathText` 标记，轴带 / strip 因此按多段 run 落字
+    （底数与指数两个字号），量宽与占高也按 run 之和走（`ggcore.axis`）。
+    """
+
+    def format_labels(values: Sequence[Any]) -> list[str]:
+        out: list[str] = []
+        for value in values:
+            text = _math_value(value, format)
+            source = str(expr(text)) if callable(expr) else str(expr).replace(".x", text)
+            out.append(plotmath.wrap(source))
+        return out
+
+    return format_labels
+
+
+def _math_value(value: Any, formatter: Any = None) -> str:
+    """plotmath 模板里的值文本：R 的 `format()` 口径（7 位有效数字、整数不带 `.0`）。"""
+    if formatter is not None and callable(formatter):
+        return str(formatter(value))
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if math.isfinite(number) and number.is_integer():
+        return str(int(number))
+    return f"{number:.7g}"
 
 
 # ---------------------------------------------------------------------------

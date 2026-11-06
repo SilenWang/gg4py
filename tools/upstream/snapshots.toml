@@ -66,7 +66,7 @@ reason = "SIL-796 纳管 3 条（左对齐两条 + facet_grid 省略内轴标签
 [groups."facet-labels"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-816 纳管 `outside-justified-labels`（多行轴标签的轴带按整块量，15.5% → 0.40%）；`label_parsed` 的 plotmath 归 m3。"
+reason = "SIL-816 纳管 `outside-justified-labels`（多行轴标签的轴带按整块量，15.5% → 0.40%）；SIL-855 补齐 plotmath 文本层后 `parsed-facet-labels`（`labeller = label_parsed` 的 `alpha ^ beta`）也纳管（0.15% / 0.02%）。簇内已无缺口，新增快照先落本组再补 case。"
 
 [groups."facet-layout"]
 issue = "SIL-715"
@@ -146,7 +146,7 @@ reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先�
 [groups."guide-axis"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放），SIL-849 把 `stacked-radial-axes` 收进 2% 档（1.62% / 0.49%）。剩 2 条：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`），owner 记 m3。逐条 reason 见下。"
+reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放），SIL-849 把 `stacked-radial-axes` 收进 2% 档（1.62% / 0.49%），SIL-855 把 plotmath 接进文本层后 `guides-with-minor-ticks`（`label_math()` 的 `10^2` 两段落字）也纳管（0.62% / 0.15%）。剩 1 条：`transform_compose` / `pseudo_log`（`logtick-axes-with-customisation`），owner 记 m3。逐条 reason 见下。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -754,7 +754,7 @@ case = "upstream-guide-axis-customization"
 case = "upstream-guide-axis-guides-specified"
 
 [snapshots."guide-axis/guides-with-minor-ticks.svg"]
-reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x 轴标签是 `label_math()`（`10` 用 8.80px、指数用 6.16px 两次落字，见快照 `guides-with-minor-ticks.svg` 的 8 段 text），本仓所有 text 走一条 shaping，画不出上下标；plotmath 已在 SIL-786 由 00b6d04 整块移交 M3。次轴带本身（`axis.minor.ticks.length.y.right = 5cm` 撑开 `axis-r` 列）已经算对，等 plotmath 落地后可直接复测。按 SIL-817 约束作为新能力整条移交 m3。"
+case = "upstream-guide-axis-guides-with-minor-ticks"
 
 [snapshots."guide-axis/stacked-axes.svg"]
 case = "upstream-guide-axis-stacked-axes"
@@ -984,7 +984,7 @@ case = "upstream-facet-wrap-omitted-inner-axis-labels"
 case = "upstream-facet-labels-outside-justified-labels"
 
 [snapshots."facet-labels/parsed-facet-labels.svg"]
-reason = "SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。"
+case = "upstream-facet-labels-parsed-facet-labels"
 
 [snapshots."facet-strips/switched-facet-strips.svg"]
 case = "upstream-facet-strips-switched"

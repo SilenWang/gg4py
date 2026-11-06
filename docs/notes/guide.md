@@ -598,3 +598,26 @@ SIL-820 只写结论、未动 `owner`，等 leader 决定留在 M2 还是移交 
   （`geom/base.POINT_PER_MM` 同一个常数）。0.4% 的差在 1 px 边框上就是从 0.75
   翻到 0.56 的覆盖率：`align facet labels, facets horizontal` 因此从 2.05%
   降到 1.91%。
+
+### 12.7 SIL-855：plotmath 接进文本层（`label_math()` 的轴标签）
+
+上游 `scale_x_continuous(labels = label_math())` 的断点标签是 plotmath 表达式
+（`10^2`），一段要拆成两段落字。这一轮把 `ggcore.plotmath` 接进文本层与两处
+调用点（轴 guide、facet strip）：
+
+- **标记**：`plotmath.MathText`（`str` 子类）。`scales.label_math()` 与
+  `facet.label_parsed()` 产出的标签带这个标记，整条流水线（标度 → guide →
+  grob）照旧当字符串用；解析不了的串退回普通 `str`（同 `parse_safe()`）。
+- **量尺寸**：`text_width_cm()` / `text_block_cm()` 认标记，宽度 = 各 run 推进之
+  和，行高 = 基线以上 0.999em + 以下 0.21em（8.8pt 的 `10^2` 是 10.64pt，纯文本
+  是 7.87pt）。`_label_box()` / `_strip_extent()` 因此把上标顶出来的那截算进轴带
+  / strip 行高。
+- **落字**：`grobs.math_text_grobs()` 把一段 plotmath 展开成多个 text grob（每个
+  run 一个，各自字号 + 基线抬升；根号走 polyline）。IR 不新增字段——一个标签就
+  是多个 text 节点（`docs/notes/ir.md` 的 text 口径不变）。
+- **负刻度**：`axis.ticks.length.*.top = unit(-0.5, "cm")` 这类负值画进面板内侧，
+  R 的 `GuideAxis$measure_grobs()` 取 `range(0, major)`，负的一段不占轴带。
+  `_guide_extent()` 改成 `max(0, tick) + 标签盒`，`guides-with-minor-ticks` 的
+  axis-t 行才对得上（以前整条轴带塌成 0，标签压进面板、面板上移 12.8pt）。
+- 上游 `guide-axis/guides-with-minor-ticks` 0.62% / 0.15%、
+  `facet-labels/parsed-facet-labels` 0.15% / 0.02%。

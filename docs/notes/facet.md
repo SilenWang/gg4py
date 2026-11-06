@@ -215,9 +215,17 @@ strip 之下、左侧轴标签落在 strip 右侧，与 R 的 `attach_strips()` 
 top / right 两条）。
 
 **labeller**：`"label_value"`（默认）/ `"label_both"`（`变量: 值`）/
-`"label_context"`（单变量同 value，多变量同 both）、`labeller(a={...})`
-（逐变量覆盖，未覆盖的走 `.default`）、`{值: 标签}` 简写与任意
-`f(labels) -> labels` 函数。`FacetBase.strip_labels()` 给逐变量标签。
+`"label_context"`（单变量同 value，多变量同 both）/ `"label_parsed"`（值当
+plotmath 表达式，SIL-855）、`labeller(a={...})`（逐变量覆盖，未覆盖的走
+`.default`）、`{值: 标签}` 简写与任意 `f(labels) -> labels` 函数。
+`FacetBase.strip_labels()` 给逐变量标签。
+
+`label_parsed` 的返回值是 `plotmath.MathText`（`str` 子类）：strip 的量宽 / 行高
+走 `plotmath.extent()`（8.8pt 的 `alpha ^ beta` 比纯文本高 2.77pt），落字时拆成
+「底数 + 上标」两段（字号 8.8 / 6.16、上标抬 0.502em）各一个 IR text 节点——
+IR 的 text 节点没有「段」字段，多段就是多节点。解析不了的标签回退普通文本
+（`parse_safe()` 口径），不整列报错。上游 `facet-labels/parsed-facet-labels`
+0.15% / 0.02%。
 
 完整 grob 绘制（面板背景、网格线、geom 墨迹、坐标轴、图例）不在 M1-6，
 留给 M1-7；这里的占位 grob 只携带 `kind / name / text / panel / side / fill`。

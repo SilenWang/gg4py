@@ -1,0 +1,7 @@
+family = "guide"
+features = ["guide-axis", "plotmath", "coord-cartesian"]
+ci = true
+title = "上游快照：guides with minor ticks"
+source = "upstream:tests/testthat/_snaps/guide-axis/guides-with-minor-ticks.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-855：`scales::label_math()`（x 轴标签是 `10^2` … `10^5` 的 plotmath），次轴带 `axis.minor.ticks.length.y.right = 5cm` 撑开 axis-r 列。"

@@ -1328,7 +1328,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(21.476, 31.654, 21.476, 31.654)
+MARGIN = margin(18.817, 29.034, 18.817, 29.034)
 
 
 def build():
@@ -1430,7 +1430,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(4.75, 11.95, 4.75, 11.95)
+MARGIN = margin(2.028, 9.255, 2.028, 9.255)
 
 
 def build():
@@ -1532,7 +1532,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(4.75, 11.95, 4.75, 11.95)
+MARGIN = margin(2.028, 9.255, 2.028, 9.255)
 
 
 def build():
@@ -1634,7 +1634,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(2.432, 28.676, 2.432, 28.676)
+MARGIN = margin(-0.298, 26.044, -0.298, 26.044)
 
 
 def build():
@@ -1736,7 +1736,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(2.432, 28.676, 2.432, 28.676)
+MARGIN = margin(-0.298, 26.044, -0.298, 26.044)
 
 
 def build():
@@ -1918,7 +1918,7 @@ LABELS = (
 
 #: 面板落在 5%..95%（上游 gtable 的 0.05 / 0.9 / 0.05 npc）；轴带（刻度 + 文字）
 #: 占掉的部分从 36pt 里扣，值由渲染后量面板得到。
-MARGIN = margin(21.476, 9.632, 21.476, 9.632)
+MARGIN = margin(18.817, 6.929, 18.817, 6.929)
 
 
 def build():
@@ -4933,9 +4933,200 @@ def specs() -> list[dict[str, Any]]:
         + _hex_specs()
         + _FACET_SPECS
         + _G10_SPECS
+        + _math_specs()
         + _theme_g9_specs()
         + _ANNOTATE_SPECS
     )
+
+
+#: SIL-855（plotmath 接进文本层）：两条快照的卡点都是「一段文字要拆成多段 run」。
+#: `facet-labels/parsed-facet-labels` 是 `labeller = label_parsed`（strip 里的
+#: `alpha ^ beta`），`guide-axis/guides-with-minor-ticks` 是
+#: `scale_x_continuous(labels = label_math())`（`10^2` … `10^5`）。
+#: 两条都靠同一份 `ggcore.plotmath`：解析 → 多段 run（各自字号 / 基线抬升）→
+#: 多个 IR text 节点。
+_PARSED_FACET_SOURCE = '''"""上游快照复刻：parsed facet labels。
+
+源：facet-labels/parsed-facet-labels.svg
+（vdiffr 名 "parsed facet labels"）。
+
+R：
+
+    df <- data_frame(x = 1, y = 1, f = "alpha ^ beta")
+    ggplot(df, aes(x, y)) +
+      labs(x = NULL, y = NULL) +
+      facet_wrap(~ f, labeller = label_parsed)
+
+strip 里的标签是 plotmath 表达式 `alpha ^ beta`：底数 `α` 用 8.8pt、上标 `β` 用
+6.16pt（0.7 倍）并抬 0.502em，两段各落一次字（见 `ggcore/plotmath.py`）。
+
+主题按快照反推：白底 + `#333333` 面板边框 = `theme_test()`（同文件的
+`outside-justified labels` 是 `theme_grey()` 的灰底，两者不是同一个全局主题）。
+"""
+
+from ggcore.plot import aes, facet_wrap, geom_point, ggplot, label_parsed, labs
+from ggcore.theme import theme_test
+from ggio.frame import to_column_table
+
+DATA = {"x": [1.0], "y": [1.0], "f": ["alpha ^ beta"]}
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="x", y="y"))
+        + geom_point()
+        + facet_wrap("f", labeller=label_parsed)
+        + theme_test()
+        + labs(x=None, y=None, title="parsed facet labels")
+    )
+    return {"plot": p, "size": [10, 8]}
+'''
+
+_MINOR_TICKS_SOURCE = '''"""上游快照复刻：guides with minor ticks。
+
+源：guide-axis/guides-with-minor-ticks.svg
+（vdiffr 名 "guides with minor ticks"）。
+
+R：
+
+    ggplot(mtcars, aes(wt, disp)) +
+      geom_point() +
+      theme(
+        axis.ticks.length = unit(1, "cm"),
+        axis.ticks.x.bottom = element_line(linetype = 2),
+        axis.ticks.length.x.top = unit(-0.5, "cm"),
+        axis.minor.ticks.x.bottom = element_line(colour = "red"),
+        axis.minor.ticks.length.y.left = unit(-0.5, "cm"),
+        axis.minor.ticks.length.x.top = unit(-0.5, "cm"),
+        axis.minor.ticks.length.x.bottom = unit(0.75, "cm"),
+        axis.minor.ticks.length.y.right = unit(5, "cm")
+      ) +
+      scale_x_continuous(labels = label_math()) +
+      guides(
+        x = guide_axis(minor.ticks = TRUE),
+        y = guide_axis(minor.ticks = TRUE),
+        x.sec = guide_axis(minor.ticks = TRUE),
+        y.sec = guide_axis(minor.ticks = FALSE)
+      )
+
+x 轴标签是 `label_math()`（缺省 `10^.x`）：`10` 用 8.8pt、指数 6.16pt 两段落字。
+`wt` / `disp` 按 R 4.5.3 的 `datasets::mtcars` 逐值内联；`wt` 特意保留 R 的 3 位
+小数（`tools/upstream/fixtures/mtcars.json` 里是 2 位四舍五入的，面板 x 映射会
+偏 0.5pt，竖网格线整排错位）。
+"""
+
+from ggcore.plot import (
+    aes,
+    geom_point,
+    ggplot,
+    guide_axis,
+    guides,
+    label_math,
+    labs,
+    scale_x_continuous,
+)
+from ggcore.theme import element_line, theme
+from ggcore.units import unit
+from ggio.frame import to_column_table
+
+@DATA@
+
+
+def build():
+    p = (
+        ggplot(to_column_table(DATA), aes(x="wt", y="disp"))
+        + geom_point()
+        + scale_x_continuous(labels=label_math())
+        + theme(
+            **{
+                "axis.ticks.length": unit(1.0, "cm"),
+                "axis.ticks.x.bottom": element_line(linetype=2),
+                "axis.ticks.length.x.top": unit(-0.5, "cm"),
+                "axis.minor.ticks.x.bottom": element_line(colour="red"),
+                "axis.minor.ticks.length.y.left": unit(-0.5, "cm"),
+                "axis.minor.ticks.length.x.top": unit(-0.5, "cm"),
+                "axis.minor.ticks.length.x.bottom": unit(0.75, "cm"),
+                "axis.minor.ticks.length.y.right": unit(5.0, "cm"),
+            }
+        )
+        + guides(
+            x=guide_axis(minor_ticks=True),
+            y=guide_axis(minor_ticks=True),
+            **{"x.sec": guide_axis(minor_ticks=True), "y.sec": guide_axis(minor_ticks=False)},
+        )
+        + labs(title="guides with minor ticks")
+    )
+    return {"plot": p, "size": [10, 8]}
+'''
+
+
+#: R 4.5.3 的 `mtcars$wt`（3 位小数）。`fixtures/mtcars.json` 里这一列是 2 位
+#: 四舍五入的（2.875 → 2.88、5.424 → 5.42），面板 x 映射因此偏 0.5pt——纯文本
+#: 轴标签看不出来，但竖网格线整排落在不同像素上（`guides-with-minor-ticks` 差 2.6%）。
+#: 只在这一条 case 里用全精度，不动共享夹具（其余 mtcars case 都在 2% 档内）。
+_MTCARS_WT = [
+    2.620,
+    2.875,
+    2.320,
+    3.215,
+    3.440,
+    3.460,
+    3.570,
+    3.190,
+    3.150,
+    3.440,
+    3.440,
+    4.070,
+    3.730,
+    3.780,
+    5.250,
+    5.424,
+    5.345,
+    2.200,
+    1.615,
+    1.835,
+    2.465,
+    3.520,
+    3.435,
+    3.840,
+    3.845,
+    1.935,
+    2.140,
+    1.513,
+    3.170,
+    2.770,
+    3.570,
+    2.780,
+]
+
+
+def _math_specs() -> list[dict[str, Any]]:
+    """SIL-855：plotmath 接进文本层后的两条快照（strip / 轴标签的上标）。"""
+    mtcars = fixture("mtcars")
+    data = _data_literal({"wt": _MTCARS_WT, "disp": mtcars["disp"]})
+    return [
+        {
+            "slug": "upstream-facet-labels-parsed-facet-labels",
+            "snapshot": "facet-labels/parsed-facet-labels.svg",
+            "title": "parsed facet labels",
+            "family": "facet",
+            "features": ["facet-wrap", "plotmath", "theme-text"],
+            "notes": "SIL-855：`labeller = label_parsed`（strip 里的 `alpha ^ beta` 拆成两段 run）。",
+            "source": _PARSED_FACET_SOURCE,
+        },
+        {
+            "slug": "upstream-guide-axis-guides-with-minor-ticks",
+            "snapshot": "guide-axis/guides-with-minor-ticks.svg",
+            "title": "guides with minor ticks",
+            "family": "guide",
+            "features": ["guide-axis", "plotmath", "coord-cartesian"],
+            "notes": (
+                "SIL-855：`scales::label_math()`（x 轴标签是 `10^2` … `10^5` 的 plotmath），"
+                "次轴带 `axis.minor.ticks.length.y.right = 5cm` 撑开 axis-r 列。"
+            ),
+            "source": _MINOR_TICKS_SOURCE.replace("@DATA@", data),
+        },
+    ]
 
 
 #: SIL-810（G8）：guide/legend 尾款里转绿的 10 条。正文放在

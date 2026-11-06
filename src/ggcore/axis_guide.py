@@ -816,7 +816,16 @@ def _label_box(
     family = getattr(element, "family", "") or ""
     mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
     line = max(
-        (text_block_cm(label.text, size, getattr(element, "lineheight", None)) for label in labels),
+        (
+            text_block_cm(
+                label.text,
+                size,
+                getattr(element, "lineheight", None),
+                metrics=metrics,
+                family=family,
+            )
+            for label in labels
+        ),
         default=0.0,
     )
     width = max(
@@ -882,7 +891,7 @@ def _guide_extent(
         # `axis.text.* = element_blank()` 只去掉**标签**：R 的 `draw_axis()` 仍把
         # 刻度线放进轴单元格，列宽 / 行高就是刻度长度（`axis-l` = 2.75pt）。
         # 早先整条轴返回空，极坐标的 r 轴连刻度都不见了。
-        return _max_tick_length(theme, ticks)
+        return max(0.0, _max_tick_length(theme, ticks))
     rows = max(1, ticks.n_dodge) if ticks.labels else 0
     # 横向轴：轴高 = 各行标签盒高之和；竖向轴同理换成宽。
     # `n.dodge` 的每一行 / 列在 R 里是**独立 gtable 轨道**，尺寸取该组自己的标签
@@ -890,9 +899,13 @@ def _guide_extent(
     # （`coord-sf`：20.11 / 22.10pt），用全局最大值会把窄的那组也算成宽的
     # （SIL-849：整表宽多 2pt、面板左移 1.1pt）。
     if rows == 0:
-        return _max_tick_length(theme, ticks)
+        return max(0.0, _max_tick_length(theme, ticks))
     steps = _dodge_group_sizes(ticks.labels, element, side, ticks.angle, metrics, rows)
-    return _max_tick_length(theme, ticks) + sum(steps)
+    # 负刻度（`axis.ticks.length.*.top = unit(-0.5, "cm")`）不占轴带：R 的
+    # `GuideAxis$measure_grobs()` 取 `range(0, major)`，负值那一段落进 spacer
+    # 且 spacer 也只有非负值才生效——`guides-with-minor-ticks` 的 axis-t 行因此
+    # 只有标签高（负刻度画在面板内侧）。
+    return max(0.0, _max_tick_length(theme, ticks)) + sum(steps)
 
 
 def _dodge_group_sizes(
@@ -1072,8 +1085,9 @@ def axis_guide_grobs(
     `"80"` / `"°"` / `"W"` 三个节点，沿旋转后的基线依次摆放——上游的标签是
     plotmath 表达式（`"80" * degree * W`），`textGrob()` 逐节点排版。
     """
+    from ggcore import plotmath
     from ggcore.axis import font_int, margin_sides_cm, paint
-    from ggcore.grobs import segments_grob, text_grob
+    from ggcore.grobs import math_text_grobs, segments_grob, text_grob
     from ggcore.viewport import gpar
 
     if not draw_labels:
@@ -1210,7 +1224,13 @@ def axis_guide_grobs(
                 from ggcore.axis import text_block_cm
 
                 own_w = text_width_cm(label.text, size, metrics, element.family or "")
-                own_h = text_block_cm(label.text, size, getattr(element, "lineheight", None))
+                own_h = text_block_cm(
+                    label.text,
+                    size,
+                    getattr(element, "lineheight", None),
+                    metrics=metrics,
+                    family=element.family or "",
+                )
                 if horizontal:
                     x = box.x_cm + label.position * box.width_cm
                     if side == "top":
@@ -1254,6 +1274,23 @@ def axis_guide_grobs(
                         family=element.family or "",
                         size=size,
                         metrics=metrics,
+                        name=f"{name}.text-{layer_index}",
+                    )
+                )
+                continue
+            if plotmath.is_math(label.text):
+                grobs.extend(
+                    math_text_grobs(
+                        label.text,
+                        x,
+                        y,
+                        size=size,
+                        metrics=metrics,
+                        family=element.family or "",
+                        hjust=hjust,
+                        vjust=vjust,
+                        rot=layer.angle,
+                        gp=gp,
                         name=f"{name}.text-{layer_index}",
                     )
                 )

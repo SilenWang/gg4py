@@ -221,7 +221,14 @@ def text_line_cm(size_pt: float) -> float:
     return float(size_pt) * TEXT_LINE_EM * _CM_PER_INCH / _POINTS_PER_INCH
 
 
-def text_block_cm(text: str, size_pt: float, lineheight: float | None = None) -> float:
+def text_block_cm(
+    text: str,
+    size_pt: float,
+    lineheight: float | None = None,
+    *,
+    metrics: Any = None,
+    family: str = "",
+) -> float:
     """整块文字的占高（cm）：`(n-1) × 行距 + 单行高`。
 
     R 的 `textGrob` 把 `\\n` 切成多行，块高 = 首行高 + (n-1) 个行距；行距是
@@ -229,10 +236,27 @@ def text_block_cm(text: str, size_pt: float, lineheight: float | None = None) ->
     的 `lineheight = 0.9`）。早先按单行量，`"X\\nX\\nX\\nX\\nX"` 这类多行轴标签的
     轴带高度只有一行的量，面板因此被撑高（SIL-816 的
     `outside-justified-labels`）。
+
+    plotmath 标签（`plotmath.MathText`）的单行高要走 `plotmath`：上标顶出来的
+    那截比 `text_line_cm()` 高（上游快照里 8.8pt 的 `alpha ^ beta` 是 10.74pt，
+    纯文本只有 7.87pt），否则轴带 / strip 会矮 2.9pt、面板整体错位。
     """
     lines = len(_lines(text)) or 1
     pitch = float(size_pt) * 1.2 * float(lineheight if lineheight else 1.2)
-    return text_line_cm(size_pt) + (lines - 1) * pitch * _CM_PER_INCH / _POINTS_PER_INCH
+    line = _line_cm(text, size_pt, metrics, family)
+    return line + (lines - 1) * pitch * _CM_PER_INCH / _POINTS_PER_INCH
+
+
+def _line_cm(text: str, size_pt: float, metrics: Any = None, family: str = "") -> float:
+    """单行占高（cm）：plotmath 走 `plotmath.extent()`，纯文本走 `text_line_cm()`。"""
+    from ggcore import plotmath
+
+    if not plotmath.is_math(text):
+        return text_line_cm(size_pt)
+    _width, ascent, descent = plotmath.extent(
+        str(text), fontsize=float(size_pt), measure=plotmath.measure_from(metrics, family)
+    )
+    return (ascent + descent) * _CM_PER_INCH / _POINTS_PER_INCH
 
 
 def _lines(text: str) -> tuple[str, ...]:
@@ -245,10 +269,21 @@ def text_width_cm(
     metrics: Any = None,
     family: str = "",
 ) -> float:
-    """一段文字的最大行宽（cm）；多行取最宽的一行（grid `stringWidth` 同）。"""
+    """一段文字的最大行宽（cm）；多行取最宽的一行（grid `stringWidth` 同）。
+
+    plotmath 标签按各 run 的推进之和量（`plotmath.extent()`）：`"10^2"` 的宽度
+    是 `10` + 缩小的 `2`，不是把 `10^2` 当普通字符串量。
+    """
+    from ggcore import plotmath
+
     lines = _lines(text)
     if not lines:
         return 0.0
+    if plotmath.is_math(text):
+        width, _ascent, _descent = plotmath.extent(
+            str(text), fontsize=float(size_pt), measure=plotmath.measure_from(metrics, family)
+        )
+        return width * _CM_PER_INCH / _POINTS_PER_INCH
     if metrics is not None:
         widths = [_line_width_inch(metrics, line, float(size_pt), str(family)) for line in lines]
         return max(widths) * _CM_PER_INCH
@@ -373,7 +408,8 @@ def _tick_positions(
     for value, label in zip(values, labels, strict=True):
         if value is None or label is None:
             continue
-        text = str(label)
+        # `plotmath.MathText` 是 str 子类：保留标记（标签要拆成多段 run 落字）。
+        text = label if isinstance(label, str) else str(label)
         if not text:
             continue
         if discrete:
@@ -797,7 +833,16 @@ def _text_extent_cm(
     family = element.family or ""
     mt, mr, mb, ml = margin_sides_cm(element.margin)
     if _horizontal(side):
-        return text_line_cm(size) + mt + mb
+        # 横向轴的行高取**最高一个标签**：plotmath 上标顶出来的那截也算进轴带
+        # （`guides-with-minor-ticks` 的 10^2 比 "10" 高 2.9pt）。
+        line = max(
+            (
+                text_block_cm(label, size, element.lineheight, metrics=metrics, family=family)
+                for label in labels
+            ),
+            default=text_line_cm(size),
+        )
+        return line + mt + mb
     if not labels:
         return 0.0
     widest = max(text_width_cm(label, size, metrics, family) for label in labels)
