@@ -155,6 +155,13 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 改了主题数值或注册表就重跑；`--check` 挂进 `check` 守新鲜度。
 "docs:theme" = "PYTHONPATH=src python tools/docs/theme_doc.py"
 "docs:theme:check" = "PYTHONPATH=src python tools/docs/theme_doc.py --check"
+# M3-6：用户指南 `docs/guide/*.md` 的代码块就是 doctest。每个 ```python 块在
+# 新命名空间 + 临时目录里执行，定义 build() 或留下 p / plot 的还要真构图并编码
+# 成 IR；只 import 能过、构图期才炸的示例同样判红。`docs:guide` 逐块打印，
+# `docs:guide:check` 只打汇总（挂在 `check` 里）。刻意不执行的片段用
+# `<!-- no-run: 原因 -->` 标出，工具会数进「跳过」。
+"docs:guide" = "PYTHONPATH=src python tools/docs/guide_examples.py"
+"docs:guide:check" = "PYTHONPATH=src python tools/docs/guide_examples.py --quiet"
 
 # X2: weekly diff of upstream R/ against the pinned ggplot2 commit.
 "upstream:diff" = "python tools/upstream_diff.py"
@@ -381,4 +388,5 @@ check = { depends-on = [
   "snapshots:report:check",
   "tiers:check",
   "docs:theme:check",
+  "docs:guide:check",
 ] }

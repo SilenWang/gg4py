@@ -3,6 +3,17 @@
 主 README 只讲「这是什么、怎么装、跑第一张图、长什么样」。实现口径、门禁、对拍
 账本都在这里。**标了「生成物」的文件不要手改**——改它的输入再跑对应任务。
 
+## 0. 使用指南（[`guide/`](guide/index.md)）
+
+面向使用者：一页一个模块，**每段代码都能跑**（`pixi run docs:guide` 逐块执行）。
+
+| 文档 | 内容 |
+| --- | --- |
+| [`guide/index.md`](guide/index.md) | 索引、十分钟上手、文档门禁 |
+| [`guide/r-to-python.md`](guide/r-to-python.md) | R → Python 对照表（geom / stat / scale / 参数 / 第三方扩展等价写法） |
+| [`guide/browser.md`](guide/browser.md) | 在浏览器编辑器里写 ggcore 代码：脚本契约、数据面板、导出 |
+| 模块页 | `aes` / `data` / `layers` / `geom` / `stat` / `position` / `scale` / `coord` / `facet` / `guide` / `theme` / `annotation` / `sf` / `export` |
+
 ## 1. 先读这几份
 
 | 文档 | 内容 |

@@ -82,6 +82,9 @@ pixi run lint      # ruff check + ruff format --check
 ```
 
 Layout, environments and the full task catalogue: [`docs/dev/layout.md`](docs/dev/layout.md).
+User guide (one page per module, every snippet executed by `pixi run docs:guide`):
+[`docs/guide/`](docs/guide/index.md) — start with the
+[R → Python mapping](docs/guide/r-to-python.md) if you come from ggplot2.
 Reference reading (module-by-module contracts, gates, snapshot policy): [`docs/README.md`](docs/README.md).
 
 ## How this was built
