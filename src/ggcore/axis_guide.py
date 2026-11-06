@@ -1487,6 +1487,12 @@ def _anchor(angle: float, side: str) -> tuple[float, float]:
 #: 翻档（SIL-824 返工）。1e-6 度远小于任何渲染端的可见分辨率。
 ANGLE_DECIMALS = 6
 
+#: theta 标签 `hjust` / `vjust` 的量化位数。这两个值是 `sin` / `cos` 的连续结果，
+#: 会原样进 IR；不量化的话宿主 libm 的 1 ULP 差会让 `0.5` 变成 `0.49999999…`，
+#: 被 IR 的 baseline 映射放大成整整一行的偏移（SIL-844 的
+#: `upstream-coord-polar-axes-at-90-225` 在 `gate:libm-noise` 上就是这样漂的）。
+JUST_DECIMALS = 9
+
 
 def polar_axis_grobs(
     scale: Any,
@@ -1670,8 +1676,12 @@ def polar_axis_grobs(
             if 90.0 < angle < 270.0:
                 angle += 180.0
         radians = math.radians(angle)
-        hjust = 0.5 - math.sin(float(theta) + radians) / 2.0
-        vjust = 0.5 - math.cos(float(theta) + radians) / 2.0
+        # 这两个值是 `sin` / `cos` 的连续结果，会原样进 IR。宿主 libm 的末位差
+        # 会让 0.5 变成 0.4999999999999999，再被 IR 的 baseline 映射放大成整行
+        # 偏移（SIL-844：`r.axis.inside` 的 theta 标签在 `gate:libm-noise` 上漂）。
+        # 与 `ANGLE_DECIMALS` 同口径，量化到 9 位小数消掉 1 ULP 噪声。
+        hjust = round(0.5 - math.sin(float(theta) + radians) / 2.0, JUST_DECIMALS)
+        vjust = round(0.5 - math.cos(float(theta) + radians) / 2.0, JUST_DECIMALS)
         grobs.append(
             text_grob(
                 entries[index][2],
