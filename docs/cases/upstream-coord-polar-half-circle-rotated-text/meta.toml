@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "coord-polar", "geom-text"]
+ci = false
+title = "上游快照：bottom half circle with rotated text"
+source = "upstream:tests/testthat/_snaps/coord-polar/bottom-half-circle-with-rotated-text.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻：rotate.angle = TRUE 的 flip_data_text_angle + 下半圆 theta 标签锚点。"

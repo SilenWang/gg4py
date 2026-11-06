@@ -1,0 +1,7 @@
+family = "coord"
+features = ["coord-radial", "coord-polar", "guide-axis"]
+ci = false
+title = "上游快照：full circle with axes placed at 90 and 225 degrees"
+source = "upstream:tests/testthat/_snaps/coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻：r.axis.inside = c(90, 225) 的两角度形式（axis_rotation + rotate_r_axis）。"

@@ -1,0 +1,7 @@
+family = "guide-axis"
+features = ["guide-axis-stack", "guide-axis-theta", "coord-radial"]
+ci = false
+title = "上游快照：stacked radial axes"
+source = "upstream:tests/testthat/_snaps/guide-axis/stacked-radial-axes.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-844 复刻：guide_axis_stack("axis_theta") 的多层半径偏移 + r / r.sec 叠放轴带。"

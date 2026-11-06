@@ -435,6 +435,12 @@ class AxisGuideTicks:
     longest: float | None = None
     #: 子 guide 的叠放（`guide_axis_stack`）；空表示单层。
     children: tuple[AxisGuideTicks, ...] = field(default_factory=tuple)
+    #: 标签锚点（`hjust` / `vjust`）；`None` = 由 `angle` + 方位推（R 的
+    #: `label_angle_heuristic()`）。guide 的 `angle` 是 waiver 时 R **原样保留**
+    #: 主题元素自己的 `hjust` / `vjust`——`axis.text.r` 就是靠这条居中
+    #: （`hjust = 0.5`），与 `axis.text.y` 的 `hjust = 1` 不同（SIL-844）。
+    hjust: float | None = None
+    vjust: float | None = None
 
 
 def _normal_angle(value: float | None) -> float:
@@ -635,6 +641,12 @@ def axis_guide_ticks(
         ticks = axis_ticks(scale, params, side, secondary=secondary)
     text = _text_element(theme, side)
     angle = _normal_angle(guide.angle if guide.angle is not None else getattr(text, "angle", None))
+    # `label_angle_heuristic()`：`params$angle` 是 waiver 时元素原样返回（保留
+    # `axis.text.*` 自己的 hjust / vjust）；给了 angle 才按角度重算。
+    hjust = vjust = None
+    if guide.angle is None and isinstance(text, ElementText):
+        hjust = None if text.hjust is None else float(text.hjust)
+        vjust = None if text.vjust is None else float(text.vjust)
     labels = tuple(
         AxisLabel(position, label)
         for position, label in zip(ticks.positions, ticks.labels, strict=True)
@@ -662,6 +674,8 @@ def axis_guide_ticks(
         check_overlap=bool(guide.check_overlap),
         n_dodge=int(guide.n_dodge),
         longest=longest,
+        hjust=hjust,
+        vjust=vjust,
     )
 
 
@@ -1070,6 +1084,10 @@ def axis_guide_grobs(
             )
         row_size = (height if horizontal else width) + margin_cross
         hjust, vjust = _anchor(layer.angle, side)
+        if layer.hjust is not None:
+            hjust = layer.hjust
+        if layer.vjust is not None:
+            vjust = layer.vjust
         if max_tick < 0:
             # 负的 `axis.ticks.length` 把刻度画进面板内侧，标签也随之压在内侧：
             # 锚点换成对面那一侧的口径（R 的 `measure_grobs()` 用 spacer 吸收
@@ -1130,9 +1148,40 @@ def axis_guide_grobs(
         # 标签：n.dodge 分行；第一行贴刻度，其余向外推一行（负刻度时向面板内侧推）。
         inside = max_tick < 0
         sign = 1.0 if inside else -1.0
+        # guide 的 `angle` 是 waiver 时，R 的 `label_angle_heuristic()` 原样返回
+        # 主题元素——标签于是走 `titleGrob()` 的 margin 盒（宽 = margin_l + 文字 +
+        # margin_r），锚点由元素自己的 hjust / vjust 决定。水平 / 垂直居中
+        # （`axis.text.r` 的 hjust = 0.5）比「贴边」多退半个文字宽，差这半格整条
+        # r 轴会偏 4.9pt（SIL-844）。只剩 0 / 180 度：旋转标签的 just 还要过
+        # `rotate_just()`，那条路径仍走旧的贴边口径。
+        precise = (layer.hjust is not None or layer.vjust is not None) and (
+            abs(layer.angle % 180.0) < 1e-9
+        )
         for label, dodge in visible:
             offset_out = max_tick + layer_offset
-            if horizontal:
+            if precise:
+                from ggcore.axis import text_block_cm
+
+                own_w = text_width_cm(label.text, size, metrics, element.family or "")
+                own_h = text_block_cm(label.text, size, getattr(element, "lineheight", None))
+                if horizontal:
+                    x = box.x_cm + label.position * box.width_cm
+                    if side == "top":
+                        y = box.y_cm + box.height_cm + offset_out + mb + vjust * own_h
+                    else:
+                        y = box.y_cm - offset_out - mt - (1.0 - vjust) * own_h
+                else:
+                    y = box.y_cm + label.position * box.height_cm
+                    if side == "right":
+                        x = box.right + offset_out + hjust * (own_w + ml) + ml * (1.0 - hjust)
+                    else:
+                        x = box.x_cm - offset_out - (1.0 - hjust) * (own_w + mr) - mr * hjust
+                if dodge:
+                    if horizontal:
+                        y += sign * dodge * row_size
+                    else:
+                        x += sign * dodge * row_size
+            elif horizontal:
                 x = box.x_cm + label.position * box.width_cm
                 if side == "top":
                     y = box.y_cm + box.height_cm + offset_out - sign * mb - sign * dodge * row_size
@@ -1377,6 +1426,13 @@ def polar_axis_grobs(
     if not entries:
         return []
     guide = guide or AxisGuide(name="axis_theta")
+    if getattr(guide, "theme", None) is not None:
+        # `guides(theta.sec = guide_axis_theta(theme = theme(...)))`：只改这一条
+        # theta 轴的 `axis.line.theta` / `axis.text.theta`（上游 `GuideAxis$setup_elements`
+        # 把 guide 自己的 theme 合并到用户主题上再取元素名）。
+        from ggcore.guide import guide_theme
+
+        theme = guide_theme(theme, guide)
     element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
     grobs: list[Any] = []
 
@@ -1388,8 +1444,10 @@ def polar_axis_grobs(
     else:
         key_radius = 0.45
     thetas = np.asarray([entry[3] for entry in entries], dtype=np.float64)
-    if secondary:
-        thetas = thetas + math.pi
+    # `theta.sec` 的 key 与主轴**同角**、只是落在内半径上；`+π` 只参与
+    # 「沿半径的方向」（刻度朝内、标签压进弧内、文字角度反向），不改位置
+    # （上游 `GuideAxisTheta$transform()` 先算 x/y，之后才 `key$theta + pi`）。
+    directions = thetas + math.pi if secondary else thetas
 
     tick_cm = tick_length_cm(theme, "bottom")
     text_margin = 0.0
@@ -1422,7 +1480,10 @@ def polar_axis_grobs(
     if tick_gp is not None and tick_cm > 0:
         step = tick_cm / box.width_cm
         x0, y0 = polar.point(thetas, np.full(thetas.shape, key_radius))
-        x1, y1 = polar.point(thetas + math.pi * 0, np.full(thetas.shape, key_radius + step))
+        # 刻度从 key 沿 `directions` 伸出去：与标签同理，方向在 npc 空间里加
+        # `sin/cos`，不能直接换角度再取点（那会横跨圆心连成弦）。
+        x1 = np.asarray(x0, dtype=np.float64) + np.sin(directions) * step
+        y1 = np.asarray(y0, dtype=np.float64) + np.cos(directions) * step
         grobs.append(
             segments_grob(
                 [box.x_cm + float(value) * box.width_cm for value in np.asarray(x0)],
@@ -1451,10 +1512,18 @@ def polar_axis_grobs(
         "lineheight": float(element.lineheight or 1.2),
     }
     # `coord_polar()` 的标签历史口径就是网格外圈 0.45（不加 offset），保持不动；
-    # 只有 `coord_radial()` 走 R 的「key + offset」。
+    # 只有 `coord_radial()` 走 R 的「key + offset」——offset 在 **npc 空间**里沿
+    # `sin/cos(direction)` 加（上游 `build_labels()` 的 `xoffset` / `yoffset`），
+    # 部分弧的 bbox 非正方形时这与「半径 + offset」不等价。
+    key_x, key_y = polar.point(thetas, np.full(thetas.shape, key_radius))
     label_radius = key_radius + offset if polar.radial else key_radius
     xs, ys = polar.point(thetas, np.full(thetas.shape, label_radius))
-    for index, theta in enumerate(thetas):
+    for index, theta in enumerate(directions):
+        position_x = float(xs[index])
+        position_y = float(ys[index])
+        if polar.radial:
+            position_x = float(key_x[index]) + math.sin(float(theta)) * offset
+            position_y = float(key_y[index]) + math.cos(float(theta)) * offset
         if base_angle is None:
             # waiver：不随 theta 转，直接用 `axis.text.theta$angle`（R 同）。
             angle = element_angle
@@ -1468,8 +1537,8 @@ def polar_axis_grobs(
         grobs.append(
             text_grob(
                 entries[index][2],
-                box.x_cm + float(xs[index]) * box.width_cm,
-                box.y_cm + float(ys[index]) * box.height_cm,
+                box.x_cm + position_x * box.width_cm,
+                box.y_cm + position_y * box.height_cm,
                 hjust=hjust,
                 vjust=vjust,
                 rot=angle,
