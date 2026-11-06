@@ -1861,7 +1861,18 @@ def polar_r_axis_inside_grobs(
         offset = 0.0
         for child in ticks.children:
             layers.append((child, offset))
-            offset += _guide_extent(theme, child, position, metrics, stack_gap=tick_cm) + tick_cm
+            # 上游 `GuideAxisStack$draw()` 的非 theta 分支用 gtable 并排：
+            # 层间距离 = `grobWidth(上一层)` + `spacing`，而 `grobWidth` 是整段
+            # 轴 grob 的外框宽——`axis.text.r` 的 margin 是**两侧各 2.2pt**
+            # （`axis.text.y` 只留右侧），`_guide_extent()` 只折了一侧，所以这里
+            # 再补两侧的差。实测（`stacked-radial-axes` 上游 SVG）：两层标签的
+            # x 差 22.04pt，补之前我们 17.55pt。
+            step = (
+                _guide_extent(theme, child, position, metrics, stack_gap=tick_cm)
+                + tick_cm
+                + 2.0 * margin_cross
+            )
+            offset += step
     else:
         layers = [(ticks, 0.0)]
 
