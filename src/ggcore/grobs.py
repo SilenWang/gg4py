@@ -2266,11 +2266,11 @@ def _nearest(fractions: Sequence[float], value: float) -> int:
     先把 `value` 落到 1e-6 网格再比距离：`just` 常常正好落在两个 fraction 的中点
     （theta 标签的 `vjust = 0.5 - cos(...) / 2` 就是 0.25 / 0.75），宿主 `libm` 的
     ±1 ULP 会让「到两边的距离」翻个大小，枚举随之翻转、pos 平移半个行高——IR 的
-    字节就漂了（`gate:libm-noise`，SIL-844）。平局取**较大**下标，与量化前略偏大
-    一侧的结果一致，避免无谓的 IR 抖动。
+    字节就漂了（`gate:libm-noise`，SIL-844）。平局取**较小**下标，与 `hjust = 0.25`
+    这类精确中点的既有口径一致（`geom_text(hjust = 0.25)` 仍折到 left 锚点）。
     """
     value = round(float(value), 6)
-    return min(range(len(fractions)), key=lambda index: (abs(fractions[index] - value), -index))
+    return min(range(len(fractions)), key=lambda index: (abs(fractions[index] - value), index))
 
 
 _RESOLVERS: Mapping[type, Callable[[_Traverser, Any], _Resolved]] = {
