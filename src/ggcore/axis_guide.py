@@ -1932,9 +1932,7 @@ def polar_r_axis_inside_grobs(
         # 函数，±1 ULP 会让正好落在 45° 扇区边界上的角度（如 `r.axis.inside =
         # c(90, 225)` 的 225°）在 `_anchor()` 里翻到另一侧，标签整条跳 4pt，IR
         # 的字节随之漂移（`gate:libm-noise` 抓到的就是这一处）。
-        hjust, vjust = _anchor(
-            round(_normal_angle(math.degrees(angle)), ANGLE_DECIMALS), position
-        )
+        hjust, vjust = _anchor(round(_normal_angle(math.degrees(angle)), ANGLE_DECIMALS), position)
         reach = tick_cm + margin_cross
         for label, dodge in _visible_labels(layer, element, metrics, axis_length_cm=box.width_cm):
             px, py = point_cm(label.position - 0.5)
