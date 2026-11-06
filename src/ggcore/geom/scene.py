@@ -54,6 +54,7 @@ from ggcore.axis import (
 )
 from ggcore.axis_guide import (
     AUTO,
+    AxisGuide,
     axis_guide_extent,
     axis_guide_grobs,
     axis_guide_ticks,
@@ -2099,9 +2100,11 @@ def _axis_grobs(
             # 面板里，绕面板中心转到 `axis_rotation` 的角度（上游
             # `CoordRadial$render_fg()` 的 `rotate_r_axis()`）。
             rotation = params.polar.axis_rotation
+            # `guides(r = ...)` 缺省时 R 仍画默认 r 轴（`guide_axis()`）；
+            # `guide_for()` 返回 None 只是「没有显式登记」，不是「没有轴」。
             for axis_guide_obj, axis_side, axis_angle, axis_name in (
-                (guide_y, "left", rotation[0], f"axis-r-{panel}"),
-                (guide_rsec, "right", rotation[1], f"axis-r-sec-{panel}"),
+                (guide_y or AxisGuide(), "left", rotation[0], f"axis-r-{panel}"),
+                (guide_rsec or AxisGuide(), "right", rotation[1], f"axis-r-sec-{panel}"),
             ):
                 if axis_guide_obj is None or axis_guide_obj.name == "none":
                     continue
