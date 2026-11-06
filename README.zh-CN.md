@@ -81,7 +81,9 @@ pixi run test      # pytest
 pixi run lint      # ruff check + ruff format --check
 ```
 
-目录职责、环境与全部任务：[`docs/dev/layout.md`](docs/dev/layout.md)。实现口径、门禁、
+目录职责、环境与全部任务：[`docs/dev/layout.md`](docs/dev/layout.md)。使用指南（一页一个
+模块，每段代码都由 `pixi run docs:guide` 执行）：[`docs/guide/`](docs/guide/index.md)，
+从 R 迁过来先看 [R → Python 对照表](docs/guide/r-to-python.md)。实现口径、门禁、
 快照策略等逐份文档：[`docs/README.md`](docs/README.md)。
 
 ## 开发方式

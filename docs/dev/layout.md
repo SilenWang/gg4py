@@ -43,10 +43,12 @@ tools/upstream/      # 上游快照纳管与清单（snapshots.toml、import_sna
 tools/metrics/       # 兜底度量表生成 + CanvasKit 度量脚本（门禁复用）
 tools/examples/      # 文档与验收用的 plot 模块（`ggsave` 的示例）
 tools/audit/         # r-graph-gallery 35 图核对（docs/notes/gallery-audit.md）
+tools/docs/          # 文档生成 / 校验（theme 派生区块、docs/guide 示例执行）
 examples/            # 面向读者的示例：一图一目录，脚本 + PNG + SVG（docs/examples.md）
 scripts/             # 出口复现件：exit_report.py / exit_report.R（同一张报告图）
 benchmarks/          # pytest-benchmark 基线
 tests/               # 单元测试 + 门禁自测
+docs/guide/          # 用户指南：一页一个模块，代码块由 `docs:guide` 执行
 docs/notes/          # 口径与对照表（索引：docs/README.md）
 docs/cases/          # 案例资产（规格 / 参考图 / 基线，约定见 docs/cases/README.md）
 docs/spike/          # M-1 可行性实验与结论
@@ -127,6 +129,7 @@ numpy / skia 版本；只有包集合不同。
 | `tiers:measure` | 量 text_load / 墨量并重写 `docs/notes/snapshot-tiers.md` |
 | `api:coverage` | 重写 `docs/notes/api-coverage.md` |
 | `docs:theme` / `docs:theme:check` | 主题文档的两个派生区块（生成 / 守新鲜度） |
+| `docs:guide` / `docs:guide:check` | 执行 `docs/guide/*.md` 的 Python 示例（逐块打印 / 只打汇总，挂在 `check` 里） |
 
 ### 3.5 浏览器查看器与 Pyodide
 
