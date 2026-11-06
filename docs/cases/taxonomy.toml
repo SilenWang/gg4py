@@ -161,4 +161,7 @@ features = [
   "facet-space-free",
   # SIL-820：裸 gtable 入口（`{"gtable": …}` 契约，`plot(gt)` 那种快照）。
   "gtable",
+  # SIL-856：复合变换 / 伪对数变换（scale 与 coord 两侧共用）。
+  "transform-compose",
+  "transform-pseudo-log",
 ]

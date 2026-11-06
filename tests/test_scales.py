@@ -50,6 +50,10 @@ from ggcore.scales import (
     hue_pal,
     lab_to_hex,
     scale_from_component,
+    transform_compose,
+    transform_log10,
+    transform_pseudo_log,
+    transform_reverse,
 )
 
 # ---------------------------------------------------------------------------
@@ -446,12 +450,133 @@ def test_sqrt_and_reverse_transforms_are_implemented() -> None:
 
 
 def test_unsupported_transforms_still_raise() -> None:
-    # log2 / exp 已在 SIL-790 实现（见下面两节），这里只剩真正没做的名字。
-    for trans in ("log1p", "pseudo_log", "logit"):
+    # log2 / exp 已在 SIL-790 实现、pseudo_log 在 SIL-856 实现，
+    # 这里只剩真正没做的名字。
+    for trans in ("log1p", "logit"):
         with pytest.raises(ScaleError, match="尚未实现"):
             scale_from_component(Scale("x_continuous", "x", {"trans": trans}))
     with pytest.raises(ScaleError, match="未知的 trans"):
         scale_from_component(Scale("x_continuous", "x", {"trans": "nope"}))
+
+
+# ---------------------------------------------------------------------------
+# 复合变换 / pseudo_log（SIL-856）
+# ---------------------------------------------------------------------------
+
+
+def test_transform_compose_log10_reverse_matches_upstream() -> None:
+    """`transform_compose(transform_log10(), transform_reverse())`。
+
+    口径照 `scales::transform_compose()`：名字是 `composition(log10,reverse)`；
+    正向按顺序、反向逆序；**断点取第一个变换的**（十次幂，不是 extended）；
+    domain 由第一个变换的 domain 推过去再推回来（`(1e-100, Inf)`）。
+    """
+    composed = transform_compose(transform_log10(), transform_reverse())
+    assert composed.name == "composition(log10,reverse)"
+    assert composed.domain[0] == pytest.approx(1e-100)
+    assert composed.domain[1] == math.inf
+
+    values = np.array([10.0, 100.0, 1000.0])
+    transformed, invalid = composed.transform(values)
+    assert transformed.tolist() == [-1.0, -2.0, -3.0]
+    assert not invalid.any()
+    assert composed.inverse(transformed).tolist() == values.tolist()
+
+    # 断点走 log10 的 breaks_log（上游 `trans_list[[1]]$breaks`）；反变换回来的
+    # 数据空间端点可能是降序的，`breaks_log()` 先 `range()` 再算。
+    assert composed.breaks(3162.277660168, 3.162277660168) == (1.0, 10.0, 100.0, 1000.0, 10000.0)
+
+
+def test_transform_compose_scale_pipeline_is_the_snapshot_axis() -> None:
+    """`logtick-axes-with-customisation` 的 y 轴：断点 / 标签 / 映射同一条链路。"""
+    scale = scale_from_component(
+        Scale(
+            "y_continuous",
+            "y",
+            {
+                "transform": transform_compose(transform_log10(), transform_reverse()),
+                "expand": (0, 0.5),
+            },
+        )
+    )
+    scale.train(scale.transform(column([10.0, 1000.0])))
+    assert scale.limits() == pytest.approx((-3.0, -1.0), abs=1e-12)
+    assert scale.expanded_limits() == pytest.approx((-3.5, -0.5), abs=1e-12)
+    assert scale.breaks() == (None, -1.0, -2.0, -3.0, None)
+    assert scale.labels() == (None, "10", "100", "1000", None)
+    assert scale.map(scale.transform(column([10.0, 100.0]))).values.tolist() == [-1.0, -2.0]
+
+
+def test_transform_compose_accepts_names_and_sequences() -> None:
+    composed = transform_compose("log10", "reverse")
+    assert composed.name == "composition(log10,reverse)"
+    assert transform_compose(["log10", "reverse"]).name == "composition(log10,reverse)"
+    # 单个变换原样返回（上游 `length(trans_list) == 1` 的快捷分支）。
+    only = transform_log10()
+    assert transform_compose(only) is only
+    # `("log", 2)` 仍然是「带参数的变换」，不会被当成两个变换。
+    assert transform_compose(("log", 2)).name == "log2"
+    with pytest.raises(ScaleError, match="至少需要一个"):
+        transform_compose()
+
+
+def test_transform_compose_rejects_an_empty_domain() -> None:
+    # reverse 把 (-Inf, Inf) 推成 (Inf, -Inf)，接 log10 时交集为空：上游报
+    # "Sequence of transformations yields invalid domain"。
+    with pytest.raises(ScaleError, match="定义域"):
+        transform_compose(transform_reverse(), transform_log10())
+
+
+def test_transform_pseudo_log_formula_and_inverse() -> None:
+    """`transform_pseudo_log(sigma = 1, base = 10)` 的公式与反向映射。
+
+    `asinh(x / (2σ)) / ln(base)`；`x → -x` 对称、0 不动、远处贴 log10。
+    """
+    trans = transform_pseudo_log(base=10.0)
+    values = np.array([-100.0, -1.0, 0.0, 1.0, 100.0])
+    transformed, invalid = trans.transform(values)
+    expected = np.arcsinh(values / 2.0) / math.log(10.0)
+    assert transformed == pytest.approx(expected, abs=1e-12)
+    assert not invalid.any()
+    assert trans.inverse(transformed) == pytest.approx(values, abs=1e-12)
+    # 远处与 log10 同阶，0 附近线性。
+    assert transformed[4] == pytest.approx(math.log10(100.0), rel=1e-3)
+    assert transformed[2] == 0.0
+    assert transformed[0] == pytest.approx(-transformed[4], abs=1e-12)
+
+    # sigma 缩放线性段的宽度（#6121：极小值不崩）。
+    small = transform_pseudo_log(sigma=1e-5)
+    tiny, _ = small.transform(np.array([1e-10]))
+    assert math.isfinite(tiny[0])
+    assert small.inverse(tiny).tolist() == pytest.approx([1e-10], rel=1e-12)
+
+    with pytest.raises(ScaleError, match="sigma"):
+        transform_pseudo_log(sigma=0)
+    with pytest.raises(ScaleError, match="base"):
+        transform_pseudo_log(base=1)
+
+
+def test_pseudo_log_scale_breaks_and_positions() -> None:
+    """标度侧：`trans = "pseudo_log"` 注册名与 `transform_pseudo_log()` 等价。
+
+    上游 `transform_pseudo_log()` 不传 `breaks`，所以断点是 `extended_breaks()`
+    作用在**数据空间**上（默认按 expand 后的范围反解），再变换回标度空间。
+    """
+    for trans in ("pseudo_log", transform_pseudo_log()):
+        scale = scale_from_component(Scale("x_continuous", "x", {"trans": trans, "expand": (0, 0)}))
+        scale.train(scale.transform(column([-100.0, 100.0])))
+        assert scale.limits() == pytest.approx((math.asinh(-50.0), math.asinh(50.0)), abs=1e-12)
+        assert scale.breaks() == pytest.approx(
+            tuple(math.asinh(v / 2.0) for v in (-100.0, -50.0, 0.0, 50.0, 100.0)), abs=1e-12
+        )
+        assert scale.labels() == ("-100", "-50", "0", "50", "100")
+
+    # 默认 5% expand：反解回来的数据范围是 ±158.5，extended_breaks 给出
+    # (-100, 0, 100)，外侧两个被 censor 成 None。
+    default = scale_from_component(Scale("x_continuous", "x", {"trans": "pseudo_log"}))
+    default.train(default.transform(column([-100.0, 100.0])))
+    assert default.breaks() == (None, -math.asinh(50.0), 0.0, math.asinh(50.0), None)
+    assert default.labels() == (None, "-100", "0", "100", None)
 
 
 def test_oob_censor_squish_keep_and_squish_infinite() -> None:

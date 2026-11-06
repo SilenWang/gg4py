@@ -90,7 +90,16 @@ __all__ = [
     "new_transform",
     "pretty_breaks",
     "scale_from_component",
+    "transform_compose",
+    "transform_exp",
+    "transform_identity",
+    "transform_log",
+    "transform_log2",
+    "transform_log10",
     "transform_probability",
+    "transform_pseudo_log",
+    "transform_reverse",
+    "transform_sqrt",
 ]
 
 #: 位置美学：x 与 y 两条通道。`xmin/xmax/xend` 共用 x 标度，`ymin/ymax/yend` 共用
@@ -618,6 +627,8 @@ class _Transform:
     name: str = "identity"
     #: 日期时间变换的类别（`date` / `time` / `hms`）；其余为 `None`。
     date_kind: str | None = None
+    #: 是否单调递增（`transform_compose()` 推 domain 时要靠它把 ±Inf 端映射过去）。
+    increasing: bool = True
 
     def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         raise NotImplementedError
@@ -676,6 +687,7 @@ class _Reverse(_Transform):
     """`scales::transform_reverse()`：`x → -x`（域是整个实数轴）。"""
 
     name = "reverse"
+    increasing = False
 
     def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return -values, np.isnan(values)
@@ -688,6 +700,135 @@ class _Reverse(_Transform):
 
     def label(self, values: Sequence[float | None]) -> list[str | None]:
         return format_numbers(values)
+
+
+class _ComposedTransform(_Transform):
+    """`scales::transform_compose()`：按顺序串起任意多个变换。
+
+    与上游一致的三条口径：
+
+    1. `transform` 顺序正向、`inverse` 逆序反向（`compose_fwd()` / `compose_rev()`）；
+    2. **断点函数取第一个变换的**——`transform_compose(transform_log10(),
+       transform_reverse())` 的断点仍是十次幂，不是 `breaks_extended()`；
+    3. `domain` 由第一个变换的 domain 正向推过去、再经全部逆变换推回来，中途与
+       每个子变换的 domain 求交；推不动（交集为空）就报错，不静默给全实数轴。
+
+    名字与上游 `new_transform()` 传的一致：`composition(log10,reverse)`。
+    """
+
+    increasing = True
+
+    def __init__(self, transforms: Sequence[_Transform]) -> None:
+        items = tuple(transforms)
+        if not items:
+            raise ScaleError("transform_compose() 至少需要一个变换")
+        for item in items:
+            if not isinstance(item, _Transform):
+                raise ScaleError(f"transform_compose() 只接受变换对象，收到 {item!r}")
+        self.transforms = items
+        self.name = "composition(" + ",".join(item.name for item in items) + ")"
+        # 复合变换的单调性：递减项为奇数个就翻转。
+        self.increasing = sum(1 for item in items if not item.increasing) % 2 == 0
+        self._domain = self._resolve_domain()
+
+    @staticmethod
+    def _push_endpoint(trans: _Transform, value: float) -> float:
+        """把一端的 ±Inf 按变换的单调性推过去（不经过会写 NaN 的 `transform()`）。"""
+        if math.isinf(value):
+            return value if trans.increasing else -value
+        out, _ = trans.transform(np.asarray([value], dtype=np.float64))
+        return float(out[0])
+
+    def _resolve_domain(self) -> tuple[float, float]:
+        first = self.transforms[0]
+        low = self._push_endpoint(first, float(first.domain[0]))
+        high = self._push_endpoint(first, float(first.domain[1]))
+        for trans in self.transforms[1:]:
+            low = max(float(trans.domain[0]), low)
+            high = min(float(trans.domain[1]), high)
+            if not low <= high:
+                raise ScaleError(
+                    f"transform_compose() 的定义域为空：{self.name} 的中间范围与 "
+                    f"{trans.name} 的定义域不相交"
+                )
+            low = self._push_endpoint(trans, low)
+            high = self._push_endpoint(trans, high)
+        back = self.inverse(np.asarray([low, high], dtype=np.float64))
+        if np.any(np.isnan(back)):
+            raise ScaleError(f"transform_compose() 的定义域推不回来：{self.name}")
+        return (float(min(back)), float(max(back)))
+
+    @property
+    def domain(self) -> tuple[float, float]:
+        return self._domain
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        values = np.asarray(values, dtype=np.float64)
+        invalid = np.isnan(values)
+        out = values
+        for trans in self.transforms:
+            out, bad = trans.transform(out)
+            invalid = invalid | np.asarray(bad, dtype=bool)
+        out = np.where(invalid, np.nan, out)
+        # ±Inf 按复合变换的单调性推过去：子变换把「非有限」一并记成 NA（本仓
+        # `_Log` / `_Exp` 的口径），但 `_raw_breaks()` 拿 domain 的变换结果做
+        # squish 边界时必须看到 ±Inf，否则 `compose(log10, reverse)` 的断点会
+        # 被 squish 成一个点（R 的 `log(Inf) == Inf`）。
+        infinite = np.isinf(values)
+        if infinite.any():
+            out = np.array(out, dtype=np.float64, copy=True)
+            direction = np.where(values[infinite] > 0, 1.0, -1.0)
+            out[infinite] = direction * (1.0 if self.increasing else -1.0) * math.inf
+            invalid = invalid & ~infinite
+        return out, invalid
+
+    def inverse(self, values: np.ndarray) -> np.ndarray:
+        out = np.asarray(values, dtype=np.float64)
+        for trans in reversed(self.transforms):
+            out = trans.inverse(out)
+        return out
+
+    def breaks(self, low: float, high: float, n: int = 5) -> tuple[float, ...]:
+        return self.transforms[0].breaks(low, high, n)
+
+    def label(self, values: Sequence[float | None]) -> list[str | None]:
+        return format_numbers(values)
+
+
+def transform_compose(*transforms: Any) -> _Transform:
+    """`scales::transform_compose(...)`：把多个变换串成一个。
+
+    ```python
+    scale_y_continuous(transform=transform_compose(transform_log10(), transform_reverse()))
+    ```
+
+    参数可以是变换对象（`transform_log10()`）、注册名（`"log10"`）、带参数形式
+    （`("log", 2)`），或者一个装着它们的序列；单个变换原样返回（上游同款）。
+    """
+    if len(transforms) == 1:
+        only = transforms[0]
+        if isinstance(only, _Transform):
+            return only
+        if isinstance(only, str):
+            return _trans_for(only)
+        if isinstance(only, (list, tuple)):
+            # 一个「带参数的变换」`("log", 2)` 与「一串变换」`["log10", "reverse"]`
+            # 都是序列：前者第一项是注册名、第二项是数字，按 `_trans_for()` 解析。
+            if not _is_parametric_request(only):
+                transforms = tuple(only)  # type: ignore[assignment]
+    if len(transforms) == 1:
+        return _trans_for(transforms[0])
+    return _ComposedTransform([_trans_for(item) for item in transforms])
+
+
+def _is_parametric_request(value: Sequence[Any]) -> bool:
+    """`("log", 2)` 这种「名字 + 参数」的写法（`_trans_for()` 的既有约定）。"""
+    return (
+        len(value) == 2
+        and str(value[0]) in _PARAMETRIC_TRANSFORMS
+        and isinstance(value[1], (int, float, np.integer, np.floating))
+        and not isinstance(value[1], bool)
+    )
 
 
 class _CallableTransform(_Transform):
@@ -899,7 +1040,14 @@ class _Log(_Transform):
         return (1e-100, math.inf)
 
     def breaks(self, low: float, high: float, n: int = 5) -> tuple[float, ...]:
-        """上游 `breaks_log(n, base)`：整次幂，必要时用 `log_sub_breaks` 补细分。"""
+        """上游 `breaks_log(n, base)`：整次幂，必要时用 `log_sub_breaks` 补细分。
+
+        上游第一行是 `range(x)`，所以**乱序的端点先排序**——`transform_compose()`
+        把 limits 反变换回来时，`log10` 之后接 `reverse` 会给出降序的一对
+        （`transform_compose(log10, reverse)` 的 y 轴就是这条路径）。
+        """
+        if low > high:
+            low, high = high, low
         if not (high > 0):
             return ()
         base = self.base
@@ -967,6 +1115,88 @@ def _format_base(base: float) -> str:
     return str(int(base)) if float(base).is_integer() else repr(float(base))
 
 
+class _PseudoLog(_Transform):
+    """`scales::transform_pseudo_log(sigma = 1, base = exp(1))`。
+
+    在 0 附近线性、远处对数：
+
+    - `transform(x) = asinh(x / (2 * sigma)) / log(base)`
+    - `inverse(y) = 2 * sigma * sinh(y * log(base))`
+
+    定义域是整个实数轴；断点走默认的 `extended_breaks()`（上游 `transform_pseudo_log()`
+    没传 `breaks`），所以断点要在**变换后的线性位置**上算再反解——这条由
+    `ContinuousScale._raw_breaks()` 统一处理。
+    """
+
+    name = "pseudo_log"
+
+    def __init__(self, sigma: float = 1.0, base: float = math.e) -> None:
+        sigma = float(sigma)
+        base = float(base)
+        if not math.isfinite(sigma) or not sigma > 0:
+            raise ScaleError(f"transform_pseudo_log() 的 sigma 必须是正有限数，收到 {sigma!r}")
+        if not math.isfinite(base) or not base > 0 or base == 1.0:
+            raise ScaleError(f"transform_pseudo_log() 的 base 必须是正数且不等于 1，收到 {base!r}")
+        self.sigma = sigma
+        self.base = base
+
+    def transform(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        values = np.asarray(values, dtype=np.float64)
+        invalid = np.isnan(values)
+        with np.errstate(invalid="ignore", over="ignore"):
+            out = np.arcsinh(values / (2.0 * self.sigma)) / math.log(self.base)
+        return np.asarray(out, dtype=np.float64), invalid
+
+    def inverse(self, values: np.ndarray) -> np.ndarray:
+        values = np.asarray(values, dtype=np.float64)
+        with np.errstate(invalid="ignore", over="ignore"):
+            out = 2.0 * self.sigma * np.sinh(values * math.log(self.base))
+        return np.asarray(out, dtype=np.float64)
+
+
+def transform_pseudo_log(sigma: float = 1.0, base: float = math.e) -> _Transform:
+    """`scales::transform_pseudo_log()`：0 附近线性、远处对数的平滑变换。"""
+    return _PseudoLog(sigma, base)
+
+
+# 上游 `scales::transform_*()` 的构造函数。`transform_compose()` 收的就是它们的
+# 返回值（`transform_compose(transform_log10(), transform_reverse())`）；字符串
+# 形式 `trans="log10"` 与这些构造函数指向同一批实现。
+def transform_identity() -> _Transform:
+    """`scales::transform_identity()`。"""
+    return _Identity()
+
+
+def transform_log(base: float = math.e) -> _Transform:
+    """`scales::transform_log(base = exp(1))`。"""
+    return _Log(float(base))
+
+
+def transform_log10() -> _Transform:
+    """`scales::transform_log10()`（= `transform_log(10)`）。"""
+    return _Log10()
+
+
+def transform_log2() -> _Transform:
+    """`scales::transform_log2()`（= `transform_log(2)`）。"""
+    return _Log(2.0)
+
+
+def transform_exp(base: float = math.e) -> _Transform:
+    """`scales::transform_exp(base = exp(1))`。"""
+    return _Exp(float(base))
+
+
+def transform_sqrt() -> _Transform:
+    """`scales::transform_sqrt()`。"""
+    return _Sqrt()
+
+
+def transform_reverse() -> _Transform:
+    """`scales::transform_reverse()`。"""
+    return _Reverse()
+
+
 def _log_sub_breaks(low: float, high: float, n: int = 5, base: float = 10.0) -> tuple[float, ...]:
     """上游 `scales:::log_sub_breaks()`（整次幂给不出足够断点时）。"""
     if base == 10:
@@ -1010,6 +1240,7 @@ _TRANSFORMS: Mapping[str, Callable[[], _Transform]] = MappingProxyType(
         "exp": _Exp,
         "sqrt": _Sqrt,
         "reverse": _Reverse,
+        "pseudo_log": _PseudoLog,
         "date": lambda: _DateTransform("date"),
         "time": lambda: _DateTransform("time"),
         "hms": lambda: _DateTransform("hms"),
@@ -1020,7 +1251,6 @@ _TRANSFORMS: Mapping[str, Callable[[], _Transform]] = MappingProxyType(
 _UNSUPPORTED_TRANSFORMS: Mapping[str, str] = MappingProxyType(
     {
         "log1p": "后续标度任务（M2-4 B 之后的 transform 扩展）",
-        "pseudo_log": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "reciprocal": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "asn": "后续标度任务（M2-4 B 之后的 transform 扩展）",
         "atanh": "后续标度任务（M2-4 B 之后的 transform 扩展）",
@@ -1056,7 +1286,7 @@ def _trans_for(name: Any) -> _Transform:
         raise ScaleError(f"trans = {key!r} 尚未实现（留给 {_UNSUPPORTED_TRANSFORMS[key]}）")
     raise ScaleError(
         f"未知的 trans：{key!r}（已实现 identity / log / log2 / log10 / exp / sqrt / reverse / "
-        "date / time / hms，以及 ('log', base) / ('exp', base)）"
+        "pseudo_log / date / time / hms，以及 ('log', base) / ('exp', base)）"
     )
 
 

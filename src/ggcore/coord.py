@@ -61,6 +61,7 @@ from ggcore.scales import (
     ScaleBase,
     ScaleSet,
     expand_range,
+    transform_pseudo_log,
 )
 from ggcore.sf import (
     CRS,
@@ -290,6 +291,38 @@ class _CallableTransform(CoordTransform):
         )
 
 
+class _ScalesTransform(CoordTransform):
+    """把 `ggcore.scales` 的变换对象接进 `coord_transform()`。
+
+    R 的 `coord_transform(x = transform_pseudo_log())` 直接收 scales 的变换对象；
+    本仓的对应物是 `ggcore.scales._Transform`（`transform_pseudo_log()` /
+    `transform_compose()` 的返回值）。这里只做一层适配：`apply` / `invert` 分别走
+    它的 `transform()` / `inverse()`，量化口径仍由 :class:`CoordTransform` 统一。
+    """
+
+    def __init__(self, transform: Any, name: str | None = None) -> None:
+        object.__setattr__(self, "name", str(name or getattr(transform, "name", "function")))
+        object.__setattr__(self, "_transform", transform)
+
+    def _apply(self, values: Any) -> np.ndarray:
+        out, _ = self._transform.transform(np.asarray(values, dtype=np.float64))
+        return np.asarray(out, dtype=np.float64)
+
+    def _invert(self, values: Any) -> np.ndarray:
+        out = self._transform.inverse(np.asarray(values, dtype=np.float64))
+        return np.asarray(out, dtype=np.float64)
+
+
+def _is_scales_transform(value: Any) -> bool:
+    """是不是 `ggcore.scales` 的变换对象（`transform()` / `inverse()` 两段）。"""
+    return (
+        not isinstance(value, CoordTransform)
+        and callable(getattr(value, "transform", None))
+        and callable(getattr(value, "inverse", None))
+        and hasattr(value, "name")
+    )
+
+
 _TRANSFORMS: Mapping[str, Callable[[], CoordTransform]] = MappingProxyType(
     {
         "identity": CoordTransform,
@@ -301,6 +334,7 @@ _TRANSFORMS: Mapping[str, Callable[[], CoordTransform]] = MappingProxyType(
         "sqrt": _Sqrt,
         "reciprocal": _Reciprocal,
         "reverse": _Reverse,
+        "pseudo_log": lambda: _ScalesTransform(transform_pseudo_log()),
     }
 )
 
@@ -314,7 +348,6 @@ _UNSUPPORTED_TRANSFORMS: Mapping[str, str] = MappingProxyType(
         "logit": "M3-2",
         "probability": "M3-2",
         "probit": "M3-2",
-        "pseudo_log": "M3-2",
         "time": "M3-2",
     }
 )
@@ -337,11 +370,18 @@ def _canonical_values(values: Any, decimals: int = TRANSFORM_DECIMALS) -> np.nda
 
 
 def as_coord_transform(value: Any) -> CoordTransform:
-    """`coord_trans(x = …)` 的取值 → :class:`CoordTransform`。"""
+    """`coord_trans(x = …)` 的取值 → :class:`CoordTransform`。
+
+    认四种写法：`CoordTransform` 子类、`ggcore.scales` 的变换对象
+    （`transform_pseudo_log()` / `transform_compose(...)` 的返回值，对齐 R 的
+    `coord_transform(x = transform_pseudo_log())`）、可调用对象、注册名。
+    """
     if value is None:
         return CoordTransform()
     if isinstance(value, CoordTransform):
         return value
+    if _is_scales_transform(value):
+        return _ScalesTransform(value)
     if callable(value):
         return _CallableTransform(value, name=getattr(value, "__name__", "function"))
     key = str(value)
