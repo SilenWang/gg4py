@@ -127,9 +127,7 @@ def test_group_owner_that_stops_at_m2_closeout_is_red(monkeypatch: pytest.Monkey
         dispositions["snapshots"].setdefault(path, {})["owner"] = "m3"
     monkeypatch.setattr(SNAPSHOTS, "load_dispositions", lambda: dispositions)
     problems, _ = SNAPSHOTS.check()
-    assert any("coord_sf" in problem and "m2-closeout" in problem for problem in problems), (
-        problems
-    )
+    assert any("coord_sf" in problem and "m2-closeout" in problem for problem in problems), problems
 
 
 def test_matrix_ledger_must_match_the_inventory() -> None:
