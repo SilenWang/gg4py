@@ -17,6 +17,10 @@ R：
       coord_radial(start = 0.5 * pi, end = 1.5 * pi,
                    rotate.angle = TRUE, r.axis.inside = FALSE) +
       theme
+
+上游的 `aes(y = "0 degrees")` 是**常量美学**（字符串字面量，不是列名）。ggcore 的
+`aes()` 把字符串按表达式解释，常量要写成带引号的表达式（`aes(y = "'0 degrees'")`），
+这里照搬这个写法，不额外补 `labs(y = "y")`——常量美学下 y 轴标题就是默认的 `y`。
 """
 
 import math
@@ -32,8 +36,6 @@ from ggio.frame import to_column_table
 DATA = {
     "x": [1.0, 2.0, 3.0, 4.0, 5.0],
     "lab": ["cat", "strawberry\ncake", "coffee", "window", "fluid"],
-    "y0": ["0 degrees"] * 5,
-    "y1": ["90 degrees"] * 5,
 }
 
 AXIS_THEME = theme(
@@ -47,8 +49,8 @@ AXIS_THEME = theme(
 def build():
     p = (
         ggplot(to_column_table(DATA), aes(x="x", label="lab"))
-        + geom_text(aes(y="y0"), angle=0.0)
-        + geom_text(aes(y="y1"), angle=90.0)
+        + geom_text(aes(y="'0 degrees'"), angle=0.0)
+        + geom_text(aes(y="'90 degrees'"), angle=90.0)
         + AXIS_THEME
         + coord_radial(
             start=0.5 * math.pi,
@@ -56,6 +58,6 @@ def build():
             rotate_angle=True,
             r_axis_inside=False,
         )
-        + labs(title="bottom half circle with rotated text", y="y")
+        + labs(title="bottom half circle with rotated text")
     )
     return {"plot": p, "size": [10, 8]}
