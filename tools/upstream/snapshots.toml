@@ -101,7 +101,7 @@ reason = "SIL-811 已全部纳管 3 条：单箱、`coord_polar()`、`coord_tran
 [groups."geom-hline-vline-abline"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-795 纳管 3 条（cartesian / flipped / polar：极坐标下参考线被 munch 成圆弧）；剩 2 条 map 投影（mercator / azequalarea）要 `coord_map()` 的投影核，归 M3-2（单条 reason 见下）。"
+reason = "SIL-857 已全部纳管 5 条：cartesian / flipped / polar 三条（极坐标下参考线被 munch 成圆弧）之外，两条 map 投影（mercator / azequalarea）随 `coord_map()` 的球面投影核落地——`ggcore.sf.mapproject` 移植了 mapproj 的 `mercator` / `azequalarea` 与 `orientation` 旋转，面板网格也按 `CoordMap$render_bg()` 画成投影后的折线。"
 
 [groups."geom-label"]
 issue = "SIL-715"
@@ -1007,11 +1007,9 @@ case = "upstream-patterns-pattern-fills-through-scale"
 # ---------------------------------------------------------------------------
 # G7a（SIL-795）：小簇 A 的 37 条几何 / stat 快照
 #
-# 32 条已纳管（逐字节快照 + 三文件 case，`cases:matrix` 跑渲染与像素对拍）；
-# 剩 5 条是真实能力缺口，逐条 reason 见本节末尾：
-#   - `geom-hex` 的 2 条（极坐标 / sqrt 轴）：卡在「stat 之后重训位置标度」的口径
-#   - `geom-hline-vline-abline` 的 2 条 map 投影（mercator / azequalarea）
-#   - `geom-text` 的 1 条 plotmath 表达式排版
+# 37 条已全部纳管（逐字节快照 + 三文件 case，`cases:matrix` 跑渲染与像素对拍）。
+# 最后两条 map 投影（mercator / azequalarea）由 SIL-857 的 `coord_map()` 投影核
+# 收口；hex 两条（极坐标 / sqrt 轴）与 plotmath 一条分别由 SIL-811 / SIL-855 收口。
 # ---------------------------------------------------------------------------
 
 [snapshots."aes/alpha-set-in-alpha.svg"]
@@ -1124,13 +1122,13 @@ case = "upstream-annotate-utah"
 [snapshots."annotate/line-matches-points.svg"]
 case = "upstream-annotate-segment-transform"
 
-# 未纳管的 5 条（卡点见各条 reason；hex 两条在上面的分组里已按路径单列）
+# G7a 的 37 条已全部纳管（无遗留 reason）；末尾两条 map 投影由 SIL-857 收口。
 
 [snapshots."geom-hline-vline-abline/lines-curved-in-azequalarea.svg"]
-reason = 'SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。'
+case = "upstream-geom-hline-vline-azequalarea"
 
 [snapshots."geom-hline-vline-abline/straight-lines-in-mercator.svg"]
-reason = 'SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。'
+case = "upstream-geom-hline-vline-mercator"
 
 [snapshots."geom-text/geom-text-with-expressions.svg"]
 case = "upstream-geom-text-with-expressions"

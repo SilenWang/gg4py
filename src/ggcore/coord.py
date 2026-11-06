@@ -28,9 +28,10 @@
 - **`coord_polar` / `coord_radial`**：theta / r 两条轴，`theta_rescale()` /
   `r_rescale()` 与上游同式；`start` / `direction` / `end` / `inner.radius` /
   `thetalim` / `rlim` 全部落地，partial arc 的 bbox 用上游 `polar_bbox()`。
-- **`coord_sf` / `coord_map` / `coord_quickmap`**：只做注册与最小可用。真正的
-  投影 / graticule / sf 几何归 M3-2；这里 identity 投影可用，要求真实投影时
-  报 :class:`CoordError` 并点名 M3-2（不静默当 identity）。
+- **`coord_sf` / `coord_map` / `coord_quickmap`**：`coord_sf` 走 EPSG 投影与
+  graticule，`coord_map` 走 mapproj 的球面 `mercator` / `azequalarea`
+  （`ggcore.sf.mapproject`），`coord_quickmap` 是纬度 `1/cos(lat)` 近似；
+  其它 mapproj 投影显式报 :class:`CoordError`（不静默当 identity）。
 - **`coord_equal`**：与 `coord_fixed(ratio = 1)` 同一口径（上游 4.0.3
   `coord_equal()` 就是 `coord_cartesian(ratio = 1)`）。
 - `reverse`：`coord_cartesian(reverse = "x"/"y"/"xy")` 与 `coord_transform()`
@@ -688,6 +689,10 @@ class PanelParams:
         据此决定是否走 `coord_munch()` 的逐边细分（R 的 `coord$is_linear()`）。
         """
         if self.polar is not None:
+            return False
+        if self.map_geom is not None:
+            # `CoordMap$is_linear()` 是 FALSE（Coord 基类缺省 TRUE）：hline / vline /
+            # abline / path 的直线在投影平面里会弯，必须走 `coord_munch()` 细分。
             return False
         if self.sf is not None and getattr(self.sf, "default_crs", None) is not None:
             # `CoordSf$is_linear()`：用 default_crs 时非 sf 图层的直线要按经线 /
@@ -1877,12 +1882,12 @@ class SfCoord(CoordBase):
 
 @dataclass(frozen=True, slots=True)
 class MapCoord(CoordBase):
-    """`coord_map()`：mapproj 投影（M3-2 实现球面 mercator）。
+    """`coord_map()`：mapproj 投影（M3-2 实现球面 mercator / azequalarea）。
 
     `CoordMap$setup_panel_params()` 的口径：在数据范围（经纬度）上铺 50×50 网格，
     用 `mapproj::mapproject()` 投影，投影后范围的宽高比就是面板比例；`transform()`
-    把投影值 rescale 到 `x.proj` / `y.proj`。非 mercator 的投影（`gilbert` /
-    `ortho` / `conic` …）需要 mapproj 全量，本仓不引入，显式报错。
+    把投影值 rescale 到 `x.proj` / `y.proj`。未移植的投影（`gilbert` / `ortho` /
+    `conic` …）需要 mapproj 全量，本仓不引入，显式报错。
     """
 
     projection: str = "mercator"
@@ -1892,10 +1897,14 @@ class MapCoord(CoordBase):
 
     def __post_init__(self) -> None:
         CoordBase.__post_init__(self)
-        if str(self.projection) not in ("identity", "none", "mercator"):
+        from ggcore.sf import mapproj_projections
+
+        implemented = mapproj_projections()
+        if str(self.projection) not in ("identity", "none", *implemented):
+            listed = " / ".join(f'"{item}"' for item in implemented)
             raise CoordError(
                 f"coord_map(projection = {self.projection!r}) 尚未实现：M3-2 只移植了 "
-                'mapproj 的 "mercator"（其余投影需要 mapproj 全量，见 docs/notes/sf.md）'
+                f"mapproj 的 {listed}（其余投影需要 mapproj 全量，见 docs/notes/sf.md）"
             )
         if self.orientation is not None:
             items = tuple(self.orientation)

@@ -300,3 +300,157 @@ def test_coord_map_uses_the_projected_aspect() -> None:
     assert build.coord.name == "map"
     # 美国本土的 mercator 投影：高/宽约 0.54（R 的 usa-mercator 快照同量级）
     assert 0.3 < build.panel_params.aspect_ratio < 0.8
+
+
+# ---------------------------------------------------------------------------
+# mapproj 投影核（SIL-857）：mercator / azequalarea
+# ---------------------------------------------------------------------------
+#
+# 期望值全部由 `mapproj` 1.2.12（CRAN，R 4.5.3）的 `mapproject()` 逐点导出：
+#
+#     mapproject(x, y, projection = "mercator", orientation = c(90, 0, 175.6))
+#     mapproject(x, y, projection = "azequalarea", orientation = c(-36.92, 174.6, 0))
+#
+# 面板比例是 `CoordMap$setup_panel_params()` 同一套 50×50 网格在 nz 的范围上
+# 投影后的 `diff(y.proj) / diff(x.proj)`。
+
+_MAPPROJ_LON = np.array([174.6, 176.0, 178.0, 172.7433, 179.5])
+_MAPPROJ_LAT = np.array([-36.92, -38.6, -41.63587, -34.39895, -40.5])
+
+
+def test_mapproject_mercator_matches_mapproj() -> None:
+    from ggcore.sf import mapproject
+
+    px, py = mapproject(
+        _MAPPROJ_LON, _MAPPROJ_LAT, projection="mercator", orientation=(90.0, 0.0, 175.6)
+    )
+    np.testing.assert_allclose(
+        px,
+        [-0.0174532925, 0.0069813170, 0.0418879020, -0.0498588207, 0.0680678408],
+        rtol=0,
+        atol=1e-9,
+    )
+    np.testing.assert_allclose(
+        py,
+        [-0.6942406031, -0.7313320322, -0.8006396915, -0.6400768580, -0.7743435388],
+        rtol=0,
+        atol=1e-9,
+    )
+
+
+def test_mapproject_azequalarea_matches_mapproj() -> None:
+    from ggcore.sf import mapproject
+
+    px, py = mapproject(
+        _MAPPROJ_LON,
+        _MAPPROJ_LAT,
+        projection="azequalarea",
+        orientation=(-36.92, 174.6, 0.0),
+    )
+    np.testing.assert_allclose(
+        px,
+        [0.0, 0.0135037528, 0.0313770030, -0.0189099322, 0.0459756644],
+        rtol=0,
+        atol=1e-9,
+    )
+    np.testing.assert_allclose(
+        py,
+        [0.0, -0.0208327860, -0.0587584655, 0.0309292582, -0.0453810594],
+        rtol=0,
+        atol=1e-9,
+    )
+
+
+def test_mapproject_orientation_puts_the_pole_at_the_origin() -> None:
+    from ggcore.sf import mapproject
+
+    # `orientation = c(lat, lon, 0)`：该经纬度就是投影平面原点（`azequalarea`）。
+    px, py = mapproject(
+        np.array([174.6]),
+        np.array([-36.92]),
+        projection="azequalarea",
+        orientation=(-36.92, 174.6, 0),
+    )
+    assert px[0] == pytest.approx(0.0, abs=1e-12)
+    assert py[0] == pytest.approx(0.0, abs=1e-12)
+    # mercator 的缺省极点在北：`orientation[2]` 只平移经度，纬度方向仍是 atanh。
+    centered, _ = mapproject(
+        np.array([174.6, 175.6]),
+        np.array([-38.6, -38.6]),
+        projection="mercator",
+        orientation=(90.0, 0.0, 175.6),
+    )
+    assert centered[1] == pytest.approx(0.0, abs=1e-12)
+    assert centered[0] < 0.0
+
+
+def test_mapproject_clips_at_the_projection_domain() -> None:
+    from ggcore.sf import mapproject
+
+    # mercator：`|lat| > 80°` 返回 NA（`Xmercator` 的截断），80° 以内照常。
+    lats = np.array([0.0, 45.0, 85.0, -85.0, 80.0])
+    _, py = mapproject(np.zeros(5), lats, projection="mercator", orientation=(90.0, 0.0, 0.0))
+    assert np.isnan(py[2]) and np.isnan(py[3])
+    assert np.isfinite(py[[0, 1, 4]]).all()
+    assert py[1] == pytest.approx(0.8813735870, abs=1e-9)
+    # azequalarea 在两个极区都有定义（南极为 sqrt 2 的半径），不按 80° 截断。
+    px, py = mapproject(
+        np.array([0.0, 0.0, 0.0, 180.0]),
+        np.array([0.0, 90.0, -90.0, 0.0]),
+        projection="azequalarea",
+        orientation=(90.0, 0.0, 0.0),
+    )
+    np.testing.assert_allclose(px, 0.0, atol=1e-12)
+    np.testing.assert_allclose(py, [-1.0, 0.0, -math.sqrt(2.0), 1.0], atol=1e-9)
+
+
+def test_mapproject_rejects_unknown_projections_and_bad_parameters() -> None:
+    from ggcore.sf import mapproj_projections, mapproject
+
+    assert mapproj_projections() == ("mercator", "azequalarea")
+    with pytest.raises(SfError, match="尚未实现"):
+        mapproject(np.array([0.0]), np.array([0.0]), projection="gilbert")
+    with pytest.raises(SfError, match="需要 0 个投影参数"):
+        mapproject(np.array([0.0]), np.array([0.0]), projection="azequalarea", params=(1.0,))
+    with pytest.raises(SfError, match="orientation"):
+        mapproject(np.array([0.0]), np.array([0.0]), orientation=(90.0, 0.0))
+
+
+def test_coord_map_panel_aspect_matches_the_projection() -> None:
+    from ggcore.sf import mapproject
+
+    # nz 的 5% 展开范围（R：expand_range(range(nz$long/lat))）。
+    x_range = (172.3964073181, 178.8565071106)
+    y_range = (-41.9977178574, -34.0371065140)
+    grid = np.linspace(0.0, 1.0, 50)
+    xs = x_range[0] + (x_range[1] - x_range[0]) * np.repeat(grid, 50)
+    ys = y_range[0] + (y_range[1] - y_range[0]) * np.tile(grid, 50)
+
+    def aspect(projection: str, orientation: tuple[float, float, float]) -> float:
+        px, py = mapproject(xs, ys, projection=projection, orientation=orientation)
+        return float(np.nanmax(py) - np.nanmin(py)) / float(np.nanmax(px) - np.nanmin(px))
+
+    assert aspect("mercator", (90.0, 0.0, (x_range[0] + x_range[1]) / 2.0)) == pytest.approx(
+        1.566954678373, abs=1e-9
+    )
+    assert aspect("azequalarea", (-36.92, 174.6, 0.0)) == pytest.approx(1.500304927084, abs=1e-9)
+
+
+def test_coord_map_azequalarea_is_non_linear_and_builds() -> None:
+    from ggcore.plot import geom_hline, geom_path, labs
+    from ggio.frame import to_column_table
+
+    data = to_column_table({"x": [174.0, 176.0, 178.0], "y": [-35.0, -38.0, -41.0]})
+    plot = (
+        ggplot(data, aes(x="x", y="y"))
+        + geom_path()
+        + geom_hline(yintercept=-38.6)
+        + coord_map(projection="azequalarea", orientation=(-36.92, 174.6, 0))
+        + labs(title="nz")
+    )
+    build = build_plot(plot)
+    assert build.panel_params.map_geom is not None
+    assert build.panel_params.map_geom.projection == "azequalarea"
+    # `CoordMap$is_linear()` 是 FALSE：路径 / 参考线必须走 `coord_munch()`。
+    assert build.panel_params.is_linear is False
+    assert build.panel_params.aspect_ratio > 0

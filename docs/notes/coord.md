@@ -373,9 +373,11 @@ M2-1 只做注册与最小可用；**M3-2 已落地**（口径与已知差异见
   CRS，`default_crs` / `lims_method` / `reverse` / `label_axes` /
   `label_graticule` 全部落地；经纬度的 `aspect = (y/x) / cos(中心纬度)`；
   面板网格与四边刻度来自 `st_graticule()`。
-- `coord_map()`：mapproj 球面 mercator（`orientation` 缺省
-  `c(90, 0, mean(lon))`）；其它投影（`gilbert` / `ortho` / `conic` …）显式报
-  `CoordError` 并点名 M3-2。
+- `coord_map()`：mapproj 球面 `mercator` / `azequalarea`（`orientation` 缺省
+  `c(90, 0, mean(lon))`，`Xmercator` 的 ±80° 截断照做）；其它投影
+  （`gilbert` / `ortho` / `conic` …）显式报 `CoordError`。`CoordMap` 是非线性
+  坐标，路径 / 参考线走 `coord_munch()`，面板网格按 `render_bg()` 画成投影后
+  的折线（`upstream-geom-hline-vline-mercator` / `-azequalarea` 两条快照）。
 - `coord_quickmap()` 可用：`aspect = (y/x) / cos(面板中心纬度)`，与上游
   `CoordQuickmap$aspect()` 同式；`coord-quickmap` 案例逐像素对拍（0.14%）。
 - 主轴位置：`scale_*_continuous(position = "top" | "right")` 生效（M3-2，
@@ -410,7 +412,7 @@ M2-1 只做注册与最小可用；**M3-2 已落地**（口径与已知差异见
 | polar 带轴时的空轴行（≈0.147cm，见 §9） | 不占位 | 与 theme 口径一起收 |
 | 非矩形 clipPath（radial 的扇形裁剪） | 只有矩形裁剪；数据在 arc 外不会被裁掉 | IR 多边形 clip 接入后 |
 | `coord_sf` 的 plotmath 度数标签 | 单段文本（宽度按 degree 符号 0.376em 折算） | 完整 plotmath 引擎 |
-| `coord_map` 的非 mercator 投影 | 明确报错 | 需要 mapproj 全量 |
+| `coord_map` 的其它投影（`gilbert` / `ortho` / `conic` …） | 明确报错（已移植 `mercator` / `azequalarea`） | 需要 mapproj 全量 |
 | facet free scales × `coord_trans` | 每面板范围独立，但断点仍共用一个 `continuous_range` | 后续 |
 | 离散标度的显式 `limits` 里没有数据的水平 | `levels` 不含它（M1-4 缺口），轴断点会少一个 | SIL-715 同族 |
 

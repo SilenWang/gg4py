@@ -22,8 +22,9 @@ R 侧口径见 `R/coord-sf.R`、`R/stat-sf.R`、`R/geom-sf.R` 与 sf 包的
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 from typing import Any
 
 import numpy as np
@@ -1125,10 +1126,25 @@ def _orient(lat: float, lon: float, theta: float) -> tuple[Any, float]:
     return pole, _cirmod(theta) * _RAD
 
 
-def _norm(
-    x: np.ndarray, y: np.ndarray, pole: tuple[float, ...], twist: float
-) -> tuple[np.ndarray, np.ndarray]:
-    """mapproj 的 `norm()`：把地理坐标旋转到以 `pole` 为极点的坐标系。"""
+@dataclass(frozen=True, slots=True)
+class _Place:
+    """mapproj 的 `struct place`（已旋到投影极点的球面坐标，弧度）。"""
+
+    nlat_l: np.ndarray
+    nlat_s: np.ndarray
+    nlat_c: np.ndarray
+    wlon_l: np.ndarray
+    wlon_s: np.ndarray
+    wlon_c: np.ndarray
+
+
+def _norm_place(x: np.ndarray, y: np.ndarray, pole: tuple[float, ...], twist: float) -> _Place:
+    """mapproj 的 `norm()`：把地理坐标旋转到以 `pole` 为极点的坐标系。
+
+    与 `src/zcoord.c` 同序：先按极点旋转，再 `trig(&g->wlon)` 用最终的
+    `wlon.l` 重算 `wlon.s` / `wlon.c`（`azequalarea` 的 `x/y` 吃的正是这两个值，
+    用旋转中间量会差一个 `twist`），最后把 `wlon.l` 折回 `[-π, π]`。
+    """
     lon = x * _RAD
     lat = y * _RAD
     wlon_s = np.sin(-lon)
@@ -1138,11 +1154,10 @@ def _norm(
     p_nlat_s, p_nlat_c, _, _, _, p_wlon_l = pole
     if p_nlat_s == 1.0:
         # 极点就在北极：只平移经度
-        shift = p_wlon_l + twist
-        if shift != 0.0:
-            lon = lon + 0.0  # 原样，下面按 -lon 处理
-        m_wlon_l = -lon - shift
+        m_wlon_l = -lon - (p_wlon_l + twist)
         m_nlat_l = lat
+        m_nlat_s = nlat_s
+        m_nlat_c = nlat_c
     else:
         if p_wlon_l != 0.0:
             wlon_l = -lon - p_wlon_l
@@ -1156,7 +1171,53 @@ def _norm(
         m_wlon_l = np.arctan2(m_wlon_s, -m_wlon_c) - twist
     m_wlon_l = np.where(m_wlon_l > math.pi, m_wlon_l - 2.0 * math.pi, m_wlon_l)
     m_wlon_l = np.where(m_wlon_l < -math.pi, m_wlon_l + 2.0 * math.pi, m_wlon_l)
-    return m_wlon_l, m_nlat_l
+    return _Place(
+        nlat_l=m_nlat_l,
+        nlat_s=m_nlat_s,
+        nlat_c=m_nlat_c,
+        wlon_l=m_wlon_l,
+        wlon_s=np.sin(m_wlon_l),
+        wlon_c=np.cos(m_wlon_l),
+    )
+
+
+def _xmercator(place: _Place) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`Xmercator`：`x = -wlon`、`y = atanh(sin lat)`；`|lat| > 80°` 返回 NA。"""
+    sin_lat = place.nlat_s
+    with np.errstate(divide="ignore", invalid="ignore"):
+        py = 0.5 * np.log((1.0 + sin_lat) / (1.0 - sin_lat))
+    px = -place.wlon_l
+    ok = (np.abs(place.nlat_l) <= 80.0 * _RAD) & np.isfinite(py)
+    return px, py, ok
+
+
+def _xazequalarea(place: _Place) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """`Xazequalarea`（Lambert 方位等积投影）。
+
+    `r = sqrt(1 - sin lat)`、`(x, y) = -r·(wlon.s, wlon.c)`。与 mercator 不同，
+    它在南北极都有定义（极点处 `r = 0` / `sqrt 2`），没有 ±80° 截断，所以
+    `ok` 只剔除浮点上的非有限值。
+    """
+    with np.errstate(invalid="ignore"):
+        radius = np.sqrt(1.0 - place.nlat_s)
+    px = -radius * place.wlon_s
+    py = -radius * place.wlon_c
+    ok = np.isfinite(px) & np.isfinite(py)
+    return px, py, ok
+
+
+#: 已移植的 mapproj 投影 → 需要的 `parameters` 个数（`mapindex[]` 的 `npar`）。
+#: 只实现挣得出来的投影；其余显式报错，不拿 identity 顶替。
+_MAPPROJ_PARAMS: Mapping[str, int] = MappingProxyType({"mercator": 0, "azequalarea": 0})
+
+_MAPPROJ_FUNCS: Mapping[str, Any] = MappingProxyType(
+    {"mercator": _xmercator, "azequalarea": _xazequalarea}
+)
+
+
+def mapproj_projections() -> tuple[str, ...]:
+    """已移植的 mapproj 投影名（`coord_map(projection=)` 接受的就是这些）。"""
+    return tuple(_MAPPROJ_PARAMS)
 
 
 def mapproject(
@@ -1167,33 +1228,43 @@ def mapproject(
     params: Sequence[float] = (),
     orientation: Sequence[float] = (90.0, 0.0, 0.0),
 ) -> tuple[np.ndarray, np.ndarray]:
-    """`mapproj::mapproject()` 的球面 mercator（`R/coord-map.R` 唯一依赖）。
+    """`mapproj::mapproject()` 的球面投影核（`R/coord-map.R` 唯一依赖）。
 
-    上游 `setproj()` 用 `orient(o[0], -o[1], -o[2])` 旋球，再用
-    `Xmercator`：`x = -wlon`、`y = 0.5*log((1+sin lat)/(1-sin lat))`。
-    纬度超过 ±80° 与上游一样返回 NA。
+    上游 `setproj()` 用 `orient(o[0], -o[1], -o[2])` 旋球，再交给投影函数：
+
+    - `mercator`：`x = -wlon`、`y = 0.5*log((1+sin lat)/(1-sin lat))`；
+    - `azequalarea`：`r = sqrt(1 - sin lat)`、`(x, y) = -r·(wlon.s, wlon.c)`。
+
+    定义域外的点返回 NA（mercator 的 `|lat| > 80°`，以及任何非有限结果）。
     """
     x = np.asarray(xs, dtype=np.float64)
     y = np.asarray(ys, dtype=np.float64)
     name = str(projection)
     if name in ("identity", "none"):
         return x, y
-    if name != "mercator":
+    func = _MAPPROJ_FUNCS.get(name)
+    if func is None:
+        implemented = " / ".join(f'"{item}"' for item in _MAPPROJ_PARAMS)
         raise SfError(
-            f"coord_map(projection = {projection!r}) 尚未实现：M3-2 只移植了 mapproj 的 "
-            '"mercator"（其余投影需要 mapproj 全量）'
+            f"coord_map(projection = {projection!r}) 尚未实现：本仓只移植了 mapproj 的 "
+            f"{implemented}（其余投影需要 mapproj 全量）"
         )
-    if len(tuple(params)) != 0:
-        raise SfError("mapproj 的 mercator 不接受投影参数（parameters 必须为空）")
-    lat0, lon0, theta = (float(item) for item in tuple(orientation))
+    given = tuple(params)
+    required = _MAPPROJ_PARAMS[name]
+    if len(given) != required:
+        plural = "" if required == 1 else "s"
+        raise SfError(
+            f"mapproj 的 {name} 需要 {required} 个投影参数{plural}，"
+            f"收到 {len(given)} 个（parameters = {given!r}）"
+        )
+    items = tuple(float(item) for item in tuple(orientation))
+    if len(items) != 3:
+        raise SfError(f"orientation 必须是 (latitude, longitude, rotation) 三元组，收到 {items!r}")
+    lat0, lon0, theta = items
     pole, twist = _orient(lat0, -lon0, -theta)
-    wlon, nlat = _norm(x, y, pole, twist)
-    sin_lat = np.sin(nlat)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        py = 0.5 * np.log((1.0 + sin_lat) / (1.0 - sin_lat))
-    px = -wlon
-    invalid = (np.abs(nlat) > 80.0 * _RAD) | ~np.isfinite(py)
-    return np.where(invalid, np.nan, px), np.where(invalid, np.nan, py)
+    place = _norm_place(x, y, pole, twist)
+    px, py, ok = func(place)
+    return np.where(ok, px, np.nan), np.where(ok, py, np.nan)
 
 
 # ---------------------------------------------------------------------------

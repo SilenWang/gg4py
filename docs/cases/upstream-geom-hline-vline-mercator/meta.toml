@@ -1,0 +1,7 @@
+family = "geom-hline"
+features = ["aes-mapping", "coord-map", "projection"]
+ci = true
+title = "straight lines in mercator"
+source = "upstream:tests/testthat/_snaps/geom-hline-vline-abline/straight-lines-in-mercator.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-857：coord_map() 的球面 mercator（缺省 orientation c(90, 0, mean(lon))），路径与参考线都要 munch。"
