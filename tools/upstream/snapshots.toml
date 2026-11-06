@@ -41,7 +41,7 @@ reason = "SIL-823 已全部纳管 2 条：mapproj 球面 mercator（orientation 
 [groups."coord-polar"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-793 纳管 7 条（同心圆 / 圆弧螺旋 / 玫瑰 / racetrack 两条 / 次轴 / reversed）；剩 4 条是 `coord_radial()` 的轴体系。SIL-843 已把 radial 版式修到位（面板 = 可用的正方形、整表水平居中、`panel.background` 的圆环、次网格 `setdiff` + r 次圆、r 轴读 `axis.*.r` 元素），4 条复刻成 case 后实测 11.1% / 38.6% / 21.7% / 6.99%；剩下的是逐 guide `theme=` 着色、`r.axis.inside` 数值/两角度的面板内旋转轴（`rotate_r_axis()`）、`r.sec` / `theta.sec` 的次轴槽与 `rotate.angle = TRUE`（见单条 reason）。owner 与缺口一致，仍是 m3。"
+reason = "11 条全部纳管：SIL-793 的 7 条（同心圆 / 圆弧螺旋 / 玫瑰 / racetrack 两条 / 次轴 / reversed）+ SIL-843 的 radial 版式（正方形面板 / 整表居中 / 圆环背景 / 次网格 setdiff / r 轴读 `axis.*.r`）+ SIL-844 的轴体系（`r.sec` / `theta.sec` 次轴槽与逐 guide `theme=`、`r.axis.inside` 的数值 / 两角度旋转轴、`rotate.angle = TRUE`、partial arc 的环形扇区背景）。四条新 case 实测 1.41% / 1.00% / 0.64% / 1.00%。本簇不再有缺口，`owner` 保留在历史记录里。"
 
 [groups."coord-transform"]
 issue = "SIL-715"
@@ -146,7 +146,7 @@ reason = "geom_violin 的 14 条已全部纳管（SIL-794）；新增快照先�
 [groups."guide-axis"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面。剩 4 条全部是 M3 新能力：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`）、radial 轴体系 2 条（`stacked-radial-axes` / `guide-axis-theta-with-angle-adapting-to-theta`），owner 记 m3。逐条 reason 见下。"
+reason = "SIL-810 把 `n.dodge` 进版式（`guide_for()` 也认标度的 `guide=`）、`guide_axis_stack` 逐层累加、`cap=` 与直角坐标 `axis_theta` 收口后共 15 条纳管；SIL-817 又纳管 `align facet labels, facets vertical`（1.61%），后续 PR 补齐长标签字形落点与横向分面；SIL-843 纳管 `guide-axis-theta-with-angle-adapting-to-theta`（1.9%），SIL-844 补齐 radial 轴体系（次轴槽 / 逐 guide theme= / 面板内旋转轴 / 叠放）。剩 3 条：plotmath 上标 1 条（`guides-with-minor-ticks`）、`transform_compose` / `pseudo_log` 1 条（`logtick-axes-with-customisation`）、`stacked-radial-axes`（叠放已做，标签落点 2.91% / 1.17%，未到 2% 档），owner 记 m3。逐条 reason 见下。"
 
 [groups."guide-colorbar"]
 issue = "SIL-715"
@@ -760,7 +760,7 @@ reason = "SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x
 case = "upstream-guide-axis-stacked-axes"
 
 [snapshots."guide-axis/stacked-radial-axes.svg"]
-reason = "SIL-843 实测（复刻成 case 后量得 17.8% / 2.79%，case 目录未入库）：radial 版式与 theta 轴本身已就位（`guide-axis-theta-with-angle-adapting-to-theta` 已 1.9% 转绿），这条剩下两处——`guide_axis_stack('axis_theta', …)` 沿半径的第二层 `stack_offset`（`polar_axis_grobs()` 的 `stack_offset_cm` 目前恒为 0），以及 `r` / `r.sec` 两条叠放轴各自的外向轴带（`CoordRadial$setup_panel_guides()` 给 r 轴设 `theme_suffix = 'r'`，次轴要占一条 axis-r 列）。见 docs/notes/guide.md §8.5。"
+reason = "SIL-844：叠放本身已做——`guide_axis_stack('axis_theta', …)` 的多层半径偏移按上游 `measure_grobs()` 的标签盒投影累加（第二个 theta 圈外推 7.2pt），`r` / `r.sec` 两条叠放轴在面板内按 45° / 315° 旋转（`rotate_r_axis()`），partial arc 的 `panel.background` 也改成环形扇区。复刻成 case（`upstream-guide-axis-stacked-radial-axes`，ci = false）后实测 **2.91% / 1.17%**：版式、圆环、网格、轴线与刻度全对，剩下的是两条旋转 r 轴**标签沿轴向**的落点（我们的标签比上游外/内各差 4~10pt）与 42 个标签的字形宽度（本仓字体栈的 digit 0.636em vs svglite 的 0.556em）。整条未到 2% 档，按 SIL-844 的约定不自行放宽阈值，移交 leader 决定。见 docs/notes/guide.md §8.5。"
 
 [snapshots."guide-axis/logtick-axes-with-customisation.svg"]
 reason = "SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_logticks()` 的三档长度已能画）。`scale_y_continuous(transform = transform_compose(transform_log10(), transform_reverse()))` 需要变换对象的组合（`scales.py` 的 `_TRANSFORMS` 只接单个变换，没有 `transform_compose()` 对应物）；`coord_transform(x = transform_pseudo_log())` 的 `pseudo_log` 在 `scales.py:1015` 与 `coord.py:295` 都已登记为 M3-2。按 SIL-817 的约束整条作为新能力移交 m3，不做只支持一半变换的半套实现。"
@@ -929,19 +929,20 @@ case = "upstream-coord-polar-sec-axis"
 [snapshots."coord-polar/reversed-polar-coords.svg"]
 case = "upstream-coord-polar-reversed"
 
-# 未纳管的 4 条（`coord_radial()` 的轴体系，卡点见各条 reason）
+# SIL-844 把 `coord_radial()` 轴体系的 4 条纳管（PR #106）。`guide-axis/stacked-radial-axes`
+# 仍在缺口里，卡点见单条 reason。
 
 [snapshots."coord-polar/bottom-half-circle-with-rotated-text.svg"]
-reason = "SIL-843 实测 18.7% / 1.94%：radial 版式已对齐，剩 `rotate.angle = TRUE` 的 `flip_data_text_angle()`（把 `angle` 美学按 `angle - rad2deg(theta)` 旋转）与下半圆 partial arc 下 theta 标签的锚点。"
+case = "upstream-coord-polar-half-circle-rotated-text"
 
 [snapshots."coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"]
-reason = "SIL-843 实测 6.99% / 1.44%：radial 版式已对齐，剩 `r.axis.inside = c(90, 225)`——数值形式的两个角度要经 `theta_rescale()` 折成 `axis_rotation`，并让 r / r.sec 在面板内按各自角度旋转（`rotate_r_axis()`）；当前 `RadialCoord` 只接受 bool / 标量。"
+case = "upstream-coord-polar-axes-at-90-225"
 
 [snapshots."coord-polar/inner-radius-with-all-axes.svg"]
-reason = "SIL-843 实测 10.2% / 1.35%：radial 版式已对齐，剩两件——`guides(r.sec = …, theta.sec = …)` 的次轴槽（缺 axis-r 列，整表因此横移 8.45pt）与逐 guide `theme=` 的着色（orchid / limegreen 两条轴线没画）。"
+case = "upstream-coord-polar-inner-radius-all-axes"
 
 [snapshots."coord-polar/partial-with-all-axes.svg"]
-reason = "SIL-843 实测 35.0% / 2.96%：同上两条（次轴槽 + 逐 guide `theme=`），另加 `theta = \"y\"` 的 partial arc 下 `axis_rotation` 与 theta 标签锚点（右半圆要把标签压到弧内）。"
+case = "upstream-coord-polar-partial-all-axes"
 
 # SIL-796（G7b 小簇 B：版面 / 标签 / 图案）：
 # labels 6、facet- 3（左对齐两条 + facet_grid 省略内轴标签）、facet-layout 1 纳管；

@@ -10,7 +10,9 @@ R：
     )
     sec_guides <- guides(
       r.sec = guide_axis(theme = theme(axis.line.r = element_line(colour = "orchid"))),
-      theta.sec = guide_axis_theta(theme = theme(axis.line.theta = element_line(colour = "limegreen")))
+      theta.sec = guide_axis_theta(
+        theme = theme(axis.line.theta = element_line(colour = "limegreen"))
+      )
     )
     ggplot(mtcars, aes(disp, mpg)) + geom_point() + theme +
       coord_radial(inner.radius = 0.3, r.axis.inside = FALSE) + sec_guides

@@ -1,6 +1,6 @@
 family = "coord"
 features = ["coord-radial", "coord-polar", "guide-axis"]
-ci = false
+ci = true
 title = "上游快照：full circle with axes placed at 90 and 225 degrees"
 source = "upstream:tests/testthat/_snaps/coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg"
 tolerance = { png = 0.02 }

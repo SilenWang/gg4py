@@ -1,6 +1,6 @@
 family = "coord"
 features = ["coord-radial", "coord-polar", "geom-text"]
-ci = false
+ci = true
 title = "上游快照：bottom half circle with rotated text"
 source = "upstream:tests/testthat/_snaps/coord-polar/bottom-half-circle-with-rotated-text.svg"
 tolerance = { png = 0.02 }
