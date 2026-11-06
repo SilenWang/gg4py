@@ -18,9 +18,8 @@ R：
                    rotate.angle = TRUE, r.axis.inside = FALSE) +
       theme
 
-上游的 `aes(y = "0 degrees")` 是**常量美学**（字符串字面量，不是列名）。ggcore 的
-`aes()` 把字符串按表达式解释，常量要写成带引号的表达式（`aes(y = "'0 degrees'")`），
-这里照搬这个写法，不额外补 `labs(y = "y")`——常量美学下 y 轴标题就是默认的 `y`。
+上游的 `aes(y = "0 degrees")` 是**常量映射**，ggcore 目前把常量表达式当成了轴标题，
+需要显式 `labs(y = "y")` 才能对齐（等 ggcore 修好常量美学的标题推导后再去掉这个补丁）。
 """
 
 import math
@@ -58,6 +57,6 @@ def build():
             rotate_angle=True,
             r_axis_inside=False,
         )
-        + labs(title="bottom half circle with rotated text")
+        + labs(title="bottom half circle with rotated text", y="y")
     )
     return {"plot": p, "size": [10, 8]}
