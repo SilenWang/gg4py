@@ -56,6 +56,6 @@ def build():
             rotate_angle=True,
             r_axis_inside=False,
         )
-        + labs(title="bottom half circle with rotated text")
+        + labs(title="bottom half circle with rotated text", y="y")
     )
     return {"plot": p, "size": [10, 8]}

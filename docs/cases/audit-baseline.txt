@@ -1,8 +1,5 @@
 geom-text-wrap
 guide-colourbar-full
-upstream-coord-polar-axes-at-90-225
-upstream-coord-polar-half-circle-rotated-text
-upstream-coord-polar-partial-all-axes
 upstream-coord-polar-reversed
 upstream-coord-polar-rose
 upstream-coord-sf-coord-sf-with-custom-guides

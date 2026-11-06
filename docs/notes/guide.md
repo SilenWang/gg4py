@@ -403,12 +403,16 @@ SVG 逐值量过，见 `docs/cases/upstream-guide-axis-theta-angle`）：
 仍然没到 2% 档的两条（不自行放宽阈值，见 `tools/upstream/snapshots.toml` 的单条
 `reason`）：
 
-- `guide-axis/stacked-radial-axes`：**2.91% / 1.17%**（`ci = false`）。版式、圆环、
-  网格、轴线、刻度已对位，剩下两条旋转 r 轴**标签沿轴向**的落点（差 4~10pt）；
+- `guide-axis/stacked-radial-axes`：**2.94% / 1.18%**（`ci = false`）。版式、圆环、
+  网格、轴线、刻度已对位；叠放层间距已按上游 `grobWidth + spacing` 对齐（两层 r 标签
+  的 x 差 **22.03pt**，上游 22.04，`axis.text.r` 的 margin 是两侧各 2.2pt）。残余是
+  两层 r 标签的 **y 同向偏 ~3pt**（更像面板框 / 外边距）与 theta 第二圈的半径；
 - `coord_sf/coord-sf-with-custom-guides`：**2.83% / 0.92%**。`"80°W"` 已经拆成
   `"80"` / `"°"` / `"W"` 三个字符节点（`_degree_label_grobs()`，各自 `rotate(45)`
-  + 自己的 advance），剩下的差异是字体度量：上游 svglite 的 digit 是 0.556em，
-  本仓字体栈是 0.636em，逐字符累积后整条标签比上游宽约 8%。
+  + 自己的 advance）。**digit / `W` 的宽度与字距和上游完全一致**：`80` = 9.79px =
+  2 × 0.556em，字符间距 6.92 / 2.34 分毫不差；只有 `°` 的 advance 差 0.21px
+  （0.4em vs 0.376em）。真实残余是面板整体左移 0.99pt（`y_axis_cm` 少 0.99、
+  `y_axis_right_cm` 多 0.72）。
 
 | `legend.frame` / 高级图例盒子主题 | 只画 `legend.frame` 的描边与 `legend.box.background` 的矩形；`legend.box.just` / `legend.box` / `legend.box.margin` 已参与行列分配 |
 | 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。`display = "gradient"` 同样落成 15 条矩形，由 `docs/cases/guide-colourbar-gradient` 钉住视觉（图级 1.48%） |
