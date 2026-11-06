@@ -17,11 +17,32 @@
 | `st_geometrycollection(geometries)` | 几何集合 |
 | `st_sfc(geometries, crs=None)` | 一组几何 |
 | `st_crs(value)` | 解析 CRS（EPSG 号 / `"EPSG:4326"` / `+proj=...`） |
-| `parse_wkt(text, crs=None)` | WKT → 几何（点 / 线；面的 WKT 目前解析失败，见 §6） |
+| `parse_wkt(text, crs=None)` | WKT → 几何（`POINT` / `LINESTRING` / `POLYGON` / `MULTI*` / `GEOMETRYCOLLECTION`；面的环写成 `((x y, ...))`） |
 | `sf(data, geometry, crs=None)` | 组一份带 `geometry` 列的 `ColumnTable` |
 
 几何是 `Geometry(kind, parts, crs)`，落在列的 `kind="geometry"` 上，所以三种输入
-（dict / pandas / Arrow）都能直接带几何列。
+（dict / pandas / Arrow）都能直接带几何列。`geometry=` 也收 WKT 字符串（或它们的
+混合），`sf(..., crs=)` 会把 CRS 挂到每个没自带 CRS 的几何上：
+
+```python
+from ggcore.plot import coord_sf, geom_sf, ggplot, labs
+from ggcore.sf import sf
+from ggcore.theme import theme_minimal
+
+# 外环 + 洞：与 st_polygon([外环, 洞], crs=4326) 等价
+SHELL = "(-81 36, -79 36, -80 37, -81 36)"
+HOLE = "(-80.4 36.2, -80.1 36.3, -79.8 36.2, -80.4 36.2)"
+WKT = f"POLYGON ({SHELL}, {HOLE})"
+DATA = sf({"name": ["ashe"]}, geometry=[WKT], crs=4326)
+
+p = (
+    ggplot(DATA)
+    + geom_sf(fill="#4C78A8", colour="white")
+    + coord_sf()
+    + labs(title="WKT 多边形（带洞）", x=None, y=None)
+    + theme_minimal()
+)
+```
 
 ```python
 from ggcore.plot import aes, coord_sf, geom_sf, ggplot, labs
@@ -170,12 +191,6 @@ p = (
 
 ## 6. 已知边界
 
-- **点几何带 CRS 时会报错**：`sf(..., crs=4326)` / `st_point(..., crs=4326)` +
-  `coord_sf()` 在绘制点层时抛 `SfError: 几何没有 CRS，无法投影`（`_draw_points`
-  重建 multipoint 时丢了 crs）。面与线不受影响；点在**不带** CRS 时正常（面板按
-  `default_crs` 解释）。这是写这份文档时按示例验证出来的缺口，另行归口修复。
-- WKT 解析只覆盖点与线；`POLYGON` / `MULTIPOLYGON` 的 WKT 目前会失败，用
-  `st_polygon([...], crs=...)` 直接造。
 - `annotation_borders()` 只内置 `("state", "utah")` 与 `("usa", ".")` 两份地图数据。
 - 投影只实现了 4326 / 3857 / 3347 与 mapproj 的 mercator / azequalarea；其余 CRS
   与投影显式报错（不引入 PROJ）。

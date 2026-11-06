@@ -136,6 +136,64 @@ def test_wkt_parsing() -> None:
     assert line.kind == "linestring" and len(line.parts) == 3
 
 
+def test_wkt_polygon_rings_and_holes() -> None:
+    """SIL-860：`POLYGON` 的环是「点的序列」，不是一维数字序列。"""
+    polygon = parse_wkt("POLYGON ((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, 2 1, 2 2, 1 2, 1 1))")
+    assert polygon.kind == "polygon"
+    assert len(polygon.parts) == 2  # 外环 + 洞
+    assert polygon.parts[0] == ((0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0), (0.0, 0.0))
+    assert polygon.parts[1][0] == (1.0, 1.0)
+    # 与 `st_polygon()` 造出来的几何同构（两条入口口径一致）
+    assert (
+        polygon.parts
+        == st_polygon(
+            [
+                [(0, 0), (4, 0), (4, 4), (0, 4), (0, 0)],
+                [(1, 1), (2, 1), (2, 2), (1, 2), (1, 1)],
+            ]
+        ).parts
+    )
+
+
+def test_wkt_multipolygon_nests_rings_per_polygon() -> None:
+    multipolygon = parse_wkt(
+        "MULTIPOLYGON (((0 0, 1 0, 1 1, 0 0)), ((2 2, 3 2, 3 3, 2 2), (2.2 2.2, 2.4 2.2, 2.4 2.4, "
+        "2.2 2.2)))"
+    )
+    assert multipolygon.kind == "multipolygon"
+    assert len(multipolygon.parts) == 2
+    assert [len(polygon) for polygon in multipolygon.parts] == [1, 2]
+    assert multipolygon.parts[1][1][0] == (2.2, 2.2)
+    assert multipolygon.bbox() == pytest.approx((0.0, 0.0, 3.0, 3.0))
+
+
+def test_wkt_parses_every_supported_kind() -> None:
+    multipoint = parse_wkt("MULTIPOINT (1 2, 3 4)")
+    assert multipoint.parts == ((1.0, 2.0), (3.0, 4.0))
+    # WKT 也允许每个点各自带括号
+    assert parse_wkt("MULTIPOINT ((1 2), (3 4))").parts == multipoint.parts
+    multilinestring = parse_wkt("MULTILINESTRING ((0 0, 1 1), (2 2, 3 3))")
+    assert multilinestring.parts == (((0.0, 0.0), (1.0, 1.0)), ((2.0, 2.0), (3.0, 3.0)))
+    collection = parse_wkt("GEOMETRYCOLLECTION (POINT (1 2), LINESTRING (0 0, 1 1))")
+    assert collection.kind == "geometrycollection"
+    assert [item.kind for item in collection.parts] == ["point", "linestring"]
+    assert parse_wkt("POLYGON EMPTY").is_empty
+
+
+def test_wkt_degenerate_ring_is_an_explicit_error() -> None:
+    with pytest.raises(SfError, match="至少要 3 个点"):
+        parse_wkt("POLYGON ((0 0, 1 1))")
+    with pytest.raises(SfError, match="至少要 3 个点"):
+        parse_wkt("MULTIPOLYGON (((0 0, 1 1)))")
+
+
+def test_sf_accepts_wkt_geometry_and_attaches_the_crs() -> None:
+    data = sf({}, geometry=["POLYGON ((0 0, 1 0, 1 1, 0 0))", "POINT (2 3)"], crs=4326)
+    polygon, point = data.column("geometry").values.tolist()
+    assert polygon.kind == "polygon" and polygon.crs == st_crs(4326)
+    assert point.kind == "point" and point.crs == st_crs(4326)
+
+
 def test_point_on_surface_of_a_polygon_is_inside() -> None:
     polygon = _nc_polygon()
     x, y = point_on_surface(polygon)
@@ -232,6 +290,28 @@ def test_geom_sf_requires_coord_sf() -> None:
     plot = ggplot(data) + geom_sf() + coord_cartesian()
     with pytest.raises(Exception, match="coord_sf"):
         scene_from_plot(plot)
+
+
+@pytest.mark.parametrize(
+    "geometry",
+    [
+        st_point(-81.5, 36.3, crs=4326),
+        st_multipoint([(-81.5, 36.3), (-80.5, 36.8)], crs=4326),
+        st_geometrycollection([st_point(-81.5, 36.3), st_point(-80.5, 36.8)], crs=4326),
+    ],
+    ids=["point", "multipoint", "geometrycollection"],
+)
+def test_geom_sf_draws_points_that_carry_a_crs(geometry: Geometry) -> None:
+    """SIL-860：`_draw_points()` 重建 multipoint 时不能丢几何的 CRS。"""
+    from ggcore import ir
+    from ggcore.geom.scene import scene_from_plot
+
+    plot = ggplot(sf({}, geometry=[geometry])) + geom_sf() + coord_sf()
+    scene = scene_from_plot(plot, width_in=4, height_in=3)
+    ir.encode(scene)  # `ir.encode()` 正常
+    points = [node for node in ir.walk(scene.root) if node.kind is ir.NodeKind.POINTS]
+    assert points, "点层应当产出 points 节点"
+    assert sum(node.bufs["points"].shape[0] for node in points) == len(geometry.vertices())
 
 
 def test_unsupported_projection_is_an_explicit_error() -> None:

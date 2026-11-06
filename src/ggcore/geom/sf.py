@@ -330,7 +330,12 @@ def _draw_points(
             ys.append(point[1])
     if not xs:
         return null_grob(name="geom_sf")
-    vertices = _transform_vertices(Geometry("multipoint", tuple(zip(xs, ys, strict=True))), target)
+    # 行内的几何共享同一个 CRS（与 `sfc` 同口径）；重建 multipoint 时必须带上，
+    # 否则 `transform(target)` 会把「本来就在 4326 的点」当成无 CRS 而报错。
+    crs = next((item.crs for item in geometries if item.crs is not None), None)
+    vertices = _transform_vertices(
+        Geometry("multipoint", tuple(zip(xs, ys, strict=True)), crs), target
+    )
     px, py = _npc(npc, [item[0] for item in vertices], [item[1] for item in vertices])
     pch = translate_shape(shape if shape is not NA else 19)
     size_pt = size * POINT_PER_MM + stroke * STROKE_PER_MM / 2.0
