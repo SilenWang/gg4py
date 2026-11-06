@@ -51,7 +51,7 @@ reason = "SIL-793 已把 3 条全部纳管：log10 / log2 的 `coord_transform()
 [groups."coord_sf"]
 issue = "SIL-715"
 owner = "m3"
-reason = "SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；SIL-849 补齐最后一条 `coord-sf-with-custom-guides`（`n.dodge` 的第 2..n 列只占文字盒、不再叠 margin，面板左移的 1.1pt 随之归零；实测 1.42% / 0.29%，见 docs/notes/sf.md）。9 条全部纳管，本簇不再有缺口。"
+reason = "SIL-823 纳管 8/9 条（sf-polygons / no-grid / no-breaks / reversed / 4 条 3347 投影与 limits）；SIL-849 补齐最后一条 `coord-sf-with-custom-guides`（`n.dodge` 的第 2..n 列只占文字盒、不再叠 margin，面板左移的 1.1pt 随之归零；实测 1.56% / 0.32%，见 docs/notes/sf.md）。9 条全部纳管，本簇不再有缺口。"
 
 [groups."draw-key"]
 issue = "SIL-715"
