@@ -48,6 +48,7 @@ __all__ = [
     "AxisGuideTicks",
     "AxisLabel",
     "AxisMark",
+    "AxisSuffixTheme",
     "axis_guide_extent",
     "axis_guide_from_component",
     "axis_guide_grobs",
@@ -66,6 +67,46 @@ __all__ = [
 
 #: `title=waiver()` 的对等物（轴 guide 的标题不参与绘制，保留以便转写）。
 AUTO: Any = object()
+
+
+class AxisSuffixTheme:
+    """把 `axis.*.y` 换到 `axis.*.r` 的只读主题视图（`coord_radial()` 的 r 轴）。
+
+    上游 `GuideAxis$setup_elements()` 把 `params$theme_suffix` 拼到每个元素名后面；
+    `CoordRadial$train_panel_guides()` 给 r 轴设的是 `"r"`，于是它读
+    `axis.text.r` / `axis.ticks.r` / `axis.line.r`——`axis.text.r` 两侧各 2.2pt
+    margin 且 `hjust = 0.5`，与 `axis.text.y` 只留右侧 margin、`hjust = 1` 不同
+    （SIL-843：`guide-axis-theta with angle adapting` 的 axis-l 列宽 16.97pt 就差
+    在这 2.2pt 上，面板整体横移 1.1pt）。
+    """
+
+    def __init__(self, theme: ResolvedTheme, suffix: str) -> None:
+        self._theme = theme
+        self._suffix = suffix
+
+    def _map(self, name: str) -> str:
+        for prefix in ("axis.text.", "axis.ticks.", "axis.line.", "axis.minor.ticks."):
+            if name.startswith(prefix):
+                rest = name[len(prefix) :]
+                if rest.split(".")[0] in ("x", "y"):
+                    return f"{prefix}{self._suffix}"
+        return name
+
+    def get(self, name: str, default: Any = None) -> Any:
+        return self._theme.get(self._map(name), default)
+
+    def __getitem__(self, name: str) -> Any:
+        return self._theme[self._map(name)]
+
+    def __contains__(self, name: object) -> bool:
+        return isinstance(name, str) and self._map(name) in self._theme
+
+    def size_pt(self, name: str) -> float:
+        return self._theme.size_pt(self._map(name))
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._theme, item)
+
 
 #: ggplot2 的 `.pt`：主题的 `linewidth`（mm）→ `lwd`（pt）用 72.27，不是 72。
 _POINT_PER_MM = 72.27 / 25.4
