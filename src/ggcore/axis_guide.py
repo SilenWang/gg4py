@@ -917,9 +917,7 @@ def _dodge_group_sizes(
     for group in groups:
         if not group:
             continue
-        width, height, _margin_main, margin_cross = _label_box(
-            group, element, side, angle, metrics
-        )
+        width, height, _margin_main, margin_cross = _label_box(group, element, side, angle, metrics)
         sizes.append((height if horizontal else width) + margin_cross)
     return sizes
 
