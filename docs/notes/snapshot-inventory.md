@@ -4,16 +4,16 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**299**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**12**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **12** 条（移交 M3）
+- 已纳管：**300**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**11**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **11** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
 | `coord-polar` | m3 | 11 | 7 | 4 |
-| `guide-axis` | m3 | 23 | 19 | 4 |
+| `guide-axis` | m3 | 23 | 20 | 3 |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
 | `coord_sf` | m3 | 9 | 8 | 1 |
 | `facet-labels` | m3 | 2 | 1 | 1 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 299 | 12 |
+| **合计** | — | 311 | 300 | 11 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -214,6 +214,7 @@
 | `guide-axis/axis-guides-zero-rotation.svg` | `upstream-guide-axis-axis-guides-zero-rotation` |
 | `guide-axis/guide-axis-customization.svg` | `upstream-guide-axis-customization` |
 | `guide-axis/guide-axis-theta-in-cartesian-coordinates.svg` | `upstream-guide-axis-theta-cartesian` |
+| `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg` | `upstream-guide-axis-theta-angle` |
 | `guide-axis/guide-titles-with-coord-transform.svg` | `upstream-guide-axis-guide-titles-with-coord-transform` |
 | `guide-axis/guides-specified-in-guides.svg` | `upstream-guide-axis-guides-specified` |
 | `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
@@ -364,17 +365,7 @@
 
 ### `coord-polar` — 1 条 · SIL-715 · m3
 
-SIL-793 实测 33.9%：`coord_radial(rotate.angle = TRUE, r.axis.inside = FALSE)` 的 theta 标签要跟着角度旋转、r 轴要落到面板外，`axis.line.theta` / `axis.line.r` 也要按各自颜色画；`guide_axis_theta()` 现在只按 `axis.text.theta` 画在半径 0.45，没有旋转与外侧 r 轴。
-
-<details><summary>快照</summary>
-
-- `coord-polar/bottom-half-circle-with-rotated-text.svg`
-
-</details>
-
-### `coord-polar` — 1 条 · SIL-715 · m3
-
-SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_axis_theta(theme = ...))` 要求 guide 自带 `theme=`（逐 guide 主题，`docs/notes/guide.md` 第 8 节）；当前 `guide_axis()` / `guide_axis_theta()` 没有 `theme` 参数，`axis.line.r` / `axis.line.theta` 的颜色也只走面板级主题。
+SIL-843 实测 10.2% / 1.35%：radial 版式已对齐，剩两件——`guides(r.sec = …, theta.sec = …)` 的次轴槽（缺 axis-r 列，整表因此横移 8.45pt）与逐 guide `theme=` 的着色（orchid / limegreen 两条轴线没画）。
 
 <details><summary>快照</summary>
 
@@ -384,21 +375,31 @@ SIL-793 未纳管：`guides(r.sec = guide_axis(theme = ...), theta.sec = guide_a
 
 ### `coord-polar` — 1 条 · SIL-715 · m3
 
-SIL-793 未纳管：`r.axis.inside = c(90, 225)` 是两个角度的 r 轴，`guides(r.sec = "axis")` 还要在同一角度画第二条；`RadialCoord` 只接受标量 `r_axis_inside`（旋转一条轴），两轴叠放属于 `guide_axis_stack()` 的径向分支（`docs/notes/guide.md` 第 8.5 节记的同一条缺口）。
+SIL-843 实测 18.7% / 1.94%：radial 版式已对齐，剩 `rotate.angle = TRUE` 的 `flip_data_text_angle()`（把 `angle` 美学按 `angle - rad2deg(theta)` 旋转）与下半圆 partial arc 下 theta 标签的锚点。
 
 <details><summary>快照</summary>
 
-- `coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg`
+- `coord-polar/bottom-half-circle-with-rotated-text.svg`
 
 </details>
 
 ### `coord-polar` — 1 条 · SIL-715 · m3
 
-SIL-793 未纳管：同 `inner.radius with all axes`（逐 guide `theme=` + 次轴颜色），再加 `theta = "y"` 的 partial arc（`start = 0.25 pi, end = 0.75 pi`）下 theta 标签的锚点。
+SIL-843 实测 35.0% / 2.96%：同上两条（次轴槽 + 逐 guide `theme=`），另加 `theta = "y"` 的 partial arc 下 `axis_rotation` 与 theta 标签锚点（右半圆要把标签压到弧内）。
 
 <details><summary>快照</summary>
 
 - `coord-polar/partial-with-all-axes.svg`
+
+</details>
+
+### `coord-polar` — 1 条 · SIL-715 · m3
+
+SIL-843 实测 6.99% / 1.44%：radial 版式已对齐，剩 `r.axis.inside = c(90, 225)`——数值形式的两个角度要经 `theta_rescale()` 折成 `axis_rotation`，并让 r / r.sec 在面板内按各自角度旋转（`rotate_r_axis()`）；当前 `RadialCoord` 只接受 bool / 标量。
+
+<details><summary>快照</summary>
+
+- `coord-polar/full-circle-with-axes-placed-at-90-and-225-degrees.svg`
 
 </details>
 
@@ -464,17 +465,7 @@ SIL-817：卡点是两个复合变换，不是 logticks 本身（`guide_axis_log
 
 ### `guide-axis` — 1 条 · SIL-715 · m3
 
-SIL-820 复核（实测 48.7% / 4.76%，与 SIL-817 的 48.97% 同因）：`coord_radial()` 是**整页正方形面板**——参考快照的 `plot.background` 是 575.61×576（`plot.title`、`xlab`/`ylab`、theta 标签全部画在面板内，不占 gtable 行列），本仓仍按 `plot.title` / `axis.title` / `axis.text` 行收缩成 18.64cm 的正方形并居中，同心圆半径与 theta 标签锚点整体错位 8%–9%。这不是一处公式错，而是 `docs/notes/guide.md` §8.5 的 radial 版面子系统：`plot_layout()` 要为 radial 走「面板 = 整页 − 图例、标题画在面板里」的第二条口径（`geom/scene.py`，牵动现有的 theme/facet 版面断言），`polar_axis_grobs()` 要补 theta 轴线 / 刻度 / `cap` / 随角度旋转的锚点（`axis_guide.py`），再叠上本条与 `stacked-radial-axes` 的 `guide_axis_stack('axis_theta', …)` 半径偏移。估工：**3–4 个工作日**（版面 1.5–2 天 + theta 轴 1 天 + 叠放 0.5 天 + 6 条 coord-polar/radial 快照回归 0.5–1 天），且要新增 radial 版面的单测。SIL-820 判断应整块重做；按任务约束**不自行改 owner**，等 leader 决定留在 M2 还是移交 m3。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m3
-
-SIL-820 复核：与 `guide-axis-theta-with-angle-adapting-to-theta` 是**同一个 radial 版面子系统**，两条要一起做才有意义（单独叠放做完，面板仍是收缩版式，快照照样红）。原因与估工见 `guide-axis-theta-with-angle-adapting-to-theta` 那一条。
+SIL-843 实测（复刻成 case 后量得 17.8% / 2.79%，case 目录未入库）：radial 版式与 theta 轴本身已就位（`guide-axis-theta-with-angle-adapting-to-theta` 已 1.9% 转绿），这条剩下两处——`guide_axis_stack('axis_theta', …)` 沿半径的第二层 `stack_offset`（`polar_axis_grobs()` 的 `stack_offset_cm` 目前恒为 0），以及 `r` / `r.sec` 两条叠放轴各自的外向轴带（`CoordRadial$setup_panel_guides()` 给 r 轴设 `theme_suffix = 'r'`，次轴要占一条 axis-r 列）。见 docs/notes/guide.md §8.5。
 
 <details><summary>快照</summary>
 

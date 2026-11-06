@@ -367,7 +367,24 @@ p + annotation_logticks(sides = "bl")
 | secondary axis（`sec_axis()` / `dup_axis()`） | **M2-1 已实现**（`ggcore.axis.secondary_ticks()`，画在 top / right 槽）；极坐标下的 `r.sec` / `theta.sec` 仍报 `AxisError`，见 `docs/notes/coord.md` §12 |
 | 极坐标带轴时的底部空轴行（≈0.24cm） | 仍不占位（`docs/notes/coord.md` §9）；`axis_theta` 的 case 用标签锚点 / 单测钉住，不比对整页高度 |
 | `guide_axis_theta` 与 `guide_axis_stack` 叠放 | **单轴 stack 可构造**（SIL-839）：`guide_axis_stack("axis_theta", guide_axis_theta())` 取第一层（R 里第一层的 `stack_offset` 就是 0，等价于那一轴本身），不再抛 `ValueError`。多层沿半径叠放仍未做——上游口径（R 4.5.3 + ggplot2 4.0.3 实测）：theta key 的 `(x, y)` 落在 **r = 0.4**（主）/ **r = 0.2**（`theta.sec`，因为它把 `r` 列设为 `-Inf`），标签再沿半径外推 `offset = max(0, ticks, minor) + text.margin`；叠放时第二圈额外加 `spacing + offset`（`guide-axis-stack.R` 的 `offset <- offset + spacing + grobs[[i]]$offset`），单位 cm |
-| `coord_radial()` 的 theta 轴体系 | `polar_axis_grobs()` 只按 `axis.text.theta`（缺省继承 `axis.text.x`）在半径 0.45 画标签：没有 `axis.line.theta` / `axis.ticks.theta` / `cap`，标签锚点也不是 R 的「key 在 r = 0.4（主）/ 0.2（`theta.sec`）+ 沿半径外推 offset」；`r.axis.inside` 的沿轴旋转（`rotate_r_axis()`）同样未做。`guide_axis()` / `guide_axis_theta()` 也还没有逐 guide 的 `theme=`。实测 `guide-axis/guide-axis-theta-with-angle-adapting-to-theta` 图级 54.7%（radial 版式 + theta 轴两块叠加），SIL-839 记录了上游口径但未实现 |
+| `coord_radial()` 的 theta 轴体系 | **满圆版式已对等**（SIL-843，见 §8.5.1）：面板 = 可用的正方形、整表水平居中、`panel.background` 是「外圆 − 内孔」的圆环、次网格 `setdiff(major)` + r 次圆、r 轴读 `axis.*.r` 元素。`guide-axis/guide-axis-theta-with-angle-adapting-to-theta` 从 48.7% 降到 **1.9% / 0.56%**（`ci = true`）。**未做**：`r.axis.inside` 的数值 / 两角度形式与面板内旋转轴（`rotate_r_axis()`）、`r.sec` / `theta.sec` 的次轴槽与逐 guide `theme=` 的着色、`rotate.angle = TRUE`、`guide_axis_stack("axis_theta", …)` 的多层半径偏移。四条 coord-polar 轴体系快照复刻成 case 后实测 11.1% / 38.6% / 21.7% / 6.99%（`tools/upstream/snapshots.toml` 逐条记了卡点） |
+### 8.5.1 radial 版式与 theta 轴（SIL-843）
+
+`coord_radial()` 的整页几何只有一条口径，四条约束叠起来才等于 R 的输出（都以上游
+SVG 逐值量过，见 `docs/cases/upstream-guide-axis-theta-angle`）：
+
+| 口径 | R 的做法 | 本仓 |
+| --- | --- | --- |
+| 面板是正方形 | `CoordRadial$aspect() = diff(bbox$y) / diff(bbox$x)`（满圆 = 1）→ `Facet$init_gtable()` 的 `respect = TRUE`，面板 cell 的长宽取同一个物理尺寸 | `table.respect` + `_aspect_panel_area()`：面板区取等比例内接正方形 |
+| 整表水平居中 | `grid.layout(..., respect = TRUE)` 会把收缩后的表放进视口并 **居中**（`just = "centre"`）：表宽 = 5.5 + ylab + axis-l + 面板 + axis-r + 5.5，比整页窄时左右各留一半 | 面板在「扣掉左列」的区域里居中——两者等价（推导见 `_aspect_panel_area()` 的注释） |
+| `panel.background` 是圆环 | `guide_grid(square = FALSE)` 把 `panel.background` 换成 `c(±Inf)` 的 polygon 再 `coord_munch`：满圆 munched 完是**外圆 − 内孔**的双环（上游 SVG 里 317 点的 `#EBEBEB` polygon），不是外接方形 | `_radial_panel_background()`：`path_grob(rule = "evenodd")` 两段子路径 |
+| 次网格要 `setdiff` | `guide_grid()` 的 `x_minor <- setdiff(mapped_breaks_minor(), x_major)`；`CoordPolar$render_bg()` 不筛（主辐条画两遍）。radial 走前者，**r 也有次圆**（主断点中点） | `_polar_grid_grobs()`：radial 下 minor 先减主断点，r 次圆用同一条 `panel.grid.minor.<r>` |
+| r 轴读 `axis.*.r` | `CoordRadial$train_panel_guides()` 给 `r` / `r.sec` 一律设 `theme_suffix = "r"`（全圆 + `r.axis.inside = FALSE` 也一样） | `_radial_axis_theme()` → `AxisSuffixTheme`：把 `axis.text/ticks/line/minor.ticks.<x\|y>` 映射到 `.r`。`axis.text.r` 两侧各 2.2pt margin、`hjust = 0.5`，与 `axis.text.y` 只留右侧 margin 不同——差这 2.2pt 面板整体横移 1.1pt |
+
+为什么之前的 48.7% 几乎全是版式：`panel.background` 铺成外接方形、面板比 R 小 3.4%、
+标签锚点整体错位。版式对上之后，剩下的 theta 轴细节（轴线 / 刻度 / `cap` / 逐角度
+旋转的锚点）在 SIL-839 已经写好，只是被版式误差掩住了。
+
 | `legend.frame` / 高级图例盒子主题 | 只画 `legend.frame` 的描边与 `legend.box.background` 的矩形；`legend.box.just` / `legend.box` / `legend.box.margin` 已参与行列分配 |
 | 色条的 raster 渐变 | IR 的 `fill` 没有渐变类型（`docs/notes/ir.md` §12），仍是 `nbin` 个矩形。SIL-723 的两条修法：颜色按 `GuideBuild.palette` 在**标度 limits 的全量程**取（端点是标度最小/最大值的 Lab 色，不是断点色阶）；相邻矩形多铺 1pt，让后画的条盖住 `resvg` 的缝（否则整条偏白约 30%）。`guide-colourbar` 现在 1.74% / 均值 0.31%，SIL-715 #3 关闭。`display = "gradient"` 同样落成 15 条矩形，由 `docs/cases/guide-colourbar-gradient` 钉住视觉（图级 1.48%） |
 | 横向 colourbar 的标题方位 | R 把标题旋转 90° 放在色条左侧（盒宽因此多一列文字宽）；ggcore 的 `legend.title.position` 已生效但标题**不旋转**，与竖向共用横排文字 |

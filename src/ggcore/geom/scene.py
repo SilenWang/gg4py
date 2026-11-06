@@ -727,15 +727,20 @@ def plot_layout(
                 )
             else:
                 x_axis = max(x_axis, extent_x)
+        # `coord_radial()` 的 r 轴走 `theme_suffix = "r"`（`axis.text.r` 两侧都有
+        # margin、`hjust = 0.5`），与直角坐标的 `axis.text.y` 不同。
+        axis_theme = _radial_axis_theme(theme, params)
         guide_ticks_y = axis_guide_ticks(
             scale_left_layout,
             params,
             y_side,
             guide_y,
-            theme,
+            axis_theme,
             base=ticks_y,
         )
-        extent_y = axis_guide_extent(theme, guide_ticks_y, guide_y, side=y_side, metrics=metrics)
+        extent_y = axis_guide_extent(
+            axis_theme, guide_ticks_y, guide_y, side=y_side, metrics=metrics
+        )
         if y_side == "right":
             y_axis_right = max(y_axis_right, extent_y)
             y_title_right = max(
@@ -1310,22 +1315,16 @@ def _panel_children(
     for name, border_only in (("panel.background", False),):
         element = theme.get(name)
         if isinstance(element, ElementRect):
-            grob = _rect_from_element(element, border_only=border_only, name=name)
+            if params.polar is not None and params.polar.radial and not border_only:
+                # R 的 `guide_grid(square = FALSE)` 把 `panel.background` 换成
+                # `c(±Inf)` 的 polygon 再 `coord_munch`：满圆 munched 之后是
+                # **外圆 − 内圆的圆环**（SIL-843 实测：上游 SVG 的 `#EBEBEB`
+                # polygon 是 317 点的双环，不是外接方形）。铺满 cell 会让四角与
+                # 内孔都多出一圈灰底。
+                grob = _radial_panel_background(params.polar, element, name=name)
+            else:
+                grob = _rect_from_element(element, border_only=border_only, name=name)
             if grob is not None:
-                if params.polar is not None and params.polar.radial:
-                    # R 的 `guide_grid(square = FALSE)` 把 `panel.background` 换成
-                    # `c(±Inf)` 的 polygon 再 `coord_munch`；munched 之后它的范围是
-                    # **`r.range` 上界（半径 0.4）** 的外接方形，即 npc `0.1..0.9`，
-                    # 不是整块 panel cell（实测 `coord_munch` 结果 x/y 都是
-                    # `0.1000..0.9000`）。铺满 cell 会让四角多出一圈灰底。
-                    radius = float(params.polar.inner_radius[1])
-                    grob = replace(
-                        grob,
-                        x=unit(0.5, "npc"),
-                        y=unit(0.5, "npc"),
-                        width=unit(2.0 * radius, "npc"),
-                        height=unit(2.0 * radius, "npc"),
-                    )
                 children.append(grob)
 
     # 网格线顺序照 ggplot2 的 panel gtable：major 在 minor 之下，两者都在面板
@@ -1591,6 +1590,24 @@ def _polar_grid_grobs(
     colour = paint(getattr(theta_element, "colour", None))
     if isinstance(theta_element, ElementLine) and colour is not None and theta_scale is not None:
         values = _polar_grid_values(theta_scale, polar, "theta", kind)
+        if polar.radial and kind == "minor":
+            # `guide_grid(square = FALSE)` 的两步：`x_minor <- setdiff(minor, major)`
+            # ——次断点序列里本来就含主断点（`regular_minor_breaks()`），极坐标
+            # `render_bg()` 不筛但 radial 走 `guide_grid()` 要筛（SIL-843：不筛会
+            # 多画 17 根主辐条，SVG 里 35 对 18）。
+            major_codes = {
+                code
+                for code in (
+                    _value_code(theta_scale, value)
+                    for value in _polar_grid_values(theta_scale, polar, "theta", "major")
+                )
+                if code is not None
+            }
+            values = tuple(
+                value
+                for value in values
+                if (code := _value_code(theta_scale, value)) is not None and code not in major_codes
+            )
         angles: list[float] = []
         for value in values:
             if value is None:
@@ -1622,19 +1639,30 @@ def _polar_grid_grobs(
 
     r_element = theme.get(f"panel.grid.{kind}.{polar.r_axis}")
     colour = paint(getattr(r_element, "colour", None))
-    # R 的 `CoordPolar$render_bg()` 只画 `panel.grid.major.<r>` 的同心圆：theta
-    # 有 minor 辐条，r **没有** minor 圆。`panel.grid.minor.<r>` 在这里不消费。
+    # `CoordPolar$render_bg()` 只画 `panel.grid.major.<r>` 的同心圆（theta 有 minor
+    # 辐条、r 没有 minor 圆）；`coord_radial()` 走 `guide_grid(square = FALSE)`，
+    # 四个网格都画，r 的次圆是主断点的中点（SIL-843：上游 6 主 + 5 次）。
     if (
-        kind == "major"
+        (kind == "major" or polar.radial)
         and isinstance(r_element, ElementLine)
         and colour is not None
         and r_scale is not None
     ):
-        values = (
-            r_scale.minor_breaks()
-            if kind == "minor"
-            else _polar_grid_values(r_scale, polar, "r", kind)
-        )
+        values = _polar_grid_values(r_scale, polar, "r", kind)
+        if polar.radial and kind == "minor":
+            major_codes = {
+                code
+                for code in (
+                    _value_code(r_scale, value)
+                    for value in _polar_grid_values(r_scale, polar, "r", "major")
+                )
+                if code is not None
+            }
+            values = tuple(
+                value
+                for value in values
+                if (code := _value_code(r_scale, value)) is not None and code not in major_codes
+            )
         radii: list[float] = []
         for value in values:
             if value is None:
@@ -1879,6 +1907,22 @@ def _axis_visible(build: PlotBuild, panel: int, side: str) -> tuple[bool, bool]:
     return True, True if labels[1] else margin
 
 
+def _radial_axis_theme(theme: Any, params: Any) -> Any:
+    """`coord_radial()` 的 r 轴读 `axis.*.r` 元素（上游 `theme_suffix = "r"`）。
+
+    上游 `CoordRadial$train_panel_guides()` 对 `r` / `r.sec` 一律设
+    `theme_suffix <- "r"`（`guide-axis-theta with angle adapting` 是全圆、
+    `r.axis.inside = FALSE`，仍读 `axis.text.r`：标签 `hjust = 0.5` 居中、
+    两侧各 2.2pt margin）。
+    """
+    from ggcore.axis_guide import AxisSuffixTheme
+
+    polar = getattr(params, "polar", None)
+    if polar is None or not polar.radial:
+        return theme
+    return AxisSuffixTheme(theme, "r")
+
+
 def _scale_side(scale: Any, default: str) -> str:
     """`scale_*_continuous(position = ...)`：主轴画在哪一边（缺省 bottom / left）。
 
@@ -1962,10 +2006,11 @@ def _axis_grobs(
                 )
             )
         if draw_left:
-            gy = axis_guide_ticks(scale_left, params, y_side, guide_y, theme, base=ticks_y)
+            axis_theme = _radial_axis_theme(theme, params)
+            gy = axis_guide_ticks(scale_left, params, y_side, guide_y, axis_theme, base=ticks_y)
             grobs.extend(
                 axis_guide_grobs(
-                    theme,
+                    axis_theme,
                     gy,
                     right_cell if y_side == "right" else cell,
                     guide_y,
@@ -2034,7 +2079,7 @@ def _axis_grobs(
         if line_sides:
             grobs.extend(
                 axis_line_grobs(
-                    theme,
+                    _radial_axis_theme(theme, params),
                     cell,
                     name=f"axis-line-{panel}",
                     ranges={
@@ -2270,6 +2315,47 @@ def _rect_for(
         height=unit(1.0, "npc"),
         just="centre",
         gp=gpar(fill=fill, col=NA),
+        name=name,
+    )
+
+
+def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> Any:
+    """`coord_radial()` 的 `panel.background`：`guide_grid(square = FALSE)` 的圆环。
+
+    上游把 `panel.background` 的矩形换成 `c(±Inf)` 的 polygon 再 `coord_munch`，
+    满圆下得到的是「外圆（`inner_radius[1]`）− 内孔（`inner_radius[0]`）」的
+    圆环（SIL-843 用上游 SVG 的 317 点 `#EBEBEB` 双环钉住）。用 `path_grob`
+    的 `evenodd` 表示两段子路径，与 grid 的 nonzero 填充结果一致。
+    """
+    from ggcore.grobs import path_grob
+
+    fill = _paint(getattr(element, "fill", None))
+    colour = _paint(getattr(element, "colour", None))
+    outer = float(polar.inner_radius[1])
+    inner = float(polar.inner_radius[0])
+    steps = 179  # R 的 `coord_munch()` 在满圆上的采样点数（外圆 179 段）
+    angles = np.linspace(0.0, 2.0 * math.pi, steps)
+    xo, yo = polar.point(angles, np.full(angles.shape, outer))
+    xs = [float(value) for value in np.asarray(xo)]
+    ys = [float(value) for value in np.asarray(yo)]
+    ids = [1] * len(xs)
+    if inner > 0:
+        xi, yi = polar.point(angles[::-1], np.full(angles.shape, inner))
+        xs.extend(float(value) for value in np.asarray(xi))
+        ys.extend(float(value) for value in np.asarray(yi))
+        ids.extend([2] * (len(xs) - len(ids)))
+    return path_grob(
+        xs,
+        ys,
+        id=ids,
+        rule="evenodd",
+        default_units="npc",
+        gp=gpar(
+            fill=fill if fill is not None else NA,
+            col=colour if colour is not None else NA,
+            lwd=_mm_to_pt(getattr(element, "linewidth", 0.0)),
+            lty=getattr(element, "linetype", None) or 1,
+        ),
         name=name,
     )
 
