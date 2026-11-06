@@ -128,3 +128,57 @@ def test_gallery_card_links_resolve_to_real_files(tmp_path: Path) -> None:
     assert scene_file.suffixes[-2:] == [".ggir", ".cbor"]
     # 3) 缩略图相对 gallery.html 解析 → 真实文件。
     assert (gallery.parent / srcs[0]).resolve().is_file()
+
+
+def _gallery_check_module():
+    path = REPO / "tools" / "viewer" / "gallery_check.py"
+    spec = importlib.util.spec_from_file_location("gg4py_gallery_check", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_gallery_check_requests_every_link_and_matches_cases(tmp_path: Path) -> None:
+    """SIL-828：链接逐条走 HTTP（含 viewer 的 scene fetch），卡片与 case 台账对齐。"""
+    cases = _module()
+    checker = _gallery_check_module()
+    viewer = tmp_path / "viewer"
+    gallery = viewer / "dist" / "gallery.html"
+    viewer.mkdir(parents=True)
+    (viewer / "index.html").write_text("<!doctype html><title>viewer</title>", encoding="utf-8")
+    thumb = tmp_path / "thumb.png"
+    thumb.write_bytes(b"\x89PNG\r\n\x1a\n")
+    ir_file = tmp_path / "geom-col-basic.ggir.cbor"
+    ir_file.write_bytes(b"\xa0")
+    result = cases.Result(
+        case="geom-col-basic",
+        family="geom-col",
+        status=cases.PASS,
+        elements=3,
+        thumbnail=str(thumb),
+        ir_path=str(ir_file),
+    )
+    cases.write_gallery([result], gallery, tmp_path / "out", "now")
+
+    report = checker.check_gallery(gallery, viewer, 5.0, case_names={"geom-col-basic"})
+    assert report.cards == 1
+    assert len(report.links) == 3  # href + viewer 随后 fetch 的 scene + 缩略图
+    assert [item.url for item in report.links if item.kind == "scene"] == [
+        "scene=gallery/geom-col-basic.ggir.cbor"
+    ]
+    assert report.failed == []
+    assert report.missing_cases == [] and report.stale_cards == []
+
+    # 删掉缩略图：HTTP 200 之外还要发现「文件不存在」，并把它报成失败。
+    (viewer / "gallery" / "geom-col-basic.png").unlink()
+    broken = checker.check_gallery(gallery, viewer, 5.0, case_names={"geom-col-basic"})
+    assert len(broken.failed) == 1
+    assert broken.failed[0].status == 404
+    assert broken.failed[0].url.endswith("geom-col-basic.png")
+
+    # 卡片指向已删掉的 case：链接可能仍 200，但台账对不上。
+    stale = checker.check_gallery(gallery, viewer, 5.0, case_names={"other-case"})
+    assert stale.stale_cards == ["geom-col-basic"]
+    assert stale.missing_cases == ["other-case"]

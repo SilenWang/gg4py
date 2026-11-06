@@ -104,6 +104,11 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # 全量写报告进 docs/notes/viewer-parity.md；CI 只跑代表性子集、不写文件。
 "viewer:parity" = "PYTHONPATH=src python tools/viewer/parity.py"
 "viewer:parity:ci" = { cmd = "PYTHONPATH=src python tools/viewer/parity.py --sample 12 --no-report --selftest", depends-on = ["viewer:build", "viewer:browsers"] }
+# SIL-828（M3-7）：gallery 链接全量检查。先 `pixi run viewer:cases` 生成
+# `web/viewer/dist/gallery.html` 与资产，再逐条 GET 每个链接（含 viewer 随后
+# fetch 的 scene IR），并核对「每个合法 case 都有卡片、卡片不指向已删 case」。
+# 不挂进 `check`：CI 不跑全量 viewer:cases，没有 gallery 资产时跑它只会永远红。
+"gallery:check" = "PYTHONPATH=src python tools/viewer/gallery_check.py"
 # viewport 可视化快照（M0-4）：三层嵌套旋转 + 裁剪三态，产物进 docs/cases/*/baseline。
 # `--check` 只比对不写文件；渲染用 pixi 受管的 skia 与字体。
 "cases:viewport" = "PYTHONPATH=src python tools/cases/viewport_cases.py"

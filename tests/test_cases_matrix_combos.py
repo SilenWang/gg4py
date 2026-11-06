@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import tomllib
 from pathlib import Path
@@ -32,11 +33,11 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "matrix_r_reference.jso
 REFERENCE = json.loads(FIXTURE.read_text(encoding="utf-8"))
 TAXONOMY = tomllib.loads((CASES / "taxonomy.toml").read_text(encoding="utf-8"))
 
-FACETS = ("facet-wrap", "facet-grid")
-COORDS = ("coord-cartesian", "coord-flip", "coord-polar", "coord-trans", "coord-radial")
-POSITIONS = ("legend-pos-right", "legend-pos-left", "legend-pos-top", "legend-pos-bottom")
-DIRECTIONS = ("guide-direction-vertical", "guide-direction-horizontal")
-COUNTS = ("legend-single", "legend-double")
+#: 组合网格的声明在 `taxonomy.toml`（SIL-828 起单一口径），测试与
+#: `cases:matrix` 都读这一份，不再各维护一套坐标列表。
+REQUIRED_COMBOS = {combo["name"]: combo["axes"] for combo in TAXONOMY.get("required_combos", [])}
+FACET_COORD_COMBO = "分面 × 坐标"
+LEGEND_COMBO = "图例位置 × 排布方向 × 图例个数"
 
 #: 行高里的文字行（标题 / 键）会有字体度量差：R 用 Arimo，我们用受管 DejaVu /
 #: Noto，同样 11pt 的标题行差 0.017cm。键行高与间距是几何量，逐值比对。
@@ -59,20 +60,25 @@ def test_matrix_cases_exist() -> None:
     assert len(META) >= 50
 
 
+def _holes(name: str) -> list[tuple[str, ...]]:
+    """按 taxonomy 声明的组合网格，列出没有 `matrix-*` case 覆盖的格子。"""
+    axes = REQUIRED_COMBOS[name]
+    covered = set()
+    for meta in META.values():
+        features = set(meta["features"])
+        for values in itertools.product(*axes):
+            if set(values) <= features:
+                covered.add(values)
+    return [values for values in itertools.product(*axes) if values not in covered]
+
+
+def test_required_combos_are_declared() -> None:
+    assert set(REQUIRED_COMBOS) == {FACET_COORD_COMBO, LEGEND_COMBO}
+
+
 def test_facet_by_coord_grid_has_no_holes() -> None:
-    """分面 × 坐标的 10 格全部有 case。"""
-    covered = {
-        (facet, coord)
-        for meta in META.values()
-        for facet in FACETS
-        if facet in meta["features"]
-        for coord in COORDS
-        if coord in meta["features"]
-    }
-    missing = [
-        (facet, coord) for facet in FACETS for coord in COORDS if (facet, coord) not in covered
-    ]
-    assert missing == []
+    """分面 × 坐标的 10 格全部有 case（声明见 taxonomy.toml）。"""
+    assert _holes(FACET_COORD_COMBO) == []
 
 
 def test_legend_grid_has_no_holes() -> None:
@@ -81,24 +87,7 @@ def test_legend_grid_has_no_holes() -> None:
     只算**显式**指定了方向（`guide_legend(direction = ...)`）的 case：默认方向由
     位置推导，不能替「位置 × 方向」的交叉格子作数。
     """
-    covered = {
-        (position, direction, count)
-        for meta in META.values()
-        for position in POSITIONS
-        if position in meta["features"]
-        for direction in DIRECTIONS
-        if direction in meta["features"]
-        for count in COUNTS
-        if count in meta["features"]
-    }
-    missing = [
-        (position, direction, count)
-        for position in POSITIONS
-        for direction in DIRECTIONS
-        for count in COUNTS
-        if (position, direction, count) not in covered
-    ]
-    assert missing == []
+    assert _holes(LEGEND_COMBO) == []
 
 
 def test_every_matrix_case_is_registered_in_taxonomy() -> None:

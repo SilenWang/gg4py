@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import itertools
 import json
 import os
 import re
@@ -708,10 +709,19 @@ def evaluate(cases: Sequence[Case], backend: TaskBackend | None) -> list[Verdict
 
 
 @dataclass
+class RequiredCombo:
+    """`taxonomy.toml` 里声明必须逐格铺满的组合网格（SIL-828）。"""
+
+    name: str
+    axes: list[list[str]]
+
+
+@dataclass
 class Taxonomy:
     families: list[str] = field(default_factory=list)
     features: list[str] = field(default_factory=list)
     note: str = ""
+    required_combos: list[RequiredCombo] = field(default_factory=list)
 
     def axes(self, cases: Sequence[Case]) -> tuple[list[str], list[str]]:
         """已登记的轴 + case 里出现但没登记的（追加在后，矩阵里标「未登记」）。"""
@@ -741,7 +751,68 @@ def load_taxonomy(path: Path = TAXONOMY_FILE) -> Taxonomy:
         raw = tomllib.load(handle)
     families = _clean_axis(raw.get("families", []), "families")
     features = _clean_axis(raw.get("features", []), "features")
-    return Taxonomy(families, features)
+    combos = _required_combos(raw.get("required_combos", []))
+    return Taxonomy(families, features, required_combos=combos)
+
+
+def _required_combos(values: Any) -> list[RequiredCombo]:
+    if not isinstance(values, list):
+        raise SystemExit("taxonomy.toml: `required_combos` 必须是数组")
+    combos: list[RequiredCombo] = []
+    for entry in values:
+        if not isinstance(entry, dict):
+            raise SystemExit("taxonomy.toml: `[[required_combos]]` 必须是表")
+        name = entry.get("name")
+        if not isinstance(name, str) or not name:
+            raise SystemExit("taxonomy.toml: `required_combos.name` 必须是非空字符串")
+        axes = entry.get("axes")
+        if not isinstance(axes, list) or not axes:
+            raise SystemExit(f"taxonomy.toml: `{name}` 的 `axes` 必须是非空数组")
+        cleaned = [_clean_axis(axis, f"required_combos.{name}.axes") for axis in axes]
+        combos.append(RequiredCombo(name, cleaned))
+    return combos
+
+
+@dataclass
+class CoverageGaps:
+    """覆盖缺口的唯一口径（SIL-828）。
+
+    缺口只数三件事：登记了却没有 case 的族 / 特性，以及 `required_combos` 里
+    没有 case 覆盖的组合格。族 × 特性表里的 `—` 是分布信息，不计入缺口。
+    """
+
+    families: list[str] = field(default_factory=list)
+    features: list[str] = field(default_factory=list)
+    combos: list[tuple[str, tuple[str, ...]]] = field(default_factory=list)
+    combo_counts: dict[str, tuple[int, int]] = field(default_factory=dict)
+
+    @property
+    def total(self) -> int:
+        return len(self.families) + len(self.features) + len(self.combos)
+
+
+def coverage_gaps(cases: Sequence[Case], taxonomy: Taxonomy) -> CoverageGaps:
+    families = [
+        family for family in taxonomy.families if not any(c.family == family for c in cases)
+    ]
+    features = [
+        feature for feature in taxonomy.features if not any(feature in c.features for c in cases)
+    ]
+    feature_sets = [set(c.features) for c in cases]
+    combos: list[tuple[str, tuple[str, ...]]] = []
+    combo_counts: dict[str, tuple[int, int]] = {}
+    for combo in taxonomy.required_combos:
+        expected = list(itertools.product(*combo.axes))
+        covered = [
+            tuple(values)
+            for values in expected
+            if any(set(values) <= feature_set for feature_set in feature_sets)
+        ]
+        combo_counts[combo.name] = (len(covered), len(expected))
+        for values in expected:
+            if values not in covered:
+                combos.append((combo.name, values))
+    return CoverageGaps(families, features, combos, combo_counts)
 
 
 def _clean_axis(values: Any, name: str) -> list[str]:
@@ -840,7 +911,8 @@ def render_matrix(
         "pixi run cases:matrix --check 校验是否最新 -->",
         "",
         "矩阵是**静态**覆盖视图（只由仓库内容决定）：行 = 族，列 = 特性标签，"
-        f"`—` = 该组合没有 case。运行时红绿与「差多少」在 `{REPORT_DIR.name}/report.md`"
+        "`—` = 该族不使用这个特性（分布信息，不是缺口；缺口见「覆盖缺口」一节）。"
+        f"运行时红绿与「差多少」在 `{REPORT_DIR.name}/report.md`"
         "（`pixi run cases:matrix` 生成，不入库）。",
         "",
         f"- 三文件 case：**{len(cases)}** 个（`plot.py` + `expected.svg|png` + `meta.toml`）",
@@ -906,28 +978,39 @@ def render_matrix(
             ]
         )
 
-    gaps = [
-        (family, feature)
-        for family in families
-        for feature in features
-        if not cells.get((family, feature))
-    ]
-    lines.extend(["", f"## 覆盖缺口（{len(gaps)} 个空位）", ""])
-    if gaps:
-        lines.append("按族列出没有 case 的特性（要补哪个格子就看这一节）：")
-        lines.append("")
-        lines.append("| 族 | 未覆盖的特性 |")
-        lines.append("| --- | --- |")
-        for family in families:
-            missing = [feature for candidate, feature in gaps if candidate == family]
-            if not missing:
-                lines.append(f"| `{family}` | （全覆盖） |")
-                continue
+    gaps = coverage_gaps(cases, taxonomy)
+    lines.extend(["", f"## 覆盖缺口（{gaps.total} 个空位）", ""])
+    lines.append(
+        "缺口口径：① `taxonomy.toml` 登记了却没有任何 case 的族；② 同样登记了却没有"
+        "任何 case 的特性；③ `[[required_combos]]` 声明必须铺满、但没有 case 覆盖的组合格。"
+        "族 × 特性里的 `—` 只是「该族不使用这个特性」，不计缺口。"
+    )
+    lines.append("")
+    if gaps.total:
+        if gaps.families:
+            lines.append("- 无 case 的族：" + "、".join(_code(family) for family in gaps.families))
+        if gaps.features:
             lines.append(
-                "| " + " | ".join([f"`{family}`", "、".join(_code(f) for f in missing)]) + " |"
+                "- 无 case 的特性：" + "、".join(_code(feature) for feature in gaps.features)
             )
+        for name, values in gaps.combos:
+            lines.append(f"- 组合缺口（{name}）：" + " × ".join(_code(v) for v in values))
     else:
-        lines.append("- 无：所有族 × 特性组合都有 case。")
+        lines.append("- 无：每个登记的族 / 特性都有 case；声明的组合网格全部铺满、没有空格。")
+
+    if taxonomy.required_combos:
+        lines.extend(["", "## 组合矩阵（声明必铺）", ""])
+        lines.append("| 组合 | 已覆盖 | 格子 | 结论 |")
+        lines.append("| --- | ---: | ---: | --- |")
+        for combo in taxonomy.required_combos:
+            covered, total = gaps.combo_counts.get(combo.name, (0, 0))
+            verdict = "✅ 无空格" if covered == total and total else "⛔ 有空格"
+            lines.append(f"| {combo.name} | {covered} | {total} | {verdict} |")
+        if gaps.combos:
+            holes = [item for item in gaps.combos]
+            lines.extend(["", "未覆盖的格子："])
+            for name, values in holes:
+                lines.append(f"- {name}：" + " × ".join(_code(v) for v in values))
 
     lines.extend(["", "## 案例清单", ""])
     if cases:
@@ -1076,13 +1159,8 @@ def render_report(
     `strict` 只影响结论文字：pending 在 `--strict` 下与红同义，不能继续写成
     「待落地但没问题」（SIL-644 S2）。
     """
-    families, features, cells = aggregate(cases, taxonomy)
-    gaps = [
-        (family, feature)
-        for family in families
-        for feature in features
-        if not cells.get((family, feature))
-    ]
+    families, features, _cells = aggregate(cases, taxonomy)
+    gaps = coverage_gaps(cases, taxonomy)
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
     pending = [verdict for verdict in verdicts if verdict.status == PENDING]
     counts = _counts(verdicts)
@@ -1094,7 +1172,7 @@ def render_report(
         f"- 结论：{verdict_label(verdict, strict=strict)}（`verdict = {verdict}`，"
         f"{_counts_text(counts)}）",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
-        f"空位 {len(gaps)} 个）",
+        f"覆盖缺口 {gaps.total} 个）",
         f"- 覆盖视图：`{_rel(matrix_file)}`（族 × 特性的覆盖矩阵、缺口与清单）；"
         "本报告只回答运行时红绿与「差多少」",
         "- 任务：`pixi run cases:matrix`",
@@ -1213,14 +1291,9 @@ def render_summary(
     `strict` 与退出码同一语义（SIL-644 S2）：pending 在 `--strict` 下判失败，
     短版本必须写红；非 strict 时也绝不写成「全部绿」。
     """
-    families, features, cells = aggregate(cases, taxonomy)
+    families, features, _cells = aggregate(cases, taxonomy)
     report_hint = f"`{_rel(report_file)}`"
-    gaps = [
-        (family, feature)
-        for family in families
-        for feature in features
-        if not cells.get((family, feature))
-    ]
+    gaps = coverage_gaps(cases, taxonomy)
     red = [verdict for verdict in verdicts if verdict.status in RED_STATES]
     pending = [verdict for verdict in verdicts if verdict.status == PENDING]
     counts = _counts(verdicts)
@@ -1231,7 +1304,7 @@ def render_summary(
         f"- 时间：{now}",
         f"- 结论：`verdict = {verdict}`；{_counts_text(counts)}",
         f"- case：{len(cases)} 个（族 {len(families)} × 特性 {len(features)}，"
-        f"空位 {len(gaps)} 个）",
+        f"覆盖缺口 {gaps.total} 个）",
         f"- 逐 case 表、「差多少」与完整红名单：{report_hint}",
         "",
     ]
@@ -1296,7 +1369,8 @@ def report_payload(
     这样 0 case（空跑）与 pending 都不会被下游当成绿（SIL-644 S1）。`--no-run` 也算
     `pending`：静态校验没有真跑过任何 case。
     """
-    families, features, cells = aggregate(cases, taxonomy)
+    families, features, _cells = aggregate(cases, taxonomy)
+    gaps = coverage_gaps(cases, taxonomy)
     verdict = matrix_verdict(verdicts, static_only=static_only)
     red = [verdict_item.case.name for verdict_item in verdicts if verdict_item.status in RED_STATES]
     pending = [item.case.name for item in verdicts if item.status == PENDING]
@@ -1310,11 +1384,18 @@ def report_payload(
         "upstream_snapshots": upstream_snapshot_summary(verdicts),
         "axes": {"families": families, "features": features},
         "gaps": [
-            [family, feature]
-            for family in families
-            for feature in features
-            if not cells.get((family, feature))
+            *[{"kind": "family", "value": family} for family in gaps.families],
+            *[{"kind": "feature", "value": feature} for feature in gaps.features],
+            *[
+                {"kind": "combo", "combo": name, "values": list(values)}
+                for name, values in gaps.combos
+            ],
         ],
+        "gap_total": gaps.total,
+        "required_combos": {
+            name: {"covered": covered, "total": total}
+            for name, (covered, total) in gaps.combo_counts.items()
+        },
         "cases": [
             {
                 "name": verdict_item.case.name,

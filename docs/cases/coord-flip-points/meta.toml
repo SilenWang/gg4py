@@ -1,7 +1,7 @@
 family = "coord"
-features = ["coord-flip", "aes-mapping"]
+features = ["coord-flip", "aes-mapping", "aes-inherit"]
 ci = true
 title = "coord_flip：离散 x 与连续 y 互换"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
 tolerance = { png = 0.02 }
-notes = "面板几何由 R 的 panel_params 对拍（tests/test_coord_r_parity.py），这里比点位置。"
+notes = "面板几何由 R 的 panel_params 对拍（tests/test_coord_r_parity.py），这里比点位置。`aes-inherit`：映射写在 ggplot() 上，geom_point() 不重复声明。"

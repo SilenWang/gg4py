@@ -172,9 +172,31 @@ def test_empty_cells_are_explicit_dashes(tmp_path: Path) -> None:
     _, matrix, _ = run(root, tmp_path, "--no-run")
     row = next(line for line in matrix.splitlines() if line.startswith("| `geom-bar` |"))
     assert "| — |" in row
-    # 缺口清单：geom-bar 行把两个特性都列为未覆盖。
+    # 缺口口径（SIL-828）：geom-bar 登记了却没有 case → 族级缺口；逐格 `—` 不算。
     gaps = matrix.split("## 覆盖缺口", 1)[1]
-    assert "`geom-bar` | `aes-mapping`、`aes-grouping`" in gaps
+    assert "无 case 的族：`geom-bar`" in gaps
+    assert "该族不使用这个特性" in matrix
+
+
+def test_required_combos_holes_are_counted(tmp_path: Path) -> None:
+    root = make_root(tmp_path)
+    (root / "taxonomy.toml").write_text(
+        'families = ["geom-point"]\n'
+        'features = ["aes-mapping", "facet-wrap", "facet-grid", "coord-flip"]\n'
+        "[[required_combos]]\n"
+        'name = "分面 × 坐标"\n'
+        'axes = [["facet-wrap", "facet-grid"], ["coord-flip", "coord-polar"]]\n',
+        encoding="utf-8",
+    )
+    write_case(
+        root,
+        "combo-one",
+        features=("aes-mapping", "facet-wrap", "coord-flip"),
+    )
+    _, matrix, _ = run(root, tmp_path, "--no-run")
+    # 4 格里只覆盖 1 格；facet-grid × coord-polar 是明确的缺口。
+    assert "| 分面 × 坐标 | 1 | 4 | ⛔ 有空格 |" in matrix
+    assert "`facet-grid` × `coord-polar`" in matrix
 
 
 def test_unregistered_family_and_feature_are_flagged(tmp_path: Path) -> None:

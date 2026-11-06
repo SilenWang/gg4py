@@ -165,3 +165,18 @@ pixi run audit:gallery fig17
   166 条 case 与 M2-10 的 314 份上游快照承担。
 - 缺口只登记进 SIL-715，不另建清单；后续按该 issue 的「追加规则」在对应 case 的
   `meta.toml` 里写 `ci = false` + issue key。
+
+## 7. M3-7 收口（SIL-828）
+
+M3-7 按父任务决策复核了本表 §4 的七张「画不出」图，结论是**不实现第三方扩展包**，
+也不把缺 API 的图塞进 gallery：
+
+| 图 | 处置 | 依据 |
+| --- | --- | --- |
+| `fig22` 半小提琴 / `fig27` 流图 / `fig34` 网络图 / `fig35` 矩形树图 | **移除**同名 API 诉求（`geom_split_violin` / `geom_stream` / `geom_edge_link` / `geom_treemap` 不做） | 父任务 2026-11-04 决策：只复刻 ggplot2 本体；可用 `geom_violin` + 手工分组、`geom_area` 对称堆叠、`geom_segment` + `geom_point` 画节点/边、`geom_tile` 手工矩形近似——这些是「本体等价写法」，精度不等同原扩展包，文档不写同名 API。 |
+| `fig10` 聚类热图 / `fig32` 边缘分布 | **保留为缺口**（版面组合，无等价单图层写法），归 M3-1 的版面能力；gallery 不收 | 不是第三方包问题，是「两个 plot 拼一张图」的布局能力。 |
+| `fig33` 分级地图 | **保留为缺口**：投影核只做 EPSG:4326 / CRS84 / 3857 / 3347（M3-2），`ESRI:54009` 需要 PROJ，X1 不引入 | 空间数据的边界写在 `docs/notes/sf.md`；gallery 不收这张。 |
+
+本表的「可画（含差异）」结论不变；`pixi run audit:gallery` 仍是 `35/35 符合登记`。
+M3-7 新增的 gallery 是 `web/viewer/dist/gallery.html`（案例库的浏览器卡片墙），
+链接检查走 `pixi run gallery:check`，与这 35 张人工核对图不是同一份资产。

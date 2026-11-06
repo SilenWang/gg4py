@@ -6,7 +6,12 @@
 # - 新 case 的 `family` / `features` 出现在这里登记过的值上，就落进对应格子；
 # - 没登记的值不会让矩阵失败：会自动加行/列，并在 matrix.md 的「未登记的族 / 特性」
 #   一节里点名，补登记即可（顺序 = 表格顺序，请按主题追加，不要重排）。
-# - 空位在 matrix.md 里显式写 `—`，这就是「覆盖缺口」清单的来源。
+# - 族 × 特性表里的 `—` 表示「该族不使用这个特性」，只是分布信息；**不是**缺口。
+# - 真正的缺口（`matrix.md` 的「覆盖缺口」）只数三件事：登记了却没有 case 的族、
+#   登记了却没有 case 的特性、以及 `required_combos` 声明必须铺满的组合格。
+#   SIL-828 收口后三者都是 0。
+# - 新增族 / 特性时把它们写进下面对应分组（不重排已有项）；没 case 的轴不要登记，
+#   否则它会变成缺口。
 
 families = [
   # geom 族
@@ -48,10 +53,32 @@ families = [
   "theme",
   "annotation",
   "guide",
-  "lab",
   "extension",
   # M2-11 组合矩阵（SIL-743）：分面 × 坐标 × 图例的整格组合，单独一族。
   "matrix",
+  # SIL-828：M2/M3 上游快照引入、此前一直落在「未登记的族」里的实际族。
+  # `lab` 没有 case（labs() 的 case 归在 theme / facet / labels 等族），故不再声明。
+  "annotate",
+  "coord-map",
+  "coord_sf",
+  "facet-labels",
+  "geom",
+  "geom-blank",
+  "geom-crossbar",
+  "geom-errorbarh",
+  "geom-label",
+  "geom-linerange",
+  "geom-map",
+  "geom-rect",
+  "geom-reference",
+  "geom-segment",
+  "geom-sf",
+  "geom-spoke",
+  "guide-axis",
+  "guide-legend",
+  "guides",
+  "labels",
+  "patterns",
 ]
 
 features = [
@@ -164,4 +191,126 @@ features = [
   # SIL-856：复合变换 / 伪对数变换（scale 与 coord 两侧共用）。
   "transform-compose",
   "transform-pseudo-log",
+  # SIL-828：M2 长尾 / M3 空间、radial、patterns、plotmath 等 case 实际用到的标签。
+  # `aes-inherit` 原先声明了但没有 case；SIL-828 给 `coord-flip-points`（继承
+  # ggplot() 全局 aes）补上这个标签后保留声明。
+  # 空间 / 地图 / 投影
+  "coord-map",
+  "coord-sf",
+  "projection",
+  # 坐标轴 / guide 长尾
+  "axis-elements",
+  "axis-labels-margins",
+  "axis-line",
+  "axis-stack",
+  "axis-text-rotation",
+  "axis-theta",
+  "axis-ticks-length",
+  "base-size-33",
+  "cap",
+  "draw-key",
+  "element-grob",
+  "key-glyph",
+  "key-size",
+  "legend",
+  "legend-bottom",
+  "legend-inside",
+  "legend-key-justification",
+  "legend-key-size",
+  "legend-left",
+  "legend-right",
+  "legend-spacing",
+  "legend-top",
+  "guide",
+  "guide-none",
+  "show-legend-named",
+  "sec-axis",
+  "aspect-ratio",
+  # 分面 / 版面
+  "facet-facet-grid-with-omitted-inner-axis-labels",
+  "facet-label-outside-justification",
+  "facet-layout-non-table",
+  "facet-left-justified-facet-labels-with-margins",
+  "facet-left-justified-rotated-facet-labels-with-margins",
+  "facet-null",
+  "facet-strip",
+  "facet-wrap-dir-v",
+  "free-space",
+  "strip-styling",
+  "strip-switch",
+  # 主题 / 文字 / 标签
+  "theme-bw",
+  "theme-classic",
+  "theme-dark",
+  "theme-gray",
+  "theme-grey",
+  "theme-ink-paper",
+  "theme-light",
+  "theme-linedraw",
+  "theme-margins",
+  "theme-minimal",
+  "theme-spacing",
+  "theme-theme_classic",
+  "theme-theme_dark",
+  "theme-theme_gray",
+  "theme-theme_light",
+  "theme-theme_linedraw",
+  "theme-theme_minimal",
+  "theme-theme_void",
+  "theme-void",
+  "text",
+  "plotmath",
+  "plot-caption-position",
+  "plot-tag",
+  "plot-title-position",
+  "tag-margin",
+  "tag-panel",
+  "tag-plot",
+  "geom-text",
+  # geom / stat / position 长尾
+  "alpha",
+  "binaxis-x",
+  "binaxis-y",
+  "binpositions-all",
+  "binpositions-bygroup",
+  "dotsize",
+  "gradient-fill",
+  "grouping",
+  "linetype-aes",
+  "method-dotdensity",
+  "method-histodot",
+  "multi-layer",
+  "n-dodge",
+  "pattern-fill",
+  "scale",
+  "stat-bindot",
+  "stackdir-center",
+  "stackdir-centerwhole",
+  "stackdir-down",
+  "stackdir-up",
+  "stackgroups",
+  "stackratio",
+  "stroke-aes",
+]
+
+# 组合矩阵里必须**逐格铺满**的格子（SIL-743 / SIL-828）。`cases:matrix` 会在这里
+# 数空格并在「覆盖缺口」里报出来；`tests/test_cases_matrix_combos.py` 读同一份声明，
+# 不再各自维护一份坐标列表。
+#
+# 每个 `[[required_combos]]` 的 `axes` 是若干条轴，每条轴给一组特性标签；组合格 =
+# 各轴取一个值的笛卡尔积。一个 case 只要 `features` 同时包含某组合每个轴的一个值，
+# 就算覆盖了这一格。多条轴声明的格子互不合并。
+[[required_combos]]
+name = "分面 × 坐标"
+axes = [
+  ["facet-wrap", "facet-grid"],
+  ["coord-cartesian", "coord-flip", "coord-polar", "coord-trans", "coord-radial"],
+]
+
+[[required_combos]]
+name = "图例位置 × 排布方向 × 图例个数"
+axes = [
+  ["legend-pos-right", "legend-pos-left", "legend-pos-top", "legend-pos-bottom"],
+  ["guide-direction-vertical", "guide-direction-horizontal"],
+  ["legend-single", "legend-double"],
 ]
