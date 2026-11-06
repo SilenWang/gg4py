@@ -4,15 +4,14 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**309**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**2**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **2** 条（移交 M3）
+- 已纳管：**311**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**0**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **0** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
-| `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
@@ -30,6 +29,7 @@
 | `geom-curve` | m2-closeout | 2 | 2 | 0 |
 | `geom-dotplot` | m2-closeout | 35 | 35 | 0 |
 | `geom-hex` | m2-closeout | 3 | 3 | 0 |
+| `geom-hline-vline-abline` | m3 | 5 | 5 | 0 |
 | `geom-label` | m2-closeout | 1 | 1 | 0 |
 | `geom-path` | m2-closeout | 5 | 5 | 0 |
 | `geom-polygon` | m2-closeout | 2 | 2 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 309 | 2 |
+| **合计** | — | 311 | 311 | 0 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -158,7 +158,9 @@
 | `geom-hex/single-hex-bin-with-width-and-height-of-0-1.svg` | `upstream-geom-hex-single-bin` |
 | `geom-hline-vline-abline/cartesian-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-cartesian` |
 | `geom-hline-vline-abline/flipped-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-flipped` |
+| `geom-hline-vline-abline/lines-curved-in-azequalarea.svg` | `upstream-geom-hline-vline-azequalarea` |
 | `geom-hline-vline-abline/polar-lines-intersect-mid-bars.svg` | `upstream-geom-hline-vline-polar` |
+| `geom-hline-vline-abline/straight-lines-in-mercator.svg` | `upstream-geom-hline-vline-mercator` |
 | `geom-label/geom-label-with-line-parameters.svg` | `upstream-geom-label-line-parameters` |
 | `geom-path/lines-changed-order-should-have-same-appearance.svg` | `upstream-geom-path-lines-changed-order` |
 | `geom-path/lines-colour-changed-order-should-have-same-appearance.svg` | `upstream-geom-path-lines-colour-changed-order` |
@@ -371,23 +373,3 @@
 | `theme/width-is-3-times-height.svg` | `upstream-theme-width-is-3-times-height` |
 
 ## 已知缺口
-
-### `geom-hline-vline-abline` — 1 条 · SIL-715 · m3
-
-SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。
-
-<details><summary>快照</summary>
-
-- `geom-hline-vline-abline/lines-curved-in-azequalarea.svg`
-
-</details>
-
-### `geom-hline-vline-abline` — 1 条 · SIL-715 · m3
-
-SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。
-
-<details><summary>快照</summary>
-
-- `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>

@@ -90,20 +90,22 @@ def test_inventory_header_equals_the_burndown_sum() -> None:
 
 
 def test_report_check_reproduces_the_sil822_drift() -> None:
-    """把本次漂移原样注入清单：表头 / 逐簇相加 / toml owner 对不上时必须判红。
+    """把 SIL-822 的两种漂移注入清单：表头 / 逐簇相加 / toml owner 对不上时必须判红。
 
-    复现的是 SIL-822 的两处已知冲突：三个簇在 burndown 表里标 `m2-closeout`
-    （逐簇相加 7 / 32），表头却按逐条 owner 写 0 / 39，且 `coord-polar` 的
-    group owner 停在 `m2-closeout`。
+    SIL-822 当时是「三簇标 `m2-closeout`（逐簇相加 7 / 32），表头却按逐条 owner
+    写 0 / 39」。SIL-857 把最后一簇缺口清零之后，burndown 里所有簇的「缺口」都是
+    0，翻转某簇 owner 不再改变逐簇相加，那份 7 / 32 已无处复现。所以这里改为
+    直接改「缺口归属」表头制造表头漂移，再改一簇的 burndown owner 制造 owner
+    漂移——`inventory_drift()` 的这两条判据仍在守。
     """
     rows = _resolved()
     text = SNAPSHOTS.render_inventory(rows, SNAPSHOTS.load_manifest()["pin"])
     assert SNAPSHOTS.inventory_drift(text, rows) == []
 
-    drifted = text
-    for cluster in ("coord-polar", "guide-axis", "facet-labels", "geom-hline-vline-abline"):
-        drifted = drifted.replace(f"| `{cluster}` | m3 |", f"| `{cluster}` | m2-closeout |")
+    drifted = text.replace("`m2-closeout` **0** 条", "`m2-closeout` **7** 条")
     assert drifted != text
+    drifted = drifted.replace("| `coord-polar` | m3 |", "| `coord-polar` | m2-closeout |")
+    assert "| `coord-polar` | m2-closeout |" in drifted
 
     problems = SNAPSHOTS.inventory_drift(drifted, rows)
     assert any("表头写" in problem and "逐簇相加" in problem for problem in problems), problems

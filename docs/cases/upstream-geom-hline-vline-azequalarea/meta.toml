@@ -1,0 +1,7 @@
+family = "geom-hline"
+features = ["aes-mapping", "coord-map", "projection"]
+ci = true
+title = "lines curved in azequalarea"
+source = "upstream:tests/testthat/_snaps/geom-hline-vline-abline/lines-curved-in-azequalarea.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-857：coord_map(projection = \"azequalarea\", orientation = c(-36.92, 174.6, 0))，Lambert 方位等积 + 以经纬度为中心的旋转。"
