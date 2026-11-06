@@ -30,6 +30,11 @@ def expected_sizes(svg: Path) -> Counter[float]:
     return Counter(round(float(v), 1) for v in _FONT_SIZE.findall(svg.read_text(encoding="utf-8")))
 
 
+def _text_lines(texts) -> int:
+    """一个 text 节点在上游 svglite 里会展开成几行（多行标签按 `\\n` 拆）。"""
+    return sum(text.count("\n") + 1 for text in texts) or 1
+
+
 def ours_sizes(case: Path) -> Counter[float] | None:
     """IR 里 text 节点的 `size` 多重集；构建失败时返回 None（该 case 跳过）。"""
     try:
@@ -47,7 +52,12 @@ def ours_sizes(case: Path) -> Counter[float] | None:
             params = getattr(node, "params", None) or {}
             size = params.get("size")
             if size is not None:
-                out[round(float(size), 1)] += 1
+                # 按**行**计数，不是按节点：IR 的多行标签是一个带 `\n` 的节点
+                # （渲染端 `ggskia/text.py` 的 `_lines()` 按 `\n` 拆行画），而上游
+                # svglite 会把每一行展开成独立的 `<text>`。按节点数比会把多行标签
+                # 少算（SIL-844：`strawberry\ncake` 每层少 1，两层共少 2）。
+                lines = _text_lines(node.texts)
+                out[round(float(size), 1)] += lines
         for child in node.children:
             walk(child)
 
