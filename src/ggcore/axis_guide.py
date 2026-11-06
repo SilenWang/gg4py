@@ -883,13 +883,45 @@ def _guide_extent(
         # 刻度线放进轴单元格，列宽 / 行高就是刻度长度（`axis-l` = 2.75pt）。
         # 早先整条轴返回空，极坐标的 r 轴连刻度都不见了。
         return _max_tick_length(theme, ticks)
-    width, height, _margin_main, margin_cross = _label_box(
-        ticks.labels, element, side, ticks.angle, metrics
-    )
     rows = max(1, ticks.n_dodge) if ticks.labels else 0
-    # 横向轴：轴高 = 刻度长 + 行数 × 标签盒高；竖向轴：轴宽 = 刻度长 + 行数 × 标签盒宽。
-    box = (height if _horizontal(side) else width) + margin_cross
-    return _max_tick_length(theme, ticks) + rows * box
+    # 横向轴：轴高 = 各行标签盒高之和；竖向轴同理换成宽。
+    # `n.dodge` 的每一行 / 列在 R 里是**独立 gtable 轨道**，尺寸取该组自己的标签
+    # （`width_cm(grobs$labels)` 是逐组量的）：右轴的两组常常一组窄一组宽
+    # （`coord-sf`：20.11 / 22.10pt），用全局最大值会把窄的那组也算成宽的
+    # （SIL-849：整表宽多 2pt、面板左移 1.1pt）。
+    if rows == 0:
+        return _max_tick_length(theme, ticks)
+    steps = _dodge_group_sizes(ticks.labels, element, side, ticks.angle, metrics, rows)
+    return _max_tick_length(theme, ticks) + sum(steps)
+
+
+def _dodge_group_sizes(
+    labels: Sequence[AxisLabel],
+    element: Any,
+    side: str,
+    angle: float,
+    metrics: Any,
+    rows: int,
+) -> list[float]:
+    """`n.dodge` 每一条轨道的外向尺寸（cm），顺序同 dodge 组号。
+
+    上游 `GuideAxis$measure_grobs()` 把每个 dodge 组的标签 grob 写进独立列
+    （`labels <- unit(width_cm(grobs$labels), "cm")`），组 k = 下标 `k, k+n, …`
+    的标签：组内取最大值，再加该元素的 cross margin。
+    """
+    horizontal = _horizontal(side)
+    groups: list[list[AxisLabel]] = [[] for _ in range(max(1, rows))]
+    for index, label in enumerate(labels):
+        groups[index % len(groups)].append(label)
+    sizes: list[float] = []
+    for group in groups:
+        if not group:
+            continue
+        width, height, _margin_main, margin_cross = _label_box(
+            group, element, side, angle, metrics
+        )
+        sizes.append((height if horizontal else width) + margin_cross)
+    return sizes
 
 
 def axis_guide_extent(
@@ -1597,8 +1629,13 @@ def polar_axis_grobs(
     # `stack_offset_cm` 只进 `layer_radius`：整层（轴线 / 刻度 / 标签）一起外推，
     # 与上游 `build_decor()` / `theta_tickmarks()` / `build_labels()` 各加一次同义。
     offset = (max(0.0, tick_cm) + text_margin) / box.width_cm
-    # 叠放的整层（轴线 / 刻度 / 标签）沿半径向外挪，不只是标签。
-    layer_radius = key_radius + stack_offset_cm / box.width_cm
+    # 叠放的整层（轴线 / 刻度 / 标签）沿半径挪，不只是标签。`theta.sec` 的方向
+    # 是反的：上游 `GuideAxisTheta$transform()` 给它的 key 加了 `π`，之后
+    # `build_decor()` / `theta_tickmarks()` / `build_labels()` 都用
+    # `sin/cos(theta + π)` 加 `stack_offset`——所以第二层落在内半径**里面**
+    # （`stacked-radial-axes` 实测：125.39pt → 103.33pt）。SIL-849。
+    stack_sign = -1.0 if secondary else 1.0
+    layer_radius = key_radius + stack_sign * stack_offset_cm / box.width_cm
 
     # 轴线 / 刻度只在 `coord_radial()` 上补：`coord_polar()` 的 `render_fg()`
     # 只画 theta 标签（`matrix-report-facet-polar-grey` 等 7 条已纳管 case 就是
@@ -1747,6 +1784,10 @@ def _theta_ring_extent(
     上游 `GuideAxisTheta$measure_grobs()`：把每个标签的盒（文字 + 四周 margin）
     的四个角按「位置角 + 文字角」投影到半径方向，取最大值。R 用它决定下一层
     再往外推多少（`offset <- offset + spacing + grobs[[i]]$offset`）。
+
+    R 的 margin 是 `rep(max(margin), 4)`——**四个方向都取最大值**，不是只用元素
+    自己那一侧的 margin（`axis.text.x.bottom` 只有 `t = 2.2pt`）：`80` 这类轴标签
+    的横向投影因此比「只加 t」多 2.2pt，叠放第二层正好差这一截（SIL-849）。
     """
     from ggcore.axis import margin_sides_cm, polar_theta_ticks, text_block_cm, text_width_cm
 
@@ -1754,7 +1795,8 @@ def _theta_ring_extent(
     element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
     if not entries or not isinstance(element, ElementText):
         return 0.0
-    mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
+    margins = margin_sides_cm(getattr(element, "margin", None))
+    pad = max(margins) if margins else 0.0
     size = float(element.size or 0.0)
     lineheight = getattr(element, "lineheight", None)
     base_angle = None if guide.angle is None else float(guide.angle)
@@ -1771,8 +1813,8 @@ def _theta_ring_extent(
             angle += 180.0
         rad = math.radians(angle)
         rot = theta + rad
-        width = text_width_cm(entry[2], size, metrics, element.family or "") + ml + mr
-        height = text_block_cm(entry[2], size, lineheight) + mt + mb
+        width = text_width_cm(entry[2], size, metrics, element.family or "") + 2.0 * pad
+        height = text_block_cm(entry[2], size, lineheight) + 2.0 * pad
         hjust = 0.5 - math.sin(rot) / 2.0
         vjust = 0.5 - math.cos(rot) / 2.0
         xmin, xmax = -width * hjust, width * (1.0 - hjust)
@@ -1847,8 +1889,12 @@ def polar_r_axis_inside_grobs(
     sign = 1.0 if position == "right" else -1.0
     margin_cross = ml if position == "right" else mr
 
-    norm = math.hypot(cos_a * width_cm, sin_a * height_cm) or 1.0
-    cross = (cos_a * width_cm / norm, -sin_a * height_cm / norm)
+    # 「轴的 +x 方向」在屏幕上的单位向量。**不要**按面板长宽比缩放：上游
+    # `rotate_r_axis()` 的 viewport 旋转在设备空间里是刚性的，partial arc 的
+    # bbox 是 1 × 0.8536，但 45° 转完仍是 45°（`stacked-radial-axes` 上游的两层
+    # 标签位移正是 (±16.71, ∓16.70)）。早前用 `width/height` 归一化成了 40.5°，
+    # 第二层错 6.4pt（SIL-849）。
+    cross = (cos_a, -sin_a)
 
     def point_cm(radius: float) -> tuple[float, float]:
         nx = (radius * sin_a + 0.5 - bx0) / span_x
@@ -1862,16 +1908,13 @@ def polar_r_axis_inside_grobs(
         for child in ticks.children:
             layers.append((child, offset))
             # 上游 `GuideAxisStack$draw()` 的非 theta 分支用 gtable 并排：
-            # 层间距离 = `grobWidth(上一层)` + `spacing`，而 `grobWidth` 是整段
-            # 轴 grob 的外框宽——`axis.text.r` 的 margin 是**两侧各 2.2pt**
-            # （`axis.text.y` 只留右侧），`_guide_extent()` 只折了一侧，所以这里
-            # 再补两侧的差。实测（`stacked-radial-axes` 上游 SVG）：两层标签的
-            # x 差 22.04pt，补之前我们 17.55pt。
-            step = (
-                _guide_extent(theme, child, position, metrics, stack_gap=tick_cm)
-                + tick_cm
-                + 2.0 * margin_cross
-            )
+            # 层间距离 = `grobWidth(上一层)` + `spacing`（`spacing` 缺省是
+            # `axis.ticks.length.y.<position>`，这里就是 `tick_cm`）。`grobWidth`
+            # 是整段轴 grob 的外框宽，`_guide_extent()` 已经是同一口径（刻度长 +
+            # 标签盒含一次 margin），不再额外补 margin——早先多加的
+            # `2 × margin_cross` 让第二层多走 4.4pt（SIL-849：`stacked-radial-axes`
+            # 两层 r 标签的层距 30.1pt，上游 23.6pt）。
+            step = _guide_extent(theme, child, position, metrics, stack_gap=tick_cm) + tick_cm
             offset += step
     else:
         layers = [(ticks, 0.0)]
