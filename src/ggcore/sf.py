@@ -370,7 +370,10 @@ def st_multipolygon(polygons: Iterable[Any], crs: Any = None) -> Geometry:
 
 
 def st_geometrycollection(geometries: Iterable[Geometry], crs: Any = None) -> Geometry:
-    return Geometry("geometrycollection", tuple(geometries), st_crs(crs))
+    """一个几何集合。CRS 与 `sfc` 同口径：集合里的成员共享它的 CRS。"""
+    collection = Geometry("geometrycollection", tuple(geometries), st_crs(crs))
+    # 成员自己没带 CRS 时继承集合的（`with_crs()` 只填 None，不覆盖成员的）。
+    return collection.with_crs(crs) if crs is not None else collection
 
 
 def st_sfc(geometries: Iterable[Geometry], crs: Any = None) -> tuple[Geometry, ...]:
@@ -455,41 +458,70 @@ class _WktReader:
         self.take(")")
         return tuple(points)
 
+    def list_of(self, parse: Any) -> tuple[Any, ...]:
+        """解析 `( item, item, ... )`，item 由 `parse` 负责。"""
+        self.take("(")
+        if self.peek() == ")":
+            self.error("括号里没有内容")
+        items = [parse()]
+        while self.peek() == ",":
+            self.pos += 1
+            items.append(parse())
+        self.take(")")
+        return tuple(items)
+
+    def point_body(self) -> tuple[float, float]:
+        self.take("(")
+        point = self.coords()
+        self.take(")")
+        return point
+
+    def ring(self) -> tuple[tuple[float, float], ...]:
+        ring = self.sequence()
+        # 与 `st_polygon()` 的 `_ring()` 同口径：少于 3 个点围不出面积。
+        if len(ring) < 3:
+            self.error(f"多边形环至少要 3 个点，收到 {len(ring)}")
+        return ring
+
+    def multipoint_item(self) -> tuple[float, float]:
+        # WKT 允许 `MULTIPOINT (1 2, 3 4)` 与 `MULTIPOINT ((1 2), (3 4))` 两种写法。
+        return self.point_body() if self.peek() == "(" else self.coords()
+
     def geometry(self) -> Geometry:
         name = self.word()
         kind = _WKT_NAMES.get(name)
         if kind is None:
             self.error(f"不认识的几何类型 {name!r}")
-        # 跳过 Z / M / ZM
-        while self.peek().isalpha():
-            self.word()
-        if (
-            self.peek() == "("
-            and self.text[self.pos : self.pos + 8].upper().replace(" ", "") == "(EMPTY)"
-        ):
-            self.pos += 7
-            self.take(")")
-            return Geometry(kind, ())
-        if self.peek() == "" and self.text.upper().rstrip().endswith("EMPTY"):
-            return Geometry(kind, ())
-        line = self.sequence()
+        if self.peek().isalpha():
+            marker = self.word()
+            if marker == "EMPTY":
+                return Geometry(kind, ())
+            # 跳过 Z / M / ZM（第三 / 第四维已在 `coords()` 里忽略）
+            if marker not in ("Z", "M", "ZM"):
+                self.error(f"期望 '(' 或 EMPTY，收到 {marker!r}")
         if kind == "point":
-            if len(line) != 1:
-                self.error("POINT 只能有一个坐标")
-            parts: Any = line
-        elif kind in ("multipoint", "linestring"):
-            parts = line
-        elif kind == "multilinestring":
-            parts = tuple(line)
+            parts: Any = (self.point_body(),)
+        elif kind == "linestring":
+            parts = self.sequence()
         elif kind == "polygon":
-            parts = (line,)
-        else:
-            parts = tuple(line)
+            parts = self.list_of(self.ring)
+        elif kind == "multipoint":
+            parts = self.list_of(self.multipoint_item)
+        elif kind == "multilinestring":
+            parts = self.list_of(self.sequence)
+        elif kind == "multipolygon":
+            parts = self.list_of(lambda: self.list_of(self.ring))
+        else:  # geometrycollection
+            parts = self.list_of(self.geometry)
         return Geometry(kind, parts)
 
 
 def parse_wkt(text: str, crs: Any = None) -> Geometry:
-    """解析 WKT（POINT / LINESTRING / POLYGON / MULTI* / GEOMETRYCOLLECTION）。"""
+    """解析 WKT（POINT / LINESTRING / POLYGON / MULTI* / GEOMETRYCOLLECTION）。
+
+    面的环按 WKT 的嵌套写法解析（`((x y, ...), (x y, ...))`，第一个是外环），
+    少于 3 个点的环显式报错；`EMPTY` 与 `Z` / `M` / `ZM` 后缀都接受。
+    """
     reader = _WktReader(text)
     return reader.geometry().with_crs(crs)
 
