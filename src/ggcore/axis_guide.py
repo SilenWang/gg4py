@@ -63,6 +63,7 @@ __all__ = [
     "guide_for",
     "minor_breaks_log",
     "polar_axis_grobs",
+    "polar_r_axis_inside_grobs",
 ]
 
 #: `title=waiver()` 的对等物（轴 guide 的标题不参与绘制，保留以便转写）。
@@ -1422,10 +1423,39 @@ def polar_axis_grobs(
     polar = getattr(params, "polar", None)
     if polar is None or scale is None or box.width_cm <= 0:
         return []
+    guide = guide or AxisGuide(name="axis_theta")
+    if guide.is_stack and guide.guides:
+        # `guide_axis_stack("axis_theta", …)`：每一层都画一遍，沿半径逐层外推
+        # `spacing + 上一层 offset`（上游 `GuideAxisStack$draw()` 的 theta 分支；
+        # `spacing` 缺省 2.25pt，`offset` 是那一层的刻度长 + 文字 margin）。
+        spacing = guide.spacing if isinstance(guide.spacing, (int, float)) else 2.25
+        accumulated = stack_offset_cm
+        stacked: list[Any] = []
+        for layer_index, child in enumerate(guide.guides):
+            stacked.extend(
+                polar_axis_grobs(
+                    scale,
+                    params,
+                    theme,
+                    box,
+                    child,
+                    metrics=metrics,
+                    name=f"{name}-{layer_index}",
+                    secondary=secondary,
+                    stack_offset_cm=accumulated,
+                )
+            )
+            # `spacing` 是 pt（缺省 2.25），`accumulated` 是 cm；这一层的占位是
+            # 标签盒沿半径的投影（上游 `GuideAxisTheta$measure_grobs()` 的
+            # `max(height)`），不是「刻度 + margin」。
+            accumulated += (
+                float(spacing) / _POINT_PER_MM / 10.0
+                + _theta_ring_extent(theme, scale, params, box, child, metrics)
+            )
+        return stacked
     entries = polar_theta_ticks(scale, params)
     if not entries:
         return []
-    guide = guide or AxisGuide(name="axis_theta")
     if getattr(guide, "theme", None) is not None:
         # `guides(theta.sec = guide_axis_theta(theme = theme(...)))`：只改这一条
         # theta 轴的 `axis.line.theta` / `axis.text.theta`（上游 `GuideAxis$setup_elements`
@@ -1454,7 +1484,11 @@ def polar_axis_grobs(
     if isinstance(element, ElementText):
         margins = margin_sides_cm(getattr(element, "margin", None))
         text_margin = max(margins) if margins else 0.0
-    offset = (max(0.0, tick_cm) + text_margin + stack_offset_cm) / box.width_cm
+    # `stack_offset_cm` 只进 `layer_radius`：整层（轴线 / 刻度 / 标签）一起外推，
+    # 与上游 `build_decor()` / `theta_tickmarks()` / `build_labels()` 各加一次同义。
+    offset = (max(0.0, tick_cm) + text_margin) / box.width_cm
+    # 叠放的整层（轴线 / 刻度 / 标签）沿半径向外挪，不只是标签。
+    layer_radius = key_radius + stack_offset_cm / box.width_cm
 
     # 轴线 / 刻度只在 `coord_radial()` 上补：`coord_polar()` 的 `render_fg()`
     # 只画 theta 标签（`matrix-report-facet-polar-grey` 等 7 条已纳管 case 就是
@@ -1463,7 +1497,7 @@ def polar_axis_grobs(
     line_gp = _line_gp(line_element) if line_element is not None else None
     if line_gp is not None and len(thetas) > 1:
         angles = _arc_angles(thetas, cap=guide.cap, tick=tick_cm / box.width_cm)
-        xs, ys = polar.point(angles, np.full(angles.shape, key_radius))
+        xs, ys = polar.point(angles, np.full(angles.shape, layer_radius))
         grobs.append(
             polyline_grob(
                 [box.x_cm + float(value) * box.width_cm for value in np.asarray(xs)],
@@ -1479,7 +1513,7 @@ def polar_axis_grobs(
     tick_gp = _line_gp(tick_element) if polar.radial and tick_element is not None else None
     if tick_gp is not None and tick_cm > 0:
         step = tick_cm / box.width_cm
-        x0, y0 = polar.point(thetas, np.full(thetas.shape, key_radius))
+        x0, y0 = polar.point(thetas, np.full(thetas.shape, layer_radius))
         # 刻度从 key 沿 `directions` 伸出去：与标签同理，方向在 npc 空间里加
         # `sin/cos`，不能直接换角度再取点（那会横跨圆心连成弦）。
         x1 = np.asarray(x0, dtype=np.float64) + np.sin(directions) * step
@@ -1515,9 +1549,16 @@ def polar_axis_grobs(
     # 只有 `coord_radial()` 走 R 的「key + offset」——offset 在 **npc 空间**里沿
     # `sin/cos(direction)` 加（上游 `build_labels()` 的 `xoffset` / `yoffset`），
     # 部分弧的 bbox 非正方形时这与「半径 + offset」不等价。
-    key_x, key_y = polar.point(thetas, np.full(thetas.shape, key_radius))
-    label_radius = key_radius + offset if polar.radial else key_radius
+    key_x, key_y = polar.point(thetas, np.full(thetas.shape, layer_radius))
+    label_radius = layer_radius + offset if polar.radial else layer_radius
     xs, ys = polar.point(thetas, np.full(thetas.shape, label_radius))
+    import os as _os
+
+    if _os.environ.get("GGDEBUG"):
+        print(
+            f"DBG {name} secondary={secondary} stack={stack_offset_cm:.3f} key_r={key_radius:.3f} "
+            f"layer_r={layer_radius:.3f} offset={offset:.4f} n={len(thetas)}"
+        )
     for index, theta in enumerate(directions):
         position_x = float(xs[index])
         position_y = float(ys[index])
@@ -1584,3 +1625,228 @@ def _arc_angles(thetas: np.ndarray, *, cap: str, tick: float) -> np.ndarray:
         if cap in ("both", "lower", "bottom"):
             start -= step
     return np.linspace(start, stop, 100)
+
+
+def _theta_ring_extent(
+    theme: ResolvedTheme,
+    scale: Any,
+    params: Any,
+    box: CellBox,
+    guide: AxisGuide,
+    metrics: Any,
+) -> float:
+    """`guide_axis_stack()` 叠放时，这一层 theta 轴沿半径占的宽度（cm）。
+
+    上游 `GuideAxisTheta$measure_grobs()`：把每个标签的盒（文字 + 四周 margin）
+    的四个角按「位置角 + 文字角」投影到半径方向，取最大值。R 用它决定下一层
+    再往外推多少（`offset <- offset + spacing + grobs[[i]]$offset`）。
+    """
+    from ggcore.axis import margin_sides_cm, polar_theta_ticks, text_block_cm, text_width_cm
+
+    entries = polar_theta_ticks(scale, params)
+    element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
+    if not entries or not isinstance(element, ElementText):
+        return 0.0
+    mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
+    size = float(element.size or 0.0)
+    lineheight = getattr(element, "lineheight", None)
+    base_angle = None if guide.angle is None else float(guide.angle)
+    element_angle = float(getattr(element, "angle", 0.0) or 0.0)
+    extent = 0.0
+    for entry in entries:
+        theta = float(entry[3])
+        angle = element_angle if base_angle is None else round(
+            (base_angle - math.degrees(theta)) % 360.0, ANGLE_DECIMALS
+        )
+        if base_angle is not None and 90.0 < angle < 270.0:
+            angle += 180.0
+        rad = math.radians(angle)
+        rot = theta + rad
+        width = text_width_cm(entry[2], size, metrics, element.family or "") + ml + mr
+        height = text_block_cm(entry[2], size, lineheight) + mt + mb
+        hjust = 0.5 - math.sin(rot) / 2.0
+        vjust = 0.5 - math.cos(rot) / 2.0
+        xmin, xmax = -width * hjust, width * (1.0 - hjust)
+        ymin, ymax = -height * vjust, height * (1.0 - vjust)
+        for x in (xmin, xmax):
+            for y in (ymin, ymax):
+                extent = max(extent, x * math.sin(rot) + y * math.cos(rot))
+    return extent
+
+
+def polar_r_axis_inside_grobs(
+    theme: ResolvedTheme,
+    ticks: AxisGuideTicks,
+    box: CellBox,
+    guide: AxisGuide | None,
+    *,
+    angle: float,
+    position: str = "left",
+    bbox: tuple[tuple[float, float], tuple[float, float]] = ((0.0, 1.0), (0.0, 1.0)),
+    name: str = "axis-r",
+    metrics: Any = None,
+) -> list[Any]:
+    """`r.axis.inside` 的旋转 r 轴（上游 `CoordRadial$render_fg()` + `rotate_r_axis()`）。
+
+    R 把 r 轴按「贴面板边的竖轴」画好，再把整个 grob 绕**面板中心**转
+    `-axis_rotation`（`rotate_r_axis()`）：轴因此落在 theta 角 `angle` 的方向上，
+    刻度朝内侧（左轴）/ 外侧（右轴），文字保持水平（viewport 的 `-angle` 与
+    `params$angle` 抵消）。这里直接在那个旋转后的坐标系里算坐标：
+
+    - 轴线：半径 `inner_radius[0] .. inner_radius[1]`（decor 的 `±Inf` 折成 donut
+      两端）；`cap=` 时收到最外两根 key；
+    - 刻度 / 标签沿「轴的 +x 方向」（npc 里 `(cos a, -sin a)`）偏移
+      `tick` / `tick + margin`，左轴取负、右轴取正；
+    - 锚点取 `_anchor(角度, 位置)`：90° 左轴 → `hjust = 0.5`，225° 右轴 → `hjust = 1`；
+    - 叠放（`guide_axis_stack`）：第 i 层再沿同一方向推
+      `Σ(上一层外向占位 + spacing)`，`spacing` 缺省是 `axis.ticks.length`。
+
+    `bbox` 是 partial arc 的外接框：R 的 key 位置先过 `CoordRadial$transform()`，
+    再在面板 npc 里绕中心旋转，所以这里也先把半径折成 npc 再加偏移。
+    """
+    from ggcore.axis import font_int, margin_sides_cm, paint, tick_length_cm
+    from ggcore.grobs import segments_grob, text_grob
+    from ggcore.viewport import gpar
+
+    if box.width_cm <= 0 or box.height_cm <= 0:
+        return []
+    guide = guide or AxisGuide()
+    element = _text_element(theme, position)
+    blank_text = isinstance(element, ElementBlank) or not isinstance(element, ElementText)
+    size = 0.0 if blank_text else float(element.size or 0.0)
+    gp = (
+        {}
+        if blank_text
+        else {
+            "col": paint(element.colour) or "black",
+            "fontsize": size or 11.0,
+            "fontfamily": element.family or "",
+            "font": font_int(element.face),
+            "lineheight": float(element.lineheight or 1.2),
+        }
+    )
+    if blank_text:
+        mt = mr = mb = ml = 0.0
+    else:
+        mt, mr, mb, ml = margin_sides_cm(element.margin)
+
+    (bx0, bx1), (by0, by1) = bbox
+    span_x = (bx1 - bx0) or 1.0
+    span_y = (by1 - by0) or 1.0
+    width_cm, height_cm = box.width_cm, box.height_cm
+    sin_a, cos_a = math.sin(angle), math.cos(angle)
+    sign = 1.0 if position == "right" else -1.0
+    margin_cross = ml if position == "right" else mr
+
+    norm = math.hypot(cos_a * width_cm, sin_a * height_cm) or 1.0
+    cross = (cos_a * width_cm / norm, -sin_a * height_cm / norm)
+
+    def point_cm(radius: float) -> tuple[float, float]:
+        nx = (radius * sin_a + 0.5 - bx0) / span_x
+        ny = (radius * cos_a + 0.5 - by0) / span_y
+        return (box.x_cm + nx * width_cm, box.y_cm + ny * height_cm)
+
+    tick_cm = tick_length_cm(theme, position)
+    layers: list[tuple[AxisGuideTicks, float]] = []
+    if ticks.children:
+        offset = 0.0
+        for child in ticks.children:
+            layers.append((child, offset))
+            offset += _guide_extent(theme, child, position, metrics, stack_gap=tick_cm) + tick_cm
+    else:
+        layers = [(ticks, 0.0)]
+
+    line_element = None
+    for element_name in (
+        "axis.line.y.left" if position == "left" else "axis.line.y.right",
+        "axis.line.y",
+        "axis.line",
+    ):
+        line_element = theme.get(element_name)
+        if line_element is not None:
+            break
+    line_gp = _line_gp(line_element)
+    cap = str(getattr(guide, "cap", "none") or "none")
+
+    grobs: list[Any] = []
+    for layer_index, (layer, layer_offset) in enumerate(layers):
+        radii = [label.position - 0.5 for label in layer.labels]
+        if line_gp is not None:
+            low, high = 0.0, 0.5
+            if radii:
+                low, high = min(radii), max(radii)
+            if cap in (None, "none") or not radii:
+                low, high = 0.0, 0.5
+            x0, y0 = point_cm(low)
+            x1, y1 = point_cm(high)
+            grobs.append(
+                segments_grob(
+                    [x0],
+                    [y0],
+                    [x1],
+                    [y1],
+                    default_units="cm",
+                    gp=line_gp,
+                    name=f"{name}.line-{layer_index}",
+                )
+            )
+        # 刻度：同一档合成一个 segments grob（与 `axis_guide_grobs()` 同口径）。
+        groups: dict[tuple[str, float, int], list[Any]] = {}
+        for mark in layer.marks:
+            mark_style = _tick_line(theme, position, mark)
+            if mark_style is None or mark.length_cm <= 0:
+                continue
+            groups.setdefault(mark_style, []).append(mark)
+        for group_index, ((colour, lwd, lty), marks) in enumerate(groups.items()):
+            xs: list[float] = []
+            ys: list[float] = []
+            xs2: list[float] = []
+            ys2: list[float] = []
+            for mark in marks:
+                px, py = point_cm(mark.position - 0.5)
+                base = sign * layer_offset
+                tip = sign * (layer_offset + mark.length_cm)
+                xs.extend([px + base * cross[0], px + base * cross[0]])
+                ys.extend([py + base * cross[1], py + base * cross[1]])
+                xs2.extend([px + tip * cross[0], px + tip * cross[0]])
+                ys2.extend([py + tip * cross[1], py + tip * cross[1]])
+            grobs.append(
+                segments_grob(
+                    xs,
+                    ys,
+                    xs2,
+                    ys2,
+                    default_units="cm",
+                    gp=gpar(col=colour, lwd=lwd, lty=lty),
+                    name=f"{name}.ticks-{layer_index}-{group_index}",
+                )
+            )
+        if blank_text:
+            continue
+        hjust, vjust = _anchor(_normal_angle(math.degrees(angle)), position)
+        reach = tick_cm + margin_cross
+        for label, dodge in _visible_labels(layer, element, metrics, axis_length_cm=box.width_cm):
+            px, py = point_cm(label.position - 0.5)
+            shift = sign * (layer_offset + reach + dodge * reach)
+            import os as _os
+
+            if _os.environ.get("GGDEBUG"):
+                print(
+                    f"DBG {name} layer={layer_index} label={label.text} r={label.position - 0.5:.3f} "
+                    f"px={px:.2f} py={py:.2f} shift={shift:.3f} cross={cross} angle={angle:.3f}"
+                )
+            grobs.append(
+                text_grob(
+                    label.text,
+                    px + shift * cross[0],
+                    py + shift * cross[1],
+                    hjust=hjust,
+                    vjust=vjust,
+                    rot=0.0,
+                    default_units="cm",
+                    gp=gpar(**gp),
+                    name=f"{name}.text-{layer_index}",
+                )
+            )
+    _ = (mt, mb)
+    return grobs

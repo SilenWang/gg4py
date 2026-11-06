@@ -402,6 +402,27 @@ def r_rescale(
     return float(donut[0]) + ratio * (float(donut[1]) - float(donut[0]))
 
 
+def _is_numeric_form(value: Any) -> bool:
+    """`r.axis.inside` 是否给了数值（标量或两元序列；bool 不算）。
+
+    R 的 `coord_radial(r.axis.inside = c(90, 225))` 用 theta 角度摆 r 轴
+    （`setup_panel_params()` 里 `is.numeric(axis_rotation)` 那条分支）。
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    if isinstance(value, (str, bytes)):
+        return False
+    try:
+        items = tuple(value)
+    except TypeError:
+        return False
+    return len(items) == 2 and all(
+        isinstance(item, (int, float)) and not isinstance(item, bool) for item in items
+    )
+
+
 def _in_arc(theta: np.ndarray, arc: tuple[float, float]) -> np.ndarray:
     """上游 `in_arc()`：点是否落在 `arc` 里（满圆恒真）。"""
     if abs(float(arc[1]) - float(arc[0])) > _TWO_PI - math.sqrt(np.finfo(np.float64).eps):
@@ -1299,12 +1320,16 @@ class RadialCoord(CoordBase):
         inner = self._inner()
         bbox = polar_bbox(arc, inner)
         axis_rotation: tuple[float, float] = (arc[0], arc[1])
-        if isinstance(self.r_axis_inside, (int, float)) and not isinstance(
-            self.r_axis_inside, bool
-        ):
+        if _is_numeric_form(self.r_axis_inside):
             # 数值形式：r 轴沿指定 theta 角度摆放（上游 `axis_rotation`）。
-            angle = theta_rescale(np.array([float(self.r_axis_inside)]), theta_range, arc, 1.0)[0]
-            axis_rotation = (float(angle), float(angle))
+            # 标量 = 主轴 / 次轴同一角度；两元 = 主轴、次轴各一个。
+            values = self.r_axis_inside
+            if isinstance(values, (int, float)):
+                values = (float(values), float(values))
+            angles = theta_rescale(
+                np.asarray([float(values[0]), float(values[1])]), theta_range, arc, 1.0
+            )
+            axis_rotation = (float(angles[0]), float(angles[1]))
         polar = PolarGeometry(
             theta_axis=theta_axis,
             theta_range=theta_range,

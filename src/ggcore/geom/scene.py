@@ -47,6 +47,7 @@ from ggcore.axis import (
     polar_axis_breaks,
     polar_axis_row_cm,
     polar_minor_breaks,
+    polar_r_ticks,
     text_line_cm,
     text_width_cm,
     tick_length_cm,
@@ -60,6 +61,7 @@ from ggcore.axis_guide import (
     axis_line_range,
     guide_for,
     polar_axis_grobs,
+    polar_r_axis_inside_grobs,
 )
 from ggcore.build import _STAT_DEFAULT_AES, LayerBuild, PlotBuild, build_plot
 from ggcore.coord import CoordBase, PanelParams
@@ -744,6 +746,10 @@ def plot_layout(
         extent_y = axis_guide_extent(
             axis_theme, guide_ticks_y, guide_y, side=y_side, metrics=metrics
         )
+        if radial and params.polar.r_axis_inside:
+            # 面板内的 r 轴不占 gtable 列（上游 `render_axis_v()` 给的是
+            # `zeroGrob()`）：轴标签画在面板里，axis-l / axis-r 两列宽度为 0。
+            extent_y = 0.0
         if y_side == "right":
             y_axis_right = max(y_axis_right, extent_y)
             y_title_right = max(
@@ -764,6 +770,18 @@ def plot_layout(
             # 画进 gtable 的同名槽）。缺这条列整表会横移一个轴宽（SIL-843 实测
             # 8.45pt）。`r.axis.inside` 为真时两条 r 轴都在面板里，不占列。
             guide_rsec = guide_for(build, "r.sec")
+            if guide_rsec is not None:
+                # 标题始终占一列（`axis.title.y.right`）——即使 r.sec 画在面板里
+                # （`r.axis.inside`），R 的 ylab-r 列照样在。
+                y_title_right = max(
+                    y_title_right,
+                    axis_title_extent(
+                        theme,
+                        "right",
+                        _guide_title(guide_rsec, None),
+                        metrics=metrics,
+                    ),
+                )
             if guide_rsec is not None and not params.polar.r_axis_inside:
                 rsec_theme = _axis_guide_theme(theme, params, guide_rsec)
                 ticks_rsec = axis_guide_ticks(
@@ -778,15 +796,6 @@ def plot_layout(
                     y_axis_right,
                     axis_guide_extent(
                         rsec_theme, ticks_rsec, guide_rsec, side="right", metrics=metrics
-                    ),
-                )
-                y_title_right = max(
-                    y_title_right,
-                    axis_title_extent(
-                        theme,
-                        "right",
-                        _guide_title(guide_rsec, None),
-                        metrics=metrics,
                     ),
                 )
         top_scale = _panel_scale(build, panel, params.scale_key("top"))
@@ -2064,7 +2073,8 @@ def _axis_grobs(
                     draw_labels=label_bottom,
                 )
             )
-        if draw_left:
+        inside_r_axes = radial and bool(params.polar.r_axis_inside)
+        if draw_left and not inside_r_axes:
             axis_theme = _axis_guide_theme(theme, params, guide_y)
             gy = axis_guide_ticks(scale_left, params, y_side, guide_y, axis_theme, base=ticks_y)
             grobs.extend(
@@ -2078,6 +2088,39 @@ def _axis_grobs(
                     draw_labels=label_left,
                 )
             )
+        if inside_r_axes:
+            # `r.axis.inside` 为真（或给了 theta 角度）：r / r.sec 两条轴都画在
+            # 面板里，绕面板中心转到 `axis_rotation` 的角度（上游
+            # `CoordRadial$render_fg()` 的 `rotate_r_axis()`）。
+            rotation = params.polar.axis_rotation
+            for axis_guide_obj, axis_side, axis_angle, axis_name in (
+                (guide_y, "left", rotation[0], f"axis-r-{panel}"),
+                (guide_rsec, "right", rotation[1], f"axis-r-sec-{panel}"),
+            ):
+                if axis_guide_obj is None or axis_guide_obj.name == "none":
+                    continue
+                inside_theme = _axis_guide_theme(theme, params, axis_guide_obj)
+                inside_ticks = axis_guide_ticks(
+                    scale_left,
+                    params,
+                    axis_side,
+                    axis_guide_obj,
+                    inside_theme,
+                    base=polar_r_ticks(scale_left, params, axis_side),
+                )
+                grobs.extend(
+                    polar_r_axis_inside_grobs(
+                        inside_theme,
+                        inside_ticks,
+                        cell,
+                        axis_guide_obj,
+                        angle=float(axis_angle),
+                        position=axis_side,
+                        bbox=params.polar.bbox,
+                        name=axis_name,
+                        metrics=metrics,
+                    )
+                )
         # 次轴（top / right）：断点 / 标签 / 位置由 `secondary_ticks()` 推；
         # guide 优先级与主轴一致：`guides(x.sec = ...)` → `dup_axis(guide = ...)`
         # → 默认 `guide_axis()`（R 的 `scale$secondary.axis$guide`）。
@@ -2158,8 +2201,10 @@ def _axis_grobs(
                 )
             )
         line_sides = (
-            *((x_side,) if draw_bottom else ()),
-            *((y_side,) if draw_left else ()),
+            # `coord_radial()`：x / y 两条轴都不画（上游 `render_axis_h/v()` 在这
+            # 种面板里给的是一对 zeroGrob，轴线只由 r / theta 的 guide 自带）。
+            *((x_side,) if draw_bottom and not radial else ()),
+            *((y_side,) if draw_left and not inside_r_axes else ()),
             *(("top",) if gx_top is not None else ()),
             *(("right",) if gy_right is not None else ()),
         )
@@ -2435,7 +2480,11 @@ def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> 
     outer = float(polar.inner_radius[1])
     inner = float(polar.inner_radius[0])
     steps = 179  # R 的 `coord_munch()` 在满圆上的采样点数（外圆 179 段）
-    angles = np.linspace(0.0, 2.0 * math.pi, steps)
+    arc = tuple(polar.arc)
+    full = abs(arc[1] - arc[0]) >= 1.999 * math.pi
+    angles = np.linspace(arc[0], arc[1], steps) if not full else np.linspace(
+        0.0, 2.0 * math.pi, steps
+    )
     xo, yo = polar.point(angles, np.full(angles.shape, outer))
     xs = [float(value) for value in np.asarray(xo)]
     ys = [float(value) for value in np.asarray(yo)]
@@ -2444,7 +2493,7 @@ def _radial_panel_background(polar: Any, element: ElementRect, *, name: str) -> 
         xi, yi = polar.point(angles[::-1], np.full(angles.shape, inner))
         xs.extend(float(value) for value in np.asarray(xi))
         ys.extend(float(value) for value in np.asarray(yi))
-        ids.extend([2] * (len(xs) - len(ids)))
+        ids.extend([1 if not full else 2] * (len(xs) - len(ids)))
     return path_grob(
         xs,
         ys,
