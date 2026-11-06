@@ -1132,7 +1132,7 @@ reason = 'SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation
 reason = 'SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mercator 投影核（含 `orientation` 与经纬度裁剪）未实现，`MapCoord` 只做最小可用。归 M3-2。'
 
 [snapshots."geom-text/geom-text-with-expressions.svg"]
-reason = 'SIL-795 未纳管：`expression(alpha + beta^2, gamma * sqrt(delta))` 走 R 的 plotmath 排版（希腊字母 + 上下标 + 根号笔画，逐 glyph 定位、字号 0.7 倍、根号是 path）。本仓的文本层只吃纯文本，没有 plotmath 解析与排版，`geom_text()` 也没有 `parse = TRUE`。'
+case = "upstream-geom-text-with-expressions"
 
 [snapshots."geom-sf/labels-for-north-carolina.svg"]
 case = "upstream-geom-sf-labels-for-north-carolina"

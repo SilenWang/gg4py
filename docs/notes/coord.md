@@ -242,16 +242,95 @@ M0 交接的遗留口径在本任务收口：
 
 渲染（`ggcore.geom.scene`）：
 
+- **断点走面板范围**（SIL-839）：R 的 `scale$break_info(range)` 拿到的是
+  `setup_panel_params()` 里展开后的 `theta.range` / `r.range`，所以
+  `coord_polar()` 的两条轴都**不展开**——`y` 数据 0.25..0.8 的 r 断点是
+  0.3/0.4/…/0.8 六条（每 0.1），不是标度自己的 5% 展开范围给出的
+  0.4/0.6/0.8 三条。`ggcore.axis.polar_axis_breaks()` / `polar_minor_breaks()`
+  负责这件事；直接调 `scale.breaks()` 会让 r 圈少一半、theta 辐条错位
+  （`matrix-report-facet-polar-grey` 图级 8.54% → 4.45%）；
 - 背景网格换成「theta 辐条 + r 同心圆」：辐条 `0 → 0.45`（radial 从内半径
   到 0.4），圆按 **`r` 的主断点**采样 100 点（polar 额外画 0.45 外圈）。
   R 的 `CoordPolar$render_bg()` 只渲染 `panel.grid.major.<r>`：theta 有 minor
-  辐条，r **没有** minor 圆——`panel.grid.minor.<r>` 在 polar 下不消费（SIL-790）；
+  辐条，r **没有** minor 圆——`panel.grid.minor.<r>` 在 polar 下不消费（SIL-790）。
+  theta 的次辐条序列是 `scales::regular_minor_breaks()` 的原样输出（「每段
+  左端点 + 中点」再补最后一个主断点），**包含主断点本身**，所以每条主辐条会
+  被画两遍（细线压在粗线下，SVG 里两份都在）；
 - theta 标签画在面板里、半径 0.45 处（`axis.text.x` 的样式，`hjust = vjust =
   0.5`）；首尾重合（`ends_apart < 0.05`）时合并成 `"a/b"`；
+
+**polar 网格当前的实测缺口（SIL-839，待修）**：`guide-axis-theta-with-angle-adapting-to-theta`（口径已按上游测试修正：默认 `theme_grey()`，见 `theme.md` 第 6 条）在 55.2% 时，
+逐项数是：
+
+| 元素 | expected.svg | 我们的 SVG |
+| --- | --- | --- |
+| `fill: #EBEBEB` 的 panel 背景 | 1 个 polygon | **1 个 rect ✓**（scene 里也是 1 个 `(235,235,235,255)`） |
+| `stroke: #FFFFFF` 网格线 | **47 条** | **0 条** |
+| `stroke: #333333` | 40 条 | 46 条 |
+
+所以「背景 rect 缺失」不成立——背景两条路径（scene / SVG）都在。缺的是 **polar 的
+网格线**：`theme_grey()` 的 `panel.grid = element_line(colour = paper)`（白）与
+`panel.grid.major` 的 `linewidth = rel(0.1)` 都在，但 `_polar_grid_grobs()` 一条
+都没产出。下一步查这一步（`theme.get("panel.grid.major.x"/".y")` 的解析结果、
+`paint()` 对白的返回值、以及 `polar_theta_ticks()` 是否为空导致早退），改完必须
+跑全量 `cases:matrix`（polar 背景/网格影响所有 polar 快照，`matrix-report-facet-polar-grey`
+当前 4.39% 不能破线）。
 - r 轴在 `left` 槽，位置 `r_rescale(r) + 0.5`（`r.axis.inside` 时不上槽）；
 - `aspect = 1`（polar）或 `diff(bbox$y)/diff(bbox$x)`（radial）作用在**每个
   panel 单元格**上：spacing / strip 不变，整块居中（R 的 `respect`）。
   `coord-polar-facet` 的 141.26pt 面板宽度与 R 逐像素一致。
+
+**radial 的 `respect` 实测（SIL-839，待照抄）**：`coord_radial(inner.radius = 0.5)`
++ `theme_test()` 的 10×8in 图上，`ggplotGrob()` 的表是（grid pt）：
+
+| 项 | 值 |
+| --- | --- |
+| `gt$widths` | `5.5, 0, 0, 0, 12.637(ylab-l), 1null + 0.422cm + max(0, -0.0966cm) + 0.0966cm(axis-l), 1null(panel), 0, 0, 0, 0, 0, 5.5` |
+| `gt$heights` | `5.5, …, 12.637(xlab-b), …, 1null(panel), …, 5.5` |
+| `respect` | `TRUE` |
+| panel viewport | 554.52 × 554.52（grid pt）＝ 552.45 × 552.45（SVG pt） |
+| **实际绘制方形** | **535.11 × 535.11（SVG pt）**（`x = 107.19, y = 22.79`） |
+
+两个数是分开的：panel viewport 552.45，绘制内容只有 535.11，差 **17.34pt**。
+`axis-l` 那一列不是纯 null，而是 `1null + 0.519cm`（0.422 + 0.0966）的复合单位，
+所以 `respect` 的 null 分摊与面板绘制尺寸不是同一个量；差值的 17.34 ≈ 0.519cm(14.71)
++ 2.63，尚未对上是哪一项。**下一步照这张表复刻**：先按 `1null + 0.519cm` 给
+`axis-l` 建模，再看 `respect` 解出来的 null 与实际绘制方形的关系——不要再用
+「可用高度减 17.36」这类数值拟合（SIL-839 试过：方形尺寸对上了，但居中位置差 9.7pt）。
+
+**`0.9686` 的定论（SIL-839，别再在 SVG 坐标系里反推几何）**：`expected.svg` 里量到的
+`#EBEBEB` 背景 polygon 是 **428.10 × 428.08**，而 R 的几何是 **0.1..0.9 npc**，
+按 552.45 的 panel cell 换算应为 `0.8 × 552.45 = 441.97`；`428.10 / 441.97 = 0.9686`。
+refs 环境直接跑 `ggplot2:::coord_munch(coord, data_frame0(x=c(1,1,-1,-1), y=c(1,-1,-1,1))*Inf, pp, is_closed=TRUE)`
+得到的 x/y 范围是 **0.1000..0.9000**（`ggplot2:::r_rescale(35.075, r.range, inner_radius)`
+的上界是 0.4），**几何里没有 0.9686**。所以：
+
+- `0.9686` 是 **svglite 输出层的 viewport 缩放**（panel viewport 的内容坐标被缩放后写进
+  SVG），ggplot2 的几何里不存在；
+- 反过来也成立：**不能拿 `expected.svg` 的绝对坐标当 ggplot2 的几何值**——两边要比较，
+  必须先除以 0.9686（或只比 `尺寸/panel cell` 的比值）；
+- 同一条也解释了为什么我们的背景 rect 441.97 是**对的**、而 SVG 里看起来比 R 大 3.2%。
+
+**`respect` 不是按 null 权重分配，而是整体等比缩放（SIL-839 实测）**：把同一张图的
+panel 列从 `1null` 改成 `2null` 再 draw，panel 从 554.39×554.39 变成 683.93×341.97，
+而**固定列也被一起缩放**——panel 的左边界从 `1.357in` 移到 `0.460in`（`ylab-l` /
+`axis-l` 这些 `grobwidth` / `points` 单位跟着变了）。把 panel 行改成 `2null` 同样让左边界
+跳到 `3.274in`。所以 `_aspect_panel_area` **不能**按「两轴 null 的权重比例」算，也不该引入
+常数：grid 在 `respect = TRUE` 时先把 fixed 单位与 null 一起按比例缩放，再让 null 相等。
+
+`coord_sf()` 的同一次实测（`r-sf` 已进 refs 环境）：
+
+| 项 | 值 |
+| --- | --- |
+| `widths` | `5.5, 0, 0, 0, 12.637(ylab-l), **sum(0cm, 1null, 0.8287cm, 0null, max(0,-0.0966cm), 0.0966cm)**(axis-l), 1null(panel), **sum(0.0966cm, max(0,-0.0966cm), 0null, 0.7790cm, 0.8478cm, 1null, 0cm)**(axis-r), 12.637(ylab-r), …, 5.5` |
+| axis-l 的**固定**部分 | 0.8287 + 0.0966 = 0.9253cm ＝ 26.22pt（`convertWidth` 对它给 26.33，null 不计） |
+| axis-r 的固定部分 | 1.7234cm ＝ 48.83pt |
+| panel viewport | 397.65 × 528.19（grid pt，**非方形**：528.19/397.65 = 1.328 = sf 的 aspect） |
+| 实际绘制内容 | 383.48 × 509.38（SVG pt）＝ cell × **0.9644**（等比缩放，不是减常数；radial 那条同样是等比：535.11 / 552.45 = 0.9686） |
+
+**下一轮照这张表复刻**：先按 `1null + 固定 cm` 给三类列（panel / axis-l / axis-r）建模，
+把 grid 的「整体等比缩放」写进 `_aspect_panel_area`，再核对 0.9644 / 0.9686 这同一个
+缩放因子；不要再用「减 17.36」这类常数（regression：数值拟合会让居中位置差 9.7pt）。
 
 **`axis-b` 行（SIL-790 已对齐）**：R 的 `CoordPolar$render_axis_h()` 返回
 `draw_axis(NA, "", "bottom")`，`ggplotGrob()` 仍给底部轴留一行：刻度长度 +
@@ -260,6 +339,13 @@ theta 标签行。标签行高来自 `titleGrob`（`grobheight + |cos θ|·desce
 `axis-b = 6.94 pt`），见 `ggcore.axis.polar_axis_row_cm()`。修前按 0 处理，
 带轴的 polar 图面板比 R 大 6.8 pt，同心圆全部错位（`numeric-polar` 图级
 5.24% → 1.78%）。轴文字是 `element_blank()` 时只剩刻度长度。
+
+`coord_radial()` **没有**这一行（SIL-839）：它的 `render_axis_h()` 在
+`r.axis.inside = FALSE`（整圆时的默认值）才委托给 `CoordCartesian`，而 radial
+的 `panel_params` 只有 `theta` / `r` 两组 view scale、没有 `x`，于是左右两侧
+拿到的都是 `zeroGrob()`。R 的 gtable 实测（`guide-axis-theta with angle adapting`，
+10×8in）：row 10（`axis-b`）= 0，只有 row 11（`xlab-b`）= 12.97pt。theta 标签
+永远画在面板里，不占行列。
 
 ## 10. `coord_munch()`
 
@@ -351,3 +437,358 @@ coord 族的案例（`docs/cases/coord-*`，12 条，全部 `ci = true`）：
 | `coord-radial-partial` / `coord-radial-inner` | partial arc / 甜甜圈 |
 | `coord-sec-axis` | 右侧次轴 + 标题 |
 | `coord-quickmap` | 经纬度的等距圆柱近似 |
+
+**数 SVG 要用 `pixi run svg:stats -- a.svg b.svg`**（SIL-839）：颜色先归一化
+（`white` / `#FFFFFF` / `rgb()` / `grey60`）再按 `(stroke, stroke-width)` 分组，
+两个 SVG 并列打出差异。手数连通两轮栽在 `#FFFFFF` vs `white` 上。
+注意它数的是**元素数**：R 的 `element_render(..., id.lengths = rep(2, n))` 会把
+theta 的 35 条次辐条合成**一个** `<polyline>`，我们的设备每条一组元素——所以
+「`#FFFFFF 0.53` 23 vs 35」这种差首先是分组差，必须再数线段（`points` 个数 / 2）
+才能判断几何是否真的多画了。
+
+**参考系换算的完整例子（SIL-839，跨文件比较必须走这一步）**
+
+同一个元素（`panel.background`，几何上是 npc 0.1..0.9）在两个文件里的绝对 x：
+
+| | 左边界 | 右边界 | 宽度 |
+| --- | ---: | ---: | ---: |
+| `expected.svg`（svglite） | 160.70 | 588.80 | 428.10 |
+| 我们的 SVG | 152.665 | 594.634 | 441.970 |
+
+由这两个点解 `x_expected = a + s · x_ours`：
+
+- `s = 428.10 / 441.970 = 0.96861`
+- `a = 160.70 − 0.96861 × 152.665 = 12.83`
+
+用中心回验：R 的中心 `374.75` 换算到我们的参考系是
+`(374.75 − 12.83) / 0.96861 = 373.65`，我们的中心是 `373.649`——**差 0.001**。
+
+所以之前记的「中心差 1.10 = `axis-l` 列宽」**是参考系产物**，换算后归零；
+`coord_sf` 那条的 1.1pt 与本条不是同一根因，不要合并处理。
+
+**`coord_sf` 的 1.1pt 是真实存在的（SIL-839 实测，非参考系产物）**
+
+两边的页面坐标系完全一致（`viewBox` 都是 `0 0 720 576`、根节点无额外 transform），
+所以直接取 panel 绘制区（`clipPath` 的 rect）比较即可：
+
+| | 左 | 顶 | 宽 | 高 |
+| --- | ---: | ---: | ---: | ---: |
+| `expected.svg` | 157.15 | 48.55 | 383.48 | 509.38 |
+| 我们的 SVG | 156.05 | 48.40 | 383.61 | 509.54 |
+| 差 | **+1.10** | +0.15 | −0.13 | −0.16 |
+
+宽度与高度几乎相等（差 0.13 / 0.16），**只有左边少 1.10**——即 `plot.margin` +
+`axis.title.y` + `axis-l` 这一串左侧固定宽度合计少 1.1pt。
+
+我们这边的 `y_axis`（axis-l）是 **25.42pt**；R 的 gtable 里 `axis-l` 固定部分是
+`0.8287cm(axis.text) + 0.0966cm(ticks)` = **26.22pt**。差 **0.80pt**，
+剩下 0.30pt 应在 `plot.margin`（5.5 vs 5.48）与 `axis.title.y`（12.637 vs 12.57）的
+舍入差里，合计刚好 1.1。
+
+修法（尚未实施）：把 angle≠0 轴标签的旋转 extent 固定部分从 25.42 提到 26.22
+（`_label_stats` 的 `cross` 项），再跑全量矩阵确认没有别的角度轴被带偏。
+
+**`0.8pt` 归因到哪一类：隔离实验的第一轮（SIL-839，未收敛）**
+
+思路是拿 0°/90° 的已绿 case 比 `axis-l` 列宽——0° 时 `cross` 只吃 `line`，
+90° 只吃 `width`，两条都对得上就说明字体口径没问题、`0.8pt` 落在旋转路径的附加项上。
+
+第一轮选的是 `upstream-guide-axis-axis-guides-basic`（0°，`theme_test()`）：
+
+| | 我们 |
+| --- | ---: |
+| `y_axis`（axis-l） | 4.73pt |
+| `x_axis`（axis-b） | 7.32pt |
+
+**这条不能用来做隔离**：它的轴标签是单字符（`"0"` 这类），`x_axis 7.32pt`
+里几乎全是 tick。要判断字体口径得挑一条 **0° + 8.8pt 长标签**的 case
+（和 `coord_sf` 同字号），再和 R 的 `axis-l` 固定部分
+（`0.8287cm(axis.text) + 0.0966cm(ticks)` = 26.22pt）对——两者一致就说明
+`text_line_cm` 没问题，`0.8pt` 属于旋转附加项；差 0.8 就是字体口径。
+
+**下一轮第一件事**就是这条对照（一条 0° 长标签 case 的 `y_axis_cm` 对 26.22），
+不要直接改 `_label_stats()`——按 SIL-839 的硬要求，`0.8pt` 必须先归到某个分量。
+
+**`0.8pt` 归因完成：不在字体口径，在旋转路径（SIL-839 原语直接对比）**
+
+refs 里直接量 grid 原语（`textGrob("25", gp = gpar(fontsize = 8.8))`），对我们同口径函数：
+
+| 量 | R（pt） | 我们（pt） | 差 |
+| --- | ---: | ---: | ---: |
+| 行高 `grobHeight` / `text_line_cm(8.8)` | 6.486232 | 7.8716（`TEXT_LINE_EM = 0.8945`） | **+1.385** |
+| 字宽 `grobWidth` / `text_width_cm("25", 8.8)` | 10.04553 | 10.56 | **+0.514** |
+
+45° 下 `cross = 0.707·(width + line)`，所以字体原语让我们**偏大**
+`(1.385 + 0.514) × 0.707 = +1.34pt`。
+
+而实测我们的 `axis-l` 反而**小 0.80pt**。两者符号相反 ⇒
+
+```
+旋转路径上还少了一项 ≈ 1.34 + 0.80 = 2.14pt
+```
+
+再拆一层：两边 `axis.text` 部分（扣掉 `axis.ticks.length` 2.74pt）：
+
+| | `axis.text` 段 | 旋转 extent（`0.707·(w+line)`） | 余下 margin |
+| --- | ---: | ---: | ---: |
+| R | 23.49 | 11.69 | **11.80** |
+| 我们 | 22.68 | 13.03 | **9.65** |
+
+**差额正好 2.15pt，落在 margin 上，不在字体度量。** 所以不要改 `TEXT_LINE_EM` /
+`text_width_cm`（我们本来就比 R 大 1.34pt，改了只会更偏）；要改的是旋转标签那段
+（`_label_stats()` 里 `ml + mr` / `mt + mb` 的取用，以及 R
+`R/guide-axis.R` 的 `axis_label_element` → `axis.text.x` margin 口径）。
+
+**待改规格：`axis-l` 的两项必须一起改（SIL-839 转 review 时的缺口清单）**
+
+只补 margin 会超，只改 extent 会少——两项是耦合的：
+
+| | 旋转 extent | margin | 合计 |
+| --- | ---: | ---: | ---: |
+| R | 11.69 | 11.80 | **23.49** |
+| 我们 | 13.03 | 9.65 | **22.68** |
+
+1. **旋转 extent** 换成 R 口径：`0.707 × (strwidth + strheight)`
+   = `0.707 × (10.0455 + 6.4862)` = **11.69**。
+   现状用的是 `text_line_cm()`（`TEXT_LINE_EM = 0.8945`，
+   `facet.py` 注释说明它是「R 的 `stringHeight()` + descent」）与
+   `text_width_cm()`（10.56，比 `grobWidth` 大 0.51）——
+   旋转 bbox 应当用 **`grobWidth`/`grobHeight` 的值**，不是 line-em。
+2. **margin** 按 R 的 **11.80** 取（现状 9.65）。
+
+**验收看合计 `23.49`（+ `axis.ticks.length` 2.74 = 26.22），不要逐项去凑**——
+单项能对上是因为两项互相抵消，SIL-839 前几轮的 0.8 / 1.13 都是这么绕出来的。
+
+动手前需确认：`text_line_cm()` / `text_width_cm()` 只服务布局，还是也参与字形推进
+（`axis.py:785/849/851`、`axis_guide.py:747/849`、`facet.py:1935` 都是布局侧的调用，
+但 `Metrics.strwidth()` 若同时用于绘制，改口径会让已渲染文本跟着变）。
+
+**列宽的真正入口是 `_label_box()`，不是 `_label_stats()`（SIL-839 更正）**
+
+- 列宽 / 轴带尺寸全部由 `_label_box()`（`src/ggcore/axis_guide.py:719`）的
+  `width·cos + line·sin` / `width·sin + line·cos` 决定；
+- `_label_stats()`（同文件 `:839`）**只服务 `check.overlap` 与标签定位**，改它列宽纹丝不动
+  （SIL-839 实测：改 `_label_stats()` 后 `coord_sf` 的 panel clip 左边界仍是 156.05，
+  改 `_label_box()` 才变成 154.94）。
+
+**R 侧两点实验的实测值（refs，`guide_axis(angle = 45)` + `theme_grey()`）—— 两条结论未定论**
+
+```
+axis.text.x size    : 8.8
+axis.text.x margin  : 2.2points, 0points, 0points, 0points
+gtable axis-b 行高  : 读到 0cm（p1 与 margin=0 的 p2 都是 0）
+```
+
+**这两条结论目前未定论，不要据此改代码**（SIL-839 复核）：
+
+- 这张图是 **mtcars 代理图，不是 `coord_sf` 那条 case**；
+- 一张有可见底部轴标签的图，`axis-b` 行高不该是 0cm——两版都读到 0，
+  说明取的行索引/行名不对（`heights` 里固定行不止一个：`panel-spacing` /
+  `axis-t` / `axis-b` 都在），必须用 `gt$layout$name == "axis-b"` 精确定位。
+
+要定论，得用**这条 case 自己的 gtable**：把 `docs/cases/upstream-coord-sf-coord-sf-with-custom-guides/plot.py`
+的代码在 refs 里原样跑出来，`ggplotGrob()` 后按 `layout$name` 取 `axis-l` 的列和
+`axis-b` 的行，再用 `widthDetails()` / `heightDetails()` 出宽高。R 的 axis-l
+26.22pt（0.8287cm + 0.0966cm）本来就是从这条 case 量到的，直接对它即可。
+
+在那之前，「margin 11.80 / 合计 23.49」和「margin 只有 2.2pt / extent 不占行高」
+**两套数字都不作数**。
+
+**`expected.svg` 的 panel cell 实测值（SIL-839，直接量，不是换算）**
+
+`guide-axis-theta-with-angle-adapting-to-theta` 的 `clipPath` id 是 base64：
+
+```
+cpNzIuMjB8NjQ3LjgwfDAuMDB8NTc2LjAw  →  72.20|647.80|0.00|576.00
+```
+
+即 **cell = 575.60 × 576**（x 72.20–647.80，y 0–576），几乎占满 720×576 的页面。
+
+**这推翻了本文档前面「panel viewport 552.45」那个数**——它是从 grid pt 换算来的推断值，
+从未被直接量过（SIL-839 反复翻车的根因之一）。实测 cell 比它大 **23.15**。
+
+同一元素在两个文件里的比值（比值与全局缩放无关，可直接比）：
+
+| | cell | 背景/圆 bbox | 比值 |
+| --- | ---: | ---: | ---: |
+| `expected.svg` | 575.60 | 428.10 | **0.7437** |
+| 我们的 SVG | 552.46 | 441.97 | **0.8000** |
+
+两边**都不是** 0.800，差异分成两个独立项：
+
+1. **cell 尺寸**：R 575.60 vs 我们 552.46（差 23.14，**4.2%**）→ 版面（`_aspect_panel_area`）；
+2. **圆/cell 比值**：R 0.7437 vs 我们 0.8000（**7%**）→ 半径口径。
+
+两项叠加才是 29.67% 的来源，不能只改其中一个。
+
+**更正（SIL-839）：`clipPath` 不是 panel cell，上一节的 575.60 作废**
+
+`cpNzIuMjB8NjQ3LjgwfDAuMDB8NTc2LjAw`（72.20|647.80|0.00|576.00）的
+x 中心是 **360.00**、y 中心 **288.00**，而背景/圆的中心是 **374.75 / 290.34**——
+极坐标的圆心必须在 cell 的 0.5/0.5，差 14.75 说明**这个 clip 是页面级裁剪**，不是 cell。
+
+反验：若 cell 宽是 552.45、圆心 374.75，则左边界 = `374.75 − 276.2 = 98.5`，
+与 R gtable 里量到的 panel 左边界 **98.52** 吻合。**所以 cell 仍是 552.45，
+`_aspect_panel_area()` 不要动。**
+
+半径比值回到 `428.10 / 552.45 = 0.7750`（R）vs `441.97 / 552.46 = 0.8000`（我们），
+**3.2% 的半径口径差是真的**。而它早有记录：本文档前面写过
+「panel viewport 552.45，绘制内容只有 535.11，差 17.34pt」——
+`0.4 × 535.11 = 214.04` 正是 R 画出来的半径，`0.4 × 552.45 = 221.0` 是我们的。
+**所以 `polar.point()` 用的是 cell 尺寸，而 R 用的是内容区 535.11。**
+
+**定论：0.9686 在 svglite 输出层（SIL-839，refs 直接问 panel viewport）**
+
+```r
+panel <- gt$layout[grepl("^panel", gt$layout$name), ]   # panel.9-7-9-7
+seekViewport("panel.9-7-9-7"); current.viewport()
+# xscale:   0 1
+# yscale:   0 1
+# npc W/H:  554.5235 pt（grid pt）
+# children: （空）
+```
+
+三点一起排除了「cell 内还有一层更小的绘制区」：
+
+1. **xscale / yscale 都是 0..1** —— 没有 expand、没有内容区缩放；
+2. **npc 就是 554.52**，与 cell 同一个量，不存在 535.11 那一层；
+3. **没有任何子 viewport**。
+
+于是：
+
+```
+R 的几何半径 = 0.4 × 554.52 = 221.8 grid pt = 220.98 SVG pt
+expected.svg 实测圆半径 = 428.10 / 2 = 214.05
+214.05 / 220.98 = 0.9686
+```
+
+**几何里没有这个 0.9686，它只能发生在 `ggplot_gtable` 之后、写进 SVG 的那一步**（svglite 的输出环节）。
+
+**连带作废的两条**（都是我从 SVG 坐标反推、被这个输出缩放污染的量）：
+
+- 本文档前面「panel viewport 552.45，绘制内容只有 535.11」里的 **535.11 不是 ggplot2 的几何量**，它是 SVG 坐标；用它推「半径口径差 3.2%」是错的；
+- 上一节用页面级 clip 算出的 **575.60 也已作废**（clip 是页面级裁剪，不是 cell）。
+
+**比较规则（此后一律按这个来）**：拿 `expected.svg` 的绝对坐标和我们的 SVG 比之前，
+先除以 0.9686，或只比「尺寸 / panel cell」的比值——**不要拿绝对像素直接相减**。
+`polar.point()` 的 0.4 是对的，不需要改。
+
+**`coord$transform` 的直接输出：R 的 npc 半径就是 0.4（SIL-839，非反解）**
+
+```r
+b <- ggplot_build(p); pp <- b$layout$panel_params[[1]]; coord <- b$layout$coord
+coord$transform(data.frame(theta = 0, r = pp$r.range[2]), pp)
+#   theta    r        x         y
+# 5.555758  0.4  0.234020  0.7987551      ← r 列仍是 0.4，x/y 就是 0.4·sin/+0.5
+```
+
+**`CoordRadial$transform()` 对 `r.range` 上界返回 0.4，不是 0.3875。**
+这条是变换层的直接输出，不是从像素反解，所以它是几何侧的终值。
+
+于是 `0.9686` 只能发生在 **transform 之后**（绘制 / viewport 层）。而 `current.viewport()`
+已经量过：`panel.9-7-9-7`、xscale/yscale `0..1`、npc `554.52`、**无子 viewport**——
+**几何侧没有任何 0.9686**。
+
+**由此：`expected.svg` 里 `428.10` 那个 bbox 的测量本身可疑**——它要么不是圆的直径
+（`0.8 × 552.45 = 441.96` 才是），要么量的不是背景 polygon。在这一点查清之前，
+不要再用它推任何「基准错 / 半径差」。
+
+**「绘制内容区 535.11」标注为不可用作前提**：它是 `214.05 / 0.4` 反解出来的，
+**不是独立测量**（SIL-839 复核）。用它证明「基准错了」是循环论证。
+
+**`render_bg` 的 grob 全都没有 vp —— 0.9686 不在 ggplot2 侧（SIL-839 实测）**
+
+```r
+gp <- coord$render_bg(pp, theme_grey())
+# class: gTree,grob,gDesc
+# gp$vp: NULL
+# child names: GRID.polygon.11 / panel.grid.minor.y / panel.grid.minor.x /
+#              panel.grid.major.y / panel.grid.major.x
+# 每个 child 的 vp 也都是 NULL
+```
+
+两点结论：
+
+1. **没有任何 grob 级 viewport**：背景与四条网格全部直接画在 panel viewport
+   （554.52、xscale/yscale `0..1`）里，坐标就是 npc。**ggplot2 侧不存在 0.9686**。
+2. **网格 grob 的 name 就是 `panel.grid.major.x`（theta 辐条）/ `panel.grid.major.y`
+   （r 同心圆）**，`.minor` 同理——这是上游的命名，`_polar_grid_grobs()` 要对齐它，
+   `scratch/ablate.py` 按 name 过滤时也应认这四个名字。
+
+**svglite 的输出坐标与 grid pt 不是 1:1**：同一条边，grid 里 panel 是 **554.52**，
+而 `expected.svg` 里页面级 clip 宽 **575.61**（比值 1.0381，其倒数 0.9633 与
+`428.10 / 441.96 = 0.9686` 同量级）。所以「SVG 坐标 ÷ 0.9686 才可比」这条规则继续有效，
+`polar.point()` 的 0.4 也是对的。
+
+**A/B 实测：把 polar 内容缩 0.9686 会让 5 条快照全部变差 —— 不要复现它（SIL-839）**
+
+把 `CoordRadial.point()` 的 npc 半径乘 0.9686（环境变量开关，默认 1.0），跑 5 条：
+
+| case | 原样 | ×0.9686 |
+| --- | ---: | ---: |
+| `upstream-guide-axis-theta-angle` | 29.67% | **29.87%** |
+| `upstream-coord-polar-three-circles` | 1.14% | **4.71%** |
+| `upstream-scales-numeric-polar` | 1.30% | **3.79%** |
+| `matrix-report-facet-polar-grey` | 4.39% | **12.27%** |
+| `coord-polar-theta-y` | 0.16% | **0.38%** |
+
+**五条全部变差**，其中三条本来绿的变差 3–8 倍。实验已完整回滚（`coord.py` 与推送
+HEAD 逐字节一致）。
+
+**字形也给了独立否证**：`expected.svg` 里 40 处 `font-size: 8.80px`——是**标称值**，
+没有乘 0.9686（否则应是 8.52px）。也就是说期望图里**只有圆的几何小 3.2%，字形没缩**，
+「整张图被等比缩放」这个解释不成立。
+
+**结论**：那个 3.2% 是 svglite 落在圆/多段路径上的输出特性，不是几何差异；
+我们复现它只会让所有 polar 快照变差。`polar.point()` 的 0.4、`_aspect_panel_area()`
+都保持原样，这条 case 的「半径项」正式排除，差异回到面板内容与元素本身。
+
+**止损记录：`0.9686` 不是全局径向常量（SIL-839，A/B 实测后回滚）**
+
+把 `POLAR_RADIUS_TO_REFERENCE = 0.9686` 一处定义在 `coord.py`，作用于
+`radius()` + 背景 rect + 辐条外端（角度、文字不动），跑 5 条 polar：
+
+| case | 改前 | 改后 | 变化 |
+| --- | ---: | ---: | ---: |
+| `upstream-guide-axis-theta-angle` | 29.67% | **27.31%** | −2.36pp ✓ |
+| `upstream-coord-polar-three-circles` | 1.14% | 3.53% | **+2.39pp** ✗ |
+| `upstream-scales-numeric-polar` | 1.30% | 2.74% | **+1.44pp** ✗ |
+| `matrix-report-facet-polar-grey` | 4.39% | 10.48% | **+6.09pp** ✗ |
+| `coord-polar-theta-y` | 0.16% | 0.38% | +0.22pp ✗ |
+
+**三条已绿的 polar 快照恶化 1.4–6.1pp**，远超 0.5pp 阈值 → 已完整回滚。
+
+**结论**：`0.9686` 只对 `guide-axis-theta-angle` 这一条期望图成立，不是 ggplot2
+侧的全局径向口径。若是全局，四条本来 1% 上下的 polar 快照不可能同时恶化——
+它们和这条 case 共用同一套 polar 映射。最可能是这条 `expected.svg` 来自另一份
+设备参数/渲染器版本的快照。
+
+**这条 case 的剩余缺口**（不再深挖，转其余收口）：
+
+1. 元素层面：`grid` 2.02pp、`axis` 2.39pp 已实测（`ablate.py` 按 `gpar.col` 认，
+   经过字节自检）；`text` / `bg` / `points` 三行仍失效，原因已定位
+   （`text` 的 `keep()` 末尾 `or True` 恒真、`bg` 依赖为空的 `params["name"]`）；
+2. 库缺口（与像素差独立）：`axis.line.theta` / `axis.ticks.theta` / `cap` /
+   逐 guide `theme=` / 多环 `stack_offset`；
+3. 待收：`coord_sf-with-custom-guides` 2.85% / 1.00%、
+   `matrix-report-facet-polar-grey` 4.39%（`ci = true`，report band 不得破 1% 均值）。
+
+## 待办：sf 多边形的 linewidth（不是本 issue 收）
+
+- **上游真值**：refs 里 `ggplot_build(p)$data[[1]]$linewidth` = **0.2**，来自
+  `GeomSf$default_aes` 的 `linewidth = 0.4 * borderwidth`（`borderwidth = 0.5`）。
+- **已改**：`SF_POLYGON_DEFAULTS["linewidth"]` 从写死的 `0.43` 改成
+  `FromTheme("borderwidth * 0.4")`，并在 `geom/sf.py` 加了 `_sf_default()` 让兜底
+  也走 `FromTheme.evaluate()`（直接 `float(FromTheme)` 会 `TypeError`）。
+- **未查明**：数据列实际取到 **0.3225**，与 0.2 不符。`number()` 的兜底只在整列 NA
+  时触发，所以这个值来自 `use_defaults()` / `build.finish()` 那条链，追下去要另开一轮。
+- **svglite 的写出口径**：`0.2 × 72.27/25.4 = 0.569 pt`，而 `expected.svg` 的
+  `stroke-width` 是 `0.43`，差 1.32 倍。这是 svglite 的 `lwd → stroke-width` 换算，
+  与 ggcore 无关，留给几何 stage。
+
+**已排除的三条假设（不要重走）**：
+
+1. 「`SF_POLYGON_DEFAULTS` 没生效」——`sf.py:147` 的
+   `{**_geom_defaults("polygon"), **SF_POLYGON_DEFAULTS}` 展开顺序证明它覆盖了 0.5；
+2. 「双重换算」——`_draw_polygon` 里的 `× POINT_PER_MM` 是 mm→pt，本身正确；
+3. 「兜底常量」——`number()` 的 `0.43` 兜底只在整列 NA 时触发，实际走的是数据列。

@@ -389,3 +389,59 @@ def test_bins_reverse_mirrors_keys_and_labels() -> None:
     ticks_labels = [label for _position, label in layout.ticks]
     assert reverse_top == max(ticks_labels)  # R 的 reverse：高值在上
     assert plain_top == min(label for _position, label in plain_layout.ticks)
+
+
+def _text_nodes(node):
+    """遍历 IR，收集文本节点。"""
+    if getattr(node.kind, "value", "") == "text":
+        yield node
+    for child in getattr(node, "children", ()):
+        yield from _text_nodes(child)
+
+
+def test_theta_axis_stack_is_constructible() -> None:
+    """`guide_axis_stack("axis_theta", ...)` 不再抛 `ValueError`（SIL-839）。
+
+    单轴 stack 在 R 里就是那一轴本身（第一层的 `stack_offset` 是 0）；真正的
+    多层沿半径叠放还没做，见 `docs/notes/guide.md` §8.5。这里钉住「可构造 +
+    能出图」，避免整条 `coord_radial()` + `guides(theta=...)` 路径直接报错。
+    """
+    from ggcore.plot import (
+        aes,
+        coord_radial,
+        geom_point,
+        ggplot,
+        guides,
+    )
+    from ggio.frame import to_column_table
+
+    stack = guide_axis_stack("axis_theta", guide_axis_theta(cap="both"))
+    assert stack.is_stack
+    assert stack.guides[0].is_theta
+
+    plot = (
+        ggplot(to_column_table({"x": [1.0, 2.0], "y": [1.0, 2.0]}), aes(x="x", y="y"))
+        + geom_point()
+        + coord_radial(inner_radius=0.5)
+        + guides(theta=stack)
+    )
+    scene = scene_from_plot(plot, width_in=4, height_in=3)
+    labels = list(_text_nodes(scene.root))
+    assert labels, "theta 轴标签没画出来"
+
+
+def test_axis_guide_theme_is_per_guide() -> None:
+    """`theme=` 只挂在这条 guide 上（R 的 `Guide$theme`），不串到全局 theme。
+
+    `axis.line.theta` / `r.axis.inside` / `rotate.angle` 都读这条 per-guide theme，
+    所以它是 theta 轴那几项的基础（SIL-839 §8.5）。
+    """
+    from ggcore.axis_guide import guide_axis, guide_axis_theta
+
+    sentinel = object()
+    assert guide_axis().theme is None
+    assert guide_axis(theme=sentinel).theme is sentinel
+    assert guide_axis_theta().theme is None
+    assert guide_axis_theta(theme=sentinel).theme is sentinel
+    # 逐 guide 独立：A 的 theme 不会出现在 B 上
+    assert guide_axis(theme=sentinel).theme is not guide_axis().theme

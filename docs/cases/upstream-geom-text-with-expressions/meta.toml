@@ -1,0 +1,7 @@
+family = "geom"
+features = ["geom-text", "plotmath", "lab-title"]
+ci = true
+title = "上游快照：geom_text 的 plotmath 表达式"
+source = "upstream:tests/testthat/_snaps/geom-text/geom-text-with-expressions.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-839：`geom_text(parse = TRUE)` 走 `ggcore.plotmath`（希腊字母 / 上标 0.7 倍且抬 0.502em / 根号 5 点折线）。实测 0.51% / 0.09%。"

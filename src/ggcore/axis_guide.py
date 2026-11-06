@@ -94,6 +94,11 @@ class AxisGuide:
     #: `guide_axis_stack()`：按顺序叠放的子 guide。
     guides: tuple[AxisGuide, ...] = ()
     spacing: Any = None
+    #: 逐 guide 主题（`guide_axis(theme = ...)`）：只覆盖**这一条 guide** 的元素，
+    #: 不串到全局 theme。R 里它挂在 `Guide$theme` 上，渲染时与全局 theme 合并后
+    #: 只作用在该 guide 的 grob 上（`axis.line.theta` / `r.axis.inside` /
+    #: `rotate.angle` 都读它）。
+    theme: Any = None
 
     def __post_init__(self) -> None:
         if self.name not in _AXIS_NAMES:
@@ -132,6 +137,7 @@ def guide_axis(
     cap: str = "none",
     position: str | None = None,
     order: float = 0.0,
+    theme: Any = None,
 ) -> AxisGuide:
     del order  # 轴 guide 的 order 在 R 里也只用于 guides() 排序，轴本身不读
     return AxisGuide(
@@ -143,6 +149,7 @@ def guide_axis(
         minor_ticks=bool(minor_ticks),
         cap=cap,
         position=position,
+        theme=theme,
     )
 
 
@@ -237,6 +244,7 @@ def guide_axis_theta(
     angle: float | None = None,
     minor_ticks: bool = False,
     cap: str = "none",
+    theme: Any = None,
 ) -> AxisGuide:
     return AxisGuide(
         name="axis_theta",
@@ -244,6 +252,7 @@ def guide_axis_theta(
         angle=angle,
         minor_ticks=bool(minor_ticks),
         cap=cap,
+        theme=theme,
     )
 
 
@@ -1292,24 +1301,107 @@ def polar_axis_grobs(
     *,
     metrics: Any = None,
     name: str = "axis-theta",
+    secondary: bool = False,
+    stack_offset_cm: float = 0.0,
 ) -> list[Any]:
-    """极坐标 theta 标签：半径 0.45，锚点 / 角度照 `GuideAxisTheta$build_labels()`。"""
-    from ggcore.axis import font_int, paint, polar_theta_ticks
-    from ggcore.grobs import text_grob
+    """极坐标 theta 轴：轴线 + 刻度 + 标签（`GuideAxisTheta`）。
+
+    几何照 4.0.3 的 `GuideAxisTheta$transform()` / `build_labels()`：
+
+    - key 落在 `coord_radial()` 的**径向端点**：主轴 `inner_radius[1]`（满圆 0.4）、
+      `theta.sec` 是 `inner_radius[0]`（内半径，full circle 时 0.2）——上游把
+      key 的另一个美学设成 `±Inf`，再经 `r_rescale()` 夹到 donut 的两端；
+    - `theta.sec` 的 key 角度再加 `π`（`if (position == 'theta.sec') key$theta + pi`）；
+    - 标签从 key 沿半径外推 `offset = max(0, 主轴刻度长, 次刻度长) + max(文字 margin)`，
+      `guide_axis_stack()` 叠放时再加 `spacing + 上一层 offset`（`stack_offset_cm`）；
+    - 标签旋转：`guide$angle` 是 waiver 时**不随 theta 转**（用 `axis.text.theta$angle`）；
+      显式给定时 `flip_text_angle(angle - rad2deg(theta))`；
+      `hjust = 0.5 - sin(θ + rad)/2`、`vjust = 0.5 - cos(θ + rad)/2`；
+    - 轴线是沿 key 半径的弧（`axis.line.theta`），`cap` 把两端各延长一个刻度长。
+    """
+    from ggcore.axis import (
+        font_int,
+        margin_sides_cm,
+        paint,
+        polar_theta_ticks,
+        tick_length_cm,
+    )
+    from ggcore.grobs import polyline_grob, segments_grob, text_grob
     from ggcore.viewport import gpar
 
-    element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
-    if isinstance(element, ElementBlank) or not isinstance(element, ElementText):
+    polar = getattr(params, "polar", None)
+    if polar is None or scale is None or box.width_cm <= 0:
         return []
     entries = polar_theta_ticks(scale, params)
     if not entries:
         return []
     guide = guide or AxisGuide(name="axis_theta")
-    if guide.is_stack:  # pragma: no cover - R 的 theta 叠放需要 offset，暂不支持
-        raise ValueError(
-            "guide_axis_theta 暂不支持与 guide_axis_stack 叠放（见 docs/notes/guide.md）"
+    element = theme.get("axis.text.theta") or _text_element(theme, "bottom")
+    grobs: list[Any] = []
+
+    # `coord_radial()` 的 key 落在径向端点（主轴 `inner_radius[1]`、`theta.sec` 是
+    # `inner_radius[0]`）；`coord_polar()` 的历史口径是网格外圈 0.45（SIL-839 之前
+    # 就按 0.45 画，`matrix-report-facet-polar-grey` 已经在这条口径上转绿，不动它）。
+    if polar.radial:
+        key_radius = float(polar.inner_radius[0] if secondary else polar.inner_radius[1])
+    else:
+        key_radius = 0.45
+    thetas = np.asarray([entry[3] for entry in entries], dtype=np.float64)
+    if secondary:
+        thetas = thetas + math.pi
+
+    tick_cm = tick_length_cm(theme, "bottom")
+    text_margin = 0.0
+    if isinstance(element, ElementText):
+        margins = margin_sides_cm(getattr(element, "margin", None))
+        text_margin = max(margins) if margins else 0.0
+    offset = (max(0.0, tick_cm) + text_margin + stack_offset_cm) / box.width_cm
+
+    # 轴线 / 刻度只在 `coord_radial()` 上补：`coord_polar()` 的 `render_fg()`
+    # 只画 theta 标签（`matrix-report-facet-polar-grey` 等 7 条已纳管 case 就是
+    # 在那条口径上转绿的，别顺手改它）。
+    line_element = theme.get("axis.line.theta") if polar.radial else None
+    line_gp = _line_gp(line_element) if line_element is not None else None
+    if line_gp is not None and len(thetas) > 1:
+        angles = _arc_angles(thetas, cap=guide.cap, tick=tick_cm / box.width_cm)
+        xs, ys = polar.point(angles, np.full(angles.shape, key_radius))
+        grobs.append(
+            polyline_grob(
+                [box.x_cm + float(value) * box.width_cm for value in np.asarray(xs)],
+                [box.y_cm + float(value) * box.height_cm for value in np.asarray(ys)],
+                default_units="cm",
+                gp=line_gp,
+                name=f"{name}.line",
+            )
         )
-    base_angle = float(guide.angle) if guide.angle is not None else float(element.angle or 0.0)
+
+    # 刻度：从 key 沿半径向外（`theta_tickmarks()` 的 `length` 从 0 到 length）。
+    tick_element = theme.get("axis.ticks.theta") or theme.get("axis.ticks")
+    tick_gp = _line_gp(tick_element) if polar.radial and tick_element is not None else None
+    if tick_gp is not None and tick_cm > 0:
+        step = tick_cm / box.width_cm
+        x0, y0 = polar.point(thetas, np.full(thetas.shape, key_radius))
+        x1, y1 = polar.point(thetas + math.pi * 0, np.full(thetas.shape, key_radius + step))
+        grobs.append(
+            segments_grob(
+                [box.x_cm + float(value) * box.width_cm for value in np.asarray(x0)],
+                [box.y_cm + float(value) * box.height_cm for value in np.asarray(y0)],
+                [box.x_cm + float(value) * box.width_cm for value in np.asarray(x1)],
+                [box.y_cm + float(value) * box.height_cm for value in np.asarray(y1)],
+                default_units="cm",
+                gp=tick_gp,
+                name=f"{name}.ticks",
+            )
+        )
+
+    if guide.minor_ticks:
+        grobs.extend(_theta_minor_tick_grobs(scale, params, theme, box, name=f"{name}.minor"))
+
+    if not isinstance(element, ElementText) or isinstance(element, ElementBlank):
+        return grobs
+
+    base_angle = None if guide.angle is None else float(guide.angle)
+    element_angle = float(getattr(element, "angle", 0.0) or 0.0)
     gp = {
         "col": paint(element.colour) or "black",
         "fontsize": float(element.size or 0.0) or 11.0,
@@ -1317,25 +1409,26 @@ def polar_axis_grobs(
         "font": font_int(element.face),
         "lineheight": float(element.lineheight or 1.2),
     }
-    grobs: list[Any] = []
-    if guide.minor_ticks:
-        grobs.extend(_theta_minor_tick_grobs(scale, params, theme, box, name=f"{name}.minor"))
-    for index, (x, y, text, theta) in enumerate(entries):
-        # 90° / 270° 是**离散**分界：`angle` 恰好落在边界上时，宿主 libm 在
-        # `math.degrees()` 上的 1 ULP 差就能让判定翻档（标签从正着变倒着、baseline
-        # 从 bottom 变 top），IR 字节随之变化（SIL-824 返工：coord_polar 的 theta
-        # 标签在另一台机器上翻面）。先量化再比较，边界抖动被吃掉。
-        angle = round((base_angle - math.degrees(theta)) % 360.0, ANGLE_DECIMALS)
-        if 90.0 < angle < 270.0:
-            angle += 180.0
+    # `coord_polar()` 的标签历史口径就是网格外圈 0.45（不加 offset），保持不动；
+    # 只有 `coord_radial()` 走 R 的「key + offset」。
+    label_radius = key_radius + offset if polar.radial else key_radius
+    xs, ys = polar.point(thetas, np.full(thetas.shape, label_radius))
+    for index, theta in enumerate(thetas):
+        if base_angle is None:
+            # waiver：不随 theta 转，直接用 `axis.text.theta$angle`（R 同）。
+            angle = element_angle
+        else:
+            angle = round((base_angle - math.degrees(float(theta))) % 360.0, ANGLE_DECIMALS)
+            if 90.0 < angle < 270.0:
+                angle += 180.0
         radians = math.radians(angle)
-        hjust = 0.5 - math.sin(theta + radians) / 2.0
-        vjust = 0.5 - math.cos(theta + radians) / 2.0
+        hjust = 0.5 - math.sin(float(theta) + radians) / 2.0
+        vjust = 0.5 - math.cos(float(theta) + radians) / 2.0
         grobs.append(
             text_grob(
-                text,
-                box.x_cm + x * box.width_cm,
-                box.y_cm + y * box.height_cm,
+                entries[index][2],
+                box.x_cm + float(xs[index]) * box.width_cm,
+                box.y_cm + float(ys[index]) * box.height_cm,
                 hjust=hjust,
                 vjust=vjust,
                 rot=angle,
@@ -1345,3 +1438,39 @@ def polar_axis_grobs(
             )
         )
     return grobs
+
+
+def _line_gp(element: Any) -> Any:
+    """`axis.line.*` / `axis.ticks.*` → gpar；blank 或没有颜色时返回 None。"""
+    from ggcore.axis import paint
+    from ggcore.viewport import gpar
+
+    if element is None or isinstance(element, ElementBlank):
+        return None
+    colour = paint(getattr(element, "colour", None))
+    if colour is None:
+        return None
+    return gpar(
+        col=colour,
+        lwd=_POINT_PER_MM * float(getattr(element, "linewidth", 0.0) or 0.0),
+        lty=getattr(element, "linetype", None) or 1,
+        lineend="round",
+        linejoin="round",
+    )
+
+
+def _arc_angles(thetas: np.ndarray, *, cap: str, tick: float) -> np.ndarray:
+    """轴线采样角度：覆盖 key 的范围；`cap` 在两端各延长一个刻度长（弧度）。"""
+    ordered = np.sort(np.mod(np.asarray(thetas, dtype=np.float64), 2.0 * math.pi))
+    span = float(ordered[-1] - ordered[0])
+    full = span >= 2.0 * math.pi - 1e-6
+    start = float(ordered[0])
+    stop = float(ordered[-1])
+    if not full and cap not in (None, "none"):
+        # 端帽沿圆周延长：角度步长 ≈ 刻度长 / 半径，这里按 0.05 npc 的半径折算。
+        step = tick / max(0.05, 0.5)
+        if cap in ("both", "upper", "top"):
+            stop += step
+        if cap in ("both", "lower", "bottom"):
+            start -= step
+    return np.linspace(start, stop, 100)

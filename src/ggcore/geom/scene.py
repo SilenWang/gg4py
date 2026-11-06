@@ -44,7 +44,9 @@ from ggcore.axis import (
     axis_title_grob,
     margin_sides_cm,
     paint,
+    polar_axis_breaks,
     polar_axis_row_cm,
+    polar_minor_breaks,
     text_line_cm,
     text_width_cm,
     tick_length_cm,
@@ -693,9 +695,12 @@ def plot_layout(
             # θ 标签画在面板里，但 `axis-b` 行不一定在：
             # - `coord_polar()`：上游 `render_axis_h()` 给 `draw_axis(NA, "", "bottom")`，
             #   空标签也占一行（刻度 + 文字行高）；
-            # - `coord_radial()`：`r.axis.inside` 为真时 `render_axis_h()` 是零 grob，
-            #   底部不占行（θ 标签完全在面板里）。
-            if not params.polar.radial or not params.polar.r_axis_inside:
+            # - `coord_radial()`：`render_axis_h()` 委托给 `CoordCartesian`，而 radial
+            #   的 `panel_params` 只有 `theta` / `r` 两组 view scale、没有 `x`，于是
+            #   拿到的是一对 zeroGrob——**任何** `r.axis.inside` 取值下 bottom 行都是 0
+            #   （R 的 gtable 实测：`guide-axis-theta with angle adapting` 的 row 10
+            #   高度为 0，只有 xlab 行 12.97pt）。
+            if not params.polar.radial:
                 x_axis = max(x_axis, polar_axis_row_cm(theme))
         if params.polar is None:
             guide_ticks_x = axis_guide_ticks(
@@ -1307,6 +1312,20 @@ def _panel_children(
         if isinstance(element, ElementRect):
             grob = _rect_from_element(element, border_only=border_only, name=name)
             if grob is not None:
+                if params.polar is not None and params.polar.radial:
+                    # R 的 `guide_grid(square = FALSE)` 把 `panel.background` 换成
+                    # `c(±Inf)` 的 polygon 再 `coord_munch`；munched 之后它的范围是
+                    # **`r.range` 上界（半径 0.4）** 的外接方形，即 npc `0.1..0.9`，
+                    # 不是整块 panel cell（实测 `coord_munch` 结果 x/y 都是
+                    # `0.1000..0.9000`）。铺满 cell 会让四角多出一圈灰底。
+                    radius = float(params.polar.inner_radius[1])
+                    grob = replace(
+                        grob,
+                        x=unit(0.5, "npc"),
+                        y=unit(0.5, "npc"),
+                        width=unit(2.0 * radius, "npc"),
+                        height=unit(2.0 * radius, "npc"),
+                    )
                 children.append(grob)
 
     # 网格线顺序照 ggplot2 的 panel gtable：major 在 minor 之下，两者都在面板
@@ -1571,7 +1590,7 @@ def _polar_grid_grobs(
     theta_element = theme.get(f"panel.grid.{kind}.{polar.theta_axis}")
     colour = paint(getattr(theta_element, "colour", None))
     if isinstance(theta_element, ElementLine) and colour is not None and theta_scale is not None:
-        values = theta_scale.minor_breaks() if kind == "minor" else theta_scale.breaks()
+        values = _polar_grid_values(theta_scale, polar, "theta", kind)
         angles: list[float] = []
         for value in values:
             if value is None:
@@ -1611,7 +1630,11 @@ def _polar_grid_grobs(
         and colour is not None
         and r_scale is not None
     ):
-        values = r_scale.minor_breaks() if kind == "minor" else r_scale.breaks()
+        values = (
+            r_scale.minor_breaks()
+            if kind == "minor"
+            else _polar_grid_values(r_scale, polar, "r", kind)
+        )
         radii: list[float] = []
         for value in values:
             if value is None:
@@ -1635,6 +1658,18 @@ def _polar_grid_grobs(
                 )
             )
     return grobs
+
+
+def _polar_grid_values(scale: Any, polar: Any, axis: str, kind: str) -> tuple[Any, ...]:
+    """极坐标网格线的取值（`theta` / `r` × major / minor）。
+
+    主网格 = 面板范围内的断点（`polar_axis_breaks()`，不做 5% 展开）；次网格照
+    `CoordPolar$render_bg()` 直接用 `theta.minor`（`polar_minor_breaks()` 的
+    原序列，含与主断点重合的那些）。
+    """
+    if kind == "minor":
+        return polar_minor_breaks(scale, polar, axis)
+    return polar_axis_breaks(scale, polar, axis)[0]
 
 
 def _grid_gpar(element: Any, colour: str) -> Any:
@@ -2039,6 +2074,22 @@ def _axis_grobs(
                     name=f"axis-theta-{panel}",
                 )
             )
+            # `CoordRadial$render_fg()` 还会画 `theta.sec`（key 落在内半径、角度 +π）。
+            # 没有 `guides(theta.sec = ...)` 时上游画的是空 guide，这里同样跳过。
+            theta_sec = _guide_for(build, "theta.sec")
+            if theta_sec is not None:
+                grobs.extend(
+                    polar_axis_grobs(
+                        theta_scale,
+                        params,
+                        theme,
+                        cell,
+                        theta_sec,
+                        metrics=metrics,
+                        name=f"axis-theta-sec-{panel}",
+                        secondary=True,
+                    )
+                )
     area = axis_title_area(layout)
     panels_for_side = list(_panels(build))
     x_title_side = "bottom"

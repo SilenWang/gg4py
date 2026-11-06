@@ -1337,6 +1337,8 @@ class SfGeometry:
     datum: CRS | None = None
     graticule: tuple[GraticuleLine, ...] = ()
     ticks: Mapping[str, tuple[tuple[float, str], ...]] = MappingProxyType({})
+    #: 面板四条边上的经纬网标签（`CoordSf$labels()` 的等价物，SIL-839）。
+    labels: tuple[SfGraticuleLabel, ...] = ()
 
     @property
     def is_longlat(self) -> bool:
@@ -1511,6 +1513,109 @@ def _sf_axis_ticks(
 
 
 @dataclass(frozen=True, slots=True)
+class SfGraticuleLabel:
+    """`CoordSf$labels()` 的一行：面板边界上的一个经纬网标签。
+
+    与轴刻度（`_view_scale_ticks()` 返回的 `(position, text)`）不同，这里同时给出
+    **两个坐标**与**该点切线角**——上游 `labels()` 的 data.frame 就是
+    `x` / `y` / `label` / `angle_start` / `angle_end` 这些列。
+    """
+
+    x: float
+    y: float
+    label: str
+    angle: float
+    #: `"E"`（经线标签，贴上下边，走 `axis.text.x`）或 `"N"`（纬线，贴左右边，走 `axis.text.y`）。
+    type: str = "E"
+
+
+def _graticule_side_labels(
+    lines: Sequence[GraticuleLine],
+    axis: str,
+    side: str,
+    label_graticule: Sequence[str],
+    ranges: Mapping[str, tuple[float, float]],
+) -> list[SfGraticuleLabel]:
+    """一条边上的标签：选线规则与 `_view_scale_ticks()` 完全一致。
+
+    `label_graticule = "NSWE"` 的四条规则（上游 `view_scales_from_graticule()`）：
+    经线（type `E`）走上下边、纬线（type `N`）走左右边，具体落在 `_start` 端还是
+    `_end` 端由边的位置决定。
+    """
+    orth = "y" if axis == "x" else "x"
+    thres_low, thres_high = ranges[orth]
+    span = thres_high - thres_low
+    orth_start = np.array([getattr(line, f"{orth}_start") for line in lines], dtype=float)
+    orth_end = np.array([getattr(line, f"{orth}_end") for line in lines], dtype=float)
+    if side in ("top", "right"):
+        threshold = thres_low + 0.999 * span
+        accept_start = orth_start > threshold
+        accept_end = orth_end > threshold
+    else:
+        threshold = thres_low + 0.001 * span
+        accept_start = orth_start < threshold
+        accept_end = orth_end < threshold
+    types = np.array([line.type for line in lines], dtype=object)
+    # 上游对**每个** aesthetic 累加 `label_graticule` 的四条规则，所以同一个
+    # ViewScale 会同时产出 start 端和 end 端的标签：
+    #   S → 经线（E）的 start 端、W → 纬线（N）的 start 端（都进 idx_start）
+    #   N → 经线（E）的 end 端、  E → 纬线（N）的 end 端（都进 idx_end）
+    # 四边的差别只来自 `orth`（bottom/top 用 y，left/right 用 x）和
+    # `position` 决定的阈值方向，不来自字母映射。
+    idx_start: list[int] = []
+    idx_end: list[int] = []
+    if "S" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "E") & accept_start)]
+    if "W" in label_graticule:
+        idx_start += [int(i) for i in np.flatnonzero((types == "N") & accept_start)]
+    if "N" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "E") & accept_end)]
+    if "E" in label_graticule:
+        idx_end += [int(i) for i in np.flatnonzero((types == "N") & accept_end)]
+    rows = [
+        SfGraticuleLabel(
+            x=float(lines[i].x_start),
+            y=float(lines[i].y_start),
+            label=lines[i].label,
+            angle=float(lines[i].angle_start),
+            type=lines[i].type,
+        )
+        for i in idx_start
+    ]
+    rows += [
+        SfGraticuleLabel(
+            x=float(lines[i].x_end),
+            y=float(lines[i].y_end),
+            label=lines[i].label,
+            angle=float(lines[i].angle_end),
+            type=lines[i].type,
+        )
+        for i in idx_end
+    ]
+    rows.sort(key=lambda row: (row.x, row.y))
+    return rows
+
+
+def sf_graticule_labels(
+    lines: Sequence[GraticuleLine],
+    label_graticule: Sequence[str],
+    ranges: Mapping[str, tuple[float, float]],
+) -> tuple[SfGraticuleLabel, ...]:
+    """`CoordSf$labels(panel_params)`：面板四条边上的经纬网标签集合。
+
+    返回的每一行是 `(x, y, label, angle)`——`x` / `y` 在目标 CRS 的坐标里
+    （与 `expected.svg` 的 `<text x= y= transform=...>` 对位时再投到 npc），
+    `angle` 是该端点的切线方向（度）。上游同一张表还带 `hjust` / `vjust`，
+    等绘制那一步再补。
+    """
+    out: list[SfGraticuleLabel] = []
+    for side in ("bottom", "left", "top", "right"):
+        axis = "x" if side in ("bottom", "top") else "y"
+        out.extend(_graticule_side_labels(lines, axis, side, label_graticule, ranges))
+    return tuple(out)
+
+
+@dataclass(frozen=True, slots=True)
 class SfCoord(CoordBase):
     """`coord_sf()`：真实空间坐标（EPSG:4326 / 3857 / 3347）。
 
@@ -1661,6 +1766,7 @@ class SfCoord(CoordBase):
                 datum=None if self.datum is None else st_crs(self.datum),
                 graticule=tuple(lines),
                 ticks=MappingProxyType(ticks),
+                labels=sf_graticule_labels(lines, self._label_graticule(), ranges),
             ),
         )
 

@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import numbers
 from collections.abc import Callable, Sequence
@@ -57,7 +58,9 @@ __all__ = [
     "font_int",
     "margin_sides_cm",
     "paint",
+    "polar_axis_breaks",
     "polar_axis_row_cm",
+    "polar_minor_breaks",
     "sec_axis",
     "secondary_ticks",
     "text_line_cm",
@@ -574,6 +577,60 @@ def _sf_ticks(params: Any, side: str) -> AxisTicks:
     return AxisTicks(side, tuple(positions), tuple(texts))
 
 
+def polar_axis_breaks(scale: Any, polar: Any, axis: str) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+    """极坐标某轴的 `(断点, 标签)`，范围取**面板的** theta / r range。
+
+    上游 `CoordPolar$setup_panel_params()` 对 theta 轴传
+    `default_expansion(scale, c(0, 0.5), c(0, 0))`、对 r 轴传 `c(0, 0) / c(0, 0)`：
+    **两条轴都不做 5% 展开**，断点由 `scale$break_info(range)` 在那个范围里算。
+    直接拿 `scale.breaks()` 会用标度自己的 5% 展开范围，断点步长随之变粗
+    （`matrix-report-facet-polar-grey` 的 r 圈从 0.3..0.8 每 0.1 一圈退成
+    0.4 / 0.6 / 0.8 三圈，图级差 8.5%）。
+    """
+    low, high = polar.theta_range if axis == "theta" else polar.r_range
+    if bool(getattr(scale, "discrete", False)):
+        # 离散标度没有变换空间：`break_info()` 直接返回全部水平（R 同）。
+        return tuple(scale.breaks()), tuple(scale.labels())
+    breaks = tuple(scale.breaks_in(low, high))
+    return breaks, tuple(scale.labels_in(breaks))
+
+
+def polar_minor_breaks(scale: Any, polar: Any, axis: str) -> tuple[float, ...]:
+    """极坐标某轴的次网格取值（上游 `scales::regular_minor_breaks(b, limits, n = 2)`）。
+
+    与主断点不同，次断点**不是**中点集合：`regular_minor_breaks()` 是「每段区间
+    的左端点 + 中点」再补最后一个主断点，所以**主断点本身也在次断点里**。
+    `guide_grid()`（直角坐标）会 `setdiff(minor, major)` 把它们去掉，而
+    `CoordPolar$render_bg()` 直接用 `theta.minor` 原序列——同一条主辐条因此会被
+    画两遍（细线压在粗线下，肉眼不可见，但 SVG 里在）。`polar_theta_ticks()`
+    的标签只吃 `theta.major`，不受影响。
+
+    显式写死的 `minor_breaks=`（序列 / 函数 / `date_minor_breaks`）照标度自己的
+    口径来（上游 `get_breaks_minor()` 优先用用户给的），只按面板范围过滤。
+    """
+    low, high = polar.theta_range if axis == "theta" else polar.r_range
+    low, high = sorted((float(low), float(high)))
+    if bool(getattr(scale, "discrete", False)):
+        return ()
+    explicit = getattr(scale, "_has_param", None)
+    if callable(explicit) and (explicit("minor_breaks") or explicit("date_minor_breaks")):
+        return tuple(float(value) for value in scale.minor_breaks() if low <= float(value) <= high)
+    raw = [value for value in scale.raw_breaks_in(low, high) if math.isfinite(value)]
+    if len(raw) < 2:
+        return ()
+    step = raw[1] - raw[0]
+    # R 在 limits 超出主断点两端时各补一个 `bd`，让次断点能贴到面板边界。
+    if low < raw[0]:
+        raw.insert(0, raw[0] - step)
+    if high > raw[-1]:
+        raw.append(raw[-1] + step)
+    out: list[float] = []
+    for first, second in itertools.pairwise(raw):
+        out.extend((first, (first + second) / 2.0))
+    out.append(raw[-1])
+    return tuple(value for value in out if low <= value <= high)
+
+
 def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     """极坐标的 r 轴（`left`）：`r_rescale(r, r.range) + 0.5`（上游同式）。
 
@@ -588,8 +645,7 @@ def _polar_ticks(scale: Any, params: Any, side: str) -> AxisTicks:
     axis = params.screen_axis(side)
     values: list[float] = []
     texts: list[str] = []
-    breaks = tuple(scale.breaks())
-    labels = tuple(scale.labels())
+    breaks, labels = polar_axis_breaks(scale, polar, "r")
     discrete = bool(getattr(scale, "discrete", False))
     levels = tuple(scale.levels) if discrete else ()
     for value, label in zip(breaks, labels, strict=True):
@@ -628,8 +684,7 @@ def polar_theta_ticks(scale: Any, params: Any) -> tuple[tuple[float, float, str,
     polar = params.polar
     if polar is None or scale is None:
         return ()
-    breaks = tuple(scale.breaks())
-    labels = tuple(scale.labels())
+    breaks, labels = polar_axis_breaks(scale, polar, "theta")
     angles: list[float] = []
     texts: list[str] = []
     for value, label in zip(breaks, labels, strict=True):

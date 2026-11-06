@@ -456,6 +456,16 @@ build_plot(plt).layers[0].data["stroke"]  # 1.5（= base_size / 22）
    ggcore 的 IR/绘制口径统一用 pt，所以这里不转换。
 5. **不支持 `palette.*` 元素**（4.0.3 的调色板主题元素）。`theme()` 会把它
    当未知元素报错；调色板语义不在 M1-10 / M2-5 的范围。
+6. **复刻上游快照要照抄测试代码的主题链（SIL-839 踩过的坑）**。
+   `guide-axis-theta-with-angle-adapting-to-theta` 最初在 case 的 `plot.py` 里加了
+   `theme_test()`，于是量的是一个**错误的对象**：上游 `tests/testthat/test-guide-axis.R`
+   的 `"guide_axis_theta sets relative angle"` 只写
+   `theme(axis.line = element_line(colour = "black"))`，走默认 `theme_grey()`。
+   在 refs 环境照抄这条链重画（`pixi run -e refs Rscript`）得到 `fill: #EBEBEB`
+   ×1、`stroke: #FFFFFF` ×47、`stroke: #333333` ×40，与 expected.svg 同源；
+   而 `theme_test()` 画出来是白底无网格（对照 `upstream-guide-axis-axis-guides-basic`
+   的 expected：`#EBEBEB` 与 `#FFFFFF` 都是 0）。**结论：`theme_test()` 的定义本身
+   是对的，不要为了快照微调它；复刻脚本的主题链必须逐行照抄上游测试。**
 
 ## 与后续任务的接口
 

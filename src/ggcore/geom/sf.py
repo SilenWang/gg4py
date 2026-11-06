@@ -33,6 +33,7 @@ from ggcore.geom.base import (
 )
 from ggcore.grobs import g_tree, null_grob, path_grob, points_grob, polyline_grob
 from ggcore.sf import Geometry, SfError
+from ggcore.theme import FromTheme
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
@@ -54,7 +55,10 @@ def _mix(t: float) -> str:
 SF_POLYGON_DEFAULTS: dict[str, Any] = {
     "fill": "#E5E5E5",
     "colour": "#595959",
-    "linewidth": 0.43,
+    # 上游 `GeomSf$default_aes`：`linewidth = 0.4 * borderwidth`。**不能写死常量**——
+    # `borderwidth` 随 `element_geom()` 可配（`theme_grey(base_size = 33)` 会放大它），
+    # 且写出 `0.43` 这类「最终 stroke-width」的值会把单位语义搞错一层（SIL-839）。
+    "linewidth": FromTheme("borderwidth * 0.4"),
 }
 SF_COLLECTION_DEFAULTS: dict[str, Any] = {
     **SF_POLYGON_DEFAULTS,
@@ -198,7 +202,10 @@ class SfRenderer(GeomRenderer):
                         target=target,
                         colour=pick("colour", row, colours, line_defaults.get("colour", "black")),
                         linewidth=number(
-                            "linewidth", row, linewidths, float(line_defaults.get("linewidth", 0.5))
+                            "linewidth",
+                            row,
+                            linewidths,
+                            _sf_default(line_defaults, "linewidth", 0.5, theme),
                         ),
                         linetype=pick("linetype", row, linetypes, line_defaults.get("linetype", 1)),
                         alpha=number("alpha", row, alphas, 1.0),
@@ -221,7 +228,12 @@ class SfRenderer(GeomRenderer):
                         fill=pick("fill", row, fills, SF_COLLECTION_DEFAULTS["fill"]),
                         size=number("size", row, sizes, 1.5),
                         stroke=number("stroke", row, strokes, 0.5),
-                        linewidth=number("linewidth", row, linewidths, 0.43),
+                        linewidth=number(
+                            "linewidth",
+                            row,
+                            linewidths,
+                            _sf_default(polygon_defaults, "linewidth", 0.2, theme),
+                        ),
                         linetype=pick("linetype", row, linetypes, 1),
                         alpha=number("alpha", row, alphas, 1.0),
                         arrow=arrow,
@@ -240,7 +252,10 @@ class SfRenderer(GeomRenderer):
                     fill=pick("fill", row, fills, polygon_defaults.get("fill", "#E5E5E5")),
                     colour=pick("colour", row, colours, polygon_defaults.get("colour", "#595959")),
                     linewidth=number(
-                        "linewidth", row, linewidths, float(polygon_defaults.get("linewidth", 0.43))
+                        "linewidth",
+                        row,
+                        linewidths,
+                        _sf_default(polygon_defaults, "linewidth", 0.2, theme),
                     ),
                     linetype=pick("linetype", row, linetypes, 1),
                     alpha=number("alpha", row, alphas, 1.0),
@@ -403,6 +418,20 @@ def _draw_lines(
         gp=gp,
         arrow=arrow,
     )
+
+
+def _sf_default(defaults: dict[str, Any], key: str, fallback: float, theme: Any) -> float:
+    """取 sf 的缺省美学值；`FromTheme` 在 draw 期用 `theme$geom` 求值。
+
+    `build.finish()` 已经把 `FromTheme` 求过一遍并写进数据列，这里是「整列都是
+    NA」时的**兜底**——兜底同样要走求值，不能直接 `float(FromTheme)`。
+    """
+    value = defaults.get(key, fallback)
+    if isinstance(value, FromTheme):
+        element = getattr(theme, "geom", None) if theme is not None else None
+        resolved = value.evaluate(element)
+        return fallback if resolved is None else float(resolved)
+    return float(value)
 
 
 def _draw_polygon(

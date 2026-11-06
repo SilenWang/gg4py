@@ -1,7 +1,7 @@
 family = "matrix"
 features = ["aes-mapping", "colour-aes", "guide-legend", "facet-wrap", "coord-polar", "legend-pos-right", "guide-direction-auto", "legend-single", "lab-title", "lab-axis-title", "theme-complete"]
-ci = false
-title = "2×2 facet_wrap × coord_polar × 右侧单图例"
+ci = true
+title = "2×2 facet_wrap × coord_polar × 右侧单图例 × report 档"
 source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
-tolerance = { png = 0.02 }
-notes = "SIL-715 #7 的极坐标变体：分面 × 极坐标 × 默认主题的 grid / 面板尺寸组合。"
+band = "report"
+notes = "SIL-839：极坐标的 r / theta 断点走面板范围（`coord_polar()` 两条轴都不做 5% 展开）后，r 网格从 3 圈（0.4/0.6/0.8）改成 6 圈（0.3..0.8），theta 主辐条也落到 0.3/0.5/0.7/0.9；实测 8.54% / 1.30% → 4.45% / 0.94%，进 report 档（5% / 1%，`matrix-report-*` 白名单）。剩下的差异是整块面板比 R 小 0.03pt 带来的抗锯齿噪声，不是几何错位。"

@@ -1,0 +1,7 @@
+family = "guide-axis"
+features = ["guide-axis-theta", "coord-radial", "axis-line"]
+ci = false
+title = "上游快照：guide_axis_theta 的逐 theta 角度"
+source = "upstream:tests/testthat/_snaps/guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-839：theta 标签随角度旋转 + theta.sec + radial 版式。"

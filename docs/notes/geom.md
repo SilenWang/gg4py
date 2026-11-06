@@ -182,6 +182,7 @@ svglite 的口径；细线的虚线不会退化成实线）。段长本身在写
 | `geom_boxplot(staplewidth != 0)` | 已实现（SIL-795）：须帽是两条 `segments`，宽度 = 箱宽 × `staplewidth`；`whisker.* / staple.* / median.* / box.* / outlier.*` 的逐元素 gp 覆盖同上游 | 无 |
 | 逐点 `size` / 逐点 `pch` | IR 的 `points.size` / `pch` 是标量；绘制层按 `(pch,size)` 分组画多个节点 | 视觉等价，节点数更多 |
 | 逐行 `angle` / `hjust` / `vjust`（text） | IR 的 text 参数是单值；按 `(hjust, vjust, angle)` 分组画多个 text grob | 视觉等价，节点数更多 |
+| `geom_text(parse = TRUE)` 的 plotmath | **已实现**（SIL-839，`ggcore/plotmath.py`）：希腊字母 → Unicode、`+` / `-` 两侧各 0.185em、`*` 并置无间距、`^` 上标 0.7 倍字号抬 0.502em、`[` 下标、`sqrt()` 5 点折线（宽 1.0191em），逐个 run 用 `hjust = 0 / vjust = 0`（左边界 + 基线）落位；解析不了或带 `angle` 时整层回退普通文本（同 R 的 `parse_safe()`）。`geom-text-with-expressions` 0.51% / 0.09% | 只覆盖复刻快照需要的那一撮语法；`frac()` / `sum()` / 矩阵等未做 |
 | `geom_label` 的圆角（`label.r`） | IR 没有 roundrect 节点 → 方角矩形（默认 0.15 lines ≈ 2pt）；`angle != 0` 时背景随 box + text 一起旋转（SIL-765） | 后续 IR schema 扩展 |
 | `geom_hex` 的矢量 gp | 一个 path 节点只有一份 gpar；按 `(colour, fill, alpha, linewidth, linetype)` 分组 | 视觉等价，节点数更多 |
 | 未映射的 data 列 | 我们的 `compute_aesthetics` 只留 mapped 列（R 保留整个 data.frame）；`stat = "identity"` 要喂 `width` / `height` / `subgroup` 这类列时必须 `aes()` 映射 | 与 M1-3 的列口径一致；stat 落地后由 stat 输出携带 |

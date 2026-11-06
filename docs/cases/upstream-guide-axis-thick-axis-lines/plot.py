@@ -3,7 +3,7 @@
 源：guide-axis/thick-axis-lines.svg（vdiffr 名 'thick axis lines'）。
 """
 
-from ggcore.plot import aes, geom_point, ggplot
+from ggcore.plot import aes, geom_point, ggplot, labs
 from ggcore.theme import element_line, theme, theme_test
 from ggio.frame import to_column_table
 
@@ -391,5 +391,6 @@ def build():
         + geom_point()
         + theme_test()
         + theme(**{"axis.line": element_line(linewidth=5, lineend="square")})
+        + labs(title="thick axis lines")
     )
     return {"plot": p, "size": [10, 8]}
