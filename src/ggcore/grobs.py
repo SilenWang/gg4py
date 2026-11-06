@@ -1224,6 +1224,106 @@ def text_grob(
     )
 
 
+#: 1 pt = 1/72 inch = 2.54/72 cm（`math_text_grobs()` 的 pt → cm）。
+_PT_PER_CM_INV = 2.54 / 72.0
+
+
+def math_text_grobs(
+    label: str,
+    x: float,
+    y: float,
+    *,
+    size: float,
+    metrics: Any,
+    family: str = "",
+    hjust: float = 0.5,
+    vjust: float = 0.5,
+    rot: float = 0.0,
+    gp: Gpar | Mapping[str, Any] | None = None,
+    name: str = "math",
+) -> list[Grob]:
+    """一段 plotmath 标签 → 一组 text grob（每个 run 自己一个字号 / 基线）。
+
+    坐标是**页面 cm、y 向上**（轴带与 strip 用的就是这套坐标），整块的锚点按
+    `(hjust, vjust)` 折：宽度 = 各 run 推进之和，高度 = 基线以上 + 基线以下
+    （`plotmath.layout()` 的 em 数 × 字号）。每段落字用 `hjust = 0 / vjust = 0`
+    ——`vjust = 0` 在本仓的 IR 里就是「基线落在给定 y」，所以不同字号的 run 互不
+    影响。根号一类的折线走 polyline。
+
+    IR 没有「一段文字多段 run」的表达，这里刻意输出**多个 text 节点**（每个 run
+    一个），不新增 IR 字段（见 `docs/notes/ir.md` 的 text 节点）。
+    """
+    from ggcore import plotmath
+
+    measure = plotmath.measure_from(metrics, family)
+    layout = plotmath.layout(str(label), fontsize=size, measure=measure)
+    width_pt = layout.width_em * size
+    height_pt = layout.height_em * size
+    # 锚点 → 整块左边界 + 主行基线（cm，y 向上）。
+    left = x - hjust * width_pt * _PT_PER_CM_INV
+    baseline = y - vjust * height_pt * _PT_PER_CM_INV + layout.descent_em * size * _PT_PER_CM_INV
+    radians = math.radians(rot % 360.0)
+    cos = math.cos(radians)
+    sin = math.sin(radians)
+
+    def place(dx_pt: float, dy_pt: float) -> tuple[float, float]:
+        """沿基线偏移 `dx`、垂直偏移 `dy`（pt，向上为正）→ 页面 cm。"""
+        dx = dx_pt * _PT_PER_CM_INV
+        dy = dy_pt * _PT_PER_CM_INV
+        return left + dx * cos - dy * sin, baseline + dx * sin + dy * cos
+
+    grobs: list[Grob] = []
+    for index, run in enumerate(layout.runs):
+        px, py = place(run.x_em * size, run.rise_em * size)
+        grobs.append(
+            text_grob(
+                run.text,
+                px,
+                py,
+                hjust=0.0,
+                vjust=0.0,
+                rot=rot,
+                default_units="cm",
+                gp=_gpar_with(gp, fontsize=size * run.cex),
+                name=f"{name}.run{index}",
+            )
+        )
+    for index, rule in enumerate(layout.rules):
+        xs = [place(px_em * size, py_em * size)[0] for px_em, py_em in rule.points]
+        ys = [place(px_em * size, py_em * size)[1] for px_em, py_em in rule.points]
+        grobs.append(
+            polyline_grob(
+                xs,
+                ys,
+                default_units="cm",
+                gp=_gpar_with(
+                    gp,
+                    lwd=rule.lwd,
+                    lineend="round",
+                    linejoin="round",
+                    **({"col": "black"} if _gpar_get(gp, "col") is None else {}),
+                ),
+                name=f"{name}.radical{index}",
+            )
+        )
+    return grobs
+
+
+def _gpar_with(raw: Gpar | Mapping[str, Any] | None, **overrides: Any) -> Gpar | Mapping[str, Any]:
+    """在 `Gpar` / 映射上加几个字段（`math_text_grobs()` 只覆盖字号 / 线宽）。"""
+    if isinstance(raw, Gpar):
+        return replace(raw, **overrides)
+    return {**(raw or {}), **overrides}
+
+
+def _gpar_get(raw: Gpar | Mapping[str, Any] | None, name: str) -> Any:
+    if raw is None:
+        return None
+    if isinstance(raw, Gpar):
+        return getattr(raw, name, None)
+    return raw.get(name)
+
+
 def raster_grob(
     data: bytes,
     width_px: int,

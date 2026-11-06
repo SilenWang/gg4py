@@ -40,6 +40,11 @@ from ggcore.axis import dup_axis as dup_axis
 from ggcore.axis import sec_axis as sec_axis
 from ggcore.components import Coord, Facet, Guide, Guides, Labels, Scale, Theme
 from ggcore.coord import coord_munch as coord_munch
+from ggcore.facet import label_both as label_both
+from ggcore.facet import label_context as label_context
+from ggcore.facet import label_parsed as label_parsed
+from ggcore.facet import label_value as label_value
+from ggcore.facet import labeller as labeller
 from ggcore.fills import linear_gradient as linear_gradient
 from ggcore.fills import radial_gradient as radial_gradient
 from ggcore.fills import tile_pattern as tile_pattern
@@ -74,6 +79,7 @@ from ggcore.legend_draw import draw_key_text as draw_key_text
 from ggcore.legend_draw import draw_key_timeseries as draw_key_timeseries
 from ggcore.legend_draw import draw_key_vline as draw_key_vline
 from ggcore.legend_draw import draw_key_vpath as draw_key_vpath
+from ggcore.scales import label_math as label_math
 from ggcore.scales import scale_type as scale_type
 from ggcore.theme import merge_theme, theme_get
 from ggcore.theme import theme_replace as theme_replace

@@ -36,7 +36,7 @@ from typing import Any
 
 import numpy as np
 
-from ggcore import ir
+from ggcore import ir, plotmath
 from ggcore.axis import (
     DERIVE,
     axis_ticks,
@@ -74,6 +74,7 @@ from ggcore.grobs import (
     ZeroGrob,
     clip_path,
     g_tree,
+    math_text_grobs,
     polyline_grob,
     rect_grob,
     scene,
@@ -2582,7 +2583,7 @@ def _strip_grobs(
     sizes = table.gtable.resolve(area.width_cm, area.height_cm, ctx=UnitContext(metrics=metrics))
     grobs: list[Any] = []
     for strip in table.strips:
-        grobs.extend(_one_strip(table, strip, theme, layout, area, sizes))
+        grobs.extend(_one_strip(table, strip, theme, layout, area, sizes, metrics))
     return grobs
 
 
@@ -2639,6 +2640,7 @@ def _one_strip(
     layout: PlotLayout,
     area: Box,
     sizes: Any,
+    metrics: Any = None,
 ) -> list[Any]:
     box = _strip_box(table, strip, layout, area, sizes)
     if box is None:
@@ -2703,13 +2705,34 @@ def _one_strip(
         if isinstance(element, ElementText) and not callable(getattr(element, "grob", None)):
             if not part.text:
                 continue
+            hjust = float(element.hjust if element.hjust is not None else 0.5)
+            vjust = float(element.vjust if element.vjust is not None else 0.5)
+            if plotmath.is_math(part.text):
+                # `labeller = label_parsed` 的 strip：plotmath 拆成多段 run（各自
+                # 字号 / 基线抬升），每个 run 一个 text 节点（IR 没有「段」字段）。
+                grobs.extend(
+                    math_text_grobs(
+                        part.text,
+                        part_box.x_cm + part_box.width_cm / 2.0,
+                        part_box.y_cm + part_box.height_cm / 2.0,
+                        size=float(getattr(element, "size", 0.0) or 0.0),
+                        metrics=metrics,
+                        family=element.family or "",
+                        hjust=hjust,
+                        vjust=vjust,
+                        rot=angle,
+                        gp=_text_gpar(element),
+                        name=f"{name}.text",
+                    )
+                )
+                continue
             grobs.append(
                 text_grob(
                     part.text,
                     unit(part_box.x_cm + part_box.width_cm / 2.0, "cm"),
                     unit(part_box.y_cm + part_box.height_cm / 2.0, "cm"),
-                    hjust=float(element.hjust if element.hjust is not None else 0.5),
-                    vjust=float(element.vjust if element.vjust is not None else 0.5),
+                    hjust=hjust,
+                    vjust=vjust,
                     rot=angle,
                     default_units="cm",
                     gp=_text_gpar(element),

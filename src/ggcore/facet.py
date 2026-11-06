@@ -34,8 +34,9 @@ from typing import Any
 
 import numpy as np
 
+from ggcore import plotmath
 from ggcore.aes import Aes
-from ggcore.axis import margin_sides_cm, text_line_cm, text_width_cm
+from ggcore.axis import margin_sides_cm, text_block_cm, text_line_cm, text_width_cm
 from ggcore.components import Facet
 from ggcore.data import Column, ColumnTable
 from ggcore.eval import eval_aes, parse_aes
@@ -71,6 +72,7 @@ __all__ = [
     "facet_table",
     "label_both",
     "label_context",
+    "label_parsed",
     "label_value",
     "labeller",
 ]
@@ -759,7 +761,8 @@ def _labeller(labeller: Any, labels: Mapping[str, list[str]]) -> dict[str, list[
             mapped = values
         if isinstance(mapped, str):
             mapped = [mapped]
-        mapped = [str(item) for item in mapped]
+        # `MathText`（plotmath）是 `str` 子类：保留标记，量尺寸 / 落字时才展开。
+        mapped = [item if isinstance(item, str) else str(item) for item in mapped]
         if len(mapped) != len(values):
             raise FacetError(
                 f"labeller 给变量 {name!r} 返回 {len(mapped)} 个标签，"
@@ -796,11 +799,25 @@ def label_context(
     return label_both(labels, multi_line, sep)
 
 
+def label_parsed(
+    labels: Mapping[str, Any],
+    multi_line: bool = True,
+) -> dict[str, list[str]]:
+    """上游 `label_parsed()`：把每个值当成 plotmath 表达式（`parse(text =)`）。
+
+    解析不了的值按 R 的 `parse_safe()` 回退普通文本（`plotmath.wrap()`），不整列
+    报错——与本仓 `geom_text(parse = TRUE)` 的回退口径一致。
+    """
+    del multi_line
+    return {name: [plotmath.wrap(value) for value in values] for name, values in labels.items()}
+
+
 #: `labeller = "label_*"` 的字符串写法 → 函数（上游 `validate_labeller()`）。
 _NAMED_LABELLERS: Mapping[str, Any] = {
     "label_value": label_value,
     "label_both": label_both,
     "label_context": label_context,
+    "label_parsed": label_parsed,
 }
 
 
@@ -1934,7 +1951,15 @@ def _strip_extent(
     lines = [text for text in texts if text] or [""]
     widest = max(text_width_cm(text, size, metrics, family) for text in lines)
     row_count = max((text.count("\n") + 1 for text in texts if text), default=1)
-    line = text_line_cm(size) * row_count
+    if any(plotmath.is_math(text) for text in texts):
+        # plotmath 标签：行高含上标顶出来的那截（`10.74pt` vs 纯文本 `7.87pt`，
+        # 上游 `facet-labels/parsed-facet-labels` 的 strip 高 19.54pt）。
+        line = max(
+            text_block_cm(text, size, element.lineheight, metrics=metrics, family=family)
+            for text in lines
+        )
+    else:
+        line = text_line_cm(size) * row_count
     mt, mr, mb, ml = margin_sides_cm(element.margin)
     if horizontal:
         return (line if rotated else widest) + ml + mr

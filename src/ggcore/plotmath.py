@@ -24,16 +24,23 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 __all__ = [
     "BINARY_SPACE_EM",
+    "DESCENT_EM",
     "SUBSCRIPT_CEX",
     "SUPERSCRIPT_CEX",
     "MathLabel",
+    "MathText",
     "Polyline",
     "TextRun",
+    "extent",
+    "is_math",
     "layout",
+    "measure_from",
     "parse",
+    "wrap",
 ]
 
 #: 上标 / 下标的字号倍率（R 的 plotmath 固定 0.7）。
@@ -58,6 +65,35 @@ RADICAL_POINTS = (
 RADICAL_LWD = 0.75
 #: 主行的 ascent（em）。排版只需要它来算上标有没有把标签顶高。
 ASCENT_EM = 0.71
+#: 主行基线以下的 descent（em）。R 的 plotmath 行盒按「上标顶 + 主行底」量：
+#: 8.8pt 的 `10^2` 在上游 `guide-axis/guides-with-minor-ticks` 里高 10.64pt
+#: （axis-b 行 = 12.84pt 含 2.2pt margin），其中基线以上 0.999em、以下 0.21em。
+DESCENT_EM = 0.21
+#: 没有度量实现时的每字符宽（em，与 `ggcore.axis.FALLBACK_CHAR_EM` 同一口径）。
+FALLBACK_CHAR_EM = 0.6
+
+
+class MathText(str):
+    """标记为 plotmath 的文本：值仍是源串，解析不了时它就是回退的普通文本。
+
+    `str` 子类让整条流水线（标度标签 → 轴 guide / strip → grob）继续当字符串用，
+    只有量尺寸与落字的两处按 :func:`layout` 展开——IR 里因此是「一段 plotmath
+    拆成多个 text 节点」，不需要给 text 节点加「段」信息。
+    """
+
+    __slots__ = ()
+
+
+def is_math(value: Any) -> bool:
+    """`value` 是不是 plotmath 标签（`MathText`）。"""
+    return isinstance(value, MathText)
+
+
+def wrap(text: Any) -> str:
+    """把 `text` 包成 plotmath 标签；解析不了时原样返回普通 `str`（同 `parse_safe()`）。"""
+    source = str(text)
+    return MathText(source) if is_plausible(source) else str(source)
+
 
 #: plotmath 的希腊字母表（含大写）。
 GREEK: dict[str, str] = {
@@ -149,6 +185,15 @@ class MathLabel:
     extra_ascent_em: float
     runs: tuple[TextRun, ...]
     rules: tuple[Polyline, ...]
+    #: 基线以上的高度（em）：`max(rise + cex · ASCENT)`，至少一个主行。
+    ascent_em: float = ASCENT_EM
+    #: 基线以下的高度（em）。
+    descent_em: float = DESCENT_EM
+
+    @property
+    def height_em(self) -> float:
+        """整块高度（em）：ascent + descent（R 的 `stringHeight()` 口径）。"""
+        return self.ascent_em + self.descent_em
 
 
 Measure = Callable[[str, float], float]
@@ -290,12 +335,45 @@ def layout(text: str, *, fontsize: float, measure: Measure) -> MathLabel:
     pen = 0.0
     for node in parse(text):
         pen += _place(node, measure, fontsize, 1.0, 0.0, pen, runs, rules)
-    extra = max((run.top_em for run in runs), default=ASCENT_EM) - ASCENT_EM
+    ascent = max((run.top_em for run in runs), default=ASCENT_EM)
     return MathLabel(
         width_em=pen,
-        extra_ascent_em=max(0.0, extra),
+        extra_ascent_em=max(0.0, ascent - ASCENT_EM),
         runs=tuple(runs),
         rules=tuple(rules),
+        ascent_em=ascent,
+        descent_em=DESCENT_EM,
+    )
+
+
+def measure_from(metrics: Any, family: str = "") -> Measure:
+    """`ggcore.units.Metrics`（英寸）→ :data:`Measure`（pt）。
+
+    `metrics` 为 `None` 时按 :data:`FALLBACK_CHAR_EM` 估（与 `text_width_cm()`
+    没有度量时的口径一致），版面不会因为缺度量塌成 0。
+    """
+    if metrics is None:
+
+        def estimate(text: str, size_pt: float) -> float:
+            return FALLBACK_CHAR_EM * float(size_pt) * len(text)
+
+        return estimate
+
+    def measure(text: str, size_pt: float) -> float:
+        return (
+            float(metrics.strwidth(text, fontsize=float(size_pt), cex=1.0, font=str(family))) * 72.0
+        )
+
+    return measure
+
+
+def extent(text: str, *, fontsize: float, measure: Measure) -> tuple[float, float, float]:
+    """`(宽, 基线以上, 基线以下)`，单位 pt。"""
+    label = layout(text, fontsize=fontsize, measure=measure)
+    return (
+        label.width_em * fontsize,
+        label.ascent_em * fontsize,
+        label.descent_em * fontsize,
     )
 
 
