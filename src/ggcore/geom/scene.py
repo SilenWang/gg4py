@@ -1380,6 +1380,8 @@ def _panel_children(
     if params.polar is not None:
         for kind in ("major", "minor"):
             children.extend(_polar_grid_grobs(build, panel, params, theme, kind=kind))
+    elif params.map_geom is not None:
+        children.extend(_map_grid_grobs(build, panel, params, theme))
     elif params.sf is not None:
         children.extend(_sf_grid_grobs(params, theme))
     else:
@@ -1570,6 +1572,86 @@ def _grid_grob(
         gp=gp,
         name=name,
     )
+
+
+def _map_grid_grobs(
+    build: PlotBuild,
+    panel: int,
+    params: PanelParams,
+    theme: ResolvedTheme,
+) -> list[Any]:
+    """`CoordMap$render_bg()`：面板网格 = 投影后的经纬线（直线在投影里会弯）。
+
+    与线性坐标的 `_grid_grob()` 不同，这里每条网格线是**折线**：R 在 ±0.2 倍
+    跨度的展开范围上取 50 个采样点（再按半个地球夹到 ±180° / ±90°），逐点
+    `transform()`。`CoordMap$render_bg()` 只画 major（次网格没有对应的绘制），
+    x / y 分别取 `panel.grid.major.x` / `.y` 的样式。
+    """
+    grobs: list[Any] = []
+    for axis in ("x", "y"):
+        other = "y" if axis == "x" else "x"
+        name = f"panel.grid.major.{axis}"
+        element = theme.get(name)
+        if not isinstance(element, ElementLine):
+            continue
+        colour = paint(element.colour)
+        if colour is None:
+            continue
+        scale = _panel_scale(build, panel, params.scale_key(axis))
+        if scale is None:
+            continue
+        low, high = params.x_range if axis == "x" else params.y_range
+        span = float(high) - float(low)
+        sample_low, sample_high = float(low) - 0.2 * span, float(high) + 0.2 * span
+        mid = (sample_low + sample_high) / 2.0
+        half = 180.0 if other == "x" else 90.0
+        sample_low = max(sample_low, mid - half)
+        sample_high = min(sample_high, mid + half)
+        sample = np.linspace(sample_low, sample_high, 50)
+        gp = _grid_gpar(element, colour)
+        for value in scale.breaks():
+            if value is None:
+                continue
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(number) or not (low - 1e-9 <= number <= high + 1e-9):
+                continue
+            xs = np.full(sample.size, number) if axis == "x" else sample
+            ys = sample if axis == "x" else np.full(sample.size, number)
+            px, py = params.project_xy(xs, ys)
+            for run_x, run_y in _finite_runs(px, py):
+                if run_x.size < 2:
+                    continue
+                grobs.append(
+                    polyline_grob(
+                        run_x.tolist(),
+                        run_y.tolist(),
+                        default_units="npc",
+                        gp=gp,
+                        name=name,
+                    )
+                )
+    return grobs
+
+
+def _finite_runs(px: np.ndarray, py: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
+    """把投影结果按非有限值切成若干段（`NA` 在 grid 里就是一条折线的断点）。"""
+    finite = np.isfinite(px) & np.isfinite(py)
+    runs: list[tuple[np.ndarray, np.ndarray]] = []
+    start: int | None = None
+    for index, keep in enumerate(finite.tolist()):
+        if keep:
+            if start is None:
+                start = index
+            continue
+        if start is not None:
+            runs.append((px[start:index], py[start:index]))
+            start = None
+    if start is not None:
+        runs.append((px[start:], py[start:]))
+    return runs
 
 
 def _sf_grid_grobs(params: PanelParams, theme: ResolvedTheme) -> list[Any]:

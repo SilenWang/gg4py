@@ -8,7 +8,7 @@ ggplot2 4.0.3（`R/geom-sf.R`、`R/stat-sf.R`、`R/stat-sf-coordinates.R`、
 
 | 模块 | 内容 |
 | --- | --- |
-| `src/ggcore/sf.py` | `Geometry` / `CRS` / 投影（EPSG:4326 · 3857 · 3347 与 mapproj 球面 mercator）/ `st_graticule()` / `pretty()` / `format()` / `point_on_surface()` |
+| `src/ggcore/sf.py` | `Geometry` / `CRS` / 投影（EPSG:4326 · 3857 · 3347 与 mapproj 球面 mercator / azequalarea）/ `st_graticule()` / `pretty()` / `format()` / `point_on_surface()` |
 | `src/ggcore/sf_stat.py` | `stat_sf`（bbox → `xmin/xmax/ymin/ymax`）与 `stat_sf_coordinates`（几何 → 代表点） |
 | `src/ggcore/geom/sf.py` | `geom_sf` 的绘制（点 / 线 / 面 / 几何集合按类型分派） |
 | `src/ggcore/coord.py` | `SfCoord`（graticule / 度数标签 / 面板比例）与 `MapCoord`（mapproj） |
@@ -58,12 +58,33 @@ plotmath，轴标签是单段文本 `36.25°N`。宽度折算按上游 `degree` 
 
 `CoordMap$setup_panel_params()` 的移植：在数据范围上铺 50×50 网格，
 `mapproj::mapproject()` 投影，投影后范围的宽高比就是面板比例；`transform()`
-把投影值 rescale 到 `x.proj` / `y.proj`。只实现球面 `mercator`
-（`x = -wlon`、`y = atanh(sin lat)`，`orientation` 缺省 `c(90, 0, mean(lon))`），
-其它投影显式报错。
+把投影值 rescale 到 `x.proj` / `y.proj`。
+
+`ggcore.sf.mapproject()` 是 mapproj 的**球面投影核**（`src/setproj` →
+`orient()` → `norm()` → 投影函数，逐行对照 `zcoord.c` / `mapproject.c`），
+`orientation` 缺省 `c(90, 0, mean(lon))`：
+
+| 投影 | 公式 | 定义域 |
+| --- | --- | --- |
+| `mercator` | `x = -wlon`、`y = 0.5·log((1+sin lat)/(1-sin lat))` | `\|lat\| > 80°` 返回 NA（`Xmercator` 的截断） |
+| `azequalarea` | `r = sqrt(1 - sin lat)`、`(x, y) = -r·(wlon.s, wlon.c)` | 两极都有定义（南北极 `r = 0` / `sqrt 2`） |
+
+`orientation = c(lat, lon, rotation)` 先按 `orient(o[0], -o[1], -o[2])` 旋球；
+`norm()` 之后 `wlon.s` / `wlon.c` 一定由最终的 `wlon.l` 重算（`azequalarea`
+吃的就是这两个值，用旋转中间量会差一个 `rotation`）。其它投影显式报
+`CoordError`。
+
+`CoordMap$is_linear()` 是 FALSE，所以 `geom_path` / `geom_hline` /
+`geom_vline` 都走 `coord_munch()`：直线按经纬度细分后再投影，在
+`azequalarea` 下就是曲线。面板网格同样不是「两条直段」，而是
+`CoordMap$render_bg()` 的折线——x / y 各取主断点，在 ±0.2 倍展开范围上
+取 50 个采样点（再夹到半个地球）逐点投影。
 
 `map_data("usa")` 的坐标按 `maps` 3.4.2.1 的 `map("usa", fill = TRUE)` 内联在
-`ggcore.map_data_usa`（10 个多边形、7243 个点）。
+`ggcore.map_data_usa`（10 个多边形、7243 个点）。`map_data("nz")` 的 North
+Island（714 点）只服务两条上游快照，按 `maps` 3.4.2.1 的 `map("nz", fill =
+TRUE)` 逐点内联在 case 的 `plot.py` 里（`docs/cases/upstream-geom-hline-vline-
+mercator` / `-azequalarea`），不进运行时。
 
 ## 4. 图例与 `geom_sf_text/label`
 
