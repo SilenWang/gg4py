@@ -4,17 +4,16 @@
 
 - 参考实现：`tidyverse/ggplot2` `v4.0.3` @ `cc1444c10edb87650fbe0cb31d56f0da1a255634`
 - 快照总数：**311**（上游 `tests/testthat/_snaps/**/*.svg`）
-- 已纳管：**306**（`expected.svg` 与上游快照逐字节相同）
-- 已知缺口：**5**（全部按分类归口，见下表）
-- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **5** 条（移交 M3）
+- 已纳管：**308**（`expected.svg` 与上游快照逐字节相同）
+- 已知缺口：**3**（全部按分类归口，见下表）
+- 缺口归属：`m2-closeout` **0** 条（M3 开工前归零） / `m3` **3** 条（移交 M3）
 
 ## 按簇 burndown
 
 | 簇 | owner | 上游 | 已纳管 | 缺口 |
 | --- | --- | ---: | ---: | ---: |
 | `geom-hline-vline-abline` | m3 | 5 | 3 | 2 |
-| `guide-axis` | m3 | 23 | 21 | 2 |
-| `facet-labels` | m3 | 2 | 1 | 1 |
+| `guide-axis` | m3 | 23 | 22 | 1 |
 | `aes` | m2-closeout | 6 | 6 | 0 |
 | `annotate` | m3 | 2 | 2 | 0 |
 | `coord-cartesian` | m2-closeout | 5 | 5 | 0 |
@@ -25,6 +24,7 @@
 | `coord_sf` | m3 | 9 | 9 | 0 |
 | `draw-key` | m2-closeout | 6 | 6 | 0 |
 | `facet-` | m2-closeout | 4 | 4 | 0 |
+| `facet-labels` | m3 | 2 | 2 | 0 |
 | `facet-layout` | m2-closeout | 1 | 1 | 0 |
 | `facet-strips` | m2-closeout | 1 | 1 | 0 |
 | `geom-boxplot` | m2-closeout | 3 | 3 | 0 |
@@ -52,7 +52,7 @@
 | `stat-align` | m2-closeout | 3 | 3 | 0 |
 | `stat-sum` | m2-closeout | 3 | 3 | 0 |
 | `theme` | m2-closeout | 39 | 39 | 0 |
-| **合计** | — | 311 | 306 | 5 |
+| **合计** | — | 311 | 308 | 3 |
 
 口径：`m2-closeout` 的簇是「M2 已宣称但没做到对等」的缺口，必须在 M3 开工前清零（与上游逐字节相同，或落在 2% / 1% 档）；`m3` 的簇移交空间能力 / 版面组合 / `annotate()`，不在本台账里重复计。
 
@@ -110,6 +110,7 @@
 | `facet-/left-justified-facet-labels-with-margins.svg` | `upstream-facet-left-justified-facet-labels-with-margins` |
 | `facet-/left-justified-rotated-facet-labels-with-margins.svg` | `upstream-facet-left-justified-rotated-facet-labels-with-margins` |
 | `facet-labels/outside-justified-labels.svg` | `upstream-facet-labels-outside-justified-labels` |
+| `facet-labels/parsed-facet-labels.svg` | `upstream-facet-labels-parsed-facet-labels` |
 | `facet-layout/axes-are-positioned-correctly-in-non-table-layout.svg` | `upstream-facet-layout-axes-are-positioned-correctly-in-non-table-layout` |
 | `facet-strips/switched-facet-strips.svg` | `upstream-facet-strips-switched` |
 | `geom-boxplot/customised-style.svg` | `upstream-geom-boxplot-customised-style` |
@@ -222,6 +223,7 @@
 | `guide-axis/guide-axis-theta-with-angle-adapting-to-theta.svg` | `upstream-guide-axis-theta-angle` |
 | `guide-axis/guide-titles-with-coord-transform.svg` | `upstream-guide-axis-guide-titles-with-coord-transform` |
 | `guide-axis/guides-specified-in-guides.svg` | `upstream-guide-axis-guides-specified` |
+| `guide-axis/guides-with-minor-ticks.svg` | `upstream-guide-axis-guides-with-minor-ticks` |
 | `guide-axis/position-guide-titles.svg` | `upstream-guide-axis-position-guide-titles` |
 | `guide-axis/stacked-axes.svg` | `upstream-guide-axis-stacked-axes` |
 | `guide-axis/stacked-radial-axes.svg` | `upstream-guide-axis-stacked-radial-axes` |
@@ -369,16 +371,6 @@
 
 ## 已知缺口
 
-### `facet-labels` — 1 条 · SIL-715 · m3
-
-SIL-796：`labeller = label_parsed`（R plotmath 表达式）未实现——`_NAMED_LABELLERS` 只有 label_value / label_both / label_context，label_parsed 会直接报 FacetError；要先把 plotmath 解析成 `alpha ^ beta` 的上标 grob。
-
-<details><summary>快照</summary>
-
-- `facet-labels/parsed-facet-labels.svg`
-
-</details>
-
 ### `geom-hline-vline-abline` — 1 条 · SIL-715 · m3
 
 SIL-795 未纳管：`coord_map(projection = "azequalarea", orientation = c(-36.92, 174.6, 0))` 要 mapproj 的 Lambert 方位等积投影 + 以经纬度为中心的旋转，`MapCoord` 目前只做注册与最小可用（不做投影核）。数据侧还要 `maps::map_data("nz")` 的经纬度多边形。归 M3-2。
@@ -396,16 +388,6 @@ SIL-795 未纳管：同 `lines curved in azequalarea`——`coord_map()` 的 Mer
 <details><summary>快照</summary>
 
 - `geom-hline-vline-abline/straight-lines-in-mercator.svg`
-
-</details>
-
-### `guide-axis` — 1 条 · SIL-715 · m3
-
-SIL-817：卡点是 plotmath 上标，不是次刻度。参考图的 x 轴标签是 `label_math()`（`10` 用 8.80px、指数用 6.16px 两次落字，见快照 `guides-with-minor-ticks.svg` 的 8 段 text），本仓所有 text 走一条 shaping，画不出上下标；plotmath 已在 SIL-786 由 00b6d04 整块移交 M3。次轴带本身（`axis.minor.ticks.length.y.right = 5cm` 撑开 `axis-r` 列）已经算对，等 plotmath 落地后可直接复测。按 SIL-817 约束作为新能力整条移交 m3。
-
-<details><summary>快照</summary>
-
-- `guide-axis/guides-with-minor-ticks.svg`
 
 </details>
 

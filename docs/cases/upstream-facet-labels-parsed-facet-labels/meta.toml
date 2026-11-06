@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-wrap", "plotmath", "theme-text"]
+ci = true
+title = "上游快照：parsed facet labels"
+source = "upstream:tests/testthat/_snaps/facet-labels/parsed-facet-labels.svg"
+tolerance = { png = 0.02 }
+notes = "SIL-855：`labeller = label_parsed`（strip 里的 `alpha ^ beta` 拆成两段 run）。"
