@@ -3,24 +3,20 @@
 
     pixi run docs:links                    # 外链 HEAD/GET 判 200，本地目标判存在
     pixi run docs:links -- --offline       # 只查本地目标（无网 / CI 里用）
-    pixi run docs:links -- --viewer-gallery web/viewer/dist/gallery.html
-                                           # 额外把 viewer gallery 的卡片链接过一遍本地 HTTP
 
 任务名是 `docs:links` 而不是 `gallery:check`：后者已归 viewer 的
 `tools/viewer/gallery_check.py`（查 `gallery.html` 的卡片链接），两者不是同一份资产。
 
-「gallery」在本仓有三处，脚本各查各的：
+「gallery」在本仓有两处，脚本各查各的：
 
 | 面 | 来源 | 判据 |
 | --- | --- | --- |
 | 示例图画廊 | `docs/examples.md`、`README*.md` | 外链 200、本地目标存在、任务存在、资产齐全 |
 | 35 图核对页 | `docs/notes/gallery-audit.md` | 文中的 `pixi run …` 任务存在 |
-| 浏览器 gallery | `--viewer-gallery <gallery.html>` | 卡片链接经本地静态服务都是 200 |
 
 - 示例图画廊：本地目标指 `examples/…`（`plot.py` + `<name>.png` + `<name>.svg`）；
   「任务存在」指文档里写的 `pixi run examples:<name>` 在 `pixi.toml` 里真有；
-- 35 图核对页没有外链，图号与三态由 `pixi run audit:gallery` 复核，这里只查命令；
-- 浏览器 gallery 的 `gallery.html` 是 `viewer:cases` 的产物（不入库），显式给路径才查。
+- 35 图核对页没有外链，图号与三态由 `pixi run audit:gallery` 复核，这里只查命令。
 
 外链检查走 GET（有些站点对 HEAD 返回 405 / 403），带重试：网络抖动会让
 r-graph-gallery 偶发 TLS 失败，一次成败不足以判一条链接失效。`--offline` 把外链记成
@@ -31,10 +27,8 @@ r-graph-gallery 偶发 TLS 失败，一次成败不足以判一条链接失效�
 from __future__ import annotations
 
 import argparse
-import http.server
 import re
 import sys
-import threading
 import time
 import tomllib
 import urllib.error
@@ -206,47 +200,6 @@ def _check_external(item: Item, *, timeout: float, retries: int) -> Result:
     return Result(item, "fail", last or "无响应")
 
 
-def _check_viewer_gallery(path: Path, *, timeout: float) -> list[Result]:
-    """把 gallery.html 里的相对链接经本地静态服务取回，逐条判 200。"""
-    viewer_root = path.parent.parent
-    if not path.is_file():
-        return [
-            Result(
-                Item(str(path), 0, str(path), "local"),
-                "skip",
-                "还没有 gallery.html（先跑 `pixi run viewer:cases`）",
-            )
-        ]
-
-    handler = lambda *a, **kw: http.server.SimpleHTTPRequestHandler(  # noqa: E731
-        *a, directory=str(viewer_root), **kw
-    )
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    port = server.server_address[1]
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    results: list[Result] = []
-    try:
-        for match in re.finditer(r'(?:href|src)="([^"]+)"', path.read_text(encoding="utf-8")):
-            target = match.group(1)
-            if target.startswith(("http://", "https://", "data:", "#")):
-                continue
-            url = f"http://127.0.0.1:{port}/{urllib.parse.quote(target.lstrip('/'))}"
-            item = Item(str(path), 0, target, "local")
-            try:
-                status, _ = _fetch(url, timeout)
-            except urllib.error.HTTPError as exc:
-                results.append(Result(item, "fail", f"HTTP {exc.code}"))
-            except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
-                results.append(Result(item, "fail", f"{type(exc).__name__}: {exc}"))
-            else:
-                results.append(Result(item, "ok" if status == 200 else "fail", f"HTTP {status}"))
-    finally:
-        server.shutdown()
-        server.server_close()
-    return results
-
-
 # ---------------------------------------------------------------------------
 # 报告
 # ---------------------------------------------------------------------------
@@ -273,12 +226,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offline", action="store_true", help="不查外链（记 skip），只看本地目标")
     parser.add_argument("--timeout", type=float, default=20.0, help="单条外链超时（秒，默认 20）")
     parser.add_argument("--retries", type=int, default=2, help="外链重试次数（默认 2）")
-    parser.add_argument(
-        "--viewer-gallery",
-        type=Path,
-        default=None,
-        help="额外检查 viewer 产物 gallery.html 的卡片链接（本地静态服务，判 200）",
-    )
     args = parser.parse_args(argv)
 
     docs = [REPO / name for name in GALLERY_DOCS]
@@ -307,11 +254,6 @@ def main(argv: list[str] | None = None) -> int:
     command_files = [*docs, *sorted(directory / "plot.py" for directory in _example_dirs())]
     results.extend(_command_links(command_files, tasks))
     results.extend(_example_assets())
-    if args.viewer_gallery is not None:
-        gallery = (
-            args.viewer_gallery if args.viewer_gallery.is_absolute() else REPO / args.viewer_gallery
-        )
-        results.extend(_check_viewer_gallery(gallery, timeout=args.timeout))
 
     _print(results)
 

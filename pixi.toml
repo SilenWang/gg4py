@@ -170,8 +170,7 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 
 # SIL-828（M3-7）：文档 / gallery 链接检查。示例图画廊（docs/examples.md、README*.md）
 # 的外链判 200、本地目标存在、文档里写的 `pixi run …` 任务存在、示例资产齐全；
-# 35 图核对页只查它写的任务；加 `-- --viewer-gallery <gallery.html>` 还能把 viewer
-# 卡片链接过一遍本地静态服务判 200。
+# 35 图核对页只查它写的任务。
 # 与 `gallery:check` 的分工：那个查 viewer `gallery.html` 的卡片契约（含 IR / 缩略图），
 # 这个查文档与示例里的外链、相对路径和 `pixi run` 入口，两者不是同一份资产。
 # 不挂进 `check`：外链是第三方站点，CI 不该因为它抽风变红；无网时用 `-- --offline`。
