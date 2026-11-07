@@ -75,7 +75,6 @@ families = [
   "geom-sf",
   "geom-spoke",
   "guide-axis",
-  "guide-legend",
   "guides",
   "labels",
   "patterns",

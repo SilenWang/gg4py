@@ -1,5 +1,5 @@
 family = "guide"
-features = ["guide-legend", "size-aes", "multiline"]
+features = ["guide-legend", "legend-key-justification", "size-aes", "multiline"]
 ci = true
 title = "上游快照：legend key justification"
 source = "upstream:tests/testthat/_snaps/guide-legend/legend-key-justification.svg"

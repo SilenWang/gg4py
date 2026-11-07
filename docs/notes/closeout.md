@@ -25,9 +25,9 @@ pixi run check                  # 全量门禁
 | --- | --- | --- |
 | 上游快照 | **311/311 纳管，缺口 0** | `pixi run snapshots:check` → `snapshots total=311 imported=311 gaps=0` |
 | API 覆盖 | **283/285 = 99.3%**（registry 90.9%） | `pixi run api:coverage:check` → `gaps (2): geom_freqpoly, stat_density2d_filled` |
-| 案例库 | `docs/cases` 下 550 个目录，矩阵识别 **530 条合法 case**；`ci = false` **1 条**（旧重复目录，见 §4） | `ls -d docs/cases/*/ \| wc -l` = 550；`pixi run cases:matrix:check` → `530 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 1 |
+| 案例库 | `docs/cases` 下 549 个目录，矩阵识别 **529 条合法 case**；`ci = false` **0 条**（SIL-870 删掉重复目录后） | `ls -d docs/cases/*/ \| wc -l` = 549；`pixi run cases:matrix` → `529 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0 |
 | gallery 35 图 | 27 ✅ + 2 ⚠️ = 29/35 可画；6 张第三方扩展（刻意不做） | `pixi run audit:gallery` → `35/35 符合登记`；逐张见 `docs/notes/gallery-audit.md` |
-| 三条曾经的 `ci = false` | **两条已转绿**，第三条是重复目录 | 见下方实测 |
+| 三条曾经的 `ci = false` | **两条已转绿**，第三条是重复目录、已删（SIL-870） | 见下方实测 |
 | SIL-715 缺口池 | 28 条全部定性：20 已修/已落地、5 刻意不做、3 仍缺 | 见 §5 |
 
 三条 `ci = false` 的复查（都是本仓当前代码实测）：
@@ -45,7 +45,9 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 第三条 `upstream-guide-legend-legend-key-justification` 是 SIL-820 留下的旧 scratch
 复现，与纳管 case `upstream-guide-legend-key-justification` 同源；后者 **0.9035% /
 0.1122%** 且 `ci = true`，前者仍是 **10.2474% / 1.8273%**。它不指向
-`snapshots.toml` 里的任何条目，属于重复目录，见 §4（SIL-870）。
+`snapshots.toml` 里的任何条目，属于重复目录——SIL-870 已把它删掉（`expected.svg`
+与纳管 case 同字节，未丢参考图；它单独占用的 `guide-legend` 族登记一并撤掉，
+`legend-key-justification` 特性改由纳管 case 标注，矩阵缺口仍为 0）。
 
 `matrix-report-facet-polar-grey` 也已进 CI：SIL-839 把 r/theta 断点改走面板范围后
 从 8.54% / 1.30% 收到 **4.45% / 0.94%**（report 档 5% / 1%）。
@@ -91,7 +93,7 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 | 3 | `geom_freqpoly` / `stat_density2d_filled` 两个上游导出名缺失（SIL-715 #18 / #22） | API 覆盖 283/285，迁移时 ImportError | **SIL-866** | 1 人日 |
 | 4 | `docs/notes/upstream-map.md`（X3）整体停在 M1 口径 | 读者会以为大量模块没做；review 误用 | **SIL-872** | 1 人日 |
 | 5 | `facet_wrap(strip.position = bottom/left/right)` 直接报错 | 上游 API 面缺失；311 快照未覆盖 | **SIL-871** | 1–2 人日 |
-| 6 | `legend-key-justification` 重复 case（唯一 `ci = false`） | 案例台账多一条永远不判红的记录 | **SIL-870** | 0.5 人日 |
+| 6 | ~~`legend-key-justification` 重复 case（唯一 `ci = false`）~~ | ✅ 已收口（SIL-870 删除重复目录，529 条 case / 0 条 `ci = false`） | **SIL-870** | 0.5 人日 |
 | 7 | viewer 不消费 `text.lineheight`（IR 已有字段） | 非缺省行距在 DOM SVG 丢失 | **SIL-869** | 0.5 人日 |
 
 ## 5. SIL-715 28 条逐条定性
@@ -139,4 +141,5 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 **一句话：内核与两条渲染腿已经对等收口（311/311、API 99.3%、案例 0 个未登记缺口），
 剩下的是 13 张浏览器卡片的像素差、SVG 虚线、2 个 API 别名，以及 3 条版式/文档债。**
 
-对应 7 个任务见 §4；全部做完后重跑 §0 的命令即可复核，不需要再读 issue 历史。
+对应 §4 的任务（6 条在办，第 6 条已由 SIL-870 收口）；全部做完后重跑 §0 的命令即可复核，
+不需要再读 issue 历史。
