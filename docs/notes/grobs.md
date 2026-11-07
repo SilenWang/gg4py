@@ -341,11 +341,11 @@ case.json → grob 树 → scene()（场景遍历）→ Scene（float64）→ to
 
 | 行为 | R grid | gg4py |
 | --- | --- | --- |
-| 箭头（`arrow`） | `linesGrob(arrow = arrow())` | 未实现（`docs/notes/ir.md` §12 已记为 minor） |
+| 箭头（`arrow`） | `linesGrob(arrow = arrow())` | 已实现：`ggcore.arrow.arrow()`（IR 0.3 的 `arrow` 参数 + `head_geometry()`），`geom-curve-arrow` 实测 1.3792% / 0.1928% |
 | `clip = grob` / mask / `grid.clipPath` 的任意形状 | 支持 | `clip_path` 只做矩形；多边形裁剪留给 IR 的 `clip` 节点 |
 | 向量 gp 逐顶点上色 | `polylineGrob` 支持 | 路径型原语只收标量 gp（§4） |
 | `pch` 的完整符号表 / `fontface` 字符串 | `validGP()` 折 `fontface`，设备解 `pch` | `font` 整数 → `<family>:<bold\|italic>` key（M0-7 换真 key）；`pch` 由设备解 |
-| `check.overlap` / `text` 的断行 | `grid.text` 支持 | 未实现 |
+| `check.overlap` / `text` 的断行 | `grid.text` 支持 | 已实现：`geom_text(check_overlap=)` 按行序丢重叠（`src/ggcore/geom/text.py:534`）；`\n` 在 `ggskia.text` 按 1.44 × fontsize 切行，`text-multiline` 实测 1.3391% / 0.2964% |
 | `grobWidth` / `grobHeight` 的完整泛型 | 全部 grob 类 | 只实现本模块的 18 个构造器（§8） |
 | 全部 657 个 R 颜色名 | `colors()` | 常用子集 + hex + 灰阶（§5），其余报错 |
 | `grey<k>` 的精确舍入 | `colors()` 表 | `round(255k/100)`，个别 k 差 1 灰阶（§5） |
