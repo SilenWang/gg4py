@@ -171,6 +171,14 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 "docs:guide" = "PYTHONPATH=src python tools/docs/guide_examples.py"
 "docs:guide:check" = "PYTHONPATH=src python tools/docs/guide_examples.py --quiet"
 
+# SIL-872：模块 ↔ 上游对照表（`docs/notes/upstream-map.md`）的双向门禁。
+# 正向：表里写出的每个 `ggcore.*` / `ggio.*` / `ggshape.*` / `ggskia.*` /
+# `ggdiff.*` 名字都真的 `importlib.import_module()` 一次；反向：
+# `git ls-files src/ggcore` 的每个模块都必须在表里有一行。只查一个方向照样会
+# 漂——文档停在 M1 早期那版就是「计划行没人删、新模块没人加」同时发生的。
+# 顺带守状态列只取三档（已实现 / 部分实现 / 刻意不做）与表头「Python 模块」。
+"docs:upstream-map:check" = "PYTHONPATH=src python tools/gates/upstream_map.py"
+
 # SIL-828（M3-7）：文档 / gallery 链接检查。示例图画廊（docs/examples.md、README*.md）
 # 的外链判 200、本地目标存在、文档里写的 `pixi run …` 任务存在、示例资产齐全；
 # 35 图核对页只查它写的任务。
@@ -425,4 +433,5 @@ check = { depends-on = [
   "tiers:check",
   "docs:theme:check",
   "docs:guide:check",
+  "docs:upstream-map:check",
 ] }
