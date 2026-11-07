@@ -71,6 +71,12 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
 - **`space`**：只有 `"fixed"`（默认）/ `"free_x"` / `"free_y"`（上游不接受
   `"free"`）。`free_x` 强制**一行**、列宽按各面板 x 范围差分配；`free_y`
   强制一列。给 `nrow` / `ncol` 也会被覆盖（R 同样是覆盖 + warning）。
+- **`strip.position`**：`"top"`（默认）/ `"bottom"` / `"left"` / `"right"`，
+  其余值报 `FacetError`。`top` / `bottom` 是「每个面板一条、多变量时堆叠」的列
+  strip，`left` / `right` 是「每个面板列各一列、多变量时并排」的行 strip
+  （上游 `FacetWrap$attach_strips()` 的 `weave_tables_row()` /
+  `weave_tables_col()`）。换边后文本元素按边解析（`strip.text.x.bottom` /
+  `strip.text.y.left`），与 `facet_grid(switch=)` 共用同一条路径。
 - 例：4 个水平 `d, c, b, a` + `ncol = 2` + `as.table = FALSE` 得到
   PANEL 1=`d`(ROW 2, COL 1)、2=`c`(2, 2)、3=`b`(1, 1)、4=`a`(1, 2)。
 
@@ -148,8 +154,9 @@ logical → `bool`，字符串 / 因子 → `str`；NA 进 `na_mask`）；显示
   `panel.spacing.x` / `panel.spacing.y` 分隔行列；
 - `panels`：`(PANEL, t, l, b, r)`，名字沿用上游 `panel-<col>-<row>`；
 - `strips`：`FacetStrip(name, side, text, panel, row, col, fill)`；wrap 的
-  `side = "top"`（每个面板行一条），grid 列 strip = `"top"`、行 strip =
-  `"right"`；
+  `side` 跟 `strip.position` 走（`top` / `bottom` 每个面板一条，
+  `left` / `right` 每个面板列各一列），grid 列 strip = `"top"`、行 strip =
+  `"right"`（`switch=` 时分别为 `"bottom"` / `"left"`）；
 - `panel_boxes(width_cm, height_cm)`：从 gtable 行/列解析出的面板矩形
   （cm），可直接断言等宽等高。
 
@@ -205,14 +212,19 @@ wrap 有多个面板行时，行结构是
 `strip-r-<row>` 在右侧与面板行同高。`FacetTable.strip_height_cm` /
 `strip_width_cm` 分别给顶部 strip 块总高与右侧 strip 块总宽。
 
-**`facet_grid(switch =)`**（SIL-811）：`"both"` / `"x"` 把列 strip 换到面板**下方**，
-`"both"` / `"y"` 把行 strip 换到**左侧**（`FacetTable.switched_sides` → 名字前缀
-`strip-b-*` / `strip-l-*`）。换边后文本元素按边解析：`strip.text.x.bottom` /
-`strip.text.y.left`（后者角度 90，与右侧的 -90 互为镜像）。轴带贴着**整张分面表**
-的外沿画（`_axis_grobs()` 读 `FacetTable.inside_strip_sides`），所以底部轴标签落在
-strip 之下、左侧轴标签落在 strip 右侧，与 R 的 `attach_strips()` 一致；换边 +
+**换边**（SIL-811 的 `facet_grid(switch =)`、SIL-871 的
+`facet_wrap(strip.position =)`）：`"both"` / `"x"` 把列 strip 换到面板**下方**，
+`"both"` / `"y"` 把行 strip 换到**左侧**（名字前缀 `strip-b-*` / `strip-l-*`）。
+换边后文本元素按边解析：`strip.text.x.bottom` / `strip.text.y.left`（后者角度
+90，与右侧的 -90 互为镜像）。轴带贴着**整张分面表**的外沿画（`_axis_grobs()`
+读 `FacetTable.inside_strip_sides`，两个方向各自让位），所以底部轴标签落在 strip
+之下、左侧轴标签落在 strip 右侧，与 R 的 `attach_strips()` 一致；换边 +
 `strip.placement = "outside"` 目前按 inside 画（`plot_layout()` 的轴带只有
 top / right 两条）。
+
+`facet_wrap` 的 `left` / `right` 还有一处与 grid 不同：R 给**每个面板列**各插
+一列 strip（列宽取该列标签的最大值），不是整块一条。`facet_table()` 因此按列
+量宽（`strip_col_widths`），多变量时同列内并排。
 
 **labeller**：`"label_value"`（默认）/ `"label_both"`（`变量: 值`）/
 `"label_context"`（单变量同 value，多变量同 both）/ `"label_parsed"`（值当
@@ -234,7 +246,7 @@ IR 的 text 节点没有「段」字段，多段就是多节点。解析不了�
 
 | 能力 | 现状 | 计划 |
 | --- | --- | --- |
-| `facet_wrap(strip.position = "bottom"/"left"/"right")` | 报 `FacetError`（只支持 top） | **仍缺**，SIL-871（`facet_grid(switch=)` 已能换边，`facet_wrap` 不能） |
+| `facet_wrap(strip.position = "bottom"/"left"/"right")` | **已参与版式**（SIL-871）：strip 落在对应边，轴标签 / 轴标题在 strip 之外，元素按边取（`strip.text.x.bottom` / `strip.text.y.left`）；三张参考图 1.29% / 1.52% / 1.57%（`facet-wrap-strip-*`） | — |
 | 右侧 strip 的 `strip.placement = "outside"` + 次轴 | **刻意回退 inside**（strip 占 gtable 列、落在面板与次轴之间，不再压住次轴标签）；无右轴时仍按 outside 外置 | 保留：次轴带与 outside strip 同时存在时 R 的排法会叠字，这里选不叠字的版式 |
 | 自由刻度 + `coord_fixed(ratio=…)` | 只允许 `facet_grid(space = "free")`（两维 free）；`space="free_x"/"free_y"` 与 `facet_wrap()` 报错（与 R 4.0.3 实测一致） | — |
 | `coord_polar()` / `coord_radial()` + `space = "free…"` | 报错：R 4.0.3 自己在 `init_gtable()` 里报 `values must be length 1`（上游 bug），gg4py 不再静默出非正圆面板 | 上游修复后再对齐 |

@@ -23,7 +23,7 @@
 | `labeller` | `"label_value"` | 见 §4 |
 | `drop` | `True` | 丢弃没有数据的水平 |
 | `as.table` | `True` | `True` 从左上开始排，`False` 从左下 |
-| `strip.position` | `"top"` | 只支持 `"top"`（其它值报错） |
+| `strip.position` | `"top"` | `"top"` / `"bottom"` / `"left"` / `"right"`（其它值报错） |
 
 ```python
 from ggcore.plot import aes, facet_wrap, geom_point, geom_smooth, ggplot, labs
@@ -138,7 +138,9 @@ p = (
 ## 5. 与上游的差异
 
 - `facets` 是字符串 / 列表，不是公式；`vars()` 也没有。
-- `strip.position` 只支持 `"top"`；`facet_wrap(space=...)` 不支持（报错）。
+- `strip.position` 支持 `"top"` / `"bottom"` / `"left"` / `"right"`（SIL-871）；
+  换边后的 strip 在 `strip.placement = "outside"` 下按 `"inside"` 画（与
+  `facet_grid(switch=)` 同一口径）。
 - `facet_grid(margins=)` 未实现。
 - 极坐标 / 放射坐标 + `space="free"` 会报错（上游自身在 4.0.3 里也失败）。
 - 带点的参数名（`as.table`、`strip.position`）用 `**{"as.table": False}` 传。

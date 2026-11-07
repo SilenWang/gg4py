@@ -2111,19 +2111,33 @@ def _axis_grobs(
             rsec_title = _guide_title(guide_rsec, None)
         else:
             rsec_title = None
-        # `switch = "both"`：换到面板下方的 strip 与轴之间、换到左侧的 strip 与
-        # 轴之间都还隔着 strip 行 / 列（R 把轴 seam 在 strip 之外）。轴带贴着
-        # 整张分面表的外沿，不贴面板本身。
+        # `switch = "both"` / `strip.position`：换到面板下方的 strip 与轴之间、
+        # 换到左侧的 strip 与轴之间都还隔着 strip 行 / 列（R 把轴 seam 在 strip
+        # 之外）。轴带贴着**整张分面表**的外沿，不贴面板本身。
+        #
+        # 两个方向各自让位：R 的 axis-b 只跨 panel 列、axis-l 只跨 panel 行，
+        # 拿同一个格子同时往左 / 往下撑会把 x 刻度整体挪一个 strip 宽（SIL-871）。
         cell_x, cell_w = box.x_cm, box.width_cm
         cell_y, cell_h = box.y_cm, box.height_cm
         inside_sides = getattr(table, "inside_strip_sides", ())
-        if "bottom" in inside_sides:
-            cell_h = box.top - layout.panel_area.y_cm
-            cell_y = layout.panel_area.y_cm
-        if "left" in inside_sides:
-            cell_w = box.right - layout.panel_area.x_cm
-            cell_x = layout.panel_area.x_cm
         cell = CellBox(1, 1, 1, 1, cell_x, cell_y, cell_w, cell_h)
+        x_cell = cell
+        if "bottom" in inside_sides:
+            x_cell = CellBox(
+                1, 1, 1, 1, cell_x, layout.panel_area.y_cm, cell_w, box.top - layout.panel_area.y_cm
+            )
+        y_cell = cell
+        if "left" in inside_sides:
+            y_cell = CellBox(
+                1,
+                1,
+                1,
+                1,
+                layout.panel_area.x_cm,
+                cell_y,
+                box.right - layout.panel_area.x_cm,
+                cell_h,
+            )
         # `axes = "all"` 的顶部 / 右侧轴标签在 strip 之外（R 把 strip 行先
         # seam 进面板表，轴再 seam 在它外侧）。
         top_cell = cell
@@ -2154,7 +2168,7 @@ def _axis_grobs(
                 axis_guide_grobs(
                     theme,
                     gx,
-                    top_cell if x_side == "top" else cell,
+                    top_cell if x_side == "top" else x_cell,
                     guide_x,
                     metrics=metrics,
                     name=f"axis-x-{panel}",
@@ -2170,7 +2184,7 @@ def _axis_grobs(
                 axis_guide_grobs(
                     axis_theme,
                     gy,
-                    right_cell if y_side == "right" else cell,
+                    right_cell if y_side == "right" else y_cell,
                     guide_y,
                     metrics=metrics,
                     name=f"axis-y-{panel}",
@@ -2303,22 +2317,36 @@ def _axis_grobs(
             *(("right",) if gy_right is not None else ()),
         )
         if line_sides:
-            grobs.extend(
-                axis_line_grobs(
-                    _axis_guide_theme(theme, params, guide_y),
-                    cell,
-                    name=f"axis-line-{panel}",
-                    ranges={
-                        x_side: axis_line_range(guide_x, gx) if gx is not None else None,
-                        y_side: axis_line_range(guide_y, gy) if gy is not None else None,
-                        "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
-                        "right": axis_line_range(guide_right, gy_right)
-                        if gy_right is not None
-                        else None,
-                    },
-                    sides=line_sides,
+            ranges = {
+                x_side: axis_line_range(guide_x, gx) if gx is not None else None,
+                y_side: axis_line_range(guide_y, gy) if gy is not None else None,
+                "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
+                "right": axis_line_range(guide_right, gy_right) if gy_right is not None else None,
+            }
+            # 水平轴（bottom / top）只受上下 strip 影响，垂直轴（left / right）只受
+            # 左右 strip 影响：轴线跟着各自的格子走，不能跨维借位（SIL-871）。
+            horizontal_sides = tuple(side for side in line_sides if side in ("bottom", "top"))
+            vertical_sides = tuple(side for side in line_sides if side in ("left", "right"))
+            if horizontal_sides:
+                grobs.extend(
+                    axis_line_grobs(
+                        _axis_guide_theme(theme, params, guide_y),
+                        top_cell if "top" in horizontal_sides else x_cell,
+                        name=f"axis-line-{panel}",
+                        ranges=ranges,
+                        sides=horizontal_sides,
+                    )
                 )
-            )
+            if vertical_sides:
+                grobs.extend(
+                    axis_line_grobs(
+                        _axis_guide_theme(theme, params, guide_y),
+                        right_cell if "right" in vertical_sides else y_cell,
+                        name=f"axis-line-{panel}",
+                        ranges=ranges,
+                        sides=vertical_sides,
+                    )
+                )
         for annotation in getattr(build, "annotations", ()) or ():
             from ggcore.annotations import logticks_grobs
 
@@ -2362,6 +2390,30 @@ def _axis_grobs(
                     )
                 )
     area = axis_title_area(layout)
+    inside_sides = getattr(table, "inside_strip_sides", ())
+
+    def _title_cell(side: str) -> CellBox:
+        """轴标题的容器：strip 落在面板与轴**之间**时，标题要再让出一格。
+
+        R 的 `attach_strips()` 把换边的 strip seam 在面板与轴带之间，所以
+        `xlab` / `ylab` 在 strip 之外（`facet_grid(switch=)` 与
+        `facet_wrap(strip.position=)` 同一口径）。水平标题只受上下 strip 影响，
+        垂直标题只受左右 strip 影响——另一维保持 panel 并集，标题中心才不会
+        被 strip 拽偏（SIL-817）。
+        """
+        x, y, w, h = area.x_cm, area.y_cm, area.width_cm, area.height_cm
+        strip_h = float(getattr(table, "strip_height_cm", 0.0))
+        strip_w = float(getattr(table, "strip_width_cm", 0.0))
+        if side in ("top", "bottom") and side in inside_sides:
+            if side == "bottom":
+                y -= strip_h
+            h += strip_h
+        elif side in ("left", "right") and side in inside_sides:
+            if side == "left":
+                x -= strip_w
+            w += strip_w
+        return CellBox(1, 1, 1, 1, x, y, w, h)
+
     panels_for_side = list(_panels(build))
     x_title_side = "bottom"
     y_title_side = "left"
@@ -2374,7 +2426,7 @@ def _axis_grobs(
             _panel_scale(build, panels_for_side[0][0], first_params.scale_key("left")), "left"
         )
     if x_title:
-        fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
+        fake = _title_cell(x_title_side)
         grob = axis_title_grob(
             theme,
             x_title_side,
@@ -2387,7 +2439,7 @@ def _axis_grobs(
         if grob is not None:
             grobs.append(grob)
     if y_title:
-        fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
+        fake = _title_cell(y_title_side)
         grob = axis_title_grob(
             theme,
             y_title_side,
@@ -2403,7 +2455,7 @@ def _axis_grobs(
             grobs.append(grob)
     if rsec_title:
         # `guides(r.sec = guide_axis(title = "right"))`：右轴标题（`axis.title.y.right`）。
-        fake = CellBox(1, 1, 1, 1, area.x_cm, area.y_cm, area.width_cm, area.height_cm)
+        fake = _title_cell("right")
         grob = axis_title_grob(
             theme,
             "right",

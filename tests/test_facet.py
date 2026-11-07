@@ -1016,6 +1016,69 @@ def test_grid_switch_moves_strips_to_the_bottom_and_left() -> None:
     assert float(theme_.get("strip.text.y").angle) == pytest.approx(-90.0)
 
 
+@pytest.mark.parametrize(
+    ("position", "side"),
+    [("bottom", "bottom"), ("left", "left"), ("right", "right")],
+)
+def test_wrap_strip_position_puts_strips_on_the_named_side(position: str, side: str) -> None:
+    """SIL-871：`facet_wrap(strip.position=)` 的四边都参与版式。
+
+    R `FacetWrap$attach_strips()`：top / bottom 用 `weave_tables_row()`（每个
+    面板一条），left / right 用 `weave_tables_col()`（每个面板列一条）。换边后
+    轴带贴着分面表外沿，所以 strip 落在面板与轴之间。
+    """
+    build = build_plot(wrap_plot(ncol=2, **{"strip.position": position}))
+    table = build.facet_table()
+    assert {strip.side for strip in table.strips} == {side}
+    assert table.inside_strip_sides == (side,)
+    assert len(table.strips) == len(table.panels)
+    for strip in table.strips:
+        placement = next(row for row in table.gtable.layout if row.name == strip.name)
+        panel_top, panel_left = next(
+            (top, left) for panel, top, left, _, _ in table.panels if panel == strip.panel
+        )
+        if side == "bottom":
+            assert (placement.t, placement.l) == (panel_top + 1, panel_left)
+        elif side == "left":
+            assert placement.l == panel_left - 1
+        else:
+            assert placement.l == panel_left + 1
+    # 换边后按边取元素（左 strip 的角度是 90，右 strip 是 -90）。
+    theme_ = resolve_theme(build.theme)
+    element, angle = {
+        "bottom": ("strip.text.x.bottom", 0.0),
+        "left": ("strip.text.y.left", 90.0),
+        "right": ("strip.text.y", -90.0),
+    }[side]
+    assert float(theme_.get(element).angle) == angle
+
+
+def test_wrap_strip_position_left_right_give_each_column_its_own_strip() -> None:
+    """SIL-871：R 给每个面板列各插一列 strip，面板列因此比 top 版式窄。"""
+    top = build_plot(wrap_plot(ncol=2))
+    left = build_plot(wrap_plot(ncol=2, **{"strip.position": "left"}))
+    top_boxes = plot_layout(top).panel_boxes
+    left_layout = plot_layout(left)
+    left_boxes = left_layout.panel_boxes
+    assert len({round(box.x_cm, 6) for box in left_boxes.values()}) == 2
+    assert max(box.width_cm for box in left_boxes.values()) < max(
+        box.width_cm for box in top_boxes.values()
+    )
+    table = left.facet_table()
+    assert table.strip_width_cm > 0
+    strip_columns = {
+        next(row for row in table.gtable.layout if row.name == strip.name).l
+        for strip in table.strips
+    }
+    assert len(strip_columns) == 2
+
+
+def test_wrap_strip_position_rejects_unknown_values() -> None:
+    """非法值保持明确报错（不是静默退回 top）。"""
+    with pytest.raises(FacetError, match=r"strip\.position"):
+        build_plot(wrap_plot(**{"strip.position": "middle"}))
+
+
 def test_axis_titles_span_panel_cells_not_strips() -> None:
     """SIL-817：行 strip 自带一列，xlab / ylab 的中心不能把它算进去。
 

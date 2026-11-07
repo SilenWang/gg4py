@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-wrap", "strip-position"]
+ci = true
+title = "facet_wrap(strip.position = \"bottom\")"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-871：strip 在面板与 x 轴之间，轴标签 / 标题在 strip 之外（R `attach_strips()` 的 `shift = 0`）；元素取 `strip.text.x.bottom`。参考图由 `pixi run -e refs refs:wrap-strip-cases` 生成。"
