@@ -64,12 +64,14 @@ def ink_fraction(svg: Path) -> float:
     from PIL import Image
 
     from ggdiff.raster import rasterize_svg
+    from ggdiff.svgimage import snap_pixelated_images
     from ggdiff.svgtext import inline_text_paths
 
     with tempfile.TemporaryDirectory() as scratch:
         outlined = Path(scratch) / "outlined.svg"
         png = Path(scratch) / "render.png"
         inline_text_paths(svg, outlined)
+        snap_pixelated_images(outlined)
         rasterize_svg(outlined, png)
         with Image.open(png) as image:
             rgb = image.convert("RGB")

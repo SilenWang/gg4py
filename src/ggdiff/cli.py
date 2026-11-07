@@ -36,6 +36,7 @@ from ggdiff.compare import (
 from ggdiff.image import load_image, save_heatmap
 from ggdiff.raster import DEFAULT_DPI, RasterError, rasterize_svg, resvg_version
 from ggdiff.report import render_report
+from ggdiff.svgimage import SvgImageError, snap_pixelated_images
 from ggdiff.svgtext import SvgTextError, inline_text_paths
 
 EXPECTED_NAMES = ("expected.png", "expected.svg")
@@ -187,7 +188,8 @@ def _rasterize_if_needed(path: Path, scratch: Path, dpi: int) -> tuple[Path, boo
     prepared = scratch / f"{path.stem}-outlined.svg"
     try:
         inline_text_paths(path, prepared)
-    except SvgTextError as error:
+        snap_pixelated_images(prepared)
+    except (SvgTextError, SvgImageError) as error:
         raise DiffError(str(error)) from error
     target = scratch / f"{path.stem}.png"
     rasterize_svg(prepared, target, dpi=dpi)
