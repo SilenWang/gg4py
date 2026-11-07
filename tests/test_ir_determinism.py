@@ -8,14 +8,17 @@
 断言 IR 字节不变。全量 515 条的版本是 `pixi run gate:libm-noise`（挂进 `check`）；
 这里放几条快的，覆盖量化点在哪儿、以及每个量化函数的边界行为。
 
-端到端那组按「三种噪声 × 种子」展开：`mixed` 的偏移方向由「位模式 ^ seed」定，
-所以扫 0–3 再加评审手验过的 7（只有 seed 的 bit0 参与，实际是两个等价类）；
+端到端那组按「三种噪声 × 种子」展开：`mixed` 的偏移方向由「取值位模式 ^ seed」定。
+SIL-864 起 seed 的低 3 位各选一个字节对齐的抽取位，所以 0–7 是 8 份互不相同的噪声，
+`seed & 7` 相同的种子（0 与 8）逐位相同——**seed 空间 = 8 个等价类**，依据是
+`pixi run gate:libm-noise:seeds` 打印的 sha256 表（0–7 两两不同、8–15 复现 0–7）；
 `up` / `down` 方向写死，种子不参与，各留一条。
 """
 
 from __future__ import annotations
 
 import math
+import struct
 import sys
 from pathlib import Path
 
@@ -46,16 +49,18 @@ SF_CASES = (
 #: 噪声 × 种子的组合。
 #:
 #: `up` / `down` 的方向写死在模式里（`_direction()` 直接给 ±inf），seed 不参与，
-#: 各留一条；`mixed` 的方向是「取值的位模式 ^ seed」，所以要把种子扫一遍：
-#: 0–3 是返工说明里承诺的范围，7 是 SIL-824 评审手工验过的那个，留着当锚点。
+#: 各留一条；`mixed` 的方向是「取值的位模式混合 → 按 seed 选抽取位」，所以要把
+#: 整个等价类空间扫一遍。
 #:
-#: 注意 `_bit_sign()` 里参与异或的只有 `seed` 的 bit0，于是 0/2 是同一份噪声、
-#: 1/3/7 是同一份，五种种子实际只覆盖两个等价类。要让 0–3 真的各不同，得改
-#: 注入器的混合方式——那是 gate 本身的事，不在这条用例的范围里。
+#: 为什么是 0–7 这 8 条：`_noise_bit()` 用 `seed & 7` 从 64 位混合值里选一个字节
+#: 对齐的比特，seed 的高位不参与——`seed & 7` 相同就是同一份噪声（0 与 8 逐位相同），
+#: 所以 **seed 空间 = 8 个等价类**，扫 0–7 就覆盖了全部。依据是
+#: `pixi run gate:libm-noise:seeds` 的 sha256 表：0–7 两两不同、8–15 分别复现 0–7。
+#: `test_mixed_noise_seed_space_has_eight_equivalence_classes` 把这条钉死。
 NOISE_VARIANTS = tuple(
     pytest.param(mode, seed, id=f"{mode}-seed{seed}")
     for mode in libm_noise.MODES
-    for seed in ((0, 1, 2, 3, 7) if mode == "mixed" else (7,))
+    for seed in (tuple(range(libm_noise.SEED_CLASSES)) if mode == "mixed" else (7,))
 )
 
 
@@ -123,6 +128,59 @@ def test_sf_projection_is_quantised_but_NaN_still_propagates() -> None:
     assert math.isnan(x[1]) and math.isnan(y[1])
     # 量化网格 1e-5 m：结果必须落在网格上（乘 1e5 后是整数）。
     assert abs(x[0] * 1e5 - round(x[0] * 1e5)) < 1e-6
+
+
+# ---------------------------------------------------------------------------
+# seed 空间：8 个等价类，而 0–7 各是一份不同的噪声
+# ---------------------------------------------------------------------------
+
+#: 混合用的取值语料：覆盖量级、符号与「整齐」的取值，语料本身不调用 libm。
+SEED_CORPUS = tuple(
+    [i / 7.0 for i in range(1, 300)]
+    + [float(i) for i in range(1, 65)]
+    + [2.0**i for i in range(-20, 21)]
+    + [1.0 + 2.0**-k for k in range(1, 24)]
+)
+
+
+def _noise_field(seed: int) -> tuple[int, ...]:
+    """一档 seed 的噪声场：语料里每个取值朝哪一侧偏（+1 / -1）。"""
+    return tuple(1 if libm_noise.bit_direction(value, seed) > 0 else -1 for value in SEED_CORPUS)
+
+
+def test_mixed_noise_seed_space_has_eight_equivalence_classes() -> None:
+    """`seed & 7` 决定抽哪个比特：0–7 两两不同，8 与 0 逐位相同。"""
+    classes = libm_noise.SEED_CLASSES
+    assert classes == 8, "seed 空间变了就同步改 NOISE_VARIANTS 的覆盖范围"
+    fields = [_noise_field(seed) for seed in range(classes)]
+    assert len(set(fields)) == classes, "seed 0–7 必须给出 8 份不同的噪声"
+    for seed in range(classes):
+        assert _noise_field(seed + classes) == fields[seed]
+        assert _noise_field(seed + 2 * classes) == fields[seed]
+
+
+def test_mixed_noise_is_one_ulp_and_deterministic() -> None:
+    """幅度仍受控：每一处位移恰好 1 ULP，且同一个数两次得到同一方向。"""
+    for value in SEED_CORPUS:
+        for seed in range(libm_noise.SEED_CLASSES):
+            direction = libm_noise.bit_direction(value, seed)
+            assert direction in (math.inf, -math.inf)
+            assert libm_noise.bit_direction(value, seed) == direction
+            moved = math.nextafter(value, direction)
+            before = struct.unpack("<q", struct.pack("<d", value))[0]
+            after = struct.unpack("<q", struct.pack("<d", moved))[0]
+            assert abs(after - before) == 1
+
+
+def test_mixed_noise_array_and_scalar_paths_agree() -> None:
+    """`numpy` 数组走的是向量化的同一套混合；两条路径不能各偏各的。"""
+    values = np.array(SEED_CORPUS, dtype=np.float64)
+    for seed in range(libm_noise.SEED_CLASSES):
+        with libm_noise.libm_noise("mixed", seed=seed):
+            vectorised = np.cos(values)
+        with libm_noise.libm_noise("mixed", seed=seed):
+            scalar = np.array([math.cos(float(value)) for value in values])
+        assert np.array_equal(vectorised, scalar), f"seed={seed}"
 
 
 # ---------------------------------------------------------------------------

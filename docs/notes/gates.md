@@ -10,6 +10,8 @@
 | `pixi run gate:determinism` | `tools/gates/check_determinism.py` | 同输入序列化出不同字节 | 两个进程摘要不一致 |
 | `pixi run gate:metrics` | `tools/gates/check_metrics.py` | 双端文本度量不一致（M0-7，X5） | CanvasKit 把整串按主字族排版 |
 | `pixi run gate:pyodide` | `tools/gates/check_pyodide_ir.py` | CPython 与 Pyodide 的 IR 字节不一致（M0-10） | 两个 CBOR 实现写出的字节不同 |
+| `pixi run gate:libm-noise` | `tools/gates/check_libm_noise.py` | IR 里还留着宿主 libm 的末位噪声（换一台 runner 就红，SIL-824 / SIL-864） | `cos` 的 1 ULP 差经 `1/cos(lat)` 放大进 `viewport.transform` |
+| `pixi run gate:libm-noise:selftest` | `check_libm_noise.py --expect-diff` | 噪声门禁自己失效（怎么都绿） | 注入 1e-4 粗噪声后一条 case 都不漂 |
 | `pixi run gate:cbor` | `tools/gates/check_cbor_diff.py` | `_cbor` 与 `cbor2` canonical 不等价（M0-10/SIL-646） | NaN 不归一成 `f97e00`、长度头写错 |
 | `pixi run api:coverage:check` | `tools/gates/api_coverage.py` | v4.0.3 的 NAMESPACE 导出在任何分类里掉到 90% 以下，或有缺口没登记 issue 归口（SIL-745） | `theme` 覆盖率 40% 且 `theme_set` 没归口 |
 | `pixi run snapshots:check` | `tools/upstream/snapshots.py` | 上游 311 份 SVG 快照里有条目没处置、缺口没归口、或已纳管 case 的 `expected.svg` 与上游不再逐字节相同 | 改了 `docs/cases/upstream-*/expected.svg` |
@@ -150,6 +152,59 @@ scene，比较 stdout（`digest` / `bytes` / `plot_digest`）。两份载荷：
 
 子进程同时自检 `encode(decode(data)) == data`，所以“编码 + 解码”合起来也要字节
 稳定；同一进程内重复调用、两次 `build_plot()` 的字节也都检查。
+
+## libm 噪声（SIL-824 / SIL-864）
+
+`gate:libm-noise` 是「换一台机器」的代理：把 `math` / `numpy` 的三角与指数函数
+整体偏 ±1 ULP，再把 `docs/cases` 全量跑一遍，任何一条 case 的 IR sha256 变了就红。
+三种模式：
+
+| 模式 | 含义 |
+| --- | --- |
+| `up` | 所有取值朝 +∞ 偏 1 ULP（上界，比真实差异更狠） |
+| `down` | 所有取值朝 -∞ 偏 1 ULP |
+| `mixed` | 方向由取值的位模式决定（贴近真实：只有部分取值差 1 ULP，且可复现） |
+
+`mixed` 的方向 = splitmix64 两轮乘加混合后的一个比特，抽哪个比特由 `seed` 的低 3
+位选（`seed & 7` 各选一个字节对齐的位）。所以：
+
+- **seed 空间 = 8 个等价类**：`seed & 7` 相同的种子是同一份噪声（0/8、1/9 … 逐位
+  相同），`pixi run gate:libm-noise:seeds` 的 sha256 表可直接对照；
+- seed 0–7 各是一份**互不相同**的噪声，`tests/test_ir_determinism.py` 就扫这 8 个；
+- 幅度没变：每处仍恰好 1 ULP，方向只由「取值 + seed」决定，同一进程里两次调用、
+  两个进程里都一致（可复现，不是随机）。
+
+> SIL-864 之前 `_bit_sign()` 是 `((bits >> 1) ^ (seed & 0xFF)) & 1`：异或之后只取
+> 最低位，真正参与方向的只有 `seed & 1`，`seed 0/2` 是同一份噪声、`1/3/7` 也是。
+> 那时「扫 0–3」实际只覆盖两个等价类。
+
+`gate:libm-noise:seeds`（不进 `check`，用来出证据）在一份 4829 个取值的固定语料上
+逐档 seed 打印 sha256：
+
+```
+| seed | +1 ULP | -1 ULP | sha256（噪声字节） |
+| ---: | ---: | ---: | --- |
+| 0 | 2431 | 2398 | `6bad5e44b231241ebe2daa9e4b855a728cff9b63097e1af5bcc3a341b2b34acc` |
+| 1 | 2468 | 2361 | `e903d176572f7f6d29e00ccbaac98fdff873251bc539773d28e41fc7581fc9b9` |
+| 2 | 2444 | 2385 | `1664d13e8d384bfc5c271d81c71caf4d7d627f306c1296bc3e6e6438df11232c` |
+| 3 | 2330 | 2499 | `3fb541af69c70f79eb77131e91ca00ec314bf2c24e5f54cae4dbac4a57e790db` |
+| 4 | 2457 | 2372 | `ae332eac344f9239aaa10caa32ad0f7a6854acb339602d622bce8bfcbc8220ab` |
+| 5 | 2476 | 2353 | `08ab18cbb19123640565509a2f293ee1f0a10e450636ab685dfd4a135cbeab91` |
+| 6 | 2446 | 2383 | `31d45606af649dfd9083adb56b18a0f8d1c2ccc1a98d1a4251fa5f61ba188c66` |
+| 7 | 2366 | 2463 | `36ea81dc5ac3f56b6ac73e7bacd3398e1c13e680dd7e45dc3e01f1950656d097` |
+| 8 | 2431 | 2398 | `6bad5e44b231241ebe2daa9e4b855a728cff9b63097e1af5bcc3a341b2b34acc` |
+```
+
+（9–15 分别复现 1–7。）脚本自己断言三条：0–7 两两不同、8–15 复现 0–7、每处位移
+恰好 1 ULP，任一不成立就 exit 1。
+
+**负向对照**：`pixi run gate:libm-noise:selftest`（挂进 `check`）把 libm 输出整体
+放大 1e-4（`libm_noise.libm_bias()`，远超 IR 的量化网格 1e-8 / 1e-5），断言至少
+一条 case 漂移——实测 351/530 条。一个永远绿的噪声门禁和「什么都没比」是同义词，
+所以这道对照和 `gate:pyodide:selftest` 一起留在 `check` 里。
+
+当前数字（SIL-864 收口时）：530 条 case、三种模式 × seed 7，0 条漂移。把 seed 从
+「两个等价类」扩到 8 个等价类**没有**引入新的不稳，所以没有动任何阈值。
 
 ## 手测一次门禁是否真的会拦
 
