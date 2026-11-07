@@ -9,6 +9,7 @@ tools/refs/cases_ref.R          docs/cases/<case>/expected.svg
    + svglite, UTF-8 locale)         │
                                     ▼
                      ggdiff.svgtext（<text> → 字形轮廓）
+                     ggdiff.svgimage（pixelated 位图 → 格点放大）
                                     │
         our side: plot.py → ggcore.plotspec → IR → ggskia SVG
                                     │
@@ -72,6 +73,29 @@ DejaVu、`Noto Sans SC`（静态 OTF）都正常。不处理的话，中文基�
 - 用内联 `style="fill: …; stroke: none"`：svglite 的 `<style>` 里
   `.svglite path { fill: none; stroke: #000 }` 优先级高于 `fill` 属性，只写 `fill`
   会把字形画成描边轮廓。
+
+### 为什么还要把 pixelated 的位图先放大
+
+同一个位置还有第二个 resvg 表达能力缺口（SIL-867）：`image-rendering="pixelated"`
+它**不认**——同一份 SVG 加不加这个属性，光栅化结果逐字节相同。
+
+参考产线 svglite 对 `interpolate = FALSE` 的 raster 是**先把位图最近邻放大到设备
+像素**再嵌进 SVG（每格点向上取整到整像素：`ceil(ceil(目标 pt) / 格数) × 格数`），
+嵌进去的位图与目标矩形基本 1:1，后面谁光栅化都不用再重采样。查看器按 SVG 语义
+写的是「原图 + `image-rendering="pixelated"`」——Chromium 会做最近邻，图画得对，
+但交给 resvg 的是一张 2×3 的棋盘格被平滑插值成一团灰：图级差异 42%–51%。
+
+`ggdiff.svgimage.snap_pixelated_images()` 在光栅化前把这一步补上：
+
+- 只处理带 `pixelated` 的 `<image>`；`interpolate = TRUE` 的位图（图例 colourbar
+  那种 1×300 的渐变条）本来就该插值，不碰；
+- 目标像素数按 svglite 的口径：`ceil(ceil(宽度 pt) / 列数) × 列数`（3×2 的 raster
+  铺进 586.448 × 474.884 pt 得到 588×477，不是 586×477）——格点对齐保证放大是
+  「整块复制」，R / Pillow / Chromium 没有取整自由度；
+- **幂等**：位图已经是格点尺寸（参考图、skia 设备腿都走了同一步）时就一个字节都
+  不动，所以两侧的既有数字不受影响。
+
+补上之后 `viewer:cases` 的 12 条 raster 从 42%–64% 回到 0.31%–1.21%。
 
 ## 3. 判据：图级 2%，平均 1%
 

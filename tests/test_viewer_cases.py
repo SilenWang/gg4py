@@ -1,7 +1,8 @@
 """M1-16：`pixi run viewer:cases` 的端到端契约（真 Chromium + resvg）。
 
 两条真实案例足够守住接线：`geom-col-basic`（矩形）与 `geom-text-cjk`（文字 +
-受管字体轮廓）。全量 61 条在 CI 的 `viewer cases (sample)` job 里按族抽样跑。
+受管字体轮廓）。CI 的 `viewer cases (sample)` job 按「风险组全量 + 族轮转」抽样
+（SIL-867：`geom-raster` 全族与 `band` 声明过的 case 不再被抽样漏掉）。
 """
 
 from __future__ import annotations
@@ -49,6 +50,32 @@ def test_sample_rotates_across_families() -> None:
         "geom-point",
         "geom-text",
     ]
+
+
+def test_sample_always_covers_raster_and_report_band() -> None:
+    """SIL-867：12 条轮转名额被大族吃满，风险组必须无条件进样本。
+
+    之前族轮转按族名字母序走，`geom-raster`（第 9 个族）与 `matrix` 族里排最后的
+    `matrix-report-*` 永远轮不到：13 条 raster 红与 report 档的容差接线在 CI 里
+    完全看不见。
+    """
+    module = _module()
+    cases = (
+        [SimpleNamespace(name=f"guide-{index}", family="guide", band=None) for index in range(6)]
+        + [
+            SimpleNamespace(name=f"upstream-geom-raster-{index}", family="geom-raster", band=None)
+            for index in range(3)
+        ]
+        + [SimpleNamespace(name="matrix-report-facet-polar-grey", family="matrix", band="report")]
+    )
+    selected = module._select_sample(cases, 2)
+    names = [case.name for case in selected]
+    assert {"upstream-geom-raster-0", "upstream-geom-raster-1", "upstream-geom-raster-2"} <= set(
+        names
+    )
+    assert "matrix-report-facet-polar-grey" in names
+    # 风险组是**额外**的名额：轮转仍然只取 limit 条（4 + 2）。
+    assert len(selected) == 6
 
 
 def test_viewer_cases_runs_two_real_cases(tmp_path: Path) -> None:

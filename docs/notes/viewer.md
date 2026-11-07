@@ -215,8 +215,11 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 plot.py → ggcore.plotspec → IR(.ggir.cbor)
         → Playwright/Chromium 打开 index.html
         → 取回渲染后的 DOM SVG（补白底）
-        → 与 expected.svg 一起：<text> → 受管字体轮廓 → resvg --dpi 72
-        → 图级 ≤ 各 case 的 tolerance.png（缺省 2%）、均值 ≤ 1%
+        → 与 expected.svg 一起：<text> → 受管字体轮廓、
+          pixelated 位图 → 按格点放大（resvg 不认 image-rendering）
+        → resvg --dpi 72
+        → 图级 ≤ 各 case 的 tolerance.png（没写就取 band 档位上限：report → 5%；
+          两者都没有按缺省 2%）、均值 ≤ 1%
 ```
 
 产物在 `.viewer-cases/`（不入库）：逐 case 的 IR / SVG / PNG、`report.md` /
@@ -257,7 +260,7 @@ M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 | `text` `font` / `size` / `anchor` / `baseline` / `angle` | 支持 | `font` 的 `:bold` / `:italic` / `:bold-italic` 后缀翻成 CSS face；多行按 1.44×size |
 | `text` 多行 | 支持 | 每行一个 `<tspan>`；锚点按整块（top / middle / bottom） |
 | `text` 非缺省 `lineheight` | 不支持 | IR 有 `lineheight` 字段（`ir.md` §7），viewer 还没消费（SIL-869） |
-| `raster` `blob` / `rect` / `mime` / `interpolate` | 支持 | blob → data URL；`interpolate=false` → `image-rendering:pixelated` |
+| `raster` `blob` / `rect` / `mime` / `interpolate` | 支持 | blob → data URL；`interpolate=false` → `image-rendering:pixelated`（浏览器认，resvg 不认：对拍前由 `ggdiff.svgimage` 按格点放大，见 `diff.md` §2） |
 | `xspline` `shape` / `open` | 支持 | `curves.ts` 的 X-spline 移植，采样密度与设备一致 |
 | `bezier` | 支持 | 每 4 个控制点一段三次贝塞尔 |
 | `curve` `curvature` / `angle` / `ncp` / `shape` / `square` / `inflect` / `open` | 支持 | 先翻 R 坐标求值再翻回页面坐标（SIL-636） |
@@ -332,8 +335,12 @@ CI 只跑 12 条子集：`viewer:parity:ci`，挂在 `pixi run check` 上）。
 4 px 位移必须被抓到、空页没有墨迹，以及 `--selftest` 的两条负向对照。
 
 CI 走 `pixi run check` 的子集任务 `viewer:cases:ci`（=`--sample 12 --min-pass 12`）：
-按族轮转覆盖 12 条代表 case（点 / 柱 / 面积 / 直方图 / 箱线图 / 平滑 / 文本 /
-分面 / 图例 / 标度 / 曲线），避免全量 82 条把每个 PR 拖慢；同一子集还跑
-`viewer:parity:ci`（12 条 + 负向对照）。`check` 之前先跑
+**风险组全量 + 族轮转 12 条**。风险组是 `geom-raster` 全族（13 条，`<image>` 的
+位图口径）与所有声明了 `band` 的 case（3 条 report 档）；族轮转再按点 / 柱 / 面积 /
+直方图 / 箱线图 / 平滑 / 文本 / 分面 / 图例 / 标度 / 曲线各出一条。这样 28 条
+（≈10 s）既不拖慢每个 PR，也不会像 SIL-867 之前那样——纯轮转的名额被 `guide` /
+`matrix` 两个大族吃满，13 条 raster 与 report 档永远轮不到。`viewer:parity:ci`
+复用同一套抽样（`parity.py` 调 `cases.py` 的 `_select_sample`，同样 28 条）+
+负向对照；raster 的两条腿在补上格点放大后像素差 0.000%。`check` 之前先跑
 `viewer:build` / `viewer:browsers`；浏览器缺失时用例 `pytest.skip`（skipped
 消息写明装浏览器的任务名），不会把门禁染红。

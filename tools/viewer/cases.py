@@ -2,7 +2,7 @@
 """M1-16：把案例库逐条过一遍浏览器查看器，并与 `expected.svg` 像素对拍。
 
     pixi run viewer:cases                 # 全部 ci = true 的 case，全量
-    pixi run viewer:cases --sample 12     # CI 用的代表性子集（按族轮转）
+    pixi run viewer:cases --sample 12     # CI：风险组全量 + 按族轮转 12 条
     pixi run viewer:cases --case geom-col-basic
     pixi run viewer:cases --include-skipped
 
@@ -62,6 +62,7 @@ from ggcore.plotspec import build_scene, load_plot  # noqa: E402
 from ggdiff.compare import DEFAULT_MAX_FRACTION, DEFAULT_MAX_MEAN, compare_images  # noqa: E402
 from ggdiff.image import load_image  # noqa: E402
 from ggdiff.raster import rasterize_svg  # noqa: E402
+from ggdiff.svgimage import snap_pixelated_images  # noqa: E402
 from ggdiff.svgtext import inline_text_paths  # noqa: E402
 from ggskia.text import ShaperMetrics, TextShaper  # noqa: E402
 
@@ -220,17 +221,19 @@ def _diff(
     shaper: TextShaper,
     scratch: Path,
 ) -> tuple[float, float, str]:
-    """两侧都走 inline_text_paths → resvg → 像素 diff。"""
+    """两侧都走 inline_text_paths + snap_pixelated_images → resvg → 像素 diff。"""
     reference_svg = scratch / "reference.svg"
     actual_outlined = scratch / "actual.svg"
     if expected.suffix.lower() == ".png":
         reference_png = expected
     else:
         inline_text_paths(expected, reference_svg, shaper=shaper)
+        snap_pixelated_images(reference_svg)
         reference_png = rasterize_svg(
             reference_svg, scratch / "reference.png", dpi=72, background="#ffffff"
         )
     inline_text_paths(actual_svg, actual_outlined, shaper=shaper)
+    snap_pixelated_images(actual_outlined)
     actual_png = rasterize_svg(
         actual_outlined, scratch / "actual.png", dpi=72, background="#ffffff"
     )
@@ -256,7 +259,9 @@ def _run_in_browser(
     result = Result(case=case.name, family=case.family, status=ERROR)
     case_out = out_dir / case.name
     case_out.mkdir(parents=True, exist_ok=True)
-    tolerance = case.tolerance.get("png", DEFAULT_MAX_FRACTION)
+    tolerance = case.png_tolerance
+    if tolerance is None:
+        tolerance = DEFAULT_MAX_FRACTION
     result.tolerance = float(tolerance)
 
     try:
@@ -319,20 +324,37 @@ def _run_in_browser(
     return result
 
 
+def _always_sampled(case) -> bool:
+    """CI 抽样必须**全量**跑的风险组（SIL-867）。
+
+    族轮转按族名字母序走，12 条名额在 `guide`（92 条）/ `matrix`（51 条）两个大族
+    就吃满了：`geom-raster`（第 9 个族）与 `matrix-report-*`（`matrix` 族里排最后）
+    永远轮不到，于是 13 条 raster 的 `<image>` 回归与 report 档的容差接线整个被抽样
+    掩盖——`viewer:cases:ci` 一路绿，全量一跑 13 条红。两组都便宜（13 + 3 条，
+    实测约 8 秒），所以不挑代表，直接全量。
+    """
+    return getattr(case, "family", "") == "geom-raster" or getattr(case, "band", None) is not None
+
+
 def _select_sample(cases: list, limit: int) -> list:
-    """按族轮转取前 N 条：每个族先出一条，再循环第二轮。"""
+    """风险组（`_always_sampled`）全量 + 族轮转 `limit` 条：每族先出一条，再第二轮。"""
+    always = sorted((case for case in cases if _always_sampled(case)), key=lambda c: c.name)
     groups: dict[str, list] = {}
     for case in cases:
+        if _always_sampled(case):
+            continue
         groups.setdefault(case.family or "（未登记）", []).append(case)
     for bucket in groups.values():
         bucket.sort(key=lambda item: item.name)
-    ordered: list = []
-    while len(ordered) < limit and any(groups.values()):
+    ordered: list = list(always)
+    picked = 0
+    while picked < limit and any(groups.values()):
         for family in sorted(groups):
             if not groups[family]:
                 continue
             ordered.append(groups[family].pop(0))
-            if len(ordered) >= limit:
+            picked += 1
+            if picked >= limit:
                 break
     return ordered
 
@@ -364,7 +386,8 @@ def render_report(
         f"（本轮 {len(results)} 条，案例库 ci = true 共 {expected_count} 条）",
         f"- 零 wasm：{'是' if not wasm_requests else '否，请求了 ' + ', '.join(wasm_requests[:3])}",
         "- 判据：`expected.svg` 与 viewer 的 DOM SVG 都走 resvg --dpi 72；"
-        f"图级差异 ≤ 各 case 的 `tolerance.png`（缺省 {DEFAULT_MAX_FRACTION:.0%}）、"
+        "图级差异 ≤ 各 case 的 `tolerance.png`（没写就取 `meta.toml` 的 `band` 档位上限，"
+        f"`report` → 5%；两者都没有按缺省 {DEFAULT_MAX_FRACTION:.0%}）、"
         f"平均差异 ≤ {DEFAULT_MAX_MEAN:.0%}。",
         "",
         "| case | 族 | 元素 | 图级差异 | 平均差异 | 结论 |",
@@ -485,7 +508,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--root", type=Path, default=CASES, help="案例根目录（默认 docs/cases）")
     parser.add_argument("--case", action="append", dest="cases", help="只跑这个 case（可重复）")
-    parser.add_argument("--sample", type=int, default=None, help="按族轮转取前 N 条（CI 用）")
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="CI 用：风险组（geom-raster 全族 + 声明了 band 的 case）全量 + 按族轮转 N 条",
+    )
     parser.add_argument(
         "--include-skipped",
         action="store_true",

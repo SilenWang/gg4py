@@ -52,6 +52,7 @@ from ggcore.plotspec import build_scene, load_plot  # noqa: E402
 from ggdiff.compare import DEFAULT_MAX_MEAN, compare_images  # noqa: E402
 from ggdiff.image import load_image  # noqa: E402
 from ggdiff.raster import rasterize_svg  # noqa: E402
+from ggdiff.svgimage import snap_pixelated_images  # noqa: E402
 from ggdiff.svgtext import inline_text_paths  # noqa: E402
 from ggskia.skia import SkiaSvgDevice  # noqa: E402
 from ggskia.text import ShaperMetrics, TextShaper  # noqa: E402
@@ -74,9 +75,12 @@ _PAINTED = {
     "line",
     "polyline",
     "polygon",
-    "image",
     "text",
 }
+#: 参与「涂色集合」的元素里**没有** `<image>`：SVG 的 `fill` / `stroke` 对位图
+#: 没有意义，而两条腿对它的继承还不一样（skia 把位图放进 `<defs>` 再由 `<use>`
+#: 画，查看器直接内联），把缺省黑色算进来会让「整页只有一张位图」的 case 凭空多
+#: 一种颜色（SIL-867：`geom-raster` 涂色集合 1:2，位图本身像素差 0.000%）。
 #: 参与「涂色集合」的属性（只留颜色与透明度，见模块头的理由）。
 _STYLE_KEYS = ("fill", "fill-opacity", "stroke", "stroke-opacity", "opacity")
 #: SVG 的层叠缺省值（skia 只写与缺省不同的属性，查看器会写全）。
@@ -439,6 +443,8 @@ def _run_case(case, page, *, metrics, shaper, scratch: Path) -> ParityCase:
         skia_outlined = scratch / "skia.outlined.svg"
         inline_text_paths(viewer_raw, viewer_path, shaper=shaper)
         inline_text_paths(skia_path, skia_outlined, shaper=shaper)
+        snap_pixelated_images(viewer_path)
+        snap_pixelated_images(skia_outlined)
 
         screen = scratch / "png"
         screen.mkdir(exist_ok=True)
