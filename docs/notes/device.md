@@ -74,7 +74,7 @@ device.render(scene)  # 上面三步的简写
 | 后端 | 文字 | 画布 | 产物 |
 | --- | --- | --- | --- |
 | `SkiaRasterDevice` | `TextBlob`（skia 的字形渲染，逐像素等于 `drawString()`） | `Surface.MakeRasterN32Premul`，按 `dpi` 缩放 | PNG |
-| `SkiaSvgDevice` | 字形轮廓 `Font.getPath()` | `SVGCanvas.Make`（`kNoPrettyXML`） | SVG |
+| `SkiaSvgDevice` | 字形轮廓 `Font.getPath()` | `SVGCanvas.Make`（一个元素一行） | SVG |
 | `SkiaPdfDevice` | 字形轮廓 `Font.getPath()` | `PDF.MakeDocument` + `beginPage` | PDF |
 
 遍历器只有一份（`ggskia.skia._SkiaDevice._paint_node`），所以三路的几何、裁剪、
@@ -102,6 +102,20 @@ SVG 产物的 id（skia 给 `<clipPath>` 的 `cl_N`）是进程级递增的，�
 画布会接着数。`SkiaSvgDevice._finish` 按出现顺序把它们重编号成 `cl_0…` 并同步改
 `url(#…)`，所以同一份 IR 两次出图的字节相同（M1-12 的 `ggsave` 逐字节验收靠它；
 口径见 `docs/notes/io.md` §4.1）。
+
+**虚线（SIL-868）**：`SVGCanvas` 不序列化 `PathEffect`——它把 `DashPathEffect`
+展开成一串 `fill="<描边色>"` 的多边形，产物里既没有 `stroke`、也没有
+`stroke-dasharray`，虚线与实线在语义上无法区分（参考产线 svglite 与查看器
+`render.ts` 写的都是 `stroke-dasharray`）。所以 SVG 后端在 `_apply_dash()` 里改用
+**占位色描边**（`#FD` + G/B 通道编码槽位，同图案占位色 `#FE` 的做法），
+`_rewrite_svg_dashes()` 在序列化之后把颜色换回来并补上
+`stroke-dasharray="<段长>"`（段长已乘 `DASH_UNIT = 4/3`，与 `render.ts` 同值）。
+占位色与真实颜色撞车时直接报错，不静默换色。PNG / PDF 仍走 skia 原生的虚线
+（`DashPathEffect`），三条腿都在 `tests/test_device.py` 有一条断言。
+
+SVG 不再传 `kNoPrettyXML`：一个元素一行与 svglite 的产物同构，逐行核对的
+`grep -c stroke-dasharray <file>` 这类验收命令才有意义（同一行里挤着 11 个匹配时
+`grep -c` 只会数到 1）。
 
 ## 4. 文字：一个 font key、一条 run 切分规则、一套笔位
 

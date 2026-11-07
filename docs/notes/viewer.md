@@ -183,7 +183,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 文字基线 | cap height × 72.27/72（R 的 `strheight`） | 浏览器用 `dominant-baseline`；diff 侧按 `data-baseline` 还原同一 cap 口径 | gallery 截图有亚像素差；像素对拍不受影响 |
 | 多行行距 | IR 带 `text.lineheight`，设备按 `1.2 × lineheight × size` 画 | 固定 1.2（还没读字段） | 非缺省行距在浏览器里丢失（SIL-869；`ir.md` §7） |
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
-| 虚线 `lty` | PNG / PDF 正常；SVG 后端还没写出 `stroke-dasharray`（SIL-868） | `stroke-dasharray`（同一份 × 4/3 常量） | 设备 SVG 与浏览器腿不一致，修完这条才归零 |
+| 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1）；SVG 后端序列化后由 `_rewrite_svg_dashes` 补成 `stroke-dasharray` | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
 | `arrow`（v0.3 标记属性） | 设备按端点切向画箭翼 | `render.ts` 的 `arrowPath()`（与 `ggcore.arrow.head_geometry()` 同一公式） | 箭翼是节点的附加 `<path class="ir-arrow">`，不带 `data-row`（不参与叶子计数 / hover） |
 | 渐变 `fill` | skia shader，SVG 后端序列化后按 IR 重写渐变标签（`_rewrite_svg_gradients`） | 自己写 `<linearGradient>` / `<radialGradient>`（`userSpaceOnUse` + `gradientTransform` 烘焙页面矩阵） | 颜色 / 端点 / `spreadMethod` / focal 一致（`ir.md` §6.1） |
@@ -288,7 +288,9 @@ CI 只跑 12 条子集：`viewer:parity:ci`，挂在 `pixi run check` 上）。
 为什么不逐元素比字符串：两条腿的元素切分口径不同——skia 的矢量后端把文字画成
 **每个字形一条 `<path>`**，查看器写 `<text>`（对拍前用 `ggdiff.svgtext.inline_text_paths`
 换成轮廓，一条文本一行）；`rect` 在 skia 里是 `<path>`、在查看器里是真 `<rect>`；
-虚线在 skia 里会被 SVGCanvas **展开成填充多边形**。所以判据分三层：
+同一个点 skia 会拆成「fill 一条 + stroke 一条」，查看器写一条带 `style` 的
+`<circle>`（虚线从 SIL-868 起两边都写 `stroke-dasharray`，但元素个数仍不同）。
+所以判据分三层：
 
 | 层 | 量 | 阈值 | 抓什么 |
 | --- | --- | --- | --- |

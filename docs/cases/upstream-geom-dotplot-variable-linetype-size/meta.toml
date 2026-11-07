@@ -4,4 +4,4 @@ ci = true
 title = "上游快照：variable linetype and size specified as aesthetics"
 source = "upstream:tests/testthat/_snaps/geom-dotplot/variable-linetype-and-size-specified-as-aesthetics.svg"
 tolerance = { png = 0.02 }
-notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。残余偏差（SIL-715 #28）：linetype=b（lty 2）那 10 个点在 skia SVG 设备上丢了描边——actual 只有 fill 的 ellipse，expected 是 stroke-width 4.50 + stroke-dasharray 12,12 的蓝圈；图例侧 expected 7 key / actual 2。IR 的 dash pattern 是对的（gpar.lty=(9,9)），卡在 SVGCanvas 不序列化 PathEffect。实测 1.76% / 0.53%，仍在档内。"
+notes = "SIL-787：vdiffr 快照原样纳入；标题是 doppelganger 名，主题是 vdiffr 的 theme_test()。SIL-868 修掉了 SVG 后端的虚线：linetype=b（lty 2）那 10 个点现在写 stroke-width 4.50 + stroke-dasharray 12,12 的蓝圈（此前 SVGCanvas 把虚线展开成填充多边形，产物里既没有 stroke 也没有 stroke-dasharray）。仍缺（另案）：stroke 美学没有标度 / guide，图例只有 linetype 的 2 个 key（线型 a/b、颜色还是默认黑），expected 是 7 个（linetype 2 + stroke 5）。实测 1.73% / 0.52%，在档内。"

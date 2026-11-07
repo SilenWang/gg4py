@@ -28,7 +28,7 @@ import base64
 import math
 import re
 import warnings
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
@@ -192,6 +192,7 @@ class _SkiaDevice(Device):
                 raise DeviceError(f"渐变 / 图案只支持填充：{type(value).__name__} 不能当描边色")
             return self._gradient_paint(value, gpar.alpha)
         red, green, blue, alpha = value
+        self._note_colour(red, green, blue)
         paint = skia.Paint(AntiAlias=True)
         paint.setColor(skia.ColorSetARGB(round(alpha * gpar.alpha), red, green, blue))
         if stroke:
@@ -201,14 +202,19 @@ class _SkiaDevice(Device):
             paint.setStrokeJoin(_JOINS[gpar.linejoin])
             paint.setStrokeMiter(gpar.linemitre)
             if gpar.lty:
-                paint.setPathEffect(
-                    skia.DashPathEffect.Make(
-                        [float(segment) * DASH_UNIT for segment in gpar.lty], 0.0
-                    )
-                )
+                self._apply_dash(paint, gpar.lty)
         else:
             paint.setStyle(skia.Paint.kFill_Style)
         return paint
+
+    def _note_colour(self, red: int, green: int, blue: int) -> None:
+        """钩子：记下画布上用到的真颜色（SVG 后端据此审计占位色撞车）。"""
+
+    def _apply_dash(self, paint: skia.Paint, segments: Any) -> None:
+        """虚线笔刷：段长按 `DASH_UNIT` 换成 svglite 的 1/96 in 口径。"""
+        paint.setPathEffect(
+            skia.DashPathEffect.Make([float(segment) * DASH_UNIT for segment in segments], 0.0)
+        )
 
     def _gradient_paint(self, fill: Any, alpha: float) -> skia.Paint:
         """渐变 → skia shader 画笔。
@@ -1023,7 +1029,9 @@ class SkiaSvgDevice(_SkiaDevice):
     def _begin(self) -> None:
         self._stream = skia.DynamicMemoryWStream()
         bounds = skia.Rect.MakeWH(float(self.width_pt), float(self.height_pt))
-        self.canvas = skia.SVGCanvas.Make(bounds, self._stream, skia.SVGCanvas.kNoPrettyXML_Flag)
+        # 不用 `kNoPrettyXML`：一个元素一行（svglite 同构）才让逐行核对的
+        # `grep -c stroke-dasharray` 之类验收命令有意义（SIL-868）。
+        self.canvas = skia.SVGCanvas.Make(bounds, self._stream)
         self.canvas.clear(skia.ColorWHITE)
         # 画到画布上的渐变 fill，按笔刷创建顺序记一份：序列化之后靠它把 skia 写反的
         # 几何和丢掉的 `spreadMethod` 更正回来（`_rewrite_svg_gradients`）。
@@ -1036,6 +1044,39 @@ class SkiaSvgDevice(_SkiaDevice):
         #: `id(TilePattern)` → 槽位。`TilePattern` 里有 `Node`（带 dict 缓冲），
         #: 不可哈希，只能按对象身份去重；列表本身持有引用，id 不会复用。
         self._svg_pattern_slots: dict[int, int] = {}
+        #: 虚线按**画笔创建顺序**排队：`(真颜色, 段长)`。`SVGCanvas` 不序列化
+        #: `PathEffect`（会展开成填充多边形），所以 `_apply_dash()` 用占位色描边，
+        #: `_rewrite_svg_dashes()` 再把真颜色 + `stroke-dasharray` 换回去。
+        self._svg_dashes: list[tuple[tuple[int, int, int], tuple[float, ...]]] = []
+        #: 这张图上用过的真颜色（`_note_colour()` 记）：占位色撞车要报错，不能静默换色。
+        self._svg_colours: set[tuple[int, int, int]] = set()
+
+    def _note_colour(self, red: int, green: int, blue: int) -> None:
+        self._svg_colours.add((int(red), int(green), int(blue)))
+
+    def _apply_dash(self, paint: skia.Paint, segments: Sequence[float]) -> None:
+        """SVG 里要**真的** `stroke-dasharray`，不能是 skia 折出来的填充多边形。
+
+        `SVGCanvas` 不序列化 `PathEffect`：虚线会被展开成一串 `fill="<描边色>"`
+        的多边形，产物里没有 `stroke`、也没有 `stroke-dasharray`。参考产线
+        （svglite）与查看器（`web/viewer/src/render.ts`）写的都是
+        `stroke-dasharray`，所以这里换成占位色先按普通描边画下去，序列化之后由
+        `_rewrite_svg_dashes()` 换回真颜色并补上 `stroke-dasharray`（SIL-868）。
+        """
+        colour = int(paint.getColor())
+        alpha = (colour >> 24) & 0xFF
+        slot = len(self._svg_dashes)
+        if slot > 0xFFFF:  # pragma: no cover - 一张图不会有两万条虚线
+            raise DeviceError("虚线太多：SVG 占位色的槽位用完了")
+        self._svg_dashes.append(
+            (
+                ((colour >> 16) & 0xFF, (colour >> 8) & 0xFF, colour & 0xFF),
+                tuple(float(segment) * DASH_UNIT for segment in segments),
+            )
+        )
+        paint.setColor(
+            skia.ColorSetARGB(alpha, _DASH_PLACEHOLDER[0], (slot >> 8) & 0xFF, slot & 0xFF)
+        )
 
     def _note_gradient_fill(self, fill: Any) -> None:
         self._svg_fills.append(fill)
@@ -1100,6 +1141,7 @@ class SkiaSvgDevice(_SkiaDevice):
         svg = _stable_svg_ids(bytes(data.bytes()))
         svg = _rewrite_svg_rasters(svg, self._svg_rasters)
         svg = _rewrite_svg_gradients(svg, self._svg_fills)
+        svg = _rewrite_svg_dashes(svg, self._svg_dashes, self._svg_colours)
         return _rewrite_svg_patterns(svg, self._svg_patterns)
 
     def _abort(self) -> None:
@@ -1110,6 +1152,8 @@ class SkiaSvgDevice(_SkiaDevice):
         self._svg_rasters = []
         self._svg_patterns = []
         self._svg_pattern_slots = {}
+        self._svg_dashes = []
+        self._svg_colours = set()
 
 
 _SVG_IMAGE_TAG = re.compile(
@@ -1180,6 +1224,11 @@ def _require_repeat_pattern(fill: TilePattern) -> None:
 #: 里认出「这条元素要换成 `url(#pattern)`」（G / B 两个通道编码槽位）。
 _PATTERN_PLACEHOLDER = (0xFE,)
 
+#: 虚线占位色的 R 通道（SIL-868）：`#FD` 开头的颜色不当真颜色用，G / B 两个通道
+#: 编码槽位。`SkiaSvgDevice._apply_dash()` 用它描边，`_rewrite_svg_dashes()` 再换回
+#: 真颜色 + `stroke-dasharray`——`SVGCanvas` 自己会把它展开成填充多边形。
+_DASH_PLACEHOLDER = (0xFD,)
+
 _SVG_TAG = re.compile(r"<svg\b[^>]*>")
 #: 图案内容只用得上这三种几何（`pattern_rect` / `pattern_circle` 的公共面）。
 _SVG_PATTERN_KINDS = {NodeKind.RECT, NodeKind.CIRCLE}
@@ -1216,6 +1265,12 @@ def _pattern_node_svg(node: Any) -> str | None:
         )
         if stroke_alpha < 1.0:
             style.append(f"stroke-opacity: {_svg_number(stroke_alpha)}")
+        if gpar.lty:
+            # 虚线走 `stroke-dasharray`（与 `_apply_dash` / `render.ts` 同一份口径）。
+            style.append(
+                "stroke-dasharray: "
+                + " ".join(_svg_number(float(segment) * DASH_UNIT) for segment in gpar.lty)
+            )
     body = "; ".join(style)
     if node.kind is NodeKind.RECT:
         parts = []
@@ -1295,6 +1350,48 @@ def _rewrite_svg_patterns(svg: bytes, patterns: Sequence[TilePattern]) -> bytes:
         raise DeviceError("SVG 里找不到 <svg> 根标签")
     text = f"{text[: match.end()]}{block}{text[match.end() :]}"
     return text.encode("utf-8")
+
+
+def _rewrite_svg_dashes(
+    svg: bytes,
+    dashes: Sequence[tuple[tuple[int, int, int], tuple[float, ...]]],
+    colours: Collection[tuple[int, int, int]] = (),
+) -> bytes:
+    """占位色描边 → 真颜色 + `stroke-dasharray`（SIL-868）。
+
+    skia 的 SVG 序列化器**不写** `stroke-dasharray`：它把 `DashPathEffect` 展开成
+    一串填充多边形（`fill` = 描边色、没有 `stroke`），虚线在 SVG 里就只剩「点」，
+    既 grep 不到、也与参考产线（svglite）/ 查看器的语义对不上。所以
+    `SkiaSvgDevice._apply_dash()` 先用占位色按普通描边画下去，这里再把颜色换回来、
+    补上 `stroke-dasharray`。段长已按 `DASH_UNIT` 折成 svglite 的 1/96 in 口径
+    （`_apply_dash` 里乘的，与 `web/viewer/src/render.ts` 同一份常量）。
+
+    占位色与这张图上用过的真颜色撞车时**报错**，不猜：静默换色比不写虚线更糟。
+    """
+    if not dashes:
+        return svg
+    text = svg.decode("utf-8")
+    for slot, (rgb, segments) in enumerate(dashes):
+        sentinel = (_DASH_PLACEHOLDER[0], (slot >> 8) & 0xFF, slot & 0xFF)
+        placeholder = _dash_placeholder(slot)
+        if sentinel in colours:
+            raise DeviceError(
+                f"SVG 虚线占位色 {placeholder} 与真实颜色撞车："
+                "换一个占位通道（见 _rewrite_svg_dashes）"
+            )
+        dash = " ".join(_svg_number(value) for value in segments)
+        replacement = f'stroke="#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}" stroke-dasharray="{dash}"'
+        for quote in ('"', "'"):
+            text = text.replace(f"stroke={quote}{placeholder}{quote}", replacement)
+    leftover = [slot for slot in range(len(dashes)) if _dash_placeholder(slot) in text]
+    if leftover:  # pragma: no cover - 只有 skia 改了颜色写法才会走到
+        raise DeviceError(f"SVG 里还残留虚线占位色：{leftover}（见 _rewrite_svg_dashes）")
+    return text.encode("utf-8")
+
+
+def _dash_placeholder(slot: int) -> str:
+    """虚线占位色的 `#RRGGBB` 写法（槽位编码在 G / B 通道）。"""
+    return f"#{_DASH_PLACEHOLDER[0]:02X}{(slot >> 8) & 0xFF:02X}{slot & 0xFF:02X}"
 
 
 class SkiaPdfDevice(_SkiaDevice):
