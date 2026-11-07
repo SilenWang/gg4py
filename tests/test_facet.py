@@ -26,7 +26,14 @@ from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
 from ggcore.geom.scene import axis_title_area, plot_layout
 from ggcore.plot import ggplot, guides
-from ggcore.theme import element_blank, element_rect, element_text, resolve_theme, theme
+from ggcore.theme import (
+    element_blank,
+    element_line,
+    element_rect,
+    element_text,
+    resolve_theme,
+    theme,
+)
 from ggcore.units import unit
 
 
@@ -1014,6 +1021,136 @@ def test_grid_switch_moves_strips_to_the_bottom_and_left() -> None:
     theme_ = resolve_theme(switched.theme)
     assert float(theme_.get("strip.text.y.left").angle) == pytest.approx(90.0)
     assert float(theme_.get("strip.text.y").angle) == pytest.approx(-90.0)
+
+
+@pytest.mark.parametrize(
+    ("position", "side"),
+    [("bottom", "bottom"), ("left", "left"), ("right", "right")],
+)
+def test_wrap_strip_position_puts_strips_on_the_named_side(position: str, side: str) -> None:
+    """SIL-871：`facet_wrap(strip.position=)` 的四边都参与版式。
+
+    R `FacetWrap$attach_strips()`：top / bottom 用 `weave_tables_row()`（每个
+    面板一条），left / right 用 `weave_tables_col()`（每个面板列一条）。换边后
+    轴带贴着分面表外沿，所以 strip 落在面板与轴之间。
+    """
+    build = build_plot(wrap_plot(ncol=2, **{"strip.position": position}))
+    table = build.facet_table()
+    assert {strip.side for strip in table.strips} == {side}
+    assert table.inside_strip_sides == (side,)
+    assert len(table.strips) == len(table.panels)
+    for strip in table.strips:
+        placement = next(row for row in table.gtable.layout if row.name == strip.name)
+        panel_top, panel_left = next(
+            (top, left) for panel, top, left, _, _ in table.panels if panel == strip.panel
+        )
+        if side == "bottom":
+            assert (placement.t, placement.l) == (panel_top + 1, panel_left)
+        elif side == "left":
+            assert placement.l == panel_left - 1
+        else:
+            assert placement.l == panel_left + 1
+    # 换边后按边取元素（左 strip 的角度是 90，右 strip 是 -90）。
+    theme_ = resolve_theme(build.theme)
+    element, angle = {
+        "bottom": ("strip.text.x.bottom", 0.0),
+        "left": ("strip.text.y.left", 90.0),
+        "right": ("strip.text.y", -90.0),
+    }[side]
+    assert float(theme_.get(element).angle) == angle
+
+
+def test_wrap_strip_position_left_right_give_each_column_its_own_strip() -> None:
+    """SIL-871：R 给每个面板列各插一列 strip，面板列因此比 top 版式窄。"""
+    top = build_plot(wrap_plot(ncol=2))
+    left = build_plot(wrap_plot(ncol=2, **{"strip.position": "left"}))
+    top_boxes = plot_layout(top).panel_boxes
+    left_layout = plot_layout(left)
+    left_boxes = left_layout.panel_boxes
+    assert len({round(box.x_cm, 6) for box in left_boxes.values()}) == 2
+    assert max(box.width_cm for box in left_boxes.values()) < max(
+        box.width_cm for box in top_boxes.values()
+    )
+    table = left.facet_table()
+    assert table.strip_width_cm > 0
+    strip_columns = {
+        next(row for row in table.gtable.layout if row.name == strip.name).l
+        for strip in table.strips
+    }
+    assert len(strip_columns) == 2
+
+
+def test_wrap_strip_position_rejects_unknown_values() -> None:
+    """非法值保持明确报错（不是静默退回 top）。"""
+    with pytest.raises(FacetError, match=r"strip\.position"):
+        build_plot(wrap_plot(**{"strip.position": "middle"}))
+
+
+def _axis_grobs_for(plot, size: tuple[float, float] = (4.0, 3.0)):
+    """`_axis_grobs()` 的轴线 / logticks 端点：`{(panel, side): (x0, y0)}`。"""
+    from ggcore.geom.scene import _axis_grobs, _theme_of
+
+    build = build_plot(plot)
+    layout = plot_layout(build, width_in=size[0], height_in=size[1])
+    grobs = _axis_grobs(build, _theme_of(build), layout, None, table=build.facet_table())
+    lines: dict[tuple[int, str], tuple[float, float]] = {}
+    ticks: dict[tuple[int, str], float] = {}
+    for grob in grobs:
+        name = str(getattr(grob, "name", ""))
+        if name.startswith("axis-line-"):
+            panel, side = name[len("axis-line-") :].rsplit("-", 1)
+            lines[(int(panel), side)] = (
+                float(grob.x0.elements[0].amount),
+                float(grob.y0.elements[0].amount),
+            )
+        elif name.startswith("annotation-logticks-"):
+            panel, short = name[len("annotation-logticks-") :].rsplit("-", 1)
+            ticks[(int(panel), short)] = float(grob.y0.elements[0].amount)
+    return build, layout, lines, ticks
+
+
+def test_axis_line_uses_the_strip_outer_edge_with_a_secondary_axis() -> None:
+    """SIL-871 审计回归：轴线按 `inside_sides` 选格，不按「对侧有没有轴」。
+
+    `strip.position = "bottom"` + x 次轴时，bottom 轴线仍要落在 strip 之外
+    （`panel_area.y`）；`switch = "y"` + y 次轴时，left 轴线落在
+    `panel_area.x`。旧代码在有次轴时会退回面板边沿（压进 strip 里）。
+    """
+    line_theme = theme(**{"axis.line": element_line(colour="black")})
+    secondary = {"sec.axis": sec_axis(lambda value: value)}
+
+    bottom = (
+        wrap_plot(ncol=2, **{"strip.position": "bottom"})
+        + registry.scale_x_continuous(**secondary)
+        + line_theme
+    )
+    _, bottom_layout, bottom_lines, _ = _axis_grobs_for(bottom)
+    assert bottom_lines[(1, "bottom")][1] == pytest.approx(bottom_layout.panel_area.y_cm)
+    # 没有次轴的同一版式必须同值（次轴不改变轴线位置）。
+    plain = wrap_plot(ncol=2, **{"strip.position": "bottom"}) + line_theme
+    _, _, plain_lines, _ = _axis_grobs_for(plain)
+    assert bottom_lines[(1, "bottom")][1] == pytest.approx(plain_lines[(1, "bottom")][1])
+
+    left = grid_plot(switch="y") + registry.scale_y_continuous(**secondary) + line_theme
+    _, left_layout, left_lines, _ = _axis_grobs_for(left)
+    assert left_lines[(1, "left")][0] == pytest.approx(left_layout.panel_area.x_cm)
+
+
+def test_logticks_follow_the_switched_strip_edge() -> None:
+    """SIL-871 审计回归：换到下面的 strip 之后，logticks 也锚在外沿。"""
+    from ggcore.annotations import annotation_logticks
+
+    plot = (
+        base_plot()
+        + registry.facet_grid(None, ("a",), switch="x")
+        + registry.scale_x_log10()
+        + annotation_logticks(sides="b")
+    )
+    _, layout, _, ticks = _axis_grobs_for(plot)
+    bottoms = [y for (panel, short), y in ticks.items() if short == "b"]
+    assert bottoms
+    for y in bottoms:
+        assert y == pytest.approx(layout.panel_area.y_cm)
 
 
 def test_axis_titles_span_panel_cells_not_strips() -> None:

@@ -109,7 +109,7 @@ Python 模块，反之亦然；反过来，标着 `—` 的模块是上游没有
 
 | Python 模块 | 上游文件:行 | 上游符号 | 状态 | 依据 / 缺口 |
 | --- | --- | --- | --- | --- |
-| `ggcore.facet` | `R/facet-.R:66`、`R/facet-null.R`、`R/facet-wrap.R`、`R/facet-grid-.R` | `Facet` / `facet_null()` / `facet_wrap()` / `facet_grid()` / `labeller()` | 部分实现 | 缺口：`strip.position` 只支持 `"top"`（其余值显式报错）。scales / space（`fixed` / `free` / `free_x` / `free_y`）/ margins / as.table / drop / labeller 都已落地（M1-6 + M2-3），见 `docs/notes/facet.md` |
+| `ggcore.facet` | `R/facet-.R:66`、`R/facet-null.R`、`R/facet-wrap.R`、`R/facet-grid-.R` | `Facet` / `facet_null()` / `facet_wrap()` / `facet_grid()` / `labeller()` | 部分实现 | scales / space（`fixed` / `free` / `free_x` / `free_y`）/ margins / as.table / drop / labeller / `strip.position`（四边，SIL-871）/ `facet_grid(switch=)` 都已落地；唯一缺口是换边 strip + `strip.placement = "outside"` 仍按 `"inside"` 画（刻意：`plot_layout()` 的轴带只有 top / right 两条），见 `docs/notes/facet.md` §7 |
 
 ## guide / axis / legend
 

@@ -1,0 +1,7 @@
+family = "facet"
+features = ["facet-wrap", "strip-position"]
+ci = true
+title = "facet_wrap(strip.position = \"right\")"
+source = "svglite:ggplot2 4.0.3 (R 4.5.3, svglite 2.2.2)"
+tolerance = { png = 0.02 }
+notes = "SIL-871：strip 在面板右侧、y 轴仍在 strip 之外；元素取 `strip.text.y`（angle -90）。参考图由 `pixi run -e refs refs:wrap-strip-cases` 生成。"
