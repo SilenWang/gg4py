@@ -122,7 +122,7 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 | 19 | `geom_sf` | 已随 M3 落地 | `from ggcore.plot import geom_sf` 可用；M3-2，见 `docs/notes/sf.md` |
 | 20 | `geom_sf_label` | 已随 M3 落地 | 同上 |
 | 21 | `geom_sf_text` | 已随 M3 落地 | 同上 |
-| 22 | `stat_density2d_filled` | 仍缺 | `registered("stat")` 无此名（`stat_density_2d_filled` 有）→ SIL-866 |
+| 22 | `stat_density2d_filled` | 仍缺 | `registered("stat")` 里只有 base name `density_2d_filled`；导出名 `stat_density2d_filled` 不存在（`stat_density_2d_filled` 有）→ SIL-866 |
 | 23 | `stat_sf` | 已随 M3 落地 | `from ggcore.plot import stat_sf` 可用 |
 | 24 | `stat_sf_coordinates` | 已随 M3 落地 | `from ggcore.plot import stat_sf_coordinates` 可用 |
 | 25 | `from_theme()` | 已随 M3 落地 | `src/ggcore/build.py:777` 的 `eval_from_theme`；`theme_*_large` 全部 ≤1.52% 进 CI |
