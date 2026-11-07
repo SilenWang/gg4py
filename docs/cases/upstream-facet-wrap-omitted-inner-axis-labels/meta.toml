@@ -4,4 +4,4 @@ ci = true
 title = "上游快照：facet_wrap with omitted inner axis labels"
 source = "upstream:tests/testthat/_snaps/facet-/facet-wrap-with-omitted-inner-axis-labels.svg"
 tolerance = { png = 0.02 }
-notes = "SIL-811：`ci = false`（登记不跑）。实测 2.55% / 0.53%：顶部轴标签已挪到 strip 之外，剩下的是行间轴带 5.48pt 被 gtable 的 null 行二次扣除（两个面板各矮 2.74pt）。卡在 `facet_table.panel_boxes()` 的分辨高度。"
+notes = "SIL-811 登记为 `ci = false`（行间轴带 5.48pt 被 gtable 的 null 行二次扣除，两个面板各矮 2.74pt）；SIL-816 修复 `facet_table.panel_boxes()` 的分辨高度后转绿。SIL-865 复验 1.3549% / 0.1876%，`ci = true`。"

@@ -183,8 +183,11 @@ pixi run diff <case-dir> --report <case-dir>/current/diff_report.md --json [--to
   不做逐 case 的偏移补偿：那是掩盖，不是判据。
 - `inline_text_paths` 只处理 svglite 会写的那几种属性；`<tspan>` 等复杂结构原样
   留给 resvg（画不出来就红，不静默忽略）。
-- 渐变、图案、彩色 emoji 不在 M0 的判据里（设备本身也不支持，见
-  `docs/notes/device.md` §9）。
+- 渐变 / 图案**设备已支持**（M2；见 `docs/notes/device.md` §9），但 311 份上游
+  参考图里没有用它们的快照，所以不在像素判据内；viewer 侧的
+  `viewer-gradient-*` / `viewer-pattern` 只做两腿对拍（`viewer:parity`）。
+  彩色 emoji 仍不在判据内：矢量后端回落单色 Noto Emoji 轮廓，栅格用彩色位图，
+  与 svglite 的参考图不同源。
 
 ## 8. 复现
 

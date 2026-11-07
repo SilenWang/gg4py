@@ -181,9 +181,9 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | --- | --- | --- | --- |
 | 文字 | 用受管字体度量，必要时按字步写 `tspan` | 同一份受管字体（`fonts.css` 的 `@font-face`，由 `tools/viewer/emit_fonts.py` 从 rules.json 生成）+ 正常排版 | 字宽 / 字面在浏览器里可能有 1 px 级差；对拍口径与桌面同一套 |
 | 文字基线 | cap height × 72.27/72（R 的 `strheight`） | 浏览器用 `dominant-baseline`；diff 侧按 `data-baseline` 还原同一 cap 口径 | gallery 截图有亚像素差；像素对拍不受影响 |
-| 多行行距 | grid 的 `lineheight`（IR 未携带） | 固定 1.2 | 非缺省行距表达不了（`ir.md` §7 · M1-b） |
+| 多行行距 | IR 带 `text.lineheight`，设备按 `1.2 × lineheight × size` 画 | 固定 1.2（还没读字段） | 非缺省行距在浏览器里丢失（SIL-869；`ir.md` §7） |
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
-| 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1） | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
+| 虚线 `lty` | PNG / PDF 正常；SVG 后端还没写出 `stroke-dasharray`（SIL-868） | `stroke-dasharray`（同一份 × 4/3 常量） | 设备 SVG 与浏览器腿不一致，修完这条才归零 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
 | `arrow`（v0.3 标记属性） | 设备按端点切向画箭翼 | `render.ts` 的 `arrowPath()`（与 `ggcore.arrow.head_geometry()` 同一公式） | 箭翼是节点的附加 `<path class="ir-arrow">`，不带 `data-row`（不参与叶子计数 / hover） |
 | 渐变 `fill` | skia shader，SVG 后端序列化后按 IR 重写渐变标签（`_rewrite_svg_gradients`） | 自己写 `<linearGradient>` / `<radialGradient>`（`userSpaceOnUse` + `gradientTransform` 烘焙页面矩阵） | 颜色 / 端点 / `spreadMethod` / focal 一致（`ir.md` §6.1） |
@@ -203,7 +203,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 数据行号（原始数据） | 显示缓冲行号 | `node.rows` 索引表 |
 | 图例 entry 归属（key ↔ 标签 ↔ 图层） | 名字前缀 + 纵向对齐推断 | guide entry 字段或 key 组命名约定入 schema |
 | 图例点击 → 隐藏数据系列 | 只隐藏图例组本身 | level → 数据行 的映射 |
-| 多行行距 / `lineheight` | 固定 1.2 | `text.lineheight` |
+| 多行行距 / `lineheight` | viewer 固定 1.2（IR 已有字段） | viewer 读 `text.lineheight`（SIL-869） |
 | 字体文件 | 受管字体副本（`web/viewer/fonts/`，`viewer:build` 从 `$CONDA_PREFIX/fonts` 复制；`font-family` 回退栈只含 rules.json 里的字族，**不含 `sans-serif`**） | 字体 blob 表（`ir.md` §12） |
 | 逐行 hover（单点 tooltip） | 节点级：`points` 一个节点一个 `<path>`，tooltip 给整段行范围 | 同一 path 内给子路径标 `data-row` + JS 命中测试（`elementFromPoint` 拿不到子路径），待 M2 |
 
@@ -256,7 +256,7 @@ M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 | `points` `pch` 字符型（32..127 / 负数） | 不支持 | IR 写方目前只产出 0..25；字符型需要 IR 带字体或写方转 `<text>` |
 | `text` `font` / `size` / `anchor` / `baseline` / `angle` | 支持 | `font` 的 `:bold` / `:italic` / `:bold-italic` 后缀翻成 CSS face；多行按 1.44×size |
 | `text` 多行 | 支持 | 每行一个 `<tspan>`；锚点按整块（top / middle / bottom） |
-| `text` 非缺省 `lineheight` | 不支持 | IR v0 没有字段（`ir.md` §7 · M1-b） |
+| `text` 非缺省 `lineheight` | 不支持 | IR 有 `lineheight` 字段（`ir.md` §7），viewer 还没消费（SIL-869） |
 | `raster` `blob` / `rect` / `mime` / `interpolate` | 支持 | blob → data URL；`interpolate=false` → `image-rendering:pixelated` |
 | `xspline` `shape` / `open` | 支持 | `curves.ts` 的 X-spline 移植，采样密度与设备一致 |
 | `bezier` | 支持 | 每 4 个控制点一段三次贝塞尔 |

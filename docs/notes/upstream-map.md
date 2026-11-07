@@ -34,19 +34,19 @@ Python 模块，反之亦然。
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
-| `ggcore.geom.base` | `R/geom-.R:77` | `Geom`（ggproto 基类） | 未实现 |
-| `ggcore.geom.bar` | `R/geom-bar.R:6` | `GeomBar` | 未实现 |
-| `ggcore.geom.point` | `R/geom-point.R:5` | `GeomPoint` | 未实现 |
-| `ggcore.geom.path` | `R/geom-path.R:5` | `GeomPath` | 未实现 |
-| `ggcore.geom.line` | `R/geom-path.R:123` | `GeomLine` | 未实现 |
+| `ggcore.geom.base` | `R/geom-.R:77` | `Geom`（ggproto 基类） | 已实现（`GeomRenderer`：setup_params / setup_data / handle_na / draw，见 `docs/notes/geom.md`） |
+| `ggcore.geom.bar` | `R/geom-bar.R:6` | `GeomBar` | 已实现（`BarRenderer` / `HistogramRenderer` / `AreaRenderer`，`src/ggcore/geom/bar.py`） |
+| `ggcore.geom.point` | `R/geom-point.R:5` | `GeomPoint` | 已实现（`PointRenderer` + `pch` 全表，`src/ggcore/geom/point.py`） |
+| `ggcore.geom.path` | `R/geom-path.R:5` | `GeomPath` | 已实现（`PathRenderer`，`src/ggcore/geom/line.py`） |
+| `ggcore.geom.line` | `R/geom-path.R:123` | `GeomLine` | 已实现（`LineRenderer`，同上） |
 
 ## stat / scale / coord / facet / guide / theme
 
 | Python 模块（计划） | 上游文件:行 | 上游符号 | 状态 |
 | --- | --- | --- | --- |
 | `ggcore.stat` / `ggcore.stat_longtail` | `R/stat-*.R` | `StatBin` / `StatCount` / `StatBoxplot` / `StatSmooth` / `StatAlign`（M1-8）+ `StatQq` / `StatQqLine` / `StatEcdf` / `StatEllipse` / `StatQuantile` / `StatSummary` / `StatSummaryBin` / `StatSum` / `StatUnique` / `StatDensity` / `StatYdensity` / `StatFunction` / `StatConnect` / `StatManual`（M2-6） | 已实现（口径与已知差异见 `docs/notes/stat.md` §9 / §10） |
-| `ggcore.scale` | `R/scale-.R:461` | `Scale` | 未实现 |
-| `ggcore.scale.continuous` | `R/scale-.R:106` | `continuous_scale()` | 未实现 |
+| `ggcore.scale` | `R/scale-.R:461` | `Scale` | 已实现（`ggcore.scales` 的 `ScaleBase` / `ScaleEntry` + `ggcore.components.Scale`；见 `docs/notes/scales.md`） |
+| `ggcore.scale.continuous` | `R/scale-.R:106` | `continuous_scale()` | 已实现（`scale_x_continuous` / `scale_y_continuous` / `scale_*_gradient` 等注册标度，见 `docs/notes/scales.md`） |
 | `ggcore.coord`（`CartesianCoord`） | `R/coord-cartesian-.R:78` | `coord_cartesian()` | 已实现（M1-5：范围 / expand / clip / 越界计数，见 `docs/notes/coord.md`） |
 | `ggcore.coord`（`FixedCoord`） | `R/coord-fixed.R` | `coord_fixed()` | 已实现（M1-5：`aspect = ratio × yrange/xrange` + `panel_sizes()`） |
 | `ggcore.coord`（`EqualCoord` / `CartesianCoord.ratio`） | `R/coord-cartesian-.R:78` | `coord_equal()` | 已实现（M2-1：4.0.3 里就是 `coord_cartesian(ratio = 1)`） |
@@ -62,7 +62,7 @@ Python 模块，反之亦然。
 | `ggcore.facet`（`FacetNull`） | `R/facet-null.R` | `facet_null()` | 已实现（M1-6：1×1 面板，输出与 M1-5 逐字节相同） |
 | `ggcore.facet`（`FacetWrap`） | `R/facet-wrap.R` | `facet_wrap()` | 已实现（M1-6：ncol/nrow/dir/as.table/drop/labeller/scales；space 只支持 fixed，其余报错） |
 | `ggcore.facet`（`FacetGrid`） | `R/facet-grid-.R` | `facet_grid()` | 已实现（M1-6：rows/cols/as.table/scales；margins / space=free 待补，其余非法值报错） |
-| `ggcore.guide` | `R/guides-.R:69` | `guides()` | 未实现 |
+| `ggcore.guide` | `R/guides-.R:69` | `guides()` | 已实现（`ggcore.plot.guides()` + `ggcore.guide` 的 legend / colourbar / bins / axis guide，见 `docs/notes/guide.md`） |
 | `ggcore.theme` | `R/theme.R` / `R/theme-elements.R` / `R/theme-defaults.R` | `theme()` / `element_*()` / `calc_element()` / 四套完整主题（grey / bw / minimal / void） | 已实现（M1-10：元素树 + 继承 + rel 解析，见 `docs/notes/theme.md`） |
 
 ## 文本度量
@@ -78,7 +78,7 @@ Python 模块，反之亦然。
 | --- | --- | --- | --- |
 | `ggcore.io`（`ggsave` / `save_ir` / `export_ir_json`） | `R/save.R:92` | `ggsave()` | 已实现（M1-12）：按后缀选设备、四单位、`.ggir.cbor` / `.ir.json`，见 `docs/notes/io.md` |
 | `ggskia`（协议 `ggcore.device`） | `src/library/grid/src/grid.c`（`L_points` / `L_xspline`）、`src/main/engine.c`（`GESymbol` / `GEXspline`） | 桌面/服务端渲染（skia-python，PNG / SVG / PDF） | 已实现（M0-8）：三路出图 + pch 全表 + xspline/curve 对拍 |
-| `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 未实现 |
+| `ggcore.render.svg` | — | 浏览器端 DOM SVG（原生化，上游无对应） | 刻意不做：浏览器渲染器是 `web/viewer` 的 TypeScript（`render.ts`），不在 `ggcore`；IR 边界见 `docs/notes/viewer.md` |
 | `ggdiff`（包外） | — | 差分：resvg 统一栅格 + 像素判据 + 报告（上游无对应） | 已实现（M0-9，`docs/notes/diff.md`） |
 
 ## 基础设施（grid 对等）

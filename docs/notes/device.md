@@ -262,9 +262,9 @@ M2-12 的 dash 口径（`DASH_UNIT = 4/3`，见 `docs/notes/viewer.md` §10.1）
 | 彩色 emoji | CBDT 位图字形 | M1 策略：矢量后端回落单色 Noto Emoji 轮廓，栅格用彩色位图（M1-c） |
 | 字符间 kerning | HarfBuzz / Cairo | 线性推进（与 R 同口径），不建模 kerning；差 < 0.25%（M1-e） |
 | 标签里的 `\n` | `grid.text` 断行 | M1 已支持：行距 1.44×fontsize、整块 vjust（M1-b） |
-| 非默认 `lineheight` | `gpar(lineheight)` | IR 的 `text` 节点没有 lineheight 字段，设备固定按缺省 1.2 画（M1-b 的 IR 缺口） |
-| 断行 / `check.overlap` | `grid.text` 支持 | 不做（IR 没有断行意图） |
-| 渐变 / 图案填充 | grid 的 gpar 支持 | M2 已支持 `fill` 的 `linear` / `radial` / `pattern`（`ir.md` §6.1）：渐变走 shader、图案逐 tile 矢量平铺；skia 的 SVG 序列化器有两个已知缺口（`spreadMethod`、focal 的 `fr`/`r`） |
+| 非默认 `lineheight` | `gpar(lineheight)` | IR 的 `text` 节点带 `lineheight`（`ir.md` §7），设备按 `1.2 × lineheight × size` 切行；浏览器 viewer 还没消费（SIL-869） |
+| 断行 / `check.overlap` | `grid.text` 支持 | 已实现：`\n` 在 `ggskia.text` 切行（行距 1.44 × fontsize）；`check_overlap` 在 `geom_text` 绘制期按行序丢重叠（`src/ggcore/geom/text.py:534`） |
+| 渐变 / 图案填充 | grid 的 gpar 支持 | M2 已支持 `fill` 的 `linear` / `radial` / `pattern`（`ir.md` §6.1）：渐变走 shader、图案逐 tile 矢量平铺。skia 序列化器的两处偏差已由 `_rewrite_svg_gradients()` 按 IR 重写：`spreadMethod` 只在非 pad 时写，focal 的 `fx`/`fy`/`fr` 只在 `focal is not None` 时写（pad / `fx=cx` 是 SVG 缺省），`viewer-gradient-radial` 实测 0.0000% |
 | 透明背景 | 设备相关 | 页面固定白底 |
 | 多页 / 多文档 | PDF 支持 | 一台设备一页（M1-12 的 `ggsave` 也只出一页，见 `docs/notes/io.md` §4） |
 
