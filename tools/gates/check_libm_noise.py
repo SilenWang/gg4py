@@ -16,7 +16,19 @@ runner 之后就会变成 CI 红（2026-11-05 那 3 条 `coord_sf` 就是这样�
 | `down` | 所有取值朝 -∞ 偏 1 ULP |
 | `mixed` | 方向由取值的位模式决定（贴近真实：只有部分取值差 1 ULP，且可复现） |
 
+`mixed` 的 `--seed` 只有低 3 位参与（`seed & 7`），即 seed 空间是 8 个等价类；
+0–7 各是一份不同的噪声，8 与 0 逐位相同。证据是
+`pixi run gate:libm-noise:seeds` 打印的 sha256 表（SIL-864）。
+
+负向对照：
+
+    pixi run gate:libm-noise:selftest   # = 本脚本 --expect-diff
+
+把 libm 输出整体放大 1e-4（`libm_noise.libm_bias()`，远超 IR 的量化网格），
+断言**至少有一条 case 漂移**。否则说明这道门看得不是字节，绿是假的。
+
 退出码：0 = 三种噪声下逐条相同；1 = 有 case 漂移；2 = 环境不完整。
+`--expect-diff` 上是 0 = 确实漂了（门禁有效）；1 = 一处都没漂（门禁失效）。
 """
 
 from __future__ import annotations
@@ -47,34 +59,76 @@ def digests() -> dict[str, str]:
     return {name: entry["sha256"] for name, entry in report["cases"].items()}
 
 
+def drifted(baseline: dict[str, str], noisy: dict[str, str]) -> list[str]:
+    return sorted(name for name in baseline if baseline[name] != noisy.get(name))
+
+
+def expect_diff(args: argparse.Namespace) -> int:
+    """负向对照：粗噪声必须让门禁判红，否则这道门形同虚设。"""
+    baseline = digests()
+    with libm_noise.libm_bias():
+        biased = digests()
+    changed = drifted(baseline, biased)
+    print(f"  baseline : {len(baseline)} case(s)")
+    print(f"  libm bias: {len(changed)} drifted（期望 > 0）")
+    if not changed:
+        print(
+            "gate:libm-noise:selftest FAIL — 放大 1e-4 的 libm 偏移却一条 case 都没漂，"
+            "说明门禁没在看 IR 字节",
+            file=sys.stderr,
+        )
+        return 1
+    for name in changed[: args.limit]:
+        print(f"  bias: {name}  {baseline[name][:16]}… / {biased[name][:16]}…")
+    if len(changed) > args.limit:
+        print(f"  bias: … 还有 {len(changed) - args.limit} 条")
+    print(f"gate:libm-noise:selftest ok — 粗噪声让 {len(changed)} 条 case 漂移，门禁有效")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="IR 在宿主 libm 噪声下必须逐条不变。")
-    parser.add_argument("--seed", type=int, default=7, help="mixed 模式里翻转方向的位")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=7,
+        help="mixed 模式选抽取位的种子（只用低 3 位，seed 空间 = 8 个等价类）",
+    )
     parser.add_argument("--limit", type=int, default=10, help="每档最多列出的漂移 case 数")
+    parser.add_argument(
+        "--expect-diff",
+        action="store_true",
+        help="负向对照：注入 1e-4 的粗噪声，必须至少有一条 case 漂移",
+    )
     args = parser.parse_args(argv)
 
     if not CASES.is_dir():
         print(f"gate:libm-noise: 找不到案例库 {CASES}", file=sys.stderr)
         return 2
 
+    if args.expect_diff:
+        return expect_diff(args)
+
     baseline = digests()
     print(f"  baseline : {len(baseline)} case(s)")
-    drifted: dict[str, list[str]] = {}
+    drifted_by_mode: dict[str, list[str]] = {}
     noisy_by_mode: dict[str, dict[str, str]] = {}
     for mode in MODES:
         with libm_noise.libm_noise(mode, seed=args.seed):
             noisy = digests()
         noisy_by_mode[mode] = noisy
-        changed = sorted(name for name in baseline if baseline[name] != noisy.get(name))
-        drifted[mode] = changed
-        print(f"  libm {mode:6s}: {len(changed)} drifted")
+        drifted_by_mode[mode] = drifted(baseline, noisy)
+        print(f"  libm {mode:6s}: {len(drifted_by_mode[mode])} drifted")
 
-    total = sum(len(names) for names in drifted.values())
+    total = sum(len(names) for names in drifted_by_mode.values())
     if total == 0:
-        print("gate:libm-noise: ok — 三种 libm 噪声下 515 条 case 的 IR 逐条相同")
+        print(
+            f"gate:libm-noise: ok — 三种 libm 噪声（seed={args.seed}）下 "
+            f"{len(baseline)} 条 case 的 IR 逐条相同"
+        )
         return 0
 
-    for mode, names in drifted.items():
+    for mode, names in drifted_by_mode.items():
         for name in names[: args.limit]:
             other = noisy_by_mode[mode].get(name, "（缺失）")
             print(

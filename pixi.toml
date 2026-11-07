@@ -358,7 +358,15 @@ bench = "pytest benchmarks -q --benchmark-autosave"
 # 机器上的两个运行时」；这一道把 math/numpy 的三角与指数函数整体偏 ±1 ULP，模拟
 # 「换一台 glibc / CPU 不同的 runner」，全量 case 的 IR 必须逐条不变。2026-11-05 那
 # 3 条 coord_sf case 就是本机全绿、CI 红——本机复现不了，只能主动注入噪声。
+# SIL-864：`mixed` 的 seed 只用低 3 位（seed 空间 = 8 个等价类），0–7 各一份不同的
+# 噪声；`--seed` 默认 7 保持不变。
 "gate:libm-noise" = "PYTHONPATH=src python tools/gates/check_libm_noise.py"
+# 负向对照（SIL-864）：把 libm 输出整体放大 1e-4（远超 IR 的量化网格），断言至少
+# 一条 case 漂移。与 `gate:pyodide:selftest` 同一个理由：永远绿的门禁可能是假的。
+"gate:libm-noise:selftest" = "PYTHONPATH=src python tools/gates/check_libm_noise.py --expect-diff"
+# seed 空间的证据表：seed 0–15 各跑一遍噪声，打印 sha256（8 个等价类两两不同、
+# 0/8 逐位相同）。只用来出证据，不进 `check`。
+"gate:libm-noise:seeds" = "python tools/gates/libm_noise_seeds.py"
 # `_cbor` 与 cbor2 的 canonical 等价性（SIL-646）：9330 个取值，含 NaN 全部位型、
 # ±Inf、负数分支、23/24/255/256/65535/65536 长度头、嵌套容器与随机模糊。
 # 两类按设计不写的取值（bignum tag、memoryview）断言「必须抛 CBORError」。
@@ -401,6 +409,7 @@ check = { depends-on = [
   "gate:pyodide",
   "gate:pyodide:selftest",
   "gate:libm-noise",
+  "gate:libm-noise:selftest",
   "pyodide:runtime",
   "pyodide:bytes:check",
   "editor:check",
