@@ -26,7 +26,14 @@ from ggcore.data import Column, ColumnTable
 from ggcore.facet import FacetError, facet_from_component
 from ggcore.geom.scene import axis_title_area, plot_layout
 from ggcore.plot import ggplot, guides
-from ggcore.theme import element_blank, element_rect, element_text, resolve_theme, theme
+from ggcore.theme import (
+    element_blank,
+    element_line,
+    element_rect,
+    element_text,
+    resolve_theme,
+    theme,
+)
 from ggcore.units import unit
 
 
@@ -1077,6 +1084,73 @@ def test_wrap_strip_position_rejects_unknown_values() -> None:
     """非法值保持明确报错（不是静默退回 top）。"""
     with pytest.raises(FacetError, match=r"strip\.position"):
         build_plot(wrap_plot(**{"strip.position": "middle"}))
+
+
+def _axis_grobs_for(plot, size: tuple[float, float] = (4.0, 3.0)):
+    """`_axis_grobs()` 的轴线 / logticks 端点：`{(panel, side): (x0, y0)}`。"""
+    from ggcore.geom.scene import _axis_grobs, _theme_of
+
+    build = build_plot(plot)
+    layout = plot_layout(build, width_in=size[0], height_in=size[1])
+    grobs = _axis_grobs(build, _theme_of(build), layout, None, table=build.facet_table())
+    lines: dict[tuple[int, str], tuple[float, float]] = {}
+    ticks: dict[tuple[int, str], float] = {}
+    for grob in grobs:
+        name = str(getattr(grob, "name", ""))
+        if name.startswith("axis-line-"):
+            panel, side = name[len("axis-line-") :].rsplit("-", 1)
+            lines[(int(panel), side)] = (
+                float(grob.x0.elements[0].amount),
+                float(grob.y0.elements[0].amount),
+            )
+        elif name.startswith("annotation-logticks-"):
+            panel, short = name[len("annotation-logticks-") :].rsplit("-", 1)
+            ticks[(int(panel), short)] = float(grob.y0.elements[0].amount)
+    return build, layout, lines, ticks
+
+
+def test_axis_line_uses_the_strip_outer_edge_with_a_secondary_axis() -> None:
+    """SIL-871 审计回归：轴线按 `inside_sides` 选格，不按「对侧有没有轴」。
+
+    `strip.position = "bottom"` + x 次轴时，bottom 轴线仍要落在 strip 之外
+    （`panel_area.y`）；`switch = "y"` + y 次轴时，left 轴线落在
+    `panel_area.x`。旧代码在有次轴时会退回面板边沿（压进 strip 里）。
+    """
+    line_theme = theme(**{"axis.line": element_line(colour="black")})
+    secondary = {"sec.axis": sec_axis(lambda value: value)}
+
+    bottom = (
+        wrap_plot(ncol=2, **{"strip.position": "bottom"})
+        + registry.scale_x_continuous(**secondary)
+        + line_theme
+    )
+    _, bottom_layout, bottom_lines, _ = _axis_grobs_for(bottom)
+    assert bottom_lines[(1, "bottom")][1] == pytest.approx(bottom_layout.panel_area.y_cm)
+    # 没有次轴的同一版式必须同值（次轴不改变轴线位置）。
+    plain = wrap_plot(ncol=2, **{"strip.position": "bottom"}) + line_theme
+    _, _, plain_lines, _ = _axis_grobs_for(plain)
+    assert bottom_lines[(1, "bottom")][1] == pytest.approx(plain_lines[(1, "bottom")][1])
+
+    left = grid_plot(switch="y") + registry.scale_y_continuous(**secondary) + line_theme
+    _, left_layout, left_lines, _ = _axis_grobs_for(left)
+    assert left_lines[(1, "left")][0] == pytest.approx(left_layout.panel_area.x_cm)
+
+
+def test_logticks_follow_the_switched_strip_edge() -> None:
+    """SIL-871 审计回归：换到下面的 strip 之后，logticks 也锚在外沿。"""
+    from ggcore.annotations import annotation_logticks
+
+    plot = (
+        base_plot()
+        + registry.facet_grid(None, ("a",), switch="x")
+        + registry.scale_x_log10()
+        + annotation_logticks(sides="b")
+    )
+    _, layout, _, ticks = _axis_grobs_for(plot)
+    bottoms = [y for (panel, short), y in ticks.items() if short == "b"]
+    assert bottoms
+    for y in bottoms:
+        assert y == pytest.approx(layout.panel_area.y_cm)
 
 
 def test_axis_titles_span_panel_cells_not_strips() -> None:

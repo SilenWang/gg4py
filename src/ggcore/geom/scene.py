@@ -2085,6 +2085,30 @@ def _scale_side(scale: Any, default: str) -> str:
     return default
 
 
+_SHORT_SIDES = {"b": "bottom", "t": "top", "l": "left", "r": "right"}
+_SIDE_SHORTS = {side: short for short, side in _SHORT_SIDES.items()}
+
+
+def _group_sides_by_cell(
+    sides: Any, cells: Mapping[str, CellBox]
+) -> list[tuple[tuple[str, ...], CellBox]]:
+    """按落字格把边分组：同一格的边合并成一次绘制（格子相等即合并）。
+
+    没有换边 strip 时四条边共用裸面板盒，分组后仍是一次 `axis_line_grobs()`；
+    换边后才拆开（SIL-871）。
+    """
+    groups: list[tuple[list[str], CellBox]] = []
+    for side in sides:
+        target = cells[side]
+        for labels, existing in groups:
+            if existing == target:
+                labels.append(str(side))
+                break
+        else:
+            groups.append(([str(side)], target))
+    return [(tuple(labels), cell) for labels, cell in groups]
+
+
 def _axis_grobs(
     build: PlotBuild,
     theme: ResolvedTheme,
@@ -2150,6 +2174,16 @@ def _axis_grobs(
             right_cell = CellBox(
                 1, 1, 1, 1, cell_x, cell_y, cell_w + float(table.strip_width_cm), cell_h
             )
+        # 每条边各自的「外沿格」：strip 在面板与这条边的轴之间时，轴线 / 刻度 /
+        # logticks 要跟着轴带贴到分面表外沿。选格只看 `inside_sides`（strip 在哪
+        # 一边），不能拿「对侧有没有轴」当条件——否则 bottom + 次轴、left + 次轴
+        # 这类组合会把轴线画回面板边沿（SIL-871 审计回归）。
+        edge_cells = {
+            "bottom": CellBox(1, 1, 1, 1, cell_x, x_cell.y_cm, cell_w, box.top - x_cell.y_cm),
+            "top": top_cell,
+            "left": CellBox(1, 1, 1, 1, y_cell.x_cm, cell_y, box.right - y_cell.x_cm, cell_h),
+            "right": right_cell,
+        }
         scale_bottom = _panel_scale(build, panel, params.scale_key("bottom"))
         scale_left = _panel_scale(build, panel, params.scale_key("left"))
         scale_top = _panel_scale(build, panel, params.scale_key("top"))
@@ -2302,7 +2336,7 @@ def _axis_grobs(
             grobs.extend(
                 axis_line_grobs(
                     rsec_theme,
-                    cell,
+                    edge_cells["right"],
                     name=f"axis-line-r-sec-{panel}",
                     ranges={"right": axis_line_range(guide_rsec, gy_rsec)},
                     sides=("right",),
@@ -2323,41 +2357,39 @@ def _axis_grobs(
                 "top": axis_line_range(guide_top, gx_top) if gx_top is not None else None,
                 "right": axis_line_range(guide_right, gy_right) if gy_right is not None else None,
             }
-            # 水平轴（bottom / top）只受上下 strip 影响，垂直轴（left / right）只受
-            # 左右 strip 影响：轴线跟着各自的格子走，不能跨维借位（SIL-871）。
-            horizontal_sides = tuple(side for side in line_sides if side in ("bottom", "top"))
-            vertical_sides = tuple(side for side in line_sides if side in ("left", "right"))
-            if horizontal_sides:
+            # 每条边用它自己的外沿格（水平轴只受上下 strip 影响、垂直轴只受左右
+            # strip 影响，不能跨维借位）。同一格子的边合并成一次绘制。
+            for sides_for_cell, edge_cell in _group_sides_by_cell(line_sides, edge_cells):
                 grobs.extend(
                     axis_line_grobs(
                         _axis_guide_theme(theme, params, guide_y),
-                        top_cell if "top" in horizontal_sides else x_cell,
+                        edge_cell,
                         name=f"axis-line-{panel}",
                         ranges=ranges,
-                        sides=horizontal_sides,
-                    )
-                )
-            if vertical_sides:
-                grobs.extend(
-                    axis_line_grobs(
-                        _axis_guide_theme(theme, params, guide_y),
-                        right_cell if "right" in vertical_sides else y_cell,
-                        name=f"axis-line-{panel}",
-                        ranges=ranges,
-                        sides=vertical_sides,
+                        sides=sides_for_cell,
                     )
                 )
         for annotation in getattr(build, "annotations", ()) or ():
             from ggcore.annotations import logticks_grobs
 
-            grobs.extend(
-                logticks_grobs(
+            # logticks 的每条边也贴各自的外沿（`sides="bl"` 时 bottom 在 strip
+            # 之下、left 在 strip 之外）。
+            requested = str(getattr(annotation, "sides", ""))
+            for sides_for_cell, tick_cell in _group_sides_by_cell(
+                [_SHORT_SIDES[short] for short in requested], edge_cells
+            ):
+                single = replace(
                     annotation,
-                    params,
-                    cell,
-                    name=f"annotation-logticks-{panel}",
+                    sides="".join(_SIDE_SHORTS[side] for side in sides_for_cell),
                 )
-            )
+                grobs.extend(
+                    logticks_grobs(
+                        single,
+                        params,
+                        tick_cell,
+                        name=f"annotation-logticks-{panel}",
+                    )
+                )
         if params.polar is not None:
             from ggcore.axis_guide import guide_for as _guide_for
 
