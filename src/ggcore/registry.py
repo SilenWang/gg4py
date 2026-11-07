@@ -1024,6 +1024,17 @@ GEOM_SPECS: Mapping[str, GeomSpec] = MappingProxyType(
             "function",
             non_missing_aes=("linewidth", "colour", "linetype"),
         ),
+        # SIL-866：`geom_freqpoly()` = `geom_line(stat = "bin")`。上游是独立的
+        # `GeomFreqpoly(GeomLine)`，绘制的每一行都与 line 相同；差别只在默认
+        # stat（`bin`）与默认美学，所以这里给它一份与 line 完全一致的
+        # `GeomSpec`、只换 `stat`：IR 与 `geom_line(stat = "bin")` 逐字节相同，
+        # 渲染器也直接复用 `FreqpolyRenderer(LineRenderer)`。
+        "freqpoly": GeomSpec(
+            ("x", "y"),
+            _LINE_DEFAULTS,
+            "bin",
+            non_missing_aes=("linewidth", "colour", "linetype"),
+        ),
     }
 )
 
@@ -1048,6 +1059,9 @@ STAT_NAMES: tuple[str, ...] = (
     "binhex",
     "summary2d",
     "density2d",
+    # SIL-866：上游 4.0.3 的 `stat_density2d_filled()` 只是
+    # `stat_density_2d_filled()` 的别名（同一个 `StatDensity2dFilled`）。
+    "density2d_filled",
     "qq",
     "qq_line",
     "ecdf",
@@ -1079,6 +1093,8 @@ STAT_ALIASES: Mapping[str, str] = MappingProxyType(
         "binhex": "bin_hex",
         "summary2d": "summary_2d",
         "density2d": "density_2d",
+        # SIL-866：`stat_density2d_filled()` 与 `stat_density_2d_filled()` 同义。
+        "density2d_filled": "density_2d_filled",
     }
 )
 

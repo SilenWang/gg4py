@@ -13,7 +13,9 @@ stat_bin(geom="bar", bins=30)  # stat 的快捷方式：改这一层的默认 ge
 `stat_*(...)` 的 `**params` 进 **stat**。`geom_histogram(bins=30)` 的 `bins` 落在
 图层参数里、由 `stat_bin` 读取；直接构造 `stat_bin(bins=30)` 则进 stat 参数。
 
-## 1. 清单（36 个注册名，覆盖上游 36 个导出中的 35 个）
+## 1. 清单（37 个注册名，覆盖上游 36 个 `stat_*` 导出）
+
+`stat_bindot` 是 gg4py 的额外注册名（上游 4.0.3 的 `NAMESPACE` 不导出它）。
 
 | 族 | 名字 | 默认 geom |
 | --- | --- | --- |
@@ -22,10 +24,9 @@ stat_bin(geom="bar", bins=30)  # stat 的快捷方式：改这一层的默认 ge
 | 分布 | `stat_boxplot` / `stat_ydensity` / `stat_density` / `stat_ecdf` / `stat_qq` / `stat_qq_line` / `stat_ellipse` / `stat_quantile` / `stat_function` / `stat_connect` | boxplot / violin / area / step / point / abline / path / quantile / function / path |
 | 拟合 | `stat_smooth` | smooth |
 | 汇总 | `stat_summary` | pointrange |
-| 2D | `stat_bin_2d` / `stat_bin2d` / `stat_bin_hex` / `stat_binhex` / `stat_summary_2d` / `stat_summary2d` / `stat_summary_hex` / `stat_contour` / `stat_contour_filled` / `stat_density_2d` / `stat_density2d` / `stat_density_2d_filled` | tile / tile / hex / hex / tile / tile / hex / contour / contour_filled / density_2d / density_2d / density_2d_filled |
+| 2D | `stat_bin_2d` / `stat_bin2d` / `stat_bin_hex` / `stat_binhex` / `stat_summary_2d` / `stat_summary2d` / `stat_summary_hex` / `stat_contour` / `stat_contour_filled` / `stat_density_2d` / `stat_density2d` / `stat_density_2d_filled` / `stat_density2d_filled` | tile / tile / hex / hex / tile / tile / hex / contour / contour_filled / density_2d / density_2d / density_2d_filled / density_2d_filled |
 | 空间 | `stat_sf` / `stat_sf_coordinates` | rect / point |
 
-**缺口**：`stat_density2d_filled()` 未登记，用 `stat_density_2d_filled()`。
 **废弃**：`stat_spoke()` 在 4.0.3 是 `deprecate_stop()`，调用即报错，用 `geom_spoke()`。
 
 ## 2. 分箱与计数

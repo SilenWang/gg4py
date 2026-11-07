@@ -34,7 +34,7 @@ from ggcore.munch import munch_steps
 from ggcore.units import unit
 from ggcore.viewport import NA, gpar
 
-__all__ = ["LineRenderer", "PathRenderer"]
+__all__ = ["FreqpolyRenderer", "LineRenderer", "PathRenderer"]
 
 
 def _keep_mid_true(complete: np.ndarray) -> np.ndarray:
@@ -322,6 +322,18 @@ class LineRenderer(PathRenderer):
                 order = np.lexsort(tuple(reversed(keys)))
                 frame = row_slice(frame, order)
         return flip_data(frame, flipped)
+
+
+class FreqpolyRenderer(LineRenderer):
+    """`geom_freqpoly`：绘制与 `geom_line` 完全相同（上游 `GeomFreqpoly` 继承
+    `GeomLine`，只换默认 stat）。
+
+    这里不改任何方法：默认 stat（`bin`）由 `GEOM_SPECS["freqpoly"]` 给，绘制
+    路径逐行复用 `LineRenderer`，所以 `geom_freqpoly(...)` 与
+    `geom_line(stat="bin", ...)` 的 IR 逐字节相同（SIL-866 的验收口径）。
+    """
+
+    name = "freqpoly"
 
 
 def _order_key(frame: Any, name: str) -> np.ndarray:

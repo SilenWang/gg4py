@@ -64,6 +64,8 @@ EXPECTED = {
         "qq_line",
         "quantile",
         "function",
+        # SIL-866：`geom_freqpoly`（= `geom_line(stat = "bin")`）
+        "freqpoly",
     ),
     "stat": (
         "identity",
@@ -85,6 +87,8 @@ EXPECTED = {
         "binhex",
         "summary2d",
         "density2d",
+        # SIL-866：`stat_density2d_filled`（`stat_density_2d_filled` 的别名）
+        "density2d_filled",
         "qq",
         "qq_line",
         "ecdf",
@@ -401,6 +405,40 @@ def test_area_uses_stat_align_without_a_default_outline() -> None:
     assert layer.geom.name == "area"
     assert plot.geom_area().stat.name == "align"
     assert plot.geom_area().geom.default_aes["colour"] is None
+
+
+def test_freqpoly_is_line_with_the_bin_stat() -> None:
+    """SIL-866：`geom_freqpoly()` 就是 `geom_line(stat = "bin")`。
+
+    上游 `GeomFreqpoly` 继承 `GeomLine`，只换默认 stat；这里连默认美学都
+    与 line 同一份，所以 `geom_freqpoly()` 与 `geom_line(stat="bin")` 画出来
+    逐字节相同（`tests/test_geom_draw.py` 有 IR 对拍）。
+    """
+    freqpoly = registry.GEOM_SPECS["freqpoly"]
+    line = registry.GEOM_SPECS["line"]
+    assert freqpoly.stat == "bin"
+    assert freqpoly.required_aes == line.required_aes == ("x", "y")
+    assert freqpoly.default_aes == line.default_aes
+    assert freqpoly.non_missing_aes == line.non_missing_aes
+
+    layer = plot.geom_freqpoly(bins=30)
+    assert layer.geom.name == "freqpoly"
+    assert layer.stat.name == "bin"
+    # geom 的参数路由不变：`bins` 落在图层参数里、由 stat_bin 读。
+    assert layer.params["bins"] == 30
+    assert dict(layer.stat.params) == {}
+    # 两个入口同源。
+    assert plot.geom_freqpoly is registry.geom_freqpoly
+
+
+def test_density2d_filled_is_the_upstream_alias_of_density_2d_filled() -> None:
+    """SIL-866：4.0.3 的 `stat_density2d_filled()` 是下划线版本的别名。"""
+    assert registry.STAT_ALIASES["density2d_filled"] == "density_2d_filled"
+    alias = plot.stat_density2d_filled()
+    canonical = plot.stat_density_2d_filled()
+    assert alias.stat.name == canonical.stat.name == "density_2d_filled"
+    assert alias.geom.name == canonical.geom.name == "density_2d_filled"
+    assert alias.position.name == canonical.position.name
 
 
 # ---------------------------------------------------------------------------

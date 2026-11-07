@@ -400,6 +400,9 @@ DEFAULT_KEY_GLYPHS: Mapping[str, str] = {
     "qq": "point",
     "line": "path",
     "path": "path",
+    # SIL-866：`geom_freqpoly` 复用 `geom_line` 的键（上游 `GeomFreqpoly`
+    # 继承 `GeomLine`，`draw_key` 也是 `draw_key_path`）。
+    "freqpoly": "path",
     "step": "path",
     "function": "path",
     "contour": "path",

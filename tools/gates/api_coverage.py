@@ -60,12 +60,6 @@ PIN = {
 
 #: 缺口 → (issue, 原因)。没登记就没归口，门禁直接红。
 GAPS: dict[str, tuple[str, str]] = {
-    "geom_freqpoly": (
-        "SIL-715",
-        '`geom_freqpoly()` 是 `geom_line(stat = "bin")` 的形状；`Geom` 目前还不带'
-        '「换默认 stat」的入口，登记它会让 `registered_renderers() == registered("geom")`'
-        " 的不变量要求多写一个渲染器（SIL-779 钉的口径）。",
-    ),
     "geom_sf": (
         "SIL-715",
         "空间几何（M3-2）：需要 sf 数据的 *list-column* 解析与 geom_sf 的 grob 路径；"
@@ -73,11 +67,6 @@ GAPS: dict[str, tuple[str, str]] = {
     ),
     "geom_sf_label": ("SIL-715", "同 `geom_sf`：M3-2 空间能力。"),
     "geom_sf_text": ("SIL-715", "同 `geom_sf`：M3-2 空间能力。"),
-    "stat_density2d_filled": (
-        "SIL-715",
-        "上游只是 `stat_density_2d_filled` 的别名；`STAT_GEOMS` 是「一个 stat 一个"
-        "默认 geom」，加别名要先决定它挂哪个 geom，排进 SIL-715 的别名清理。",
-    ),
     "stat_sf": ("SIL-715", "同 `geom_sf`：M3-2 空间能力。"),
     "stat_sf_coordinates": ("SIL-715", "同 `geom_sf`：M3-2 空间能力。"),
 }

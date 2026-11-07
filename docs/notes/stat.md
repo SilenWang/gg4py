@@ -497,6 +497,9 @@ test_bin_2d_boundary_defaults_to_zero` 钉住。
 
 ### 10.5 `stat_density_2d[ _filled]`
 
+上游 4.0.3 的 `stat_density2d_filled()` 是 `stat_density_2d_filled()` 的别名
+（`STAT_ALIASES`），两个名字走同一份实现与默认 geom。
+
 两段式（上游 `StatDensity2d$compute_layer()`）：
 
 1. `compute_group()` 算密度网格：`h` 缺省是
