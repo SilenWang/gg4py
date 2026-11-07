@@ -21,7 +21,6 @@ upstream-guide-axis-guide-titles-with-coord-transform
 upstream-guide-colorbar-combined-aesthetics
 upstream-guide-legend-key-justification
 upstream-guide-legend-left-aligned-key
-upstream-guide-legend-legend-key-justification
 upstream-guides-guide-bins-coinciding-1
 upstream-guides-guide-bins-coinciding-2
 upstream-guides-guide-bins-labels-limits-in-breaks

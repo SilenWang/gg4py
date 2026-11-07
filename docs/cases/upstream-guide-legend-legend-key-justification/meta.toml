@@ -1,7 +1,0 @@
-family = "guide-legend"
-features = ["guide-legend", "legend-key-justification"]
-ci = false
-title = "上游快照：legend.key.justification works as intended"
-source = "upstream:tests/testthat/_snaps/guide-legend/legend-key-justification.svg"
-tolerance = { png = 0.02 }
-notes = "SIL-820（G11-B）：复现用例，**未达档**（图级 10.61% / 均值 2.08%）。卡点：逐键行高需按 max(legend.key.size, 点径 + 2×stroke) 计算（R 三行 0.6096 / 1.3037 / 1.6389cm），本仓三行等高、整摞图例 226pt vs R 277pt。修到 2%/1% 后改回 ci = true。"

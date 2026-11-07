@@ -78,7 +78,6 @@
 | `upstream-guides-guide-colorsteps-labels-limits-in-breaks` | 18 | 101 | 2.30% | 1.09% | 0.12% | text-medium | 2.0% |
 | `upstream-geom-dotplot-basic-dotdensity` | 13 | 99.6 | 12.78% | 0.92% | 0.10% | text-medium | 2.0% |
 | `upstream-guide-legend-key-justification` | 28 | 98.8 | 76.46% | 0.90% | 0.11% | text-medium | 2.0% |
-| `upstream-guide-legend-legend-key-justification` | 28 | 98.8 | 76.46% | — | — | text-medium | 2.0% |
 | `upstream-scale-date-scale-x-date-breaks-3-weeks` | 13 | 97.9 | 4.71% | 0.98% | 0.12% | text-medium | 2.0% |
 | `upstream-scale-date-scale-y-date-breaks-3-weeks` | 13 | 97.9 | 5.24% | 0.83% | 0.09% | text-medium | 2.0% |
 | `upstream-guide-axis-theta-cartesian` | 23 | 96.8 | 82.80% | 0.50% | 0.07% | text-medium | 2.0% |
