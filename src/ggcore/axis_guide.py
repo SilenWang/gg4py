@@ -808,6 +808,33 @@ def _horizontal(side: str) -> bool:
     return side in ("bottom", "top")
 
 
+#: 四分之一圈的整数倍：这些角度上的 `cos` / `sin` 是精确的 0 / ±1。
+_EXACT_COS_SIN = {
+    0.0: (1.0, 0.0),
+    90.0: (0.0, 1.0),
+    180.0: (-1.0, 0.0),
+    270.0: (0.0, -1.0),
+}
+
+
+def _cos_sin_deg(angle_deg: float) -> tuple[float, float]:
+    """`(cos a, sin a)`（度数）；四分之一圈的整数倍直接给常数。
+
+    这几个角度上的值是精确的 0 / ±1，但 `math.cos()` / `math.sin()` 仍然是一次
+    宿主 libm 调用：`gate:libm-noise` 会把 `cos(0.0) = 1.0` 抬高 1 ULP（注入器
+    只跳过 0 本身，不跳过 1），而标签盒尺寸是从这两个值乘出来的——即便乘积
+    99% 的场合落在同一格 float32 里，`geom_sf` 的 north-carolina 系列也已经
+    在另一台 runner 上翻过一格（SIL-884）。短路的不是数值，是**依赖**：轴标签
+    `angle = 0/90/180/270` 是绝大多数图的全部情形，这条路径因此彻底不碰 libm。
+    """
+    angle = float(angle_deg) % 360.0
+    exact = _EXACT_COS_SIN.get(angle)
+    if exact is not None:
+        return exact
+    radians = math.radians(angle)
+    return math.cos(radians), math.sin(radians)
+
+
 #: 负刻度时锚点要换到对面那一侧（标签压进面板内侧）。
 _OPPOSITE_SIDE = {"bottom": "top", "top": "bottom", "left": "right", "right": "left"}
 
@@ -846,9 +873,9 @@ def _label_box(
         (text_width_cm(label.text, size, metrics, family) for label in labels),
         default=0.0,
     )
-    radians = math.radians(angle % 360.0)
-    cos = abs(math.cos(radians))
-    sin = abs(math.sin(radians))
+    cos_value, sin_value = _cos_sin_deg(angle)
+    cos = abs(cos_value)
+    sin = abs(sin_value)
     if _horizontal(side):
         return width * cos + line * sin, width * sin + line * cos, ml + mr, mt + mb
     return width * cos + line * sin, width * sin + line * cos, mt + mb, ml + mr
@@ -980,9 +1007,9 @@ def _label_stats(
     mt, mr, mb, ml = margin_sides_cm(getattr(element, "margin", None))
     line = text_block_cm(label.text, size, getattr(element, "lineheight", None))
     width = text_width_cm(label.text, size, metrics, family)
-    radians = math.radians(angle % 360.0)
-    cos = abs(math.cos(radians))
-    sin = abs(math.sin(radians))
+    cos_value, sin_value = _cos_sin_deg(angle)
+    cos = abs(cos_value)
+    sin = abs(sin_value)
     along = width * cos + line * sin
     cross = width * sin + line * cos
     if _horizontal(side):
@@ -1371,9 +1398,8 @@ def _degree_label_grobs(
     parts = [match.group("number"), match.group("degree"), match.group("dir")]
     widths = [text_width_cm(part, size, metrics, family) for part in parts]
     total = sum(widths)
-    radians = math.radians(angle % 360.0)
     # 基线方向按我们自己的 rot 口径（渲染端写 `rotate(-rot)`）。
-    ux, uy = math.cos(radians), math.sin(radians)
+    ux, uy = _cos_sin_deg(angle)
     left_x = x - hjust * total * ux
     left_y = y - hjust * total * uy
     grobs: list[Any] = []
@@ -1542,14 +1568,14 @@ def _anchor(angle: float, side: str) -> tuple[float, float]:
     | left | `cosine` | `1 - sine` |
     | right | `1 - cosine` | `sine` |
     """
-    radians = math.radians(angle % 360.0)
 
     def sign(value: float) -> float:
         rounded = round(value, 3)
         return 0.0 if rounded == 0 else (1.0 if rounded > 0 else -1.0)
 
-    cosine = sign(math.cos(radians)) / 2.0 + 0.5
-    sine = sign(math.sin(radians)) / 2.0 + 0.5
+    cos_value, sin_value = _cos_sin_deg(angle)
+    cosine = sign(cos_value) / 2.0 + 0.5
+    sine = sign(sin_value) / 2.0 + 0.5
     if side == "top":
         return 1.0 - sine, 1.0 - cosine
     if side == "left":

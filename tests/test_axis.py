@@ -337,3 +337,32 @@ def test_polar_minor_breaks_keep_major_positions_like_regular_minor_breaks() -> 
     y = PositionContinuousScale("y", {"minor_breaks": (1.25, 2.75, 9.0)})
     y.train(Column("float", np.array([1.0, 3.0])))
     assert polar_minor_breaks(y, _PolarPanel((1.0, 3.0), (1.0, 3.0)), "r") == (1.25, 2.75)
+
+
+def test_cos_sin_at_quarter_turns_never_calls_libm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`axis_guide._cos_sin_deg()`：0/90/180/270 度给精确常数，不经过宿主 libm。
+
+    `gate:libm-noise` 会把 `math.cos(0.0) = 1.0` 抬高 1 ULP（注入器只放过 0
+    本身）。轴标签盒尺寸是从 `|cos|` / `|sin|` 乘出来的，`geom_sf` 的
+    north-carolina 系列因此在另一台 runner 上漂过一格（SIL-884）。四分之一圈
+    的整数倍短路之后，这条路径连 libm 都不碰——`monkeypatch` 把两个函数换成
+    直接抛错的版本，只要还敢调用就红。
+    """
+    import math
+
+    from ggcore.axis_guide import _cos_sin_deg
+
+    def boom(*args, **kwargs):
+        raise AssertionError("四分之一圈的整数倍不该经过 libm")
+
+    monkeypatch.setattr(math, "cos", boom)
+    monkeypatch.setattr(math, "sin", boom)
+    monkeypatch.setattr(math, "radians", boom)
+
+    assert _cos_sin_deg(0.0) == (1.0, 0.0)
+    assert _cos_sin_deg(90.0) == (0.0, 1.0)
+    assert _cos_sin_deg(180.0) == (-1.0, 0.0)
+    assert _cos_sin_deg(270.0) == (0.0, -1.0)
+    # 360 折回 0，-90 折回 270：同样走常数。
+    assert _cos_sin_deg(360.0) == (1.0, 0.0)
+    assert _cos_sin_deg(-90.0) == (0.0, -1.0)
