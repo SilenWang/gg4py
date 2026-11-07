@@ -51,7 +51,7 @@ from ggcore.geom.interval import (
     LinerangeRenderer,
     PointrangeRenderer,
 )
-from ggcore.geom.line import LineRenderer, PathRenderer
+from ggcore.geom.line import FreqpolyRenderer, LineRenderer, PathRenderer
 from ggcore.geom.point import PointRenderer
 from ggcore.geom.polygon import PolygonRenderer, RibbonRenderer, StepRenderer
 from ggcore.geom.rect import RasterRenderer, RectRenderer, TileRenderer
@@ -88,6 +88,7 @@ __all__ = [
     "DotplotRenderer",
     "ErrorbarRenderer",
     "ErrorbarhRenderer",
+    "FreqpolyRenderer",
     "FunctionRenderer",
     "GeomError",
     "GeomRenderer",
@@ -187,6 +188,9 @@ GEOM_RENDERERS: dict[str, GeomRenderer] = {
     "qq_line": QqLineRenderer(),
     "quantile": QuantileRenderer(),
     "function": FunctionRenderer(),
+    # SIL-866：`geom_freqpoly` 与 `geom_line` 同一条绘制路径（上游
+    # `GeomFreqpoly` 继承 `GeomLine`），这里只换一个名字。
+    "freqpoly": FreqpolyRenderer(),
 }
 
 

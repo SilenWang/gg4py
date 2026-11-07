@@ -64,7 +64,7 @@ point 的 `size/shape/colour`、line/path 的 `linewidth/colour/linetype`、bar 
 | geom | 绘制口径（对 R 4.0.3） |
 | --- | --- |
 | `point` | `pointsGrob`；`size`（mm）+ `stroke` 折成 `fontsize = size * .pt + stroke * .stroke/2`；`col=alpha(colour, alpha)`、`fill=fill_alpha(fill, alpha)`；IR 的 `points.size` 是标量，所以逐点尺寸按 `(pch, size)` 分组画多个 `pointsGrob`。**gg4py 扩展**：`max_points=N` 时按行号等距降采样（缺省不降，`docs/notes/performance.md`） |
-| `line` / `path` | 每个 group 一条 `polylineGrob`；`line` 在 `setup_data()` 里按 `(PANEL, group, x)` 排序，`path` 保持行序；NA 用 `keep_mid_true()`：组内首尾缺失删掉、中间保留并断成两段；`lwd = linewidth * .pt` |
+| `line` / `path` | 每个 group 一条 `polylineGrob`；`line` 在 `setup_data()` 里按 `(PANEL, group, x)` 排序，`path` 保持行序；NA 用 `keep_mid_true()`：组内首尾缺失删掉、中间保留并断成两段；`lwd = linewidth * .pt`。`freqpoly` 与 `line` 同一条绘制路径（上游 `GeomFreqpoly` 继承 `GeomLine`），只是默认 stat 是 `bin` |
 | `bar` / `col` | 直接用 M1-9 的 `xmin/xmax/ymin/ymax`，画矩形（`just = c("left","top")`）；`fill` 吃 alpha、`col` 不吃（R 的 `fill_alpha()` 只包 fill） |
 | `histogram` | 与柱相同（`stat_bin` 见 `docs/notes/stat.md`；绘制只消费 `x/xmin/xmax/y/ymin/ymax`，`xmin/xmax`/`width` 由 stat 给） |
 | `area` | `ymin = 0`、`ymax = y`；上沿正向 + 下沿反向拼一个多边形（`fill` 吃 alpha，按 NA 断段），再按 `outline.type = "both"` 画上下两条轮廓线；横向（`flipped_aes`）在纵向语义拼完再 `flip_data(positions)`，多边形沿长度轴 x 从 `xmin` 铺到 `xmax` |
@@ -244,6 +244,7 @@ pass）；文本三条（对齐 / 旋转 / 换行）与 label 一条也在阈值
 
 | 日期 | 任务 | 改动 | 原因 |
 | --- | --- | --- | --- |
+| 2026-11-07 | SIL-866 | `geom_freqpoly` 注册为「换默认 stat 的 geom」：`GEOM_SPECS["freqpoly"]` 与 `line` 同一份默认美学、`stat = "bin"`，绘制复用 `FreqpolyRenderer(LineRenderer)`，图例 key 走 `draw_key_path`。`stat_density2d_filled` 补进 `STAT_NAMES` / `STAT_ALIASES`。`api:coverage` 285/285，`GAPS` 清空这两条。 | 上游 4.0.3 NAMESPACE 的最后两个缺口；`geom_freqpoly()` 与 `geom_line(stat="bin")`、`stat_density2d_filled()` 与 `stat_density_2d_filled()` 的 IR 逐字节相同（`tests/test_geom_draw.py` 两条对拍）。 |
 | 2026-11-03 | SIL-765 | PR #62 三项必修：① `inward` / `outward` 改用 `coord$transform()` 后的 npc（原来拿数据坐标与 0.5 比，limits 不是 0..1 时方向整个反）；② `_GEOM_KEYS` 的 `bin2d` / `bin_2d` 补 `xmin/xmax/ymin/ymax`（原来只在画图例 key 时 `KeyError`）；③ `geom_label(angle != 0)` 的背景框改成 4 点 `polygonGrob`，与文字一起绕锚点旋转（长标签不再溢出背景框）。顺带修 `lty` 段长的 pt 换算（`max(lwd, 1) × 0.75`）：SIL-737 的 `max(lwd, 1)` 漏了 0.75，`lwd = 1` 的虚线变长 1/3、`viewer-linetype-all` 超出阈值。测试：`_digest_plots()` 覆盖全部 49 个 geom；20 个新 geom 逐个真正 draw 一次图例 key；补 inward / outward 与旋转背景框的数值回归。 | SIL-756 对 PR #62 的必修 3 条，以及 rebase 到 #61 之后的合并面。 |
 | 2026-11-03 | SIL-737 / M2-S2 | 长尾 A：20 个 geom（线段 / 矩形 / 区间 / 标注族）+ IR 0.3 的箭头标记属性（`segments` / `polyline` / `curve`）+ `geom_raster` 的位图路径（`ggcore.png`）+ lty 段长按 `max(lwd, 1)` 折算（参考产线口径）。`geom_abline` / `hline` / `vline` 改成上游的「参数即图层数据」形态（`inherit_aes = FALSE`、`unique0(data)`）。 | M2 长尾补齐；SIL-715 #4/#5 结案。 |
 | 2026-11-02 | SIL-709 / SIL-716 | 横向 `geom_boxplot`：`draw()` 里新增 `axes()`，flip 时把长度值（`xlower` / `xupper` / `xmin` / `xmax`）摆到 x、类别位置摆到 y；须线 / 箱体 / 中位线共用这一处对换，纵向分支仍返回原顺序（字节序不变）。 | M1-15 写 `geom-boxplot-horizontal` case 时发现：修前只有离群点做了对换，箱体与中位线仍按纵向坐标拼，横向箱线图整只箱被摆错方向。回归：`tests/test_geom_draw.py::test_horizontal_boxplot_puts_length_on_x_and_category_on_y`。 |

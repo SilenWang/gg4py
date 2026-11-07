@@ -638,6 +638,10 @@ def _digest_plots() -> dict[str, object]:
     col = _table(x=[0.5, 1.5, 2.5], y=[0.35, 0.75, 0.55])
     area = _table(x=[1.0, 2.0, 3.0, 4.0, 5.0], y=[1.0, 3.0, 2.0, 4.0, 3.0])
     histogram = _table(x=[0.5, 1.5, 2.5], y=[0.2, 0.5, 0.75])
+    freqpoly = _table(
+        x=[0.2, 0.7, 1.1, 1.4, 1.9, 2.3, 2.8, 3.1],
+        g=["a", "a", "b", "b", "a", "b", "a", "b"],
+    )
     boxplot = ColumnTable(
         [
             ("x", Column("str", np.array(["a", "b"], dtype=object))),
@@ -790,11 +794,45 @@ def _digest_plots() -> dict[str, object]:
         "qq_line": ggplot(point, aes(x="x", y="y")) + registry.geom_qq_line(stat="identity"),
         "quantile": ggplot(step, aes(x="x", y="y")) + registry.geom_quantile(stat="identity"),
         "function": ggplot(step, aes(x="x", y="y")) + registry.geom_function(stat="identity"),
+        # SIL-866：默认 stat 是 `bin`（`geom_line(stat = "bin")` 的等价物）。
+        "freqpoly": ggplot(freqpoly, aes(x="x", colour="g")) + registry.geom_freqpoly(bins=4),
     }
 
 
 def test_digest_plots_cover_every_geom() -> None:
     assert set(_digest_plots()) == set(registered_renderers())
+
+
+def _digest(plot: object) -> str:
+    return hashlib.sha256(ir.encode(scene_from_plot(plot, **SIZE))).hexdigest()
+
+
+def test_freqpoly_and_line_with_bin_stat_share_one_ir() -> None:
+    """SIL-866：`geom_freqpoly()` 与 `geom_line(stat="bin")` 的 IR 逐字节相同。"""
+    table = _table(
+        x=[0.2, 0.7, 1.1, 1.4, 1.9, 2.3, 2.8, 3.1],
+        g=["a", "a", "b", "b", "a", "b", "a", "b"],
+    )
+    for extra in ({"bins": 4}, {"binwidth": 0.5}, {"linewidth": 1.2, "linetype": 2}):
+        freqpoly = ggplot(table, aes(x="x")) + registry.geom_freqpoly(**extra)
+        line = ggplot(table, aes(x="x")) + registry.geom_line(stat="bin", **extra)
+        assert _digest(freqpoly) == _digest(line)
+    # 图例（colour 映射）也走同一条 `draw_key_path` 键，不能只对上图层几何。
+    legend = dict(x="x", colour="g")
+    assert _digest(ggplot(table, aes(**legend)) + registry.geom_freqpoly(bins=3)) == _digest(
+        ggplot(table, aes(**legend)) + registry.geom_line(stat="bin", bins=3)
+    )
+
+
+def test_density2d_filled_alias_renders_the_same_ir() -> None:
+    """SIL-866：`stat_density2d_filled()` 与 `stat_density_2d_filled()` 同 IR。"""
+    table = _table(
+        x=[0.2, 0.3, 0.4, 0.7, 0.8, 0.85, 0.25, 0.5],
+        y=[0.2, 0.25, 0.3, 0.7, 0.75, 0.8, 0.6, 0.45],
+    )
+    alias = ggplot(table, aes(x="x", y="y")) + registry.stat_density2d_filled()
+    canonical = ggplot(table, aes(x="x", y="y")) + registry.stat_density_2d_filled()
+    assert _digest(alias) == _digest(canonical)
 
 
 @pytest.mark.parametrize("geom_name", sorted(_digest_plots()))

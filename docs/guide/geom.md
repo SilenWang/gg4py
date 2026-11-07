@@ -1,12 +1,12 @@
 # `geom_*`：几何对象
 
-几何对象决定「一行数据画成什么」。名字与 ggplot2 4.0.3 的 `NAMESPACE` 一致（50 个
-注册名，覆盖上游 53 个导出中的 52 个；`geom_freqpoly` 见
-[`r-to-python.md`](r-to-python.md) §8）。完整清单：
+几何对象决定「一行数据画成什么」。名字与 ggplot2 4.0.3 的 `NAMESPACE` 一致（51 个
+注册名，覆盖上游 53 个 `geom_*` 导出；`geom_sf_text` / `geom_sf_label` 是图层组合，
+只在 `ggcore.plot` 的公开命名空间里，见 [`r-to-python.md`](r-to-python.md) §4）。完整清单：
 
 | 族 | 名字 |
 | --- | --- |
-| 点 / 线 / 路径 | `geom_point` `geom_jitter` `geom_line` `geom_path` `geom_step` `geom_segment` `geom_curve` `geom_spoke` `geom_rug` `geom_blank` |
+| 点 / 线 / 路径 | `geom_point` `geom_jitter` `geom_line` `geom_path` `geom_freqpoly` `geom_step` `geom_segment` `geom_curve` `geom_spoke` `geom_rug` `geom_blank` |
 | 柱 / 面 | `geom_bar` `geom_col` `geom_histogram` `geom_area` `geom_ribbon` `geom_rect` `geom_tile` `geom_raster` `geom_polygon` `geom_map` |
 | 区间 / 分布 | `geom_boxplot` `geom_violin` `geom_dotplot` `geom_crossbar` `geom_errorbar` `geom_errorbarh` `geom_linerange` `geom_pointrange` |
 | 文本 | `geom_text` `geom_label` |
@@ -358,7 +358,8 @@ p = (
 
 ## 10. 与上游的差异
 
-- `geom_freqpoly()` 未登记，用 `geom_line(stat="bin")`。
+- `geom_freqpoly()` 与 `geom_line(stat="bin")` 是同一个画法：默认 stat 是 `bin`，
+  IR 与显式写 `geom_line(stat="bin")` 逐字节相同。
 - `geom_map()` 只做最小可用（gallery 里依赖完整 `maps` 数据的图不在验收范围）。
 - `annotate("abline" / "hline" / "vline", ...)` 不支持（上游同样建议直接用对应
   geom；gg4py 给一条 warning），见 [`annotation.md`](annotation.md)。

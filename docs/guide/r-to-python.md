@@ -88,7 +88,7 @@ p = (
 
 | 族 | 名字 |
 | --- | --- |
-| 点 / 线 / 路径 | `geom_point` `geom_jitter` `geom_line` `geom_path` `geom_step` `geom_segment` `geom_curve` `geom_spoke` `geom_rug` `geom_blank` |
+| 点 / 线 / 路径 | `geom_point` `geom_jitter` `geom_line` `geom_path` `geom_freqpoly` `geom_step` `geom_segment` `geom_curve` `geom_spoke` `geom_rug` `geom_blank` |
 | 柱 / 面 | `geom_bar` `geom_col` `geom_histogram` `geom_area` `geom_ribbon` `geom_rect` `geom_tile` `geom_raster` `geom_polygon` `geom_map` |
 | 区间 / 分布 | `geom_boxplot` `geom_violin` `geom_dotplot` `geom_crossbar` `geom_errorbar` `geom_errorbarh` `geom_linerange` `geom_pointrange` |
 | 文本 | `geom_text` `geom_label` |
@@ -96,7 +96,6 @@ p = (
 | 参考线 | `geom_abline` `geom_hline` `geom_vline` |
 | 统计快捷 | `geom_smooth` `geom_quantile` `geom_function` `geom_qq` `geom_qq_line` |
 | 空间 | `geom_sf` `geom_sf_text` `geom_sf_label` |
-| **缺口** | `geom_freqpoly` → 写 `geom_line(stat="bin")`（同一个 stat，只是换 geom） |
 
 常用参数差异：
 
@@ -122,9 +121,8 @@ p = (
 | 分布 | `stat_boxplot` `stat_ydensity` `stat_density` `stat_ecdf` `stat_qq` `stat_qq_line` `stat_ellipse` `stat_quantile` `stat_function` `stat_connect` |
 | 拟合 | `stat_smooth` |
 | 汇总 | `stat_summary` |
-| 2D | `stat_bin_2d` `stat_bin2d` `stat_bin_hex` `stat_binhex` `stat_summary_2d` `stat_summary2d` `stat_summary_hex` `stat_contour` `stat_contour_filled` `stat_density_2d` `stat_density2d` |
+| 2D | `stat_bin_2d` `stat_bin2d` `stat_bin_hex` `stat_binhex` `stat_summary_2d` `stat_summary2d` `stat_summary_hex` `stat_contour` `stat_contour_filled` `stat_density_2d` `stat_density2d` `stat_density_2d_filled` `stat_density2d_filled` |
 | 空间 | `stat_sf` `stat_sf_coordinates` |
-| **缺口** | `stat_density2d_filled` → 写 `stat_density_2d_filled()`（上游它只是下划线的别名） |
 | **废弃** | `stat_spoke`：上游 4.0.3 是 `deprecate_stop()`，调用即报错；改用 `geom_spoke()` |
 
 stat 也有「快捷方式」写法：`stat_*(geom=)` 换绘制几何，`geom_*(stat=)` 换统计
@@ -210,11 +208,11 @@ p = (
 
 | 上游 | 现状 | 等价写法 |
 | --- | --- | --- |
-| `geom_freqpoly()` | 未登记（`geom` 52/53） | `geom_line(stat="bin")` |
-| `stat_density2d_filled()` | 未登记 | `stat_density_2d_filled()` |
 | `qplot()` / `aes_string()` / `aes_()` / `stat_spoke()` | 4.0.3 自身已移除或废弃 | `ggplot()` / `aes(x="col")` / `geom_spoke()` |
 
-`../notes/api-coverage.md` 有逐条归口；两条缺口都登记在无法绕开的别名清理任务里。
+`../notes/api-coverage.md` 有逐条归口。本文档列出的导出都已可用：`geom_freqpoly()`
+等价于 `geom_line(stat="bin")`，`stat_density2d_filled()` 就是
+`stat_density_2d_filled()` 的别名。
 
 ## 9. 第三方扩展的等价写法（不做同名 API）
 

@@ -20,7 +20,7 @@
 | [`aes.md`](aes.md) | `aes` | 映射：表达式、常量、`after_stat()`、分组、图层级映射 |
 | [`data.md`](data.md) | 输入 | dict / pandas / Arrow → 一张列式表；类型、分类顺序、日期、缺失 |
 | [`layers.md`](layers.md) | `ggplot` + `Layer` | 用 `+` 加图层、克隆语义、方法链别名、图层自带数据与映射 |
-| [`geom.md`](geom.md) | `geom_*` | 50 个几何对象：点线面、区间、文本、2D 族、sf |
+| [`geom.md`](geom.md) | `geom_*` | 51 个几何对象：点线面、区间、文本、2D 族、sf |
 | [`stat.md`](stat.md) | `stat_*` | 统计变换：bin / count / boxplot / smooth / density / qq / summary … |
 | [`position.md`](position.md) | `position_*` | 堆叠 / 填充 / 并排 / 抖动 / 微移 |
 | [`scale.md`](scale.md) | `scale_*` | 位置与颜色标度：limits / breaks / labels / trans / 色板 |
