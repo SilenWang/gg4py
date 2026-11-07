@@ -25,7 +25,7 @@ pixi run check                  # 全量门禁
 | --- | --- | --- |
 | 上游快照 | **311/311 纳管，缺口 0** | `pixi run snapshots:check` → `snapshots total=311 imported=311 gaps=0` |
 | API 覆盖 | **283/285 = 99.3%**（registry 90.9%） | `pixi run api:coverage:check` → `gaps (2): geom_freqpoly, stat_density2d_filled` |
-| 案例库 | `docs/cases` 下 549 个目录，矩阵识别 **529 条合法 case**；`ci = false` **0 条**（SIL-870 删掉重复目录后） | `ls -d docs/cases/*/ \| wc -l` = 549；`pixi run cases:matrix` → `529 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0 |
+| 案例库 | `docs/cases` 下 548 个目录，矩阵识别 **529 条合法 case**；`ci = false` **0 条**（SIL-870 删掉重复目录后） | `git ls-tree -d --name-only HEAD docs/cases/ \| wc -l` = 548（干净树；`ls -d docs/cases/*/` 会多数出跑过用例后生成的 `__pycache__/`）；`pixi run cases:matrix` → `529 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0 |
 | gallery 35 图 | 27 ✅ + 2 ⚠️ = 29/35 可画；6 张第三方扩展（刻意不做） | `pixi run audit:gallery` → `35/35 符合登记`；逐张见 `docs/notes/gallery-audit.md` |
 | 三条曾经的 `ci = false` | **两条已转绿**，第三条是重复目录、已删（SIL-870） | 见下方实测 |
 | SIL-715 缺口池 | 28 条全部定性：20 已修/已落地、5 刻意不做、3 仍缺 | 见 §5 |
