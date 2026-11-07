@@ -43,6 +43,7 @@ sys.path.insert(0, str(REPO / "tools" / "gates"))
 sys.path.insert(0, str(REPO / "tools" / "gates" / "pyodide"))
 
 import libm_noise  # noqa: E402
+import libm_noise_probe  # noqa: E402
 import run_cases  # noqa: E402
 
 CASES = REPO / "docs" / "cases"
@@ -135,6 +136,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"  {mode}: {name}  {baseline[name][:16]}… / {other[:16]}…",
                 file=sys.stderr,
             )
+            # SIL-884：判红时把「漂在哪个节点 / 字段 / 元素」直接打出来。门禁在
+            # 另一台机器（glibc / CPU 不同）上红、本机 0 drifted 时，CI 日志本身
+            # 就是唯一能复核定位的材料——只打「1 处漂移」等于把人挡在门外。
+            for line in libm_noise_probe.diff_case(name, mode, args.seed):
+                print(f"      {line}", file=sys.stderr)
         if len(names) > args.limit:
             print(f"  {mode}: … 还有 {len(names) - args.limit} 条", file=sys.stderr)
     print(
