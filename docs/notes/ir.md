@@ -387,7 +387,8 @@ emoji 位图字体的 advance 差异（0.24%，随 emoji 数量累积）。L3 �
 多行（SIL-655）：`texts` 里允许 `\n`，`width` 是**各行的最大推进**，`pos` 与
 `anchor` / `baseline` 对整块。节点带 `lineheight`（缺省 1.2），渲染端按
 `1.2 × lineheight × size` 切行（缺省即 1.44 × size），整块高度用 R 的
-`strheight`（cap height）。设备侧已消费；浏览器 viewer 仍固定 1.2（SIL-869）。
+`strheight`（cap height）。设备侧与浏览器查看器都消费这个字段（SIL-869），
+两端的行距口径由此对齐，非缺省值不会在 `<tspan>` 里退化回常量。
 小数 `hjust/vjust` 仍表达不了：写 IR 的一方把它们折进 `pos`
 （`metrics-ledger.md` · M1-b）；要支持时加字段并升 IR 版本，不在这条节点上偷偷塞参数。
 
@@ -536,7 +537,6 @@ M1-13 的浏览器查看器（`docs/notes/viewer.md`）只能在现有字段上�
 | 原始数据行号 | 显示缓冲行号（`bufs[k]` 的行下标） | 节点带「行 → 原始数据下标」的表 |
 | 图例 entry 归属（key ↔ 标签 ↔ 图层） | 视口名前缀 + 页面包围盒纵向对齐 | guide entry 字段，或把 key/标签合成一个具名容器 |
 | 图例 level → 数据行 | 不做（点图例只隐藏图例组本身） | 同上，需要 level 到行的映射 |
-| `text.lineheight` / 非缺省行距 | viewer 固定 1.2（IR 字段已有、设备已消费） | viewer 读字段（SIL-869） |
 | 字符型 `points.pch`（32..127 / 负数） | 只画 0..25 的几何符号；字符型不猜 | 要么写方先转 `<text>`，要么 IR 带字体引用 |
 | 图案内嵌文字 / 位图 | 不支持（`pattern.content` 只收几何图元） | `pattern.content` 放开到 `text` / `raster`，并把字体 / blob 约定带进去 |
 

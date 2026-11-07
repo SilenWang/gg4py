@@ -257,6 +257,9 @@ const NODE_SPECS: Record<string, NodeSpec> = {
       anchor: P("anchor", "center"),
       baseline: P("baseline", "middle"),
       angle: P("float", 0.0),
+      // 多行行距 = `1.2 × lineheight × size`（`docs/notes/ir.md` §7）；缺省即
+      // grid 的 `gpar(lineheight = 1.2)`，与 `ggskia._place_text` 同口径。
+      lineheight: P("float", 1.2),
     },
     children: false,
     gpar: true,

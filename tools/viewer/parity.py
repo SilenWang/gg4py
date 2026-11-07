@@ -501,6 +501,20 @@ def _pct(value: float | None) -> str:
     return f"{value:.3%}" if value is not None else "—"
 
 
+def _pt(value: float | None) -> str:
+    """pt 数字（保留两位）；`None` / `inf`（整页没有墨迹）显示为破折号。"""
+    if value is None or not math.isfinite(value):
+        return "—"
+    return f"{value:.2f}"
+
+
+def _finite(value: float | None) -> float | None:
+    """JSON 里不能写 `Infinity`；无墨迹的那一侧记成 `null`。"""
+    if value is None or not math.isfinite(value):
+        return None
+    return round(value, 3)
+
+
 def render_report(results: list[ParityCase], *, now: str, command: str) -> str:
     passed = sum(1 for item in results if item.ok)
     worst = max((item.pixel or 0.0) for item in results) if results else 0.0
@@ -582,6 +596,135 @@ def _mutated_colour(source: Path, target: Path, *, colour: str) -> None:
             payload = payload[:start] + colour + payload[end:]
             break
     target.write_text(payload, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# 非缺省 lineheight 的双腿对拍（SIL-869）
+# ---------------------------------------------------------------------------
+
+#: 取三个值：1.2 是 grid 缺省（对照组），1.0 / 2.0 是「更紧 / 更松」两侧。
+#: 行距 = `1.2 × lineheight × size`，所以 12 pt 下分别是 14.4 / 17.28 / 28.8 pt。
+LINEHEIGHTS = (1.0, 1.2, 2.0)
+#: 文本墨迹包围盒四边之差，单位 pt。比常规 case 的 1 pt 更紧：这里整页只有
+#: 文本，没有其它图元的抗锯齿边缘混进来。
+MAX_LINEHEIGHT_DELTA = 0.5
+
+
+@dataclass
+class LineHeightParity:
+    """一条非缺省 lineheight 在两条腿上的文本墨迹包围盒。"""
+
+    lineheight: float
+    skia_box: tuple[int, int, int, int] | None
+    viewer_box: tuple[int, int, int, int] | None
+
+    @property
+    def skia_span(self) -> float | None:
+        return None if self.skia_box is None else float(self.skia_box[3] - self.skia_box[1])
+
+    @property
+    def viewer_span(self) -> float | None:
+        return None if self.viewer_box is None else float(self.viewer_box[3] - self.viewer_box[1])
+
+    @property
+    def span_delta(self) -> float:
+        if self.skia_span is None or self.viewer_span is None:
+            return float("inf")
+        return abs(self.skia_span - self.viewer_span)
+
+    @property
+    def bbox_delta(self) -> float:
+        """四边的最大差；两侧任一侧没有墨迹时判无穷大。"""
+        return _bbox_delta(self.skia_box, self.viewer_box)
+
+    @property
+    def ok(self) -> bool:
+        return self.bbox_delta <= MAX_LINEHEIGHT_DELTA
+
+
+def lineheight_scene(lineheight: float) -> ir.Scene:
+    """一条三行文本的合成场景：除了 `lineheight` 之外什么都不变。
+
+    用与 `text-multiline` 同一条字体（Noto Sans CJK SC）与同一套
+    anchor / baseline，这样浏览器腿的 `dominant-baseline` 换算与设备腿的
+    cap height 口径都在既有的、已被对拍过的路径上。
+    """
+    text = ir.Node(
+        ir.NodeKind.TEXT,
+        ir.Gpar(col=(0, 0, 0, 255)),
+        params={
+            "font": "Noto Sans CJK SC",
+            "size": 12.0,
+            "anchor": "center",
+            "baseline": "middle",
+            "lineheight": lineheight,
+        },
+        bufs={"pos": ir.f32([[150.0, 100.0]]), "width": ir.f32([40.0])},
+        texts=("alpha\nbravo\ncharlie",),
+    )
+    root = ir.Node(
+        ir.NodeKind.VIEWPORT,
+        params={"name": "page", "clip": False},
+        children=(text,),
+    )
+    return ir.Scene(root=root, size=(300.0, 200.0))
+
+
+def lineheight_parity(page, *, shaper, scratch: Path) -> list[LineHeightParity]:
+    """同一份合成 IR 走两条腿：`LINEHEIGHTS` 各量一次文本墨迹包围盒的 y 跨度。
+
+    这不是「断言解析出来的参数」：`SkiaSvgDevice` 真画一份 SVG，浏览器里的
+    查看器真画另一份，两侧都把 `<text>` 轮廓化后交给 resvg（与常规对拍同一条
+    链路），最后量 PNG 上非白墨迹的 y 跨度。缺省 1.2 一组是回归对照——它的
+    数字必须与 SIL-869 之前一致。
+    """
+    results: list[LineHeightParity] = []
+    for lineheight in LINEHEIGHTS:
+        directory = scratch / f"lineheight-{lineheight:g}"
+        directory.mkdir(parents=True, exist_ok=True)
+        scene = lineheight_scene(lineheight)
+        cbor = directory / "scene.ggir.cbor"
+        cbor.write_bytes(ir.encode(scene))
+
+        skia_svg = directory / "skia.svg"
+        skia_svg.write_bytes(SkiaSvgDevice(*scene.size, dpi=72, shaper=shaper).render(scene))
+        viewer_raw = _viewer_svg(page, cbor, directory / "viewer.svg")
+        skia_outlined = directory / "skia.outlined.svg"
+        viewer_outlined = directory / "viewer.outlined.svg"
+        inline_text_paths(skia_svg, skia_outlined, shaper=shaper)
+        inline_text_paths(viewer_raw, viewer_outlined, shaper=shaper)
+
+        skia_png = rasterize_svg(
+            skia_outlined, directory / "skia.png", dpi=72, background="#ffffff"
+        )
+        viewer_png = rasterize_svg(
+            viewer_outlined, directory / "viewer.png", dpi=72, background="#ffffff"
+        )
+        results.append(
+            LineHeightParity(
+                lineheight=lineheight,
+                skia_box=ink_bbox(skia_png),
+                viewer_box=ink_bbox(viewer_png),
+            )
+        )
+    return results
+
+
+def lineheight_negative_control(scratch: Path) -> tuple[bool, str]:
+    """负向对照：松行距的 viewer 输出对缺省行距的设备输出，必须判红。
+
+    没有这一条，三组 0.00 pt 也可能只是「两侧都没在看 `lineheight`」。这里故意
+    把 `lineheight = 2.0` 的浏览器腿与 `lineheight = 1.2` 的设备腿放在一起：两
+    块文本的 y 跨度差 ≈ 23 pt，判据必须抓到。
+    """
+    reference = scratch / "lineheight-1.2" / "skia.png"
+    other = scratch / "lineheight-2" / "viewer.png"
+    delta = _bbox_delta(ink_bbox(reference), ink_bbox(other))
+    return (
+        delta > MAX_LINEHEIGHT_DELTA,
+        f"1.2 设备腿 vs 2.0 浏览器腿：包围盒四边差 {_pt(delta)} pt"
+        f"（阈值 {MAX_LINEHEIGHT_DELTA} pt）",
+    )
 
 
 def selftest(scratch_root: Path, *, radius: int = 1) -> list[tuple[str, bool, str]]:
@@ -680,6 +823,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     results: list[ParityCase] = []
+    lineheight_results: list[LineHeightParity] = []
     args.out.mkdir(parents=True, exist_ok=True)
     scratch_root = args.out / "parity"
     with (
@@ -713,6 +857,10 @@ def main(argv: list[str] | None = None) -> int:
                     + (f" — {result.detail}" if result.detail else ""),
                     flush=True,
                 )
+            if args.selftest:
+                lineheight_results = lineheight_parity(
+                    page, shaper=shaper, scratch=args.out / "lineheight"
+                )
         finally:
             browser.close()
 
@@ -729,6 +877,17 @@ def main(argv: list[str] | None = None) -> int:
             for status in ("pass", "fail", "error")
         },
         "cases": [item.as_dict() for item in results],
+        "lineheight_selftest": [
+            {
+                "lineheight": item.lineheight,
+                "skia_span_pt": _finite(item.skia_span),
+                "viewer_span_pt": _finite(item.viewer_span),
+                "span_delta_pt": _finite(item.span_delta),
+                "bbox_delta_pt": _finite(item.bbox_delta),
+                "status": "pass" if item.ok else "fail",
+            }
+            for item in lineheight_results
+        ],
     }
     (args.out / "parity.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -741,11 +900,35 @@ def main(argv: list[str] | None = None) -> int:
 
     failed = [item for item in results if not item.ok]
     if args.selftest:
+        for item in lineheight_results:
+            glyph = "✅" if item.ok else "❌"
+            print(
+                f"{glyph} selftest: lineheight {item.lineheight:g} 双腿对拍"
+                f"（y 跨度 skia {_pt(item.skia_span)} / viewer {_pt(item.viewer_span)} pt，"
+                f"跨度差 {_pt(item.span_delta)} pt / 四边差 {_pt(item.bbox_delta)} pt）"
+            )
+            if not item.ok:
+                failed.append(
+                    ParityCase(
+                        case=f"selftest:lineheight-{item.lineheight:g}",
+                        family="selftest",
+                        status="fail",
+                        detail=f"文本墨迹包围盒四边差 {_pt(item.bbox_delta)} pt",
+                    )
+                )
         for name, detected, detail in selftest(scratch_root):
             glyph = "✅" if detected else "❌"
             print(f"{glyph} selftest: {name}（{detail}）")
             if not detected:
                 failed.append(ParityCase(case=f"selftest:{name}", family="selftest", status="fail"))
+        if lineheight_results:
+            detected, detail = lineheight_negative_control(args.out / "lineheight")
+            glyph = "✅" if detected else "❌"
+            print(f"{glyph} selftest: 忽略 lineheight 必须被判红（{detail}）")
+            if not detected:
+                failed.append(
+                    ParityCase(case="selftest:lineheight-ignored", family="selftest", status="fail")
+                )
     print(
         f"viewer:parity: {len(results)} case(s) — pass {len(results) - len(failed)}, "
         f"fail/error {len(failed)}"

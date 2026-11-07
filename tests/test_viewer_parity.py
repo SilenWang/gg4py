@@ -34,10 +34,10 @@ def _svg(path: Path, body: str) -> Path:
     return path
 
 
-def _ink(path: Path, *, offset: int = 0, colour: int = 0) -> Path:
-    """40×20 的白底 PNG，`(10+offset, 5)-(20+offset, 15)` 一块实心墨。"""
+def _ink(path: Path, *, offset: int = 0, colour: int = 0, height: int = 10) -> Path:
+    """40×20 的白底 PNG，`(10+offset, 5)-(20+offset, 5+height)` 一块实心墨。"""
     image = np.full((20, 40, 3), 255, dtype=np.uint8)
-    image[5:15, 10 + offset : 20 + offset] = colour
+    image[5 : 5 + height, 10 + offset : 20 + offset] = colour
     save_png(path, image)
     return path
 
@@ -123,6 +123,33 @@ def test_untouched_pair_passes_selftest_baseline(tmp_path: Path) -> None:
     assert parity._centroid_delta(
         parity.ink_centroid(reference), parity.ink_centroid(moved)
     ) == pytest.approx(0.0)
+
+
+def test_lineheight_parity_measures_the_ink_box(tmp_path: Path) -> None:
+    """SIL-869：判据量的是墨迹包围盒，不是解析出来的 `lineheight` 参数。"""
+    same = _ink(tmp_path / "same.png")
+    lower = _ink(tmp_path / "lower.png", offset=2)
+    item = parity.LineHeightParity(1.0, parity.ink_bbox(same), parity.ink_bbox(lower))
+    assert item.skia_span == 9.0
+    assert item.viewer_span == 9.0
+    assert item.span_delta == 0.0
+    # 两块等高、但整体错开 2 pt：跨度相同，四边差 2 pt，判据必须红。
+    assert item.bbox_delta == 2.0
+    assert not item.ok
+
+    exact = parity.LineHeightParity(1.2, parity.ink_bbox(same), parity.ink_bbox(same))
+    assert exact.bbox_delta == 0.0
+    assert exact.ok
+
+
+def test_lineheight_negative_control_flags_a_mismatched_pitch(tmp_path: Path) -> None:
+    """负向对照：1.2 设备腿与 2.0 浏览器腿不能同时「全绿」。"""
+    for name in ("lineheight-1.2", "lineheight-2"):
+        (tmp_path / name).mkdir()
+    _ink(tmp_path / "lineheight-1.2" / "skia.png")
+    _ink(tmp_path / "lineheight-2" / "viewer.png", height=14)
+    detected, detail = parity.lineheight_negative_control(tmp_path)
+    assert detected, detail
 
 
 GRADIENT_BODY = (

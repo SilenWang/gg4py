@@ -92,7 +92,8 @@ IR 的 `text` 只带**最终宽度**与锚点（`ir.md` §7）：`pos`、`width`
 - `baseline` → `dominant-baseline: text-before-edge / central / text-after-edge / alphabetic`；
 - `angle` 是绕锚点的局部旋转（逆时针），SVG 的 `rotate()` 在 y 向下时是顺时针，
   所以写 `rotate(-angle)`；元素变换是 `matrix(页面变换) translate(pos) rotate(-angle)`；
-- 多行按 grid 的缺省 `lineheight = 1.2` 切 `<tspan>`，行距 `1.44 × size`；
+- 多行按 `text.lineheight` 切 `<tspan>`，行距 = `1.2 × lineheight × size`
+  （缺省 `lineheight = 1.2` → `1.44 × size`，与设备腿同口径，`ir.md` §7）；
 - `font` 是已解析的单个字族 key，浏览器补系统栈：
   `"<font>", "Noto Sans CJK SC", "DejaVu Sans", sans-serif`。
 
@@ -181,7 +182,7 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | --- | --- | --- | --- |
 | 文字 | 用受管字体度量，必要时按字步写 `tspan` | 同一份受管字体（`fonts.css` 的 `@font-face`，由 `tools/viewer/emit_fonts.py` 从 rules.json 生成）+ 正常排版 | 字宽 / 字面在浏览器里可能有 1 px 级差；对拍口径与桌面同一套 |
 | 文字基线 | cap height × 72.27/72（R 的 `strheight`） | 浏览器用 `dominant-baseline`；diff 侧按 `data-baseline` 还原同一 cap 口径 | gallery 截图有亚像素差；像素对拍不受影响 |
-| 多行行距 | IR 带 `text.lineheight`，设备按 `1.2 × lineheight × size` 画 | 固定 1.2（还没读字段） | 非缺省行距在浏览器里丢失（SIL-869；`ir.md` §7） |
+| 多行行距 | IR 带 `text.lineheight`，设备按 `1.2 × lineheight × size` 画 | 同一公式读 `text.lineheight`（`1.0` / `1.2` / `2.0` 三组对拍四边差 0.00 pt，SIL-869） | 无 |
 | 复合 pch | `ggskia.pch` 的精确符号 | 同一套 `RADIUS` / `TRC` / `SQRC` / `DMDC` 常量（§5） | 无 |
 | 虚线 `lty` | `DashPathEffect`（段长 × 4/3，见 §10.1）；SVG 后端序列化后由 `_rewrite_svg_dashes` 补成 `stroke-dasharray` | `stroke-dasharray`（同一份 × 4/3 常量） | 无 |
 | `xspline` / `curve` | `ggskia.curves` 的公式 | 同一套公式的 TS 移植（§6） | 无 |
@@ -203,7 +204,6 @@ bulk 口径一致。hover 因此只到节点粒度（见 §9）。
 | 数据行号（原始数据） | 显示缓冲行号 | `node.rows` 索引表 |
 | 图例 entry 归属（key ↔ 标签 ↔ 图层） | 名字前缀 + 纵向对齐推断 | guide entry 字段或 key 组命名约定入 schema |
 | 图例点击 → 隐藏数据系列 | 只隐藏图例组本身 | level → 数据行 的映射 |
-| 多行行距 / `lineheight` | viewer 固定 1.2（IR 已有字段） | viewer 读 `text.lineheight`（SIL-869） |
 | 字体文件 | 受管字体副本（`web/viewer/fonts/`，`viewer:build` 从 `$CONDA_PREFIX/fonts` 复制；`font-family` 回退栈只含 rules.json 里的字族，**不含 `sans-serif`**） | 字体 blob 表（`ir.md` §12） |
 | 逐行 hover（单点 tooltip） | 节点级：`points` 一个节点一个 `<path>`，tooltip 给整段行范围 | 同一 path 内给子路径标 `data-row` + JS 命中测试（`elementFromPoint` 拿不到子路径），待 M2 |
 
@@ -257,9 +257,9 @@ M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 | `segments` | 支持 | 每行独立 `M…L…`，不连成折线 |
 | `points` `pch` 0..25 / `size` | 支持 | R 的 `RADIUS=0.375`、`TRC` / `SQRC` / `DMDC` / `SMALL` 常量；一个节点一个 `<path>` |
 | `points` `pch` 字符型（32..127 / 负数） | 不支持 | IR 写方目前只产出 0..25；字符型需要 IR 带字体或写方转 `<text>` |
-| `text` `font` / `size` / `anchor` / `baseline` / `angle` | 支持 | `font` 的 `:bold` / `:italic` / `:bold-italic` 后缀翻成 CSS face；多行按 1.44×size |
+| `text` `font` / `size` / `anchor` / `baseline` / `angle` | 支持 | `font` 的 `:bold` / `:italic` / `:bold-italic` 后缀翻成 CSS face；多行行距按 `1.2 × lineheight × size` |
 | `text` 多行 | 支持 | 每行一个 `<tspan>`；锚点按整块（top / middle / bottom） |
-| `text` 非缺省 `lineheight` | 不支持 | IR 有 `lineheight` 字段（`ir.md` §7），viewer 还没消费（SIL-869） |
+| `text` 非缺省 `lineheight` | 支持 | 读 `text.lineheight`（`ir.ts` 的 `text` 参数表缺省 1.2），行距与设备腿同公式；`viewer:parity --selftest` 用 1.0 / 1.2 / 2.0 三组真跑双腿 |
 | `raster` `blob` / `rect` / `mime` / `interpolate` | 支持 | blob → data URL；`interpolate=false` → `image-rendering:pixelated`（浏览器认，resvg 不认：对拍前由 `ggdiff.svgimage` 按格点放大，见 `diff.md` §2） |
 | `xspline` `shape` / `open` | 支持 | `curves.ts` 的 X-spline 移植，采样密度与设备一致 |
 | `bezier` | 支持 | 每 4 个控制点一段三次贝塞尔 |
@@ -304,6 +304,22 @@ CI 只跑 12 条子集：`viewer:parity:ci`，挂在 `pixi run check` 上）。
 线宽与虚线不进「颜色集合」是刻意的：它们在同语义下的 SVG 表达本来就不同，
 差异由墨迹差兜住。`--selftest` 做负向对照（平移 2 pt、换一种颜色），
 两条判据都必须变红——保证「全绿」不是判据没在看。
+
+SIL-869 起 `--selftest` 还多跑一组**非缺省 `lineheight` 的双腿对拍**：同一份
+三行文本的合成 IR（12 pt / `baseline = middle`）分别走 `SkiaSvgDevice` 与浏览器
+查看器，两侧都轮廓化后量 PNG 上的墨迹包围盒，四边差必须 ≤ 0.5 pt。1.2 是缺省
+对照组，1.0 / 2.0 分别验证「更紧」与「更松」两侧真的进了 `<tspan>` 的 `y`；
+另有一条负向对照：把 2.0 的浏览器腿对 1.2 的设备腿，必须判红（实测差 12 pt），
+否则「三组全绿」也可能只是两侧都没在看字段。
+
+| `lineheight` | 行距（12 pt） | 设备腿 y 跨度 | 浏览器腿 y 跨度 | 四边差 |
+| --- | ---: | ---: | ---: | ---: |
+| 1.0 | 14.4 pt | 38.00 pt | 38.00 pt | 0.00 pt |
+| 1.2（缺省） | 17.28 pt | 44.00 pt | 44.00 pt | 0.00 pt |
+| 2.0 | 28.8 pt | 67.00 pt | 67.00 pt | 0.00 pt |
+
+缺省 1.2 的渲染结果逐字节不变：`text-multiline` 的浏览器 DOM SVG 在改动前后
+sha256 相同（`adf55be1…`），`viewer:cases` 仍是 1.34% / 0.29%。
 
 2026-11-03 结果：**82 / 82 pass**，最大墨迹差 0.238%（`docs/notes/viewer-parity.md`）。
 

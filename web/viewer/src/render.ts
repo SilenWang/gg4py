@@ -64,8 +64,13 @@ export interface RenderResult {
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const XLINK_NS = "http://www.w3.org/1999/xlink";
-/** grid 的缺省 `lineheight = 1.2`，绘制行距 = 1.2 × 1.2 × size（`docs/notes/ir.md` §7）。 */
-const LINE_SPACING = 1.44;
+/**
+ * grid 的绘制行距系数：行距 = `LINE_PITCH × lineheight × size`，`lineheight`
+ * 取 `text` 节点的参数（缺省 1.2，`docs/notes/ir.md` §7），所以缺省是 1.44 × size。
+ * 设备腿 `ggskia._place_text` 用同一个乘积；三组（1.0 / 1.2 / 2.0）的文本墨迹
+ * y 跨度由 `viewer:parity --selftest` 对拍（`docs/notes/viewer.md` §10.2）。
+ */
+const LINE_PITCH = 1.2;
 /**
  * `lty` 段长的折算（`docs/notes/scales.md` 的「lty 串的段长折算」）：
  * IR 里的段长是 `lwd` 的倍数 × **pt 口径**的 lwd（`lwd = 1/96 in × 0.75`），
@@ -1162,6 +1167,8 @@ class Renderer {
     const anchor = paramString(node, "anchor");
     const baseline = paramString(node, "baseline");
     const angle = paramNumber(node, "angle");
+    const lineheight = paramNumber(node, "lineheight");
+    const pitch = size * LINE_PITCH * lineheight;
     const rows = nodeRows(node);
     const fill = colourValue(gpar.col);
     const spec = fontSpec(font);
@@ -1191,8 +1198,8 @@ class Renderer {
       if (lines.length === 1) {
         element.textContent = lines[0];
       } else {
-        // 多行：grid 缺省 lineheight = 1.2（绘制行距 1.44 × size，ir.md §7）。
-        const dy = size * LINE_SPACING;
+        // 多行：行距 = 1.2 × lineheight × size（缺省 1.44 × size，ir.md §7）。
+        const dy = pitch;
         const offset =
           baseline === "top" || baseline === "alphabetic"
             ? 0
@@ -1210,7 +1217,7 @@ class Renderer {
       // 竖排文字算成一条水平细条，hover / 裁剪 / 视口统计全偏。
       const left = anchor === "right" ? -width : anchor === "center" ? -width / 2 : 0;
       const top = baseline === "top" ? 0 : baseline === "bottom" ? -size : -size / 2;
-      const height = (lines.length - 1) * size * LINE_SPACING + size;
+      const height = (lines.length - 1) * pitch + size;
       const placement = angle
         ? compose(anchorMatrix, rotateMatrix(-angle))
         : anchorMatrix;
