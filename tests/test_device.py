@@ -25,6 +25,7 @@ import re
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -35,7 +36,7 @@ from ggcore import ir
 from ggcore.arrow import arrow, head_geometry
 from ggcore.device import DeviceError
 from ggcore.grobs import curve_grob, scene, text_grob
-from ggcore.ir import Gpar, NodeKind, f32
+from ggcore.ir import Gpar, LineEnd, NodeKind, f32
 from ggcore.units import FixedMetrics, unit
 from ggcore.viewport import Device, ViewportTree, gpar, viewport
 from ggskia import (
@@ -516,3 +517,89 @@ def test_raster_device_still_tiles_patterns_by_hand() -> None:
     pixels = png_pixels(png)
     assert ink(pixels) > 200  # tile 内容真的画出来了
     assert ink(pixels) < pixels[:, :, :3].size // 3  # 不是整块涂黑
+
+
+# ---------------------------------------------------------------------------
+# 虚线：SVG 写 `stroke-dasharray`，PNG / PDF 里真的有缺口（SIL-868）
+# ---------------------------------------------------------------------------
+
+
+def dashed_scene(*, dashed: bool = True) -> ir.Scene:
+    """一条 4pt 粗的水平线（y = 50，x = 10..90）；`dashed=False` 是实线对照。
+
+    段长用 IR 的 pt 口径：`lty = (4, 4)` → SVG 的 `stroke-dasharray` 是
+    `4 × DASH_UNIT = 5.333333`（svglite 的 1/96 in，见 `docs/notes/scales.md`）。
+    `lineend = butt`：round 的帽会伸进缺口（4pt 线宽把 5.33pt 的缺口吃掉大半），
+    PNG 的缺口判据只能用平头量。
+    """
+    node = ir.Node(
+        NodeKind.SEGMENTS,
+        gpar=Gpar(
+            col=(0, 0, 0, 255),
+            lwd=4.0,
+            lty=(4.0, 4.0) if dashed else (),
+            lineend=LineEnd.BUTT,
+        ),
+        params={},
+        bufs={"segments": f32([[10.0, 50.0, 90.0, 50.0]])},
+    )
+    return scene_of(node, (100.0, 100.0))
+
+
+def test_svg_writes_stroke_dasharray_for_dashed_strokes() -> None:
+    """`SVGCanvas` 不序列化 `PathEffect`：虚线必须由我们自己补成 `stroke-dasharray`。
+
+    旧行为是 skia 把虚线**展开成填充多边形**——产物里既没有 `stroke`，也没有
+    `stroke-dasharray`，虚线与实线在语义上无法区分（SIL-715 #28 / SIL-868）。
+    """
+    svg = SkiaSvgDevice(100.0, 100.0).render(dashed_scene()).decode("utf-8")
+    assert 'stroke="#000000"' in svg
+    # 段长 × `DASH_UNIT = 4/3` → 5.333333（不是 4，也不是 16）
+    assert 'stroke-dasharray="5.333333 5.333333"' in svg
+    # 占位色不能漏到产物里（`#FD` 开头是虚线的占位通道）
+    assert "#FD0" not in svg
+    # 元素仍可被 XML 解析（属性替换没有破坏标签）
+    ET.fromstring(svg.encode("utf-8"))
+
+
+def test_dashed_points_and_segments_are_both_marked_in_svg() -> None:
+    """点图元的虚线圈：`points` 的 stroked 圆也要带 `stroke-dasharray`。"""
+    node = ir.Node(
+        NodeKind.POINTS,
+        gpar=Gpar(fill=(255, 0, 0, 255), col=(0, 0, 255, 255), lwd=4.5, lty=(9.0, 9.0)),
+        params={"pch": 21, "size": 38.0},
+        bufs={"points": f32([[50.0, 50.0], [70.0, 50.0]])},
+    )
+    svg = SkiaSvgDevice(100.0, 100.0).render(scene_of(node)).decode("utf-8")
+    # 10 个…这里是 2 个点：每个点一条 fill、一条 dashed stroke
+    assert svg.count('stroke-dasharray="12 12"') == 2
+    assert 'fill="red"' in svg  # R 的 `fill = "red"` 不能被占位色顶掉
+    # 占位色换回真颜色（这里写成 `#RRGGBB`，与 skia 自己写命名色的习惯无关）
+    assert 'stroke="#0000FF"' in svg
+
+
+def test_dashed_segments_keep_gaps_in_png() -> None:
+    """PNG 走 `DashPathEffect`：沿线取样必须是「有墨 → 空 → 有墨」。"""
+    pixels = png_pixels(SkiaRasterDevice(100.0, 100.0).render(dashed_scene()))
+    row = (pixels[50, :, :3] < 250).any(axis=1)
+    runs: list[bool] = []
+    for value in row[10:91]:
+        if not runs or runs[-1] != bool(value):
+            runs.append(bool(value))
+    assert runs[:4] == [True, False, True, False], runs
+    # 80pt 的线 / (5.33 + 5.33)pt 一个周期 ≈ 7.5 段：实线退化成一段时这里会红
+    assert runs.count(True) >= 7, runs
+
+
+def test_dashed_segments_keep_gaps_in_pdf() -> None:
+    """PDF 也不能退化成实线：内容流里一条虚线是一串子路径，实线只有一条。"""
+    content = _pdf_content(SkiaPdfDevice(100.0, 100.0).render(dashed_scene()))
+    assert content.count(b" m\n") > 3
+    solid = _pdf_content(SkiaPdfDevice(100.0, 100.0).render(dashed_scene(dashed=False)))
+    assert solid.count(b" m\n") == 1
+
+
+def _pdf_content(pdf: bytes) -> bytes:
+    """PDF 的页面内容流（Flate 压缩，解压后再看路径算子）。"""
+    start = pdf.index(b"stream\n") + len(b"stream\n")
+    return zlib.decompress(pdf[start : pdf.index(b"endstream", start)])
