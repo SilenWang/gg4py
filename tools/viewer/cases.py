@@ -16,6 +16,11 @@
 **同一个光栅器**（`docs/notes/diff.md` §2）。所以 viewer 渲染出的 SVG 被取回后，
 和 `expected.svg` 一样走 resvg；Chromium 截图只用于 gallery 缩略图。
 
+**这个任务负责验证，不是「看图」**：它必须有 Chromium。只想静态浏览整本案例库
+（不装浏览器自动化）用 `pixi run viewer:gallery && pixi run viewer:serve`
+（见 `docs/notes/gallery.md`），那条产线只把 IR 和 `expected.svg` 摆成画廊，
+不做像素对拍。
+
 产物（都不入库）：
 
     .viewer-cases/<case>/<case>.ggir.cbor   # 送进浏览器的 IR
@@ -32,11 +37,9 @@ from __future__ import annotations
 
 import argparse
 import functools
-import html
 import http.server
 import importlib.util
 import json
-import shutil
 import sys
 import tempfile
 import threading
@@ -52,9 +55,21 @@ DIST = VIEWER / "dist"
 OUT_DIR = REPO / ".viewer-cases"
 GALLERY = DIST / "gallery.html"
 
+# 缺浏览器时的报错（SIL-893）。`viewer:cases` 是**验证**任务：没有 Chromium 就
+# 不能静默降级成「只生成 gallery」——那看起来像验证过了。所以这里说清职责、
+# 指路静态浏览，并把 playwright / Chromium 的原始报错接在后面（定位装浏览器那一步）。
+_NO_BROWSER_HINT = (
+    "没有可用 Chromium。这是**验证**任务——每条 case 都要在 Chromium 里渲染、取回 "
+    "DOM SVG，再与 expected.svg 做像素对拍；缺浏览器时它不会降级成「只生成 gallery」。\n"
+    "  要跑验证：`pixi run viewer:browsers`（把 Chromium 装进 .playwright-browsers/）后重跑\n"
+    "  只想静态看图：`pixi run viewer:gallery` 然后 `pixi run viewer:serve`\n"
+    "原始报错："
+)
+
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "tools" / "viewer"))
 
+import gallery_html  # noqa: E402
 import playwright_env  # noqa: E402
 
 from ggcore import ir  # noqa: E402
@@ -424,81 +439,38 @@ def render_report(
     return "\n".join(lines)
 
 
-def gallery_assets_dir(gallery: Path) -> Path:
-    """gallery 的图片 / IR 资产目录。
-
-    `gallery.html` 在 `<viewer>/dist/` 下，但卡片链到的是 `<viewer>/index.html`
-    （viewer 根目录），`scene` 参数按**相对 viewer 根目录**解析（`fetch()` 相对
-    文档 URL）。所以资产放 `<viewer>/gallery/`，而不是 `dist/gallery/`：
-    否则点开卡片会 `GET /gallery/<case>.ggir.cbor` → 404。
-    """
-    return gallery.parent.parent / "gallery"
-
-
 def write_gallery(results: list[Result], gallery: Path, out_dir: Path, now: str) -> None:
-    assets = gallery_assets_dir(gallery)
-    assets.mkdir(parents=True, exist_ok=True)
-    cards: list[str] = []
-    for item in results:
-        if item.thumbnail is None or item.ir_path is None:
-            cards.append(
-                f'<article class="card {item.status}"><h2>{html.escape(item.case)}</h2>'
-                f"<p>{html.escape(item.family)} · {_status_glyph(item.status)} {item.status}</p>"
-                f'<p class="detail">{html.escape(item.detail or "无截图")}</p></article>'
-            )
-            continue
-        thumb = assets / f"{item.case}.png"
-        ir_file = assets / f"{item.case}.ggir.cbor"
-        shutil.copyfile(REPO / item.thumbnail, thumb)
-        shutil.copyfile(REPO / item.ir_path, ir_file)
-        cards.append(
-            f'<article class="card {item.status}">'
-            f'<a href="../index.html?scene=gallery/{html.escape(item.case)}.ggir.cbor">'
-            f'<img src="../gallery/{html.escape(item.case)}.png" alt="{html.escape(item.case)}" loading="lazy">'
-            f"</a><h2>{html.escape(item.case)}</h2>"
-            f"<p>{html.escape(item.family)} · {item.elements} 个图元</p>"
-            f'<p class="diff">{_fmt_percent(item.diff)} / 均值 {_fmt_percent(item.mean)} '
-            f"· {_status_glyph(item.status)} {item.status}</p>"
-            f"</article>"
+    """把本轮结果写成 `gallery.html`（HTML 本体在 `gallery_html` 里，静态 gallery 共用）。
+
+    `out_dir` 保留在签名里：历史调用方按「产物目录」传参，卡片资产的实际去处由
+    `gallery_html.gallery_assets_dir()` 按 gallery.html 的位置决定。
+    """
+    del out_dir
+    cards = [
+        gallery_html.Card(
+            case=item.case,
+            family=item.family,
+            status=item.status,
+            elements=item.elements,
+            diff=item.diff,
+            mean=item.mean,
+            detail=item.detail,
+            thumbnail=REPO / item.thumbnail if item.thumbnail is not None else None,
+            ir_path=REPO / item.ir_path if item.ir_path is not None else None,
+            suffix=".png",
         )
+        for item in results
+    ]
     counts = {
         status: sum(1 for item in results if item.status == status)
         for status in (PASS, FAIL, ERROR, SKIP)
     }
-    document = f"""<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>gg4py viewer · case gallery</title>
-    <style>
-      body {{ margin: 0; padding: 24px; background: #f4f4f2; color: #1d1d1b;
-             font: 13px/1.5 -apple-system, "Segoe UI", "Noto Sans CJK SC", sans-serif; }}
-      h1 {{ margin: 0 0 6px; font-size: 18px; }}
-      .lede {{ margin: 0 0 20px; color: #666; }}
-      .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }}
-      .card {{ margin: 0; padding: 10px; border: 1px solid #d6d6d2; border-radius: 8px; background: #fff; }}
-      .card img {{ display: block; width: 100%; height: auto; border: 1px solid #eee; background: #fff; }}
-      .card h2 {{ margin: 8px 0 2px; font-size: 13px; overflow-wrap: anywhere; }}
-      .card p {{ margin: 2px 0; color: #666; font-variant-numeric: tabular-nums; }}
-      .card.pass {{ border-color: #9ae6b4; }}
-      .card.fail, .card.error {{ border-color: #feb2b2; }}
-      .card.skip {{ opacity: .72; }}
-      .detail {{ overflow-wrap: anywhere; }}
-    </style>
-  </head>
-  <body>
-    <h1>gg4py viewer · case gallery</h1>
-    <p class="lede">{now} · pass {counts[PASS]} / fail {counts[FAIL]} / error {counts[ERROR]} / skip {counts[SKIP]}。
-      点缩略图进入 viewer，鼠标悬停看图元 tooltip，点图例 key 开关图例。</p>
-    <main class="grid">
-      {"".join(cards)}
-    </main>
-  </body>
-</html>
-"""
-    gallery.parent.mkdir(parents=True, exist_ok=True)
-    gallery.write_text(document, encoding="utf-8")
+    lede = (
+        f"{now} · pass {counts[PASS]} / fail {counts[FAIL]} / error {counts[ERROR]} "
+        f"/ skip {counts[SKIP]}。点缩略图进入 viewer，鼠标悬停看图元 tooltip，"
+        "点图例 key 开关图例。"
+    )
+    gallery_html.write_gallery(cards, gallery, now, lede=lede)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -566,17 +538,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:  # pragma: no cover - dev 环境才有 playwright
-        print("viewer:cases: 需要 playwright（pixi 的 dev 环境）", file=sys.stderr)
+        print(f"viewer:cases: {_NO_BROWSER_HINT}", file=sys.stderr)
         return 2
 
     with ViewerServer() as url, sync_playwright() as playwright:
         try:
             browser = playwright.chromium.launch()
         except Exception as error:  # pragma: no cover - 只在没装浏览器时命中
-            print(
-                f"viewer:cases: 没有可用 Chromium（先跑 `pixi run viewer:browsers`）：{error}",
-                file=sys.stderr,
-            )
+            print(f"viewer:cases: {_NO_BROWSER_HINT}\n\n{error}", file=sys.stderr)
             return 2
         page = browser.new_page(viewport={"width": 1000, "height": 800}, device_scale_factor=1)
         page.on(

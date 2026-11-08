@@ -4,10 +4,16 @@
     pixi run gallery:check            # 逐条请求 gallery.html 里的每个链接
     pixi run gallery:check --json     # 机读结果（给 CI / PR 贴表）
 
-gallery 由 `pixi run viewer:cases` 生成：`web/viewer/dist/gallery.html` 里的卡片
-链到 `../index.html?scene=gallery/<case>.ggir.cbor`，缩略图是
-`../gallery/<case>.png`。这份脚本按**浏览器实际会请求的 URL** 起一个
-`web/viewer/` 静态服务器，逐条 GET，任何非 200、空响应或超时都算失败；带
+gallery 有两条产线（SIL-893），卡片契约相同、缩略图后缀不同：
+
+- `pixi run viewer:cases`（验证产线，需 Chromium）：缩略图 `../gallery/<case>.png`
+  来自 viewer 自己的 Chromium 截图；
+- `pixi run viewer:gallery`（静态产线，无 Chromium）：缩略图 `../gallery/<case>.svg`，
+  就是仓内的 `docs/cases/<case>/expected.svg`。
+
+两份都写 `web/viewer/dist/gallery.html`，卡片链到
+`../index.html?scene=gallery/<case>.ggir.cbor`。这份脚本按**浏览器实际会请求的 URL**
+起一个 `web/viewer/` 静态服务器，逐条 GET，任何非 200、空响应或超时都算失败；带
 `scene=` 的链接还会额外请求 viewer 随后 `fetch()` 的那份 IR。
 
 除链接本身，还核对两件事：
@@ -17,8 +23,8 @@ gallery 由 `pixi run viewer:cases` 生成：`web/viewer/dist/gallery.html` 里�
 - **资产存在**：`<img src>` 与 `scene=` 指向的文件必须在磁盘上（HTTP 404 之外的
   另一层兜底，错误信息更直接）。
 
-`gallery.html` 不存在时直接失败并提示先跑 `pixi run viewer:cases`——静默跳过会把
-「没生成」伪装成「全部 200」。
+`gallery.html` 不存在时直接失败并提示生成命令——静默跳过会把「没生成」伪装成
+「全部 200」。
 """
 
 from __future__ import annotations
@@ -185,7 +191,8 @@ def check_gallery(
 ) -> Report:
     if not gallery.is_file():
         raise SystemExit(
-            f"gallery:check: {gallery} 不存在；先跑 `pixi run viewer:cases` 生成 gallery"
+            f"gallery:check: {gallery} 不存在；先跑 `pixi run viewer:gallery`（静态，"
+            "不需要 Chromium）或 `pixi run viewer:cases`（需要 Chromium）生成 gallery"
         )
     parser = _RefParser()
     parser.feed(gallery.read_text(encoding="utf-8"))
@@ -245,7 +252,7 @@ def _case_of(ref: str) -> str | None:
     if "scene" in query:
         return Path(query["scene"][0]).name.removesuffix(".ggir.cbor")
     name = Path(unquote(parts.path)).name
-    for suffix in (".ggir.cbor", ".png"):
+    for suffix in (".ggir.cbor", ".png", ".svg"):
         if name.endswith(suffix):
             return name[: -len(suffix)]
     return None

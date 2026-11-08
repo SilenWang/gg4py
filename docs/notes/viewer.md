@@ -14,6 +14,8 @@ pixi run viewer:sample    # 2×2 分面 + 图例 → web/viewer/samples/*.ggir.c
 pixi run viewer:shot      # 真 Chromium 打开 index.html 截图（--hover 带 tooltip）
 pixi run viewer:browsers  # 装 Playwright 的 Chromium（$HOME 只读 → 装在仓库里）
 pixi run viewer:cases     # 全部 ci = true 的案例逐条过 viewer + 与 expected.svg 像素对拍 + gallery
+pixi run viewer:gallery   # 静态 gallery（缩略图 = expected.svg，**不需要 Chromium**）
+pixi run viewer:serve     # 本地静态服务，打开 dist/gallery.html（端口可配）
 pixi run viewer:parity    # 同一份 IR：skia SVG 设备 × 浏览器 DOM SVG 的语义对拍（§10.2）
 ```
 
@@ -34,8 +36,9 @@ pixi run viewer:parity    # 同一份 IR：skia SVG 设备 × 浏览器 DOM SVG 
 
 `main.ts` 还认 `index.html?scene=gallery/<case>.ggir.cbor`：gallery 的卡片用它自动
 打开同一张图和同一套 hover / 图例交互。`scene` 是**相对 viewer 根目录**的路径，
-所以图片 / IR 资产放在 `<viewer>/gallery/`（`tools/viewer/cases.py` 的
-`gallery_assets_dir()`），卡片链接是 `../index.html?scene=gallery/...`。
+所以图片 / IR 资产放在 `<viewer>/gallery/`（`tools/viewer/gallery_html.py` 的
+`gallery_assets_dir()`，两条 gallery 产线共用），卡片链接是 `../index.html?scene=gallery/...`。
+静态画廊（不装 Chromium）见 `docs/notes/gallery.md`。
 
 ## 2. IR kind → SVG 元素
 

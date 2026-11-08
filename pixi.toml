@@ -102,6 +102,16 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # matrix 两个大族就吃满，raster 与 report 档永远轮不到，13 条红被抽样掩盖。
 "viewer:cases" = "PYTHONPATH=src python tools/viewer/cases.py"
 "viewer:cases:ci" = { cmd = "PYTHONPATH=src python tools/viewer/cases.py --sample 12 --min-pass 12", depends-on = ["viewer:build", "viewer:browsers"] }
+# SIL-893：静态 gallery。**不碰 Playwright / Chromium**——只跑 `viewer:build`
+# （npm + tsc），把每条合法 case 的 IR 写进 `web/viewer/gallery/`，缩略图直接用仓内
+# 的 `docs/cases/<case>/expected.svg`，再生成 `web/viewer/dist/gallery.html`。
+# 卡片状态标 `static`（参考图，没做像素验证），所以不会和 `viewer:cases` 的绿/红混淆。
+# 实测 532 条 ≈ 11 s（见 docs/notes/gallery.md），代价可接受，所以也挂进 `check`：
+# 让「新增 case 后画廊没跟上」在 CI 里直接可见，且最后留在 dist/ 的是全量画廊。
+"viewer:gallery" = { cmd = "PYTHONPATH=src python tools/viewer/gallery_build.py", depends-on = ["viewer:build"] }
+# SIL-893：一条命令看图。gallery.html / index.html 都要 fetch cbor，`file://` 打不开，
+# 所以给一个静态服务（根 = web/viewer，端口可配）。不依赖任何 Chromium。
+"viewer:serve" = "python tools/viewer/serve.py"
 # M2-12：同一份 IR 的两条渲染腿对拍 —— skia SVG 设备 vs 浏览器 DOM SVG。
 # 归一化属性后：样式集合必须相等、墨迹包围盒 ≤ 0.5 pt、resvg 像素差 ≤ 0.5%。
 # 全量写报告进 docs/notes/viewer-parity.md；CI 只跑代表性子集、不写文件。
@@ -413,6 +423,9 @@ check = { depends-on = [
   "viewer:browsers",
   "viewer:cases:ci",
   "viewer:parity:ci",
+  # SIL-893：静态 gallery（无 Chromium 也能看图）。放在 viewer:cases:ci 之后，
+  # 让 `check` 结束时 dist/gallery.html 是全量 532 张卡片而不是 CI 抽样的 28 张。
+  "viewer:gallery",
   "lint",
   "test",
   "gate:imports",
