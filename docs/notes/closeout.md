@@ -12,23 +12,27 @@
 
 ```bash
 pixi run snapshots:check        # snapshots total=311 imported=311 gaps=0
-pixi run api:coverage:check     # TOTAL 283/285 public 99.3%  gaps (2): geom_freqpoly, stat_density2d_filled
-pixi run tiers:check            # 声明容差不超过档位上限
-pixi run cases:matrix:check     # 案例契约 + 矩阵新鲜度
+pixi run api:coverage:check     # TOTAL 285/285 public 100.0%  registry 91.6%  gaps (0)
+pixi run tiers:check            # bands: report=3, text-heavy=13, text-light=214, text-medium=302
+pixi run cases:matrix:check     # 案例契约 + 矩阵新鲜度（532 case(s)，静态校验不跑 render）
 pixi run audit:gallery          # 35/35 符合登记
 pixi run check                  # 全量门禁
 ```
+
+下面所有数字都是 **2026-11-08 在 main `dcf5bf6` 上实跑**的结果：前五条各自 exit 0，
+`pixi run check` 全绿（含 `viewer:cases:ci` 28 条抽样、`gate:libm-noise` 及其负向对照、
+`gate:pyodide` 全量 case 逐字节）。
 
 ## 1. 已交付
 
 | 资产 | 现状 | 证据 |
 | --- | --- | --- |
 | 上游快照 | **311/311 纳管，缺口 0** | `pixi run snapshots:check` → `snapshots total=311 imported=311 gaps=0` |
-| API 覆盖 | **283/285 = 99.3%**（registry 90.9%） | `pixi run api:coverage:check` → `gaps (2): geom_freqpoly, stat_density2d_filled` |
-| 案例库 | `docs/cases` 下 548 个目录，矩阵识别 **529 条合法 case**；`ci = false` **0 条**（SIL-870 删掉重复目录后） | `git ls-tree -d --name-only HEAD docs/cases/ \| wc -l` = 548（干净树；`ls -d docs/cases/*/` 会多数出跑过用例后生成的 `__pycache__/`）；`pixi run cases:matrix` → `529 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0 |
+| API 覆盖 | **285/285 = 100.0%**（registry 91.6%） | `pixi run api:coverage:check` → `TOTAL 285/285 public 100.0% registry 91.6%`，`gaps (0)`（SIL-866 补上 `geom_freqpoly` / `stat_density2d_filled`） |
+| 案例库 | `docs/cases` 下 551 个目录，矩阵识别 **532 条合法 case**；`ci = false` **0 条** | `git ls-tree -d --name-only HEAD docs/cases/ \| wc -l` = 551（干净树；`ls -d docs/cases/*/` 会多数出跑过用例后生成的 `__pycache__/`）；`pixi run cases:matrix:check` → `532 case(s)`；`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0（SIL-870 删掉重复目录后保持） |
 | gallery 35 图 | 27 ✅ + 2 ⚠️ = 29/35 可画；6 张第三方扩展（刻意不做） | `pixi run audit:gallery` → `35/35 符合登记`；逐张见 `docs/notes/gallery-audit.md` |
 | 三条曾经的 `ci = false` | **两条已转绿**，第三条是重复目录、已删（SIL-870） | 见下方实测 |
-| SIL-715 缺口池 | 28 条全部定性：20 已修/已落地、5 刻意不做、3 仍缺 | 见 §5 |
+| SIL-715 缺口池 | 28 条全部定性：**23 已修/已落地、5 刻意不做、0 仍缺** | 见 §5 |
 
 三条 `ci = false` 的复查（都是本仓当前代码实测）：
 
@@ -51,6 +55,22 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 
 `matrix-report-facet-polar-grey` 也已进 CI：SIL-839 把 r/theta 断点改走面板范围后
 从 8.54% / 1.30% 收到 **4.45% / 0.94%**（report 档 5% / 1%）。
+
+### 1.1 本轮回填：SIL-865 的 7 条缺口 + SIL-884
+
+SIL-865 当初列在「仍缺」里的 7 条已全部合入 main，逐条附 PR / commit 与当次实测依据
+（每行都是本仓当前代码跑出来的，不是「看起来完成」）：
+
+| 原排序 | 缺口 | 状态 / 交付 | 依据（实测） |
+| ---: | --- | --- | --- |
+| 1 | 浏览器查看器 13 条 case 像素对拍失败（`geom-raster` 12 + `matrix-report-facet-polar-grey`），`viewer:cases:ci` 抽样恰好绕开 | 已修 SIL-867 / PR #119 / `7059fec` | 13 条回到各自 tolerance（`geom-raster` 42%–64% → 0.31%–1.21%；polar 4.22% → report 档 5% 内）；`pixi run viewer:cases` 全量 → `532 case(s) — pass 532, fail 0, error 0, skip 0`；抽样改「风险组全量 16 条 + 族轮转 12 条」= 28 条，已挂进 `pixi run check` |
+| 2 | skia SVG 后端不写 `stroke-dasharray`（SIL-715 #28） | 已修 SIL-868 / PR #121 / `70a1a91` | `upstream-geom-dotplot-variable-linetype-size`：expected 27 `<circle>` / 11 `stroke-dasharray`，实际 0 `<circle>` / **11 `stroke-dasharray`**；`pixi run diff` → 1.7337% / 0.5228%（阈值 2% / 1%），绿 |
+| 3 | `geom_freqpoly` / `stat_density2d_filled` 两个上游导出名缺失（SIL-715 #18 / #22） | 已修 SIL-866 / PR #120 / `57b7569` | `pixi run api:coverage:check` → `TOTAL 285/285 public 100.0% registry 91.6%`、`gaps (0)`；两个名字均可 `from ggcore.plot import …`，与等价写法 IR 逐字节相同 |
+| 4 | `docs/notes/upstream-map.md`（X3）整体停在 M1 口径 | 已修 SIL-872 / PR #123 / `67893f9` | `pixi run docs:upstream-map:check` → `表里 84 个模块，源码 80 个（已实现 71 / 部分实现 13 / 刻意不做 0）`、`OK（双向一致）`；双向门禁已挂进 `check` |
+| 5 | `facet_wrap(strip.position = bottom/left/right)` 直接报错 | 已修 SIL-871 / PR #127 / `dcf5bf6` | 新增 `facet-wrap-strip-bottom` / `-left` / `-right` 三条 case，`pixi run diff` 分别 1.2940% / 0.2999%、1.5223% / 0.3156%、1.5721% / 0.3083%，全部 ≤ 2% / 1% |
+| 6 | `legend-key-justification` 重复 case（唯一 `ci = false`） | 已修 SIL-870 / PR #122 + #125 / `08e7cb6` + `832f259` | 删掉重复目录后 551 个 case 目录 / 532 条合法 case，`grep -l '^ci = false' docs/cases/*/meta.toml \| wc -l` = 0；特性由纳管 case `upstream-guide-legend-key-justification` 覆盖（0.90% / 0.11%） |
+| 7 | viewer 不消费 `text.lineheight`（IR 已有字段） | 已修 SIL-869 / PR #124 / `4a214f6` | `viewer:parity --selftest` 用 1.0 / 1.2 / 2.0 三组真跑两条腿，四边差 ≤ 0.5 pt；负向对照（忽略 lineheight）实测差 12 pt 判红；`text-multiline` 缺省渲染逐字节不变 |
+| — | `gate:libm-noise` 在 CI runner 上漂移 `sf` arrow case（本机 0 drifted） | 已修 SIL-884 / PR #126 / `32cb072` | 根因：`axis_guide._cos_sin_deg()` 走 `radians/cos/sin`，`cos(0.0) = 1.0` 被 libm 噪声抬 1 ULP 后进标签盒尺寸 → gtable 布局 → IR；修法是 0/90/180/270 直接返回精确常数。修复前后 529 条 case 的 baseline IR 摘要 **0 条变化**，`gate:libm-noise` 与其负向对照在 `pixi run check` 里全绿 |
 
 ## 2. 已知缺陷（接受）
 
@@ -84,17 +104,11 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 
 ## 4. 仍缺（指向任务）
 
-按影响面排序。7 条全部有独立任务，预估合计 **6.5–9 人日**。
+**0 条。** 本表不列任何条目：SIL-865 开出的 7 条缺口与 SIL-884 的 CI 漂移
+（已修，PR #126 / `32cb072`）都已合入 main，逐条 PR / commit / 实测数字见 §1.1。
+截至本次回填（`dcf5bf6`）没有「还缺、等任务」的条目留在台账里。
 
-| 排序 | 缺口 | 影响 | 任务 | 预估 |
-| ---: | --- | --- | --- | ---: |
-| 1 | 浏览器查看器 13 条 case 像素对拍失败（`geom-raster` 12 + `matrix-report-facet-polar-grey`）；`viewer:cases:ci` 抽样恰好绕开 | gallery 13 张卡片红；设备腿同 case 全过 | **SIL-867** | 2–3 人日 |
-| 2 | skia SVG 后端不写 `stroke-dasharray`（SIL-715 #28） | 虚线退化成实线；dotplot lty case 与图例 key 7→2 | **SIL-868** | 0.5–1 人日 |
-| 3 | `geom_freqpoly` / `stat_density2d_filled` 两个上游导出名缺失（SIL-715 #18 / #22） | API 覆盖 283/285，迁移时 ImportError | **SIL-866** | 1 人日 |
-| 4 | `docs/notes/upstream-map.md`（X3）整体停在 M1 口径 | 读者会以为大量模块没做；review 误用 | **SIL-872** | 1 人日 |
-| 5 | `facet_wrap(strip.position = bottom/left/right)` 直接报错 | 上游 API 面缺失；311 快照未覆盖 | **SIL-871** | 1–2 人日 |
-| 6 | ~~`legend-key-justification` 重复 case（唯一 `ci = false`）~~ | ✅ 已收口（SIL-870 删除重复目录，529 条 case / 0 条 `ci = false`） | **SIL-870** | 0.5 人日 |
-| 7 | viewer 不消费 `text.lineheight`（IR 已有字段） | 非缺省行距在 DOM SVG 丢失 | **SIL-869** | 0.5 人日 |
+新增缺口若出现，按旧规矩在这里排序列、指任务、给预估；SIL-715 的逐条定性仍在 §5。
 
 ## 5. SIL-715 28 条逐条定性
 
@@ -120,26 +134,28 @@ pixi run diff docs/cases/upstream-theme-legends-all-sides/expected.svg /tmp/aud2
 | 15 | `xlim()` / `ylim()` 简写 | 裁定不做 | 迁移对照表给 `coord_cartesian(xlim=, ylim=)`（gallery-audit G7） |
 | 16 | report 分面图网格线/文字 1px AA | 已随 M3 落地 | `matrix-report-facet-wrap-grey` 1.95% / 0.38%、`-grid-grey` 1.75% / 0.38%，进 CI |
 | 17 | `theme_grey` 下极坐标面板尺寸 | 已随 M3 落地 | 23.99% → 8.54%（SIL-820）→ 4.45% / 0.94%（SIL-839，report 档，`ci = true`） |
-| 18 | `geom_freqpoly` | 仍缺 | `pixi run api:coverage:check` → `gaps: geom_freqpoly`；`from ggcore.plot import geom_freqpoly` ImportError → SIL-866 |
+| 18 | `geom_freqpoly` | 已修 | SIL-866 / PR #120 / `57b7569`：`from ggcore.plot import geom_freqpoly` 可用；`pixi run api:coverage:check` → `TOTAL 285/285`、`gaps (0)`；与 `geom_line(stat="bin")` 的 IR 逐字节相同（`tests/test_geom_draw.py`） |
 | 19 | `geom_sf` | 已随 M3 落地 | `from ggcore.plot import geom_sf` 可用；M3-2，见 `docs/notes/sf.md` |
 | 20 | `geom_sf_label` | 已随 M3 落地 | 同上 |
 | 21 | `geom_sf_text` | 已随 M3 落地 | 同上 |
-| 22 | `stat_density2d_filled` | 仍缺 | `registered("stat")` 里只有 base name `density_2d_filled`；导出名 `stat_density2d_filled` 不存在（`stat_density_2d_filled` 有）→ SIL-866 |
+| 22 | `stat_density2d_filled` | 已修 | 同 SIL-866 / PR #120 / `57b7569`：导出名进 `STAT_NAMES` / `STAT_ALIASES`，`from ggcore.plot import stat_density2d_filled` 可用；与 `stat_density_2d_filled` 同一实现，`api:coverage:check` 285/285 无缺口 |
 | 23 | `stat_sf` | 已随 M3 落地 | `from ggcore.plot import stat_sf` 可用 |
 | 24 | `stat_sf_coordinates` | 已随 M3 落地 | `from ggcore.plot import stat_sf_coordinates` 可用 |
 | 25 | `from_theme()` | 已随 M3 落地 | `src/ggcore/build.py:777` 的 `eval_from_theme`；`theme_*_large` 全部 ≤1.52% 进 CI |
 | 26 | dotplot 的 bin 对齐 | 已修 | SIL-787 / PR #71，35 条 dotplot 全部纳管 |
 | 27 | `theme(aspect.ratio=)` 版式 | 已随 M3 落地 | SIL-792：折进面板行权重 + `respect`，见 `docs/notes/facet.md` §7 |
-| 28 | skia SVG 不序列化 dashed stroke | 仍缺 | 实测 expected 27 `<circle>` / 11 `stroke-dasharray`，实际 0 / 0 → SIL-868 |
+| 28 | skia SVG 不序列化 dashed stroke | 已修 | SIL-868 / PR #121 / `70a1a91`：`upstream-geom-dotplot-variable-linetype-size` 实测 expected 27 `<circle>` / 11 `stroke-dasharray`，实际 0 `<circle>` / **11 `stroke-dasharray`**（点走 `<path>`）；`pixi run diff` → 图级 1.7337% / 均值 0.5228%，绿 |
 
-统计：**已修 7**（#1 #2 #3 #5 #8 #13 #26）+ **已随 M3 落地 13**
-（#6 #7 #9 #14 #16 #17 #19 #20 #21 #23 #24 #25 #27）= 20 条；
-**裁定不做 5**（#4 #10 #11 #12 #15）；**仍缺 3**（#18 #22 #28）。合计 28。
+统计：**已修 10**（#1 #2 #3 #5 #8 #13 #18 #22 #26 #28）+ **已随 M3 落地 13**
+（#6 #7 #9 #14 #16 #17 #19 #20 #21 #23 #24 #25 #27）= 23 条；
+**裁定不做 5**（#4 #10 #11 #12 #15）；**仍缺 0**。合计 28。
 
 ## 6. 还剩什么
 
-**一句话：内核与两条渲染腿已经对等收口（311/311、API 99.3%、案例 0 个未登记缺口），
-剩下的是 13 张浏览器卡片的像素差、SVG 虚线、2 个 API 别名，以及 3 条版式/文档债。**
+**一句话：没有待办缺口。** 311/311 快照纳管、API 285/285（100%）、532 条 case 全部登记
+且 0 条 `ci = false`；SIL-865 列出的 7 条缺口与 SIL-884 的 CI 漂移全部合入 main
+（#119 / #120 / #121 / #123 / #124 / #125 / #126 / #127），`pixi run check` 绿。
 
-对应 §4 的任务（6 条在办，第 6 条已由 SIL-870 收口）；全部做完后重跑 §0 的命令即可复核，
-不需要再读 issue 历史。
+剩下的只有 §2 的「已知缺陷（接受）」与 §3 的「刻意不做」——都是口径决定，不是欠账。
+复核重跑 §0 的六条命令即可；要复看某条结论，§1 / §4 / §5 每行都附了 PR / commit 与
+当次实测数字，不需要再读 issue 历史。
