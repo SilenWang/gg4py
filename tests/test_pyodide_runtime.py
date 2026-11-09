@@ -16,8 +16,10 @@
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -258,6 +260,34 @@ def test_stage_fonts_keeps_only_small_faces(tmp_path: Path) -> None:
     css = (tmp_path / "fonts.css").read_text(encoding="utf-8")
     assert "NotoSansCJKsc" not in css
     assert 'url("fonts/Arimo-Italic-VF.ttf")' in css
+
+
+def test_browser_guide_only_imports_packages_inside_the_tar() -> None:
+    """`browser.md` 的代码块是「复制进编辑器就能跑」：只能 import tar 里有的包。
+
+    SIL-914 把这一页的 import 改成了 `from gg4py import ...`，但 `gg4py.tar` 只打
+    `PACKAGES`（`ggcore` / `ggio`），顶层 `gg4py` 不在包里——浏览器里那 5 段全部
+    `ModuleNotFoundError`。这条断言把「文档写的 import」与「包里真有的包」钉在一起：
+    谁动 `PACKAGES`，这一页就得同步改，反之亦然。
+    """
+    text = (REPO / "docs" / "guide" / "browser.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```python\n(.*?)```", text, re.S)
+    assert len(blocks) >= 5
+    shipped = set(stage.PACKAGES)
+    outside: list[str] = []
+    for source in blocks:
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                modules = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                modules = [node.module]
+            else:
+                continue
+            for module in modules:
+                top = module.split(".")[0]
+                if top.startswith("gg") and top not in shipped:
+                    outside.append(module)
+    assert outside == []
 
 
 # ---------------------------------------------------------------------------
