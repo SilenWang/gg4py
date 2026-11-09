@@ -18,17 +18,24 @@ pixi run ggsave examples/heatmap/plot.py:plot my-first-plot.png
 ```
 
 `ggsave` picks the device from the extension (`.png`, `.svg`, `.pdf`). The same plot from
-Python — the data is any dict of columns, a pandas DataFrame or an Arrow table:
+Python — the data is any dict of columns, a pandas DataFrame or an Arrow table. One import
+brings in the whole `library(ggplot2)` surface:
 
 ```python
-from ggskia import ggsave  # skia backend: PNG / SVG / PDF
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import from_dict
+import gg4py  # ggplot, aes, every geom_*/stat_*/scale_*, from_*, ggsave
 
-df = from_dict({"wt": [1.9, 2.6, 3.2, 3.5, 4.1], "mpg": [31, 26, 21, 18, 15]})
-p = ggplot(df, aes(x="wt", y="mpg")) + geom_point(size=2) + labs(title="First plot")
-ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
+df = gg4py.from_dict({"wt": [1.9, 2.6, 3.2, 3.5, 4.1], "mpg": [31, 26, 21, 18, 15]})
+p = (
+    gg4py.ggplot(df, gg4py.aes(x="wt", y="mpg"))
+    + gg4py.geom_point(size=2)
+    + gg4py.labs(title="First plot")
+)
+gg4py.ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
 ```
+
+Module boundaries — `gg4py.io` / `gg4py.ir` / `gg4py.diff` for IR, codecs and diffing —
+are spelled out in [`docs/notes/public-api.md`](docs/notes/public-api.md); the old
+`from ggcore.plot import …` paths keep working unchanged.
 
 ## What it draws
 
