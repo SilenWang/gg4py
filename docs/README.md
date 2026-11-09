@@ -76,8 +76,6 @@
 | [`notes/snapshot-policy.md`](notes/snapshot-policy.md) | 快照容差与参考图纳管（三类资产不能混用容差） |
 | [`notes/snapshot-inventory.md`](notes/snapshot-inventory.md) | 上游 311 份 SVG 快照清单与 burndown（生成物：`pixi run snapshots:report`） |
 | [`notes/snapshot-tiers.md`](notes/snapshot-tiers.md) | 阈值分档（生成物：`pixi run tiers:measure`） |
-| [`notes/snapshot-closeout.md`](notes/snapshot-closeout.md) | M2 缺口收口的分组推进计划 |
-| [`notes/closeout.md`](notes/closeout.md) | **总收尾账（SIL-865）**：已交付 / 已知缺陷（接受）/ 刻意不做 / 仍缺（指向任务），含 SIL-715 28 条逐条状态 |
 | [`notes/api-coverage.md`](notes/api-coverage.md) | v4.0.3 NAMESPACE 的 API 覆盖率与缺口（生成物：`pixi run api:coverage`） |
 | [`notes/licenses.md`](notes/licenses.md) | 许可与第三方资产盘点 |
 
