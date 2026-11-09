@@ -16,7 +16,7 @@
 | 页面 | 模块 | 内容 |
 | --- | --- | --- |
 | [`r-to-python.md`](r-to-python.md) | 迁移 | R → Python 对照表：函数、参数、写法、第三方扩展的等价写法 |
-| [`browser.md`](browser.md) | 浏览器 | 在浏览器编辑器里写 `gg4py` 代码：代码契约、数据面板、导出 |
+| [`browser.md`](browser.md) | 浏览器 | 在浏览器编辑器里写 `ggcore` 代码：代码契约、数据面板、导出 |
 | [`aes.md`](aes.md) | `aes` | 映射：表达式、常量、`after_stat()`、分组、图层级映射 |
 | [`data.md`](data.md) | 输入 | dict / pandas / Arrow → 一张列式表；类型、分类顺序、日期、缺失 |
 | [`layers.md`](layers.md) | `ggplot` + `Layer` | 用 `+` 加图层、克隆语义、方法链别名、图层自带数据与映射 |
