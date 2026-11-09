@@ -32,6 +32,7 @@ src/ggcore/          # 语法核心，纯 Python + numpy（X1 门禁守着这条
   plot.py            # 公开命名空间：ggplot()、geom_*、stat_*、scale_*、theme_* 都在这里导出
   sf.py sf_stat.py   # 空间数据（docs/notes/sf.md）
 src/ggio/            # 输入适配层：pandas / Arrow / dict → ColumnTable
+src/gg4py/           # 面向用户的顶层入口：ggcore.plot 注册表的投影 + 惰性 ggsave（docs/notes/public-api.md）
 src/ggshape/         # 形状后端（HarfBuzz），在 ggcore 之外：X1 白名单不允许 uharfbuzz
 src/ggskia/          # skia 设备（PNG / SVG / PDF）与 render / ggsave 的 CLI
 src/ggdiff/          # 差分：resvg 统一栅格 + 像素判据 + 报告

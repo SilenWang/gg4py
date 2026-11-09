@@ -18,17 +18,24 @@ pixi run ggsave examples/heatmap/plot.py:plot my-first-plot.png
 ```
 
 输出格式由后缀决定（`.png` / `.svg` / `.pdf`）。同一张图在 Python 里长这样，数据可以是
-dict of columns、pandas DataFrame 或 Arrow 表：
+dict of columns、pandas DataFrame 或 Arrow 表——一条 import 就是整套 `library(ggplot2)`
+的公开面：
 
 ```python
-from ggskia import ggsave  # skia 后端：PNG / SVG / PDF
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import from_dict
+import gg4py  # ggplot、aes、全部 geom_*/stat_*/scale_*、from_*、ggsave
 
-df = from_dict({"wt": [1.9, 2.6, 3.2, 3.5, 4.1], "mpg": [31, 26, 21, 18, 15]})
-p = ggplot(df, aes(x="wt", y="mpg")) + geom_point(size=2) + labs(title="第一张图")
-ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
+df = gg4py.from_dict({"wt": [1.9, 2.6, 3.2, 3.5, 4.1], "mpg": [31, 26, 21, 18, 15]})
+p = (
+    gg4py.ggplot(df, gg4py.aes(x="wt", y="mpg"))
+    + gg4py.geom_point(size=2)
+    + gg4py.labs(title="第一张图")
+)
+gg4py.ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
 ```
+
+分层——`gg4py.io` / `gg4py.ir` / `gg4py.diff` 放 IR、codec 与差分这类开发者 API——见
+[`docs/notes/public-api.md`](docs/notes/public-api.md)；原来的 `from ggcore.plot import …`
+写法继续有效。
 
 ## 能画什么
 

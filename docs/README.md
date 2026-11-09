@@ -24,6 +24,7 @@
 | [`notes/upstream.md`](notes/upstream.md) | 上游钉版（ggplot2 4.0.3 @ `cc1444c1`）与周 diff 口径 |
 | [`notes/upstream-map.md`](notes/upstream-map.md) | Python 模块 ↔ 上游 `file:line` 对照 |
 | [`notes/extension.md`](notes/extension.md) | 写一个自定义 geom / stat / scale：组件类怎么写、布局不用碰 |
+| [`notes/public-api.md`](notes/public-api.md) | 公开 API 分层：`gg4py` 顶层提升什么、`gg4py.io` / `ir` / `diff` 留什么、冲突规则与迁移（SIL-911） |
 
 ## 2. 语法核心（`ggcore`）
 
