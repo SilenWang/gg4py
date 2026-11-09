@@ -22,9 +22,7 @@
 ## 1. 范围与裁剪
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, coord_cartesian
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_cartesian, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -47,9 +45,16 @@ p = (
 ## 2. 等比例
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, coord_equal, coord_fixed
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    coord_equal,
+    coord_fixed,
+    geom_point,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {"x": [1, 2, 3, 4], "y": [1.0, 1.6, 2.9, 3.4]}
 
@@ -68,9 +73,7 @@ p = (
 ## 3. 翻转
 
 ```python
-from ggcore.plot import aes, coord_flip, geom_col, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_flip, geom_col, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {"class": ["compact", "midsize", "suv"], "n": [12.0, 9.0, 15.0]}
 
@@ -89,9 +92,8 @@ p = (
 ## 4. 极坐标与放射坐标
 
 ```python
-from ggcore.plot import aes, coord_polar, geom_col, ggplot, labs
-from ggcore.theme import theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_polar, geom_col, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import theme
 
 DATA = {
     "class": ["a", "b", "c", "d", "e", "f"],
@@ -109,9 +111,8 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, coord_radial, geom_col, ggplot, labs
-from ggcore.theme import theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_radial, geom_col, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import theme
 
 DATA = {
     "class": ["a", "b", "c", "d", "e", "f"],
@@ -136,9 +137,7 @@ p = (
 ## 5. 变换坐标
 
 ```python
-from ggcore.plot import aes, coord_trans, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_trans, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1.0, 2.0, 4.0, 8.0, 16.0],
@@ -161,9 +160,17 @@ p = (
 ## 6. 次轴
 
 ```python
-from ggcore.plot import aes, dup_axis, geom_point, ggplot, labs, scale_x_continuous, sec_axis
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    dup_axis,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    sec_axis,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {"x": [1.0, 2.0, 3.0, 4.0], "y": [2.0, 1.5, 4.2, 3.1]}
 

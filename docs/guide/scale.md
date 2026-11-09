@@ -35,9 +35,16 @@
 | `sec_axis` | 次轴：`sec_axis(fn, name=...)` / `dup_axis(...)` |
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, scale_x_continuous, scale_y_continuous
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_continuous,
+    scale_y_continuous,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {"x": [1, 2, 3, 4], "y": [2.0, 1.5, 4.2, 3.1]}
 
@@ -60,9 +67,7 @@ p = (
 离散顺序（不想用 `Categorical` 时）：
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs, scale_x_discrete
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_col, ggplot, labs, scale_x_discrete, theme_minimal, to_column_table
 
 DATA = {"class": ["suv", "compact", "midsize"], "n": [18.0, 12.0, 9.0]}
 
@@ -78,8 +83,16 @@ p = (
 变换：
 
 ```python
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs, scale_x_log10, scale_y_log10
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_line,
+    geom_point,
+    ggplot,
+    labs,
+    scale_x_log10,
+    scale_y_log10,
+    to_column_table,
+)
 
 DATA = {
     "x": [1.0, 10.0, 100.0, 1000.0],
@@ -119,9 +132,15 @@ p = (
 | 分箱 | `scale_colour_binned()` / `scale_colour_fermenter(palette=)` |
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, scale_colour_gradient2
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_point,
+    ggplot,
+    labs,
+    scale_colour_gradient2,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -139,9 +158,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs, scale_fill_brewer
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_col, ggplot, labs, scale_fill_brewer, theme_minimal, to_column_table
 
 DATA = {
     "class": ["compact", "midsize", "suv", "compact", "midsize", "suv"],
@@ -159,9 +176,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, scale_colour_manual
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, scale_colour_manual, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4],
@@ -192,7 +207,7 @@ p = (
 | `linewidth` | `scale_linewidth()` | `range=` |
 
 ```python
-from ggcore.plot import (
+from gg4py import (
     aes,
     geom_point,
     ggplot,
@@ -200,9 +215,9 @@ from ggcore.plot import (
     scale_alpha_continuous,
     scale_shape_manual,
     scale_size_area,
+    theme_minimal,
+    to_column_table,
 )
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5],
@@ -227,8 +242,7 @@ p = (
 ```python
 import datetime as dt
 
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs, scale_x_date
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, scale_x_date, to_column_table
 
 DATA = {
     "date": [dt.date(2020, month, 1) for month in range(1, 7)],
@@ -251,8 +265,7 @@ p = (
 ```python
 import datetime as dt
 
-from ggcore.plot import aes, geom_line, ggplot, scale_x_date
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, ggplot, scale_x_date, to_column_table
 
 DATA = {"date": [dt.date(2020, month, 1) for month in range(1, 5)], "value": [1.0, 3.0, 2.0, 5.0]}
 
@@ -269,8 +282,7 @@ p = (
 用 `aesthetics=` 指定作用的美学：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, scale_discrete_manual
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, scale_discrete_manual, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4],

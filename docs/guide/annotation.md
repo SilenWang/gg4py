@@ -20,9 +20,8 @@ annotate(geom, x=..., y=..., **params)
 长度规则：所有参数最多只有一个长度 > 1 的值（其余标量广播），否则报错。
 
 ```python
-from ggcore.plot import aes, annotate, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_minimal, to_column_table
+from ggcore.plot import annotate
 
 DATA = {"x": [1, 2, 3, 4], "y": [2.0, 1.5, 4.2, 3.1]}
 
@@ -51,8 +50,8 @@ p = (
 | `"polygon"` / `"ribbon"` | `x=[...]` `y=[...]`（或 `ymin` / `ymax`） |
 
 ```python
-from ggcore.plot import aes, annotate, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
+from ggcore.plot import annotate
 
 DATA = {"x": [1, 2, 3, 4], "y": [1.0, 2.6, 2.1, 4.2]}
 
@@ -75,16 +74,8 @@ p = (
 对数轴的细刻度（不是标签）：
 
 ```python
-from ggcore.plot import (
-    aes,
-    annotation_logticks,
-    geom_point,
-    ggplot,
-    labs,
-    scale_y_log10,
-)
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, scale_y_log10, theme_minimal, to_column_table
+from ggcore.plot import annotation_logticks
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [1.0, 10.0, 100.0, 1000.0, 10000.0]}
 
@@ -108,7 +99,8 @@ cm 或 `unit`）/ `colour` / `linewidth` / `linetype` / `alpha`。`outside=True`
 `annotate("polygon", x=, y=, group=)`：
 
 ```python
-from ggcore.plot import annotation_borders, ggplot, labs, theme_void
+from gg4py import ggplot, labs, theme_void
+from ggcore.plot import annotation_borders
 
 p = (
     ggplot()

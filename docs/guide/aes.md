@@ -4,9 +4,7 @@
 gg4py 里值是**字符串表达式**，列名就是表达式里的名字：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "displ": [1.8, 2.0, 2.4, 3.0, 4.0, 5.3],
@@ -47,8 +45,7 @@ p = (
 值是表达式，不是只能写列名：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1.0, 2.0, 3.0, 4.0], "y": [2.0, 1.5, 4.2, 3.1]}
 
@@ -72,8 +69,7 @@ p = (
 字符串常量要包一层引号，因为外层字符串本身就是表达式：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}
 
@@ -90,8 +86,7 @@ p = (
 ## 3. 列名不是合法标识符：`col()`
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 DATA = {"my x": [1.0, 2.0, 3.0], "response value": [3.0, 1.0, 2.0]}
 
@@ -110,8 +105,7 @@ p = (
 stat 算完之后才有 `count` / `density` / `n` 这类列，用 `after_stat()` 取：
 
 ```python
-from ggcore.plot import aes, after_stat, geom_bar, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, after_stat, geom_bar, ggplot, labs, to_column_table
 
 DATA = {"class": ["compact", "compact", "suv", "suv", "suv", "midsize"]}
 
@@ -132,8 +126,7 @@ gg4py 只实现了后者。哪些列可用由 stat 决定（见 [`stat.md`](stat
 一条线、又不想给颜色时，显式写 `group`：
 
 ```python
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 1, 2, 3],
@@ -157,8 +150,7 @@ p = (
 时该图层**完全不继承**，必须自带 `x` / `y`：
 
 ```python
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1, 2, 3, 4], "y": [1.0, 2.5, 2.0, 4.0], "g": ["a", "a", "b", "b"]}
 OTHER = {"x": [1.0, 4.0], "y": [3.5, 3.5]}

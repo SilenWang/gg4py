@@ -16,8 +16,9 @@ _SRC = Path(__file__).resolve().parents[2] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from ggcore.plot import (
+from gg4py import (
     aes,
+    from_dict,
     geom_line,
     geom_point,
     ggplot,
@@ -25,7 +26,6 @@ from ggcore.plot import (
     scale_x_continuous,
     scale_y_reverse,
 )
-from ggio.frame import from_dict
 
 SLUG = "bump-chart"
 SIZE_IN = (8.0, 4.8)
@@ -74,7 +74,7 @@ def plot() -> ggplot:
 
 
 def main() -> None:
-    from ggskia import ggsave  # 出图要 skia 后端，它按 X1 的约定住在 ggcore 之外
+    from gg4py import ggsave  # 出图要 skia 后端，它按 X1 的约定住在 ggcore 之外
 
     here = Path(__file__).resolve().parent
     width, height = SIZE_IN

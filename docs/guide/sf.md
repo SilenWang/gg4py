@@ -25,9 +25,8 @@
 混合），`sf(..., crs=)` 会把 CRS 挂到每个没自带 CRS 的几何上：
 
 ```python
-from ggcore.plot import coord_sf, geom_sf, ggplot, labs
+from gg4py import coord_sf, geom_sf, ggplot, labs, theme_minimal
 from ggcore.sf import sf
-from ggcore.theme import theme_minimal
 
 # 外环 + 洞：与 st_polygon([外环, 洞], crs=4326) 等价
 SHELL = "(-81 36, -79 36, -80 37, -81 36)"
@@ -45,9 +44,8 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, coord_sf, geom_sf, ggplot, labs
+from gg4py import aes, coord_sf, geom_sf, ggplot, labs, theme_minimal
 from ggcore.sf import sf, st_polygon
-from ggcore.theme import theme_minimal
 
 RING = [(-81.0, 36.0), (-79.0, 36.0), (-80.0, 37.0), (-81.0, 36.0)]
 DATA = sf({"name": ["ashe"]}, geometry=[st_polygon(RING, crs=4326)])
@@ -86,9 +84,8 @@ p = (
 | `lims_method` | limits 投到 `crs` 的方法：`"cross"` / `"box"` / `"orthogonal"` / `"geometry_bbox"` |
 
 ```python
-from ggcore.plot import aes, coord_sf, geom_sf, ggplot, labs
+from gg4py import aes, coord_sf, geom_sf, ggplot, labs, theme_void
 from ggcore.sf import sf, st_polygon
-from ggcore.theme import theme_void
 
 RING = [(-81.0, 36.0), (-79.0, 36.0), (-80.0, 37.0), (-81.0, 36.0)]
 DATA = sf({"name": ["ashe"]}, geometry=[st_polygon(RING, crs=4326)])
@@ -105,9 +102,9 @@ p = (
 经纬网（graticule）默认画在 `panel.grid.major` 上；关掉它就是普通背景：
 
 ```python
-from ggcore.plot import aes, coord_sf, geom_sf, ggplot, labs
+from gg4py import aes, coord_sf, geom_sf, ggplot, labs, theme_minimal
 from ggcore.sf import sf, st_polygon
-from ggcore.theme import element_blank, theme, theme_minimal
+from ggcore.theme import element_blank, theme
 
 RING = [(-81.0, 36.0), (-79.0, 36.0), (-80.0, 37.0), (-81.0, 36.0)]
 DATA = sf({"name": ["ashe"]}, geometry=[st_polygon(RING, crs=4326)])
@@ -129,9 +126,8 @@ p = (
 代表点来自 `stat_sf_coordinates`（面的点取在面上，线的点取在中点）。
 
 ```python
-from ggcore.plot import aes, geom_sf, geom_sf_text, ggplot, labs
+from gg4py import aes, geom_sf, geom_sf_text, ggplot, labs, theme_minimal
 from ggcore.sf import sf, st_point
-from ggcore.theme import theme_minimal
 
 DATA = {
     "name": ["ashe", "surry", "wilkes"],
@@ -156,9 +152,7 @@ p = (
 不是 sf 对象、只有 `lon` / `lat` 列的数据，用两个老坐标：
 
 ```python
-from ggcore.plot import aes, coord_map, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, coord_map, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "lon": [-80.5, -79.5, -78.5, -77.5],

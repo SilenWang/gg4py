@@ -35,10 +35,7 @@
 ## 十分钟：第一张图
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
-from ggskia import ggsave
+from gg4py import aes, geom_point, ggplot, ggsave, labs, theme_minimal, to_column_table
 
 DATA = {
     "wt": [1.9, 2.6, 3.2, 3.5, 4.1],
@@ -67,8 +64,8 @@ pixi run ggsave examples/heatmap/plot.py:plot my-first-plot.png
 三个必须先知道的约定：
 
 1. **数据要先变成 `ColumnTable`**。`ggcore` 只认 `ggcore.data.ColumnTable`；
-   dict / pandas / Arrow 用 `ggio.frame.to_column_table()` 转换（见
-   [`data.md`](data.md)）。直接 `ggplot(dict, ...)` 能构造，但构图期会报错。
+   dict / pandas / Arrow 用顶层的 `gg4py.to_column_table()` 转换（实现在
+   `ggio.frame`，见 [`data.md`](data.md)）。直接 `ggplot(dict, ...)` 能构造，但构图期会报错。
 2. **`aes()` 的值是字符串表达式**，不是变量名：`aes(x="wt")`（R 的
    `aes(x = wt)`）。字符串常量要再包一层引号：`aes(colour="'red'")`。
 3. **`+` 返回新对象**，`p` 本身不变。`p + geom_point()` 与 `p.geom_point()` 等价

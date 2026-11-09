@@ -27,8 +27,7 @@
 `base_rect_size=`（4.0 起还有 `ink=` / `paper=` / `accent=`）。
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, theme_bw
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_bw, to_column_table
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -57,17 +56,8 @@ p = (
 | `margin(t, r, b, l, unit="pt")` | 边距 | — |
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import (
-    element_blank,
-    element_line,
-    element_rect,
-    element_text,
-    rel,
-    theme,
-    theme_minimal,
-)
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import element_blank, element_line, element_rect, element_text, rel, theme
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -98,9 +88,8 @@ p = (
 字号等：
 
 ```python
-from ggcore.plot import aes, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import element_geom, theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, geom_smooth, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import element_geom, theme
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -124,9 +113,8 @@ p = (
 ## 4. 全局默认：`theme_set` / `theme_get` / `theme_update` / `theme_replace`
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import element_blank, theme_get, theme_grey, theme_set, theme_update
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_grey, to_column_table
+from ggcore.theme import element_blank, theme_get, theme_set, theme_update
 
 DATA = {"x": [1, 2, 3], "y": [3.0, 1.0, 2.0]}
 
@@ -157,9 +145,9 @@ finally:
 4.0.3 起每个元素组有一组简写，省掉字符串键：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, theme_sub_axis, theme_sub_panel
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
+from ggcore.plot import theme_sub_axis, theme_sub_panel
 from ggcore.theme import element_blank, element_text
-from ggio.frame import to_column_table
 
 DATA = {"x": [1, 2, 3], "y": [3.0, 1.0, 2.0]}
 

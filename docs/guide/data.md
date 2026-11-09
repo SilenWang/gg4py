@@ -12,7 +12,10 @@ dict of arrays   ─┘
 `ggio` 在 `ggcore` 之外，pandas / pyarrow 是**可选导入**：没装就报 `ImportError`，
 不会把 pandas 拖进内核（X1 门禁守着这条）。
 
-## 1. 三个入口
+## 1. 输入适配入口
+
+四个入口都提升到了顶层 `gg4py`（`from gg4py import to_column_table, from_dict, ...`），
+表里的 `ggio.frame.*` 写的是它们各自的实现位置：
 
 | 函数 | 输入 | 备注 |
 | --- | --- | --- |
@@ -22,8 +25,7 @@ dict of arrays   ─┘
 | `ggio.frame.from_arrow(table)` | `pyarrow.Table` / `RecordBatch` | 多 chunk 先合并 |
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1.0, 2.0, 3.0, 4.0], "y": [2.0, 1.5, 4.2, 3.1], "g": ["a", "b", "a", "b"]}
 
@@ -46,8 +48,7 @@ p = ggplot(data, aes(x="x", y="y", colour="g")) + geom_point(size=3) + labs(titl
 ```python
 import pandas as pd
 
-from ggcore.plot import aes, geom_col, ggplot, labs
-from ggio.frame import from_pandas
+from gg4py import aes, from_pandas, geom_col, ggplot, labs
 
 FRAME = pd.DataFrame(
     {
@@ -78,8 +79,7 @@ p = (
 ```python
 import pyarrow as pa
 
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import from_arrow
+from gg4py import aes, from_arrow, geom_point, ggplot, labs
 
 TABLE = pa.table(
     {
@@ -118,8 +118,7 @@ Arrow 的 `dictionary` 列与 pandas 的 `Categorical` 一样保留字典顺序�
 ```python
 import datetime as dt
 
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs, scale_x_date
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, scale_x_date, to_column_table
 
 DATA = {
     "date": [dt.date(2020, m, 1) for m in range(1, 7)],
@@ -147,7 +146,7 @@ p = (
 `ggio.csv.read_csv()` 只用标准库，不需要 pandas：
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs
+from gg4py import aes, geom_col, ggplot, labs
 from ggio.csv import read_csv
 
 CSV_TEXT = """class,value
@@ -176,8 +175,7 @@ p = ggplot(data, aes(x="class", y="value")) + geom_col(fill="#4C78A8") + labs(ti
 报错**，这是最常见的第一个坑：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, to_column_table
 
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}
 

@@ -26,9 +26,16 @@
 | `strip.position` | `"top"` | `"top"` / `"bottom"` / `"left"` / `"right"`（其它值报错） |
 
 ```python
-from ggcore.plot import aes, facet_wrap, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    facet_wrap,
+    geom_point,
+    geom_smooth,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "x": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
@@ -52,9 +59,7 @@ p = (
 行 / 列变量可以只给一个（另一个方向留空）或都给：
 
 ```python
-from ggcore.plot import aes, facet_grid, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, facet_grid, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
@@ -80,8 +85,7 @@ p = (
 ## 3. 自由标度
 
 ```python
-from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, facet_wrap, geom_point, ggplot, labs, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 1, 2, 3, 4],
@@ -112,9 +116,9 @@ p = (
 | `labeller=lambda labels: dict` | 自定义函数，返回 `{变量: [标签…]}` |
 
 ```python
-from ggcore.plot import aes, facet_wrap, geom_point, ggplot, labeller, labs
-from ggcore.theme import element_text, theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, facet_wrap, geom_point, ggplot, labs, theme_minimal, to_column_table
+from ggcore.plot import labeller
+from ggcore.theme import element_text, theme
 
 DATA = {
     "x": [1, 2, 3, 4, 1, 2, 3, 4],

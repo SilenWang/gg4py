@@ -11,10 +11,7 @@
 ## 1. `ggsave()`
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggskia import ggsave
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, ggsave, labs, theme_minimal, to_column_table
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -64,10 +61,9 @@ skia、浏览器 DOM SVG、查看器）。
 ```python
 from pathlib import Path
 
-from ggcore.ir import decode
-from ggcore.plot import aes, geom_point, ggplot
-from ggcore.io import export_ir_json, save_ir
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, to_column_table
+from gg4py.ir import decode
+from gg4py.io import export_ir_json, save_ir
 
 DATA = {"x": [1.0, 2.0, 3.0], "y": [3.0, 1.0, 2.0]}
 p = ggplot(to_column_table(DATA), aes(x="x", y="y")) + geom_point(size=3)

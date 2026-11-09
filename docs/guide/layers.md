@@ -17,9 +17,7 @@
 ## 2. `+` 的克隆语义
 
 ```python
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {"x": [1, 2, 3, 4], "y": [1.0, 2.5, 2.0, 4.0], "g": ["a", "a", "b", "b"]}
 
@@ -41,8 +39,7 @@ print(repr(full))  # <ggplot: data=4×3, layers=2, mapping=[x, y]>
 注册表里的每个组件函数同时也是 `ggplot` 的方法，二者查同一张注册表：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}
 data = to_column_table(DATA)
@@ -59,9 +56,7 @@ print(type(a) is type(p), len(a.layers) == len(p.layers))  # True True
 ## 4. 一次加多张图
 
 ```python
-from ggcore.plot import aes, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, geom_smooth, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -104,8 +99,7 @@ p = (
 `update_geom_defaults()` 改的是**注册表里的缺省**，之后新建的图层都跟着变：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, update_geom_defaults
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table, update_geom_defaults
 
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}
 

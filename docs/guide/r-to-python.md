@@ -11,7 +11,7 @@
 
 | R | gg4py | 说明 |
 | --- | --- | --- |
-| `library(ggplot2)` | `from ggcore.plot import *` 的显式版 | 没有 attach；按需 import，见每页示例 |
+| `library(ggplot2)` | `from gg4py import ggplot, aes, geom_point, …` | 没有 attach；一条 `gg4py` 就是整个公开面，按需取名字，见每页示例 |
 | `ggplot(mpg, aes(displ, hwy))` | `ggplot(to_column_table(df), aes(x="displ", y="hwy"))` | 数据先转 `ColumnTable`；aes 用**字符串** |
 | `+ geom_point()` | `+ geom_point()` | 一样 |
 | `ggplot(df) + geom_point(aes(...))` | 同 | 图层级映射一样 |
@@ -33,9 +33,16 @@ ggplot(mpg, aes(displ, hwy, colour = class)) +
 ```
 
 ```python
-from ggcore.plot import aes, facet_wrap, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    facet_wrap,
+    geom_point,
+    geom_smooth,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 # mpg 的等价数据（这里只取一小组，形状与列名保持一致）
 DATA = {
@@ -165,7 +172,7 @@ stat 也有「快捷方式」写法：`stat_*(geom=)` 换绘制几何，`geom_*(
 | 分面 | `facet_wrap` `facet_grid` `facet_null` | 同名；`facet_wrap("~ x")` 的公式写法不支持，写 `facet_wrap("x")`；`as.table` / `strip.position` 这类带点参数用 `**{"as.table": False}` |
 | 图例 | `guide_legend` `guide_colourbar` `guide_colorbar` `guide_bins` `guide_coloursteps` `guide_colorsteps` `guide_axis` `guide_axis_logticks` `guide_axis_stack` `guide_axis_theta` `guide_none` `guide_custom` | 同名；`guide_gengrob` / `guide_geom` / `guide_merge` / `guide_train` / `guide_transform` 是 guide 协议钩子，不直接用在图上 |
 | 位置 | `position_identity` `position_stack` `position_fill` `position_dodge` `position_dodge2` `position_jitter` `position_jitterdodge` `position_nudge` | 同名；`width` / `height` 参数同上游，`position_nudge(x=, y=)` 也同名 |
-| 主题 | `theme` `theme_grey` `theme_gray` `theme_bw` `theme_classic` `theme_light` `theme_dark` `theme_linedraw` `theme_minimal` `theme_test` `theme_void` `element_text` `element_line` `element_rect` `element_point` `element_polygon` `element_geom` `element_blank` `rel` `margin` | `theme()` 与 `element_*()` 从 `ggcore.theme` import；主题名从 `ggcore.plot` 或 `ggcore.theme` 取；`theme_sub_*` 简写与 `theme_get/set/update/replace` 在 `ggcore.plot` |
+| 主题 | `theme` `theme_grey` `theme_gray` `theme_bw` `theme_classic` `theme_light` `theme_dark` `theme_linedraw` `theme_minimal` `theme_test` `theme_void` `element_text` `element_line` `element_rect` `element_point` `element_polygon` `element_geom` `element_blank` `rel` `margin` | 主题名（`theme_minimal()` 这一类）从 `gg4py` 取；`theme()` 构造器与 `element_*()` / `rel()` / `margin()` 还没提到公开面，从 `ggcore.theme` import；`theme_sub_*` 简写与 `theme_get/set/update/replace` 在 `ggcore.plot` |
 | 标签 | `labs` `ggtitle` `xlab` `ylab` `labs(x = NULL)` | 只有 `labs()`：`labs(title=, subtitle=, caption=, tag=, x=, y=, colour=)`；`NULL` 用 `None` |
 | 注记 | `annotate` `annotation_logticks` `annotation_borders`（`borders` 已废弃） | 同名 |
 | 映射入口 | `aes` `after_stat` `aes_` | `aes` / `after_stat`；`aes_` 已移除 |
@@ -178,9 +185,8 @@ stat 也有「快捷方式」写法：`stat_*(geom=)` 换绘制几何，`geom_*(
 用 `**{...}` 传：
 
 ```python
-from ggcore.plot import aes, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import element_blank, element_text, theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, geom_smooth, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import element_blank, element_text, theme
 
 DATA = {
     "displ": [1.8, 2.0, 2.4, 3.0, 4.0, 5.3],
@@ -238,7 +244,8 @@ gg4py 只复刻 ggplot2 本体，**不提供**第三方扩展包的名字。下�
 3. `size`（线的粗细）换 `linewidth`；带点的参数名换下划线或用 `**{...}`。
 4. `facet_wrap(~ a)` 换 `facet_wrap("a")`；`facet_grid(a ~ b)` 换
    `facet_grid(rows="a", cols="b")`。
-5. `theme(element)` 从 `ggcore.theme` import；元素名用 `**{"panel.grid": ...}`。
+5. 主题名（`theme_minimal()` 这类）从 `gg4py` 取；`theme(element)` 构造器与
+   `element_*()` 暂时从 `ggcore.theme` import；元素名用 `**{"panel.grid": ...}`。
 6. `ggsave()` 改成 `ggsave(p, "x.png", ...)`；Python 不自动出图。
 7. 跑一遍 `pixi run docs:guide`（本文的示例也在门禁里），再跑
    `pixi run check`。

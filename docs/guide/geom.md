@@ -2,7 +2,7 @@
 
 几何对象决定「一行数据画成什么」。名字与 ggplot2 4.0.3 的 `NAMESPACE` 一致（51 个
 注册名，覆盖上游 53 个 `geom_*` 导出；`geom_sf_text` / `geom_sf_label` 是图层组合，
-只在 `ggcore.plot` 的公开命名空间里，见 [`r-to-python.md`](r-to-python.md) §4）。完整清单：
+同样在 `gg4py` 的公开命名空间里，见 [`r-to-python.md`](r-to-python.md) §4）。完整清单：
 
 | 族 | 名字 |
 | --- | --- |
@@ -30,9 +30,7 @@
 | `line.linetype` | 线型（1–6 或名字） | 缺省 1（实线） |
 
 ```python
-from ggcore.plot import aes, geom_line, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_line, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6],
@@ -64,9 +62,16 @@ p = (
 | `geom_ribbon()` | `identity` | 自己给 `ymin` / `ymax` |
 
 ```python
-from ggcore.plot import aes, geom_col, geom_histogram, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_col,
+    geom_histogram,
+    geom_point,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "class": ["compact", "midsize", "suv", "compact", "midsize", "suv"],
@@ -84,8 +89,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, geom_histogram, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_histogram, ggplot, labs, to_column_table
 
 DATA = {"value": [1.2, 1.8, 2.1, 2.6, 3.0, 3.4, 3.9, 4.4, 5.1, 5.6, 2.2, 2.9]}
 
@@ -108,9 +112,7 @@ p = (
 | `geom_dotplot()` | `binwidth`、`binaxis`、`stackdir`、`stackratio`、`dotsize` |
 
 ```python
-from ggcore.plot import aes, geom_boxplot, geom_violin, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_boxplot, geom_violin, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "class": [
@@ -149,9 +151,7 @@ p = (
 | `geom_function()` | `fun=` 一个 Python 可调用，配合 `xlim=` |
 
 ```python
-from ggcore.plot import aes, geom_point, geom_smooth, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, geom_smooth, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6, 7, 8],
@@ -177,9 +177,7 @@ p = (
 `geom_label()` 多一个背景框（`fill` / `label.padding` / `label.r`）。
 
 ```python
-from ggcore.plot import aes, geom_label, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_label, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4],
@@ -212,9 +210,17 @@ p = (
 | `geom_segment()` / `geom_curve()` | `x` `y` `xend` `yend`；`arrow=` |
 
 ```python
-from ggcore.plot import aes, arrow, geom_errorbar, geom_line, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    arrow,
+    geom_errorbar,
+    geom_line,
+    geom_point,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "x": [1, 2, 3, 4],
@@ -235,8 +241,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, arrow, geom_curve, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, arrow, geom_curve, geom_point, ggplot, labs, to_column_table
 
 DATA = {"x": [1.0, 2.0], "y": [1.0, 2.0], "xend": [3.0, 4.0], "yend": [2.5, 1.5]}
 
@@ -258,9 +263,7 @@ p = (
 | `geom_polygon()` | `x` `y` + `group` | 自绘多边形 |
 
 ```python
-from ggcore.plot import aes, geom_tile, ggplot, labs, scale_fill_viridis_c
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_tile, ggplot, labs, scale_fill_viridis_c, theme_minimal, to_column_table
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
 YEARS = ["2021", "2022", "2023"]
@@ -308,8 +311,7 @@ p = (
 | `geom_density_2d()` / `geom_density_2d_filled()` | 二维密度等值线 |
 
 ```python
-from ggcore.plot import aes, geom_contour_filled, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_contour_filled, ggplot, labs, to_column_table
 
 GRID = {
     "x": [x for _ in range(1, 6) for x in range(1, 6)],
@@ -341,10 +343,9 @@ p = (
 | `geom_step()` | `direction="hv"` |
 
 ```python
-from ggcore.plot import aes, geom_hline, geom_point, geom_rug, geom_vline, ggplot, labs
+from gg4py import aes, geom_hline, geom_point, geom_rug, geom_vline, ggplot, labs, to_column_table
 
 DATA = {"x": [1.0, 2.2, 2.9, 4.1], "y": [2.0, 3.4, 2.2, 4.6]}
-from ggio.frame import to_column_table
 
 p = (
     ggplot(to_column_table(DATA), aes(x="x", y="y"))
