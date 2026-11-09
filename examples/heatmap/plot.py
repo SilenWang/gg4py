@@ -18,14 +18,7 @@ _SRC = Path(__file__).resolve().parents[2] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from ggcore.plot import (
-    aes,
-    geom_tile,
-    ggplot,
-    labs,
-    scale_fill_viridis_c,
-)
-from ggio.frame import from_dict
+from gg4py import aes, from_dict, geom_tile, ggplot, labs, scale_fill_viridis_c
 
 SLUG = "heatmap"
 SIZE_IN = (8.0, 4.8)
@@ -64,7 +57,7 @@ def plot() -> ggplot:
 
 
 def main() -> None:
-    from ggskia import ggsave  # 出图要 skia 后端，它按 X1 的约定住在 ggcore 之外
+    from gg4py import ggsave  # 顶层入口惰性加载 skia 后端（X1 约束不变）
 
     here = Path(__file__).resolve().parent
     width, height = SIZE_IN

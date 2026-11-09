@@ -16,7 +16,7 @@
 | 页面 | 模块 | 内容 |
 | --- | --- | --- |
 | [`r-to-python.md`](r-to-python.md) | 迁移 | R → Python 对照表：函数、参数、写法、第三方扩展的等价写法 |
-| [`browser.md`](browser.md) | 浏览器 | 在浏览器编辑器里写 `ggcore` 代码：代码契约、数据面板、导出 |
+| [`browser.md`](browser.md) | 浏览器 | 在浏览器编辑器里写 `gg4py` 代码：代码契约、数据面板、导出 |
 | [`aes.md`](aes.md) | `aes` | 映射：表达式、常量、`after_stat()`、分组、图层级映射 |
 | [`data.md`](data.md) | 输入 | dict / pandas / Arrow → 一张列式表；类型、分类顺序、日期、缺失 |
 | [`layers.md`](layers.md) | `ggplot` + `Layer` | 用 `+` 加图层、克隆语义、方法链别名、图层自带数据与映射 |
@@ -35,10 +35,7 @@
 ## 十分钟：第一张图
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
-from ggskia import ggsave
+from gg4py import aes, geom_point, ggplot, ggsave, labs, theme_minimal, to_column_table
 
 DATA = {
     "wt": [1.9, 2.6, 3.2, 3.5, 4.1],
@@ -67,7 +64,7 @@ pixi run ggsave examples/heatmap/plot.py:plot my-first-plot.png
 三个必须先知道的约定：
 
 1. **数据要先变成 `ColumnTable`**。`ggcore` 只认 `ggcore.data.ColumnTable`；
-   dict / pandas / Arrow 用 `ggio.frame.to_column_table()` 转换（见
+   dict / pandas / Arrow 用 `gg4py.to_column_table()` 转换（见
    [`data.md`](data.md)）。直接 `ggplot(dict, ...)` 能构造，但构图期会报错。
 2. **`aes()` 的值是字符串表达式**，不是变量名：`aes(x="wt")`（R 的
    `aes(x = wt)`）。字符串常量要再包一层引号：`aes(colour="'red'")`。

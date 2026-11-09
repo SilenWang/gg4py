@@ -74,7 +74,7 @@ ggplot2 的写法。
   本体只有直角坐标的 `geom_ribbon(ymin, ymax)` 和路径/多边形；`coord_polar` 能把
   弧与路径卷成圆，但「按流量分配角度 + 面积加权 ribbon」要自己算——那等于把
   `circlize` 抄一遍，不是本体能力。
-- **实跑**：`dir(ggcore.plot)` 里没有任何 chord 相关入口（只有 `geom_ribbon`）；
+- **实跑**：`dir(gg4py)` 里没有任何 chord 相关入口（只有 `geom_ribbon`）；
   用 `geom_path` 手算弧与贝塞尔弦，再 `coord_equal()` 能画出「一段弧 + 一条弦」的
   线，但弦的**带状**部分（两条贝塞尔之间围出的面积）需要手搓多边形顶点。
 - **归口**：SIL-715（扩展 geom / 多图版式族，与 #10、#11 相邻）；M3 的组合布局项。

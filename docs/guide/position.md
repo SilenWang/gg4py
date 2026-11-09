@@ -17,9 +17,16 @@ position 在 stat 之后、标度映射之前改坐标：堆叠、填充、并�
 ## 1. 堆叠与百分比
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs, position_fill, position_stack
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_col,
+    ggplot,
+    labs,
+    position_fill,
+    position_stack,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "year": ["2019", "2019", "2019", "2020", "2020", "2020"],
@@ -37,9 +44,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs, position_fill
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_col, ggplot, labs, position_fill, theme_minimal, to_column_table
 
 DATA = {
     "year": ["2019", "2019", "2019", "2020", "2020", "2020"],
@@ -61,9 +66,7 @@ levels，见 [`data.md`](data.md) §2）。
 ## 2. 并排
 
 ```python
-from ggcore.plot import aes, geom_col, ggplot, labs, position_dodge
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_col, ggplot, labs, position_dodge, theme_minimal, to_column_table
 
 DATA = {
     "class": ["compact", "compact", "midsize", "midsize", "suv", "suv"],
@@ -88,9 +91,16 @@ position 就是 `position_dodge2()`。
 `geom_jitter()` 是 `geom_point(position=position_jitter(...))` 的简写：
 
 ```python
-from ggcore.plot import aes, geom_jitter, geom_point, ggplot, labs, position_jitter
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_jitter,
+    geom_point,
+    ggplot,
+    labs,
+    position_jitter,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "class": ["compact"] * 6 + ["midsize"] * 6,
@@ -113,8 +123,7 @@ p = (
 `position_jitterdodge()` 把点按 `fill` 分组并排后再抖动，常用于柱 + 点的叠加：
 
 ```python
-from ggcore.plot import aes, geom_col, geom_point, ggplot, labs, position_jitterdodge
-from ggio.frame import to_column_table
+from gg4py import aes, geom_col, geom_point, ggplot, labs, position_jitterdodge, to_column_table
 
 DATA = {
     "class": ["compact", "compact", "midsize", "midsize"],
@@ -136,9 +145,16 @@ p = (
 `geom_text(nudge_x=, nudge_y=)` 直接可用）：
 
 ```python
-from ggcore.plot import aes, geom_col, geom_text, ggplot, labs, position_nudge
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_col,
+    geom_text,
+    ggplot,
+    labs,
+    position_nudge,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {"class": ["a", "b", "c"], "n": [3.0, 5.0, 4.0]}
 

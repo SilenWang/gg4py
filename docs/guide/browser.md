@@ -26,12 +26,10 @@ pandas / pyarrow / contourpy 只在脚本声明用到时才下载。之后靠浏
 
 ## 2. 代码契约：一段脚本就是一张图
 
-编辑器不发明第二套 API——你写的就是 `ggcore`：
+编辑器不发明第二套 API——你写的就是 `gg4py`：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_minimal, to_column_table
 
 needs = ["numpy"]  # 可选：这段脚本要用的 Pyodide 包
 
@@ -65,8 +63,7 @@ def build():
 真正被调用时才 import，静态看不见，所以**画等值线必须显式写**：
 
 ```python
-from ggcore.plot import aes, geom_contour_filled, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_contour_filled, ggplot, labs, to_column_table
 
 needs = ["numpy", "contourpy"]
 
@@ -100,9 +97,8 @@ def build():
 CSV 用 `ggio.csv.read_csv()` 读，**不需要 pandas**（标准库解析，零轮子下载）：
 
 ```python
-from ggcore.plot import aes, geom_col, geom_point, ggplot, labs
+from gg4py import aes, geom_col, geom_point, ggplot, labs, theme_minimal
 from ggio.csv import read_csv
-from ggcore.theme import theme_minimal
 
 needs = ["numpy"]
 
@@ -131,8 +127,7 @@ pandas 的 DataFrame 也能直接进（`needs` 里要写 `pandas`）：
 ```python
 import pandas as pd
 
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import from_pandas
+from gg4py import aes, from_pandas, geom_point, ggplot, labs
 
 needs = ["numpy", "pandas"]
 
@@ -224,8 +219,7 @@ traceback 里只保留用户脚本的栈帧（不出 `ggcore/script.py` 的内�
 from ggcore.script import run_script
 
 SOURCE = """
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 needs = ["numpy"]
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}

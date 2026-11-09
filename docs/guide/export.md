@@ -4,17 +4,14 @@
 
 | 出口 | 入口 | 在哪能用 |
 | --- | --- | --- |
-| PNG / SVG / PDF | `ggsave()`（`ggcore.io`，设备来自 `ggskia`） | 桌面 / 服务端 |
-| IR（`.ggir.cbor`） | `save_ir()` / `ggcore.ir.encode()` | 桌面 / 服务端 / 浏览器（同一份字节） |
+| PNG / SVG / PDF | `ggsave()`（`gg4py.ggsave`，设备来自 `ggskia`） | 桌面 / 服务端 |
+| IR（`.ggir.cbor`） | `gg4py.io.save_ir()` / `gg4py.ir.encode()` | 桌面 / 服务端 / 浏览器（同一份字节） |
 | 浏览器 PNG / JPG / SVG | 编辑器「导出」按钮（`web/editor/export.js`） | 浏览器（不经 skia，**不能出 PDF**） |
 
 ## 1. `ggsave()`
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggskia import ggsave
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, ggsave, labs, theme_minimal, to_column_table
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -64,10 +61,9 @@ skia、浏览器 DOM SVG、查看器）。
 ```python
 from pathlib import Path
 
-from ggcore.ir import decode
-from ggcore.plot import aes, geom_point, ggplot
-from ggcore.io import export_ir_json, save_ir
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, to_column_table
+from gg4py.io import export_ir_json, save_ir
+from gg4py.ir import decode
 
 DATA = {"x": [1.0, 2.0, 3.0], "y": [3.0, 1.0, 2.0]}
 p = ggplot(to_column_table(DATA), aes(x="x", y="y")) + geom_point(size=3)
@@ -103,8 +99,7 @@ from pathlib import Path
 from ggcore.script import run_script
 
 SOURCE = """
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, to_column_table
 
 needs = ["numpy"]
 DATA = {"x": [1, 2, 3], "y": [3, 1, 2]}
