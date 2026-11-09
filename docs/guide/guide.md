@@ -29,9 +29,16 @@ p + scale_colour_discrete(guide="none")  # 落在标度上（优先级更低）
 ## 1. `guides()`：按美学关掉或改
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, guides, guide_legend, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_point,
+    ggplot,
+    guide_legend,
+    guides,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -53,8 +60,7 @@ p = (
 `guides({"colour": "none", "size": guide_legend()})`。
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, guides, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, guides, labs, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4],
@@ -73,7 +79,7 @@ p = (
 ## 2. 色条与分箱图例
 
 ```python
-from ggcore.plot import (
+from gg4py import (
     aes,
     geom_point,
     ggplot,
@@ -81,10 +87,10 @@ from ggcore.plot import (
     guides,
     labs,
     scale_colour_viridis_c,
+    theme_minimal,
+    to_column_table,
 )
-from ggcore.theme import theme_minimal
 from ggcore.units import unit
-from ggio.frame import to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6],
@@ -109,8 +115,7 @@ p = (
 ## 3. 主轴
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, guide_axis, guides, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, guide_axis, guides, labs, to_column_table
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -125,8 +130,16 @@ p = (
 `guide_axis_stack()` 把两个 axis guide 叠起来（上面一行斜的、下面一行正的）：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, guide_axis, guide_axis_stack, guides, labs
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_point,
+    ggplot,
+    guide_axis,
+    guide_axis_stack,
+    guides,
+    labs,
+    to_column_table,
+)
 
 DATA = {"x": [1, 2, 3, 4, 5], "y": [2.0, 1.5, 4.2, 3.1, 5.4]}
 
@@ -141,7 +154,7 @@ p = (
 对数轴上想画更细的小刻度，用 `guide_axis_logticks()`（它画的是刻度，不是标签）：
 
 ```python
-from ggcore.plot import (
+from gg4py import (
     aes,
     geom_point,
     ggplot,
@@ -149,8 +162,8 @@ from ggcore.plot import (
     guides,
     labs,
     scale_y_log10,
+    to_column_table,
 )
-from ggio.frame import to_column_table
 
 DATA = {"x": [1, 2, 3, 4], "y": [1.0, 10.0, 100.0, 1000.0]}
 
@@ -168,9 +181,8 @@ p = (
 图例位置在主题元素里：
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import element_text, theme, theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, theme_minimal, to_column_table
+from ggcore.theme import element_text, theme
 
 DATA = {
     "x": [1, 2, 3, 4],

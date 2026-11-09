@@ -39,9 +39,16 @@ stat_bin(geom="bar", bins=30)  # stat 的快捷方式：改这一层的默认 ge
 | `stat_summary_bin` | `bins` / `fun` / `fun.min` / `fun.max` | `y` `ymin` `ymax` |
 
 ```python
-from ggcore.plot import aes, after_stat, geom_bar, geom_histogram, ggplot, labs
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    after_stat,
+    geom_bar,
+    geom_histogram,
+    ggplot,
+    labs,
+    theme_minimal,
+    to_column_table,
+)
 
 DATA = {
     "class": ["compact", "compact", "midsize", "midsize", "suv", "suv", "suv"],
@@ -58,15 +65,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import (
-    aes,
-    after_stat,
-    geom_histogram,
-    ggplot,
-    labs,
-    scale_y_continuous,
-)
-from ggio.frame import to_column_table
+from gg4py import aes, after_stat, geom_histogram, ggplot, labs, scale_y_continuous, to_column_table
 
 DATA = {"value": [1.2, 1.8, 2.1, 2.6, 2.9, 3.0, 3.4, 3.6, 3.9, 4.4]}
 
@@ -93,8 +92,16 @@ p = (
 | `stat_connect` | `direction` | 按观测顺序连接 |
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, stat_ellipse, stat_qq, stat_qq_line
-from ggio.frame import to_column_table
+from gg4py import (
+    aes,
+    geom_point,
+    ggplot,
+    labs,
+    stat_ellipse,
+    stat_qq,
+    stat_qq_line,
+    to_column_table,
+)
 
 DATA = {
     "x": [1.0, 1.4, 1.9, 2.2, 2.6, 3.0, 3.3, 3.8],
@@ -112,9 +119,7 @@ p = (
 ```
 
 ```python
-from ggcore.plot import aes, ggplot, labs, stat_qq, stat_qq_line
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, ggplot, labs, stat_qq, stat_qq_line, theme_minimal, to_column_table
 
 DATA = {"value": [1.9, 2.4, 2.6, 3.0, 3.2, 3.7, 4.1, 4.8]}
 
@@ -130,8 +135,7 @@ p = (
 ## 4. 拟合
 
 ```python
-from ggcore.plot import aes, geom_point, geom_smooth, ggplot, labs
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, geom_smooth, ggplot, labs, to_column_table
 
 DATA = {
     "x": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -158,9 +162,7 @@ p = (
 `mean_sdl` / `median_hilow`。默认 geom 是 `pointrange`。
 
 ```python
-from ggcore.plot import aes, geom_point, ggplot, labs, stat_summary
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, geom_point, ggplot, labs, stat_summary, theme_minimal, to_column_table
 
 DATA = {
     "class": [
@@ -193,9 +195,7 @@ p = (
 ## 6. 2D 与空间
 
 ```python
-from ggcore.plot import aes, after_stat, ggplot, labs, stat_summary_2d
-from ggcore.theme import theme_minimal
-from ggio.frame import to_column_table
+from gg4py import aes, after_stat, ggplot, labs, stat_summary_2d, theme_minimal, to_column_table
 
 DATA = {
     "x": [1, 1, 2, 2, 3, 3, 4, 4, 2, 3],
