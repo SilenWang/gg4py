@@ -224,6 +224,28 @@ def test_ragged_wrap_inner_axis_bands_are_zero() -> None:
         assert _box_of(table, "axis-t-1-1").height_cm == 0.0
 
 
+def test_axes_all_with_margins_labels_only_keeps_the_tick() -> None:
+    """`axes = "all"` + `axis.labels = "margins"`：内面板只留刻度（R 0.0967cm）。
+
+    R 的 `censor_labels()` 删掉内面板的轴标签，`measure_axes()` 因此在内侧带拿到的
+    是 tick 长度；`axis.labels = "all"` 时内侧带才与边缘同高。
+    """
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    table = plot_gtable(
+        base + facet_wrap("four", axes="all", axis_labels="margins"), metrics=METRICS
+    )
+    assert _box_of(table, "axis-b-1-1").height_cm == pytest.approx(0.0967, abs=1e-3)
+    assert _box_of(table, "axis-b-1-2").height_cm > 0.4  # 最后一行满高
+    assert _box_of(table, "axis-l-1-2").width_cm == pytest.approx(0.0967, abs=1e-3)
+    assert _box_of(table, "axis-l-1-1").width_cm > 0.3  # 第一列满高
+
+    labelled = plot_gtable(
+        base + facet_wrap("four", axes="all", axis_labels="all"), metrics=METRICS
+    )
+    assert _box_of(labelled, "axis-b-1-1").height_cm > 0.4
+    assert _box_of(labelled, "axis-l-1-2").width_cm > 0.3
+
+
 def test_grid_axes_are_shared_and_named_by_the_other_dimension() -> None:
     """`facet_grid` 每侧一条轴；名字带列号（axis-t）/ 行号（axis-l），不重复。"""
     base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()

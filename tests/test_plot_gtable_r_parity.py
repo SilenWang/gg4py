@@ -87,6 +87,12 @@ def _build(name: str) -> ggplot:
         "wrap_ragged_ncol3": lambda: base + facet_wrap("five", ncol=3),
         "wrap_ragged_ncol2": lambda: base + facet_wrap("five", ncol=2),
         "wrap_dir_v_ncol2": lambda: base + facet_wrap("five", ncol=2, dir="v"),
+        "wrap_axes_all_labels_margins": lambda: (
+            base + facet_wrap("four", axes="all", axis_labels="margins") + labs(x="XX", y="YY")
+        ),
+        "wrap_axes_all_labels_all": lambda: (
+            base + facet_wrap("four", axes="all", axis_labels="all") + labs(x="XX", y="YY")
+        ),
         "title_plot_position": lambda: (
             ggplot(_DATA, aes(x="x", y="y", colour="g"))
             + geom_point()
@@ -125,6 +131,8 @@ def test_fixture_pin() -> None:
         "wrap_ragged_ncol3",
         "wrap_ragged_ncol2",
         "wrap_dir_v_ncol2",
+        "wrap_axes_all_labels_margins",
+        "wrap_axes_all_labels_all",
         "title_plot_position",
     }
 
@@ -241,6 +249,8 @@ def test_resolved_panel_matches_plot_layout_for_every_case() -> None:
             "wrap_ragged_ncol3",
             "wrap_ragged_ncol2",
             "wrap_dir_v_ncol2",
+            "wrap_axes_all_labels_margins",
+            "wrap_axes_all_labels_all",
         ):
             continue  # 分面的面板区在 FacetTable 里，另有 facet 对拍
         plot = _build(case["name"])

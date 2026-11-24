@@ -243,6 +243,11 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
   `measure_axes()` 把空洞相邻的带清零——**空洞只挪 grob、不给内部带高度**。早期
   版本按 `_axis_visible()`（每列最底面板）给带，ragged 的内部带会凭空多出
   0.4517cm；`dir = "v"` 与 `as.table = FALSE` 走同一条规则。
+- **`axes = "all"` 的内侧带只看刻度**：`axis.labels = "margins"`（默认）时
+  `censor_labels()` 删掉内面板的标签，内侧 `axis-b` / `axis-l` 只剩刻度
+  （R 实测 **0.0967cm**），不能给“tick + label”的满高；`axis.labels = "all"`
+  时内侧才与边缘同高（0.4718cm / 0.3505cm）。`axes = "margins"` 的内侧带仍是
+  字面量 `0cm`。
 - `facet_grid`：每侧**一条**轴 / strip（`seam_table()`）；轴跨整列 / 整行，不是
   每个面板各插一对。
 

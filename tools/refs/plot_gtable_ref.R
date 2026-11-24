@@ -175,6 +175,17 @@ cases <- list(
   measure_case("wrap_ragged_ncol2", base + facet_wrap(~five, ncol = 2)),
   # `dir = "v"`：按列优先填充，ragged 空洞在右下角。
   measure_case("wrap_dir_v_ncol2", base + facet_wrap(~five, ncol = 2, dir = "v")),
+  # `axes = "all"` + `axis.labels = "margins"`：内面板只留刻度（R 0.0967cm），
+  # 外边缘仍是 tick + label 的满高。
+  measure_case(
+    "wrap_axes_all_labels_margins",
+    base + facet_wrap(~four, axes = "all", axis.labels = "margins") + labs(x = "XX", y = "YY")
+  ),
+  # 内面板也带标签：内部带与边缘同高。
+  measure_case(
+    "wrap_axes_all_labels_all",
+    base + facet_wrap(~four, axes = "all", axis.labels = "all") + labs(x = "XX", y = "YY")
+  ),
   # `plot.title.position = "plot"`：title / subtitle 的跨列范围。
   measure_case(
     "title_plot_position",

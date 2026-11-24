@@ -83,7 +83,7 @@ from typing import Any
 import numpy as np
 
 from ggcore import plotmath
-from ggcore.axis import margin_sides_cm, text_width_cm
+from ggcore.axis import margin_sides_cm, text_width_cm, tick_length_cm
 from ggcore.axis_guide import guide_for
 from ggcore.build import PlotBuild, build_plot
 from ggcore.geom.scene import (
@@ -484,21 +484,43 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
     }
 
     draw_x, draw_y = _draw_axes(build)
+    labels_x, labels_y = tuple(getattr(build.facet, "draw_axis_labels", (True, True)))
+    ticks = {
+        "top": tick_length_cm(theme, "top"),
+        "bottom": tick_length_cm(theme, "bottom"),
+        "left": tick_length_cm(theme, "left"),
+        "right": tick_length_cm(theme, "right"),
+    }
 
     def axis_row_size(side: str, row: int) -> float:
-        """`axis-t` / `axis-b` 的带高：只有外边缘那一行满高（`axes = "margins"`）。
+        """`axis-t` / `axis-b` 的带高。
 
-        R 的 `attach_axes()` 先把 `bottom[-dim[1], ] <- zeroGrob()`（`top` 对称），
-        `measure_axes()` 再把空洞相邻的带清零：ragged 时**内部带是字面量 `0cm`**，
-        空洞只挪 grob、不给内部带高度。`axes = "all_x"` 时每行都画，才逐行满高。
+        - `axes = "margins"`：只有外边缘那一行满高；ragged 的内部带是字面量
+          `0cm`（R `attach_axes()` 的 `bottom[-dim[1], ] <- zeroGrob()`，再由
+          `measure_axes()` 把空洞相邻的带清零——空洞只挪 grob，不给高度）。
+        - `axes = "all"`：每个面板都画轴。`axis.labels` 内面板也带标签时内部带
+          与边缘同高；`axis.labels = "margins"` 时 `censor_labels()` 删掉内面板
+          标签，内部带**只剩刻度**（R 实测 `0.0967cm`，不是满高）。
         """
-        active = draw_x or (row == 1 if side == "top" else row == nrow)
-        return extents[side] if active else 0.0
+        if extents[side] <= 0:
+            return 0.0
+        edge = row == 1 if side == "top" else row == nrow
+        if edge:
+            return extents[side]
+        if not draw_x:
+            return 0.0
+        return extents[side] if labels_x else ticks[side]
 
     def axis_col_size(side: str, col: int) -> float:
-        """`axis-l` / `axis-r` 的带宽：只有外边缘那一列满高（`axes = "margins"`）。"""
-        active = draw_y or (col == 1 if side == "left" else col == ncol)
-        return extents[side] if active else 0.0
+        """`axis-l` / `axis-r` 的带宽：边缘满高；`axes = "all"` 时内部按标签口径。"""
+        if extents[side] <= 0:
+            return 0.0
+        edge = col == 1 if side == "left" else col == ncol
+        if edge:
+            return extents[side]
+        if not draw_y:
+            return 0.0
+        return extents[side] if labels_y else ticks[side]
 
     def axis_cell(side: str, name: str) -> PlotCell:
         return PlotCell(name, "axis", side=side)
