@@ -30,6 +30,7 @@ from ggcore.composition import (
     ComposeError,
     Patchwork,
     Spacer,
+    guide_area,
     plot_layout,
     plot_spacer,
     wrap_plots,
@@ -43,7 +44,7 @@ from ggcore.plot import (
     labs,
     theme_void,
 )
-from ggcore.theme import element_rect, theme
+from ggcore.theme import element_rect, element_text, theme
 from ggcore.units import UnitContext
 from ggio.frame import from_dict
 from ggskia.text import ShaperMetrics
@@ -198,7 +199,7 @@ def test_too_many_plots_for_the_grid() -> None:
 
 def test_unknown_plot_layout_keyword() -> None:
     with pytest.raises(ComposeError, match="不认识"):
-        wrap_plots(base(), guides="collect")
+        wrap_plots(base(), nonsense=True)
 
 
 # ---------------------------------------------------------------------------
@@ -494,3 +495,190 @@ def test_panels_align_with_different_axis_slot_widths(tmp_path: Path) -> None:
     assert svg["#CC0000"][0] == pytest.approx(svg["#0000CC"][0], abs=1e-6)
     assert svg["#CC0000"][2] == pytest.approx(svg["#0000CC"][2], abs=1e-6)
     assert svg["#00CC00"][0] == pytest.approx(svg["#CCCC00"][0], abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# guides="collect" / guide_area()（SIL-1002）
+# ---------------------------------------------------------------------------
+
+
+def legend_data() -> Any:
+    return from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "y": [2.0, 4.0, 3.0, 5.0, 6.0, 3.0],
+            "g": ["a", "b", "a", "b", "a", "b"],
+        }
+    )
+
+
+def legend_plot() -> ggplot:
+    return ggplot(legend_data(), aes(x="x", y="y", colour="g")) + geom_point()
+
+
+def _compose(tf: tuple[float, ...], other: tuple[float, ...]) -> tuple[float, ...]:
+    """两个 IR `viewport.transform`（2×3）的合成：父 ∘ 子。"""
+    a1, b1, c1, d1, e1, f1 = tf
+    a2, b2, c2, d2, e2, f2 = other
+    return (
+        a1 * a2 + c1 * b2,
+        b1 * a2 + d1 * b2,
+        a1 * c2 + c1 * d2,
+        b1 * c2 + d1 * d2,
+        a1 * e2 + c1 * f2 + e1,
+        b1 * e2 + d1 * f2 + f1,
+    )
+
+
+def ir_texts(scene: Any) -> list[tuple[str, float, float]]:
+    """IR 里所有文本的页面坐标（pt，y 向下）。"""
+    out: list[tuple[str, float, float]] = []
+
+    def walk(node: Any, tf: tuple[float, ...]) -> None:
+        transform = node.params.get("transform")
+        if transform is not None:
+            tf = _compose(tf, tuple(float(value) for value in transform))
+        if node.texts:
+            a, b, c, d, e, f = tf
+            for label, (x, y) in zip(node.texts, node.bufs["pos"], strict=True):
+                out.append((label, float(a * x + c * y + e), float(b * x + d * y + f)))
+        for child in node.children or ():
+            walk(child, tf)
+
+    walk(scene.root, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0))
+    return out
+
+
+def legend_labels(plot: Patchwork) -> list[tuple[str, float, float]]:
+    """组合渲染后**图例**里的文本（键 a/b 与标题 g）。"""
+    scene = plot.to_scene(metrics=METRICS, width_in=7.0, height_in=5.0)
+    return [item for item in ir_texts(scene) if item[0] in ("a", "b", "g")]
+
+
+def test_guides_keep_draws_each_legend() -> None:
+    labels = legend_labels(wrap_plots(legend_plot(), legend_plot(), guides="keep"))
+    assert [item[0] for item in labels].count("a") == 2
+    assert [item[0] for item in labels].count("g") == 2
+
+
+def test_guides_collect_draws_one_legend() -> None:
+    """同结构图例在 `collect` 下只出现一次（patchwork `collapse_guides()`）。"""
+    labels = legend_labels(wrap_plots(legend_plot(), legend_plot(), guides="collect"))
+    assert [item[0] for item in labels].count("a") == 1
+    assert [item[0] for item in labels].count("g") == 1
+
+
+def test_guides_auto_matches_keep() -> None:
+    auto = legend_labels(wrap_plots(legend_plot(), legend_plot()))
+    keep = legend_labels(wrap_plots(legend_plot(), legend_plot(), guides="keep"))
+    assert [item[0] for item in auto].count("a") == 2
+    assert len(auto) == len(keep)
+
+
+def test_guides_collect_does_not_merge_different_themes() -> None:
+    """主题不同不合并（patchwork 比较的是渲染后的 guide grob）。"""
+    other = legend_plot() + theme(**{"legend.text": element_text(size=20)})
+    labels = legend_labels(wrap_plots(legend_plot(), other, guides="collect"))
+    assert [item[0] for item in labels].count("a") == 2
+    assert [item[0] for item in labels].count("g") == 2
+
+
+def test_guides_collect_uses_the_top_level_legend_position() -> None:
+    """手工 `legend.position` 作用于顶层（patchwork 的 annotation theme）。"""
+    page_width, page_height = 7.0 * 72.0, 5.0 * 72.0
+    for position, inside in (
+        ("right", lambda x, y: x > page_width * 0.6),
+        ("left", lambda x, y: x < page_width * 0.4),
+        ("top", lambda x, y: y < page_height * 0.4),
+        ("bottom", lambda x, y: y > page_height * 0.6),
+    ):
+        combined = wrap_plots(legend_plot(), legend_plot(), guides="collect") + theme(
+            **{"legend.position": position}
+        )
+        labels = legend_labels(combined)
+        assert [item[0] for item in labels].count("a") == 1, position
+        title = next(item for item in labels if item[0] == "g")
+        assert inside(title[1], title[2]), (position, title)
+
+
+def test_guides_collect_adds_one_outer_guide_box() -> None:
+    combined = wrap_plots(legend_plot(), legend_plot(), guides="collect")
+    table = combined.gtable(metrics=METRICS, width_in=7.0, height_in=5.0)
+    names = [row.name for row in table.layout]
+    assert names.count("collected-guide-box") == 1
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None
+    assert units.guide.position == "right"
+    # 盒在高表最右块的 guide-box 槽里、跨 panel 行。槽位从 `plot_gtable()`
+    # 的 `guide-box-right` 抓（本仓的槽比 ggplot2 4.0.3 少一列，见 SIL-999
+    # 的已知差异），所以断言「在 panel 右侧的图例槽、跨 panel 行」这组关系。
+    t, left, b, right = units.guide.area
+    assert left == right
+    assert left > TABLE_COLS + PANEL_COL
+    assert (t, b) == (PANEL_ROW, PANEL_ROW)
+    assert units.guide.layout.width_cm > 0
+
+
+def test_guides_collect_leaves_more_room_for_panels() -> None:
+    """子图各自的图例列被清零后，panel 分到更多宽度（patchwork 同义）。"""
+    keep = panel_boxes(wrap_plots(legend_plot(), legend_plot(), guides="keep"))
+    collect = panel_boxes(wrap_plots(legend_plot(), legend_plot(), guides="collect"))
+    assert collect["panel-area-1-1"][2] > keep["panel-area-1-1"][2]
+
+
+def test_guide_area_cell_is_a_normal_panel_cell() -> None:
+    """`guide_area()` 是一格普通 panel：图例放进去、不额外占行列。"""
+    combined = wrap_plots(legend_plot(), guide_area(), guides="collect")
+    boxes = panel_boxes(combined)
+    area_cell = boxes["panel-area-1-2"]
+    # 与左边的 panel 同高、同宽（同一行的 null 权重）。
+    assert area_cell[1] == pytest.approx(boxes["panel-area-1-1"][1], abs=1e-9)
+    assert area_cell[3] == pytest.approx(boxes["panel-area-1-1"][3], abs=1e-9)
+    assert area_cell[2] == pytest.approx(boxes["panel-area-1-1"][2], abs=1e-9)
+    # 顶层 guide 盒就落在这一格。
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None and units.guide.guide_area
+    cell = (PANEL_ROW, TABLE_COLS + PANEL_COL, PANEL_ROW, TABLE_COLS + PANEL_COL)
+    assert units.guide.area == cell
+    # 图例文本在这一格的水平范围内（居中），不在右外侧。
+    labels = legend_labels(combined)
+    assert [item[0] for item in labels].count("a") == 1
+    x_positions = [item[1] for item in labels]
+    assert min(x_positions) > 7.0 * 72.0 * 0.5
+
+
+def test_guides_collect_without_legend_keeps_the_grid() -> None:
+    plain = (base() | base()) + plot_layout(guides="collect")
+    table = plain.gtable(metrics=METRICS)
+    assert not [row for row in table.layout if row.name == "collected-guide-box"]
+
+
+def test_guides_collect_with_legend_position_none_drops_the_legend() -> None:
+    """`legend.position = "none"` 时收集到的图例不往外侧放（patchwork 同义）。"""
+    combined = (legend_plot() | legend_plot()) + plot_layout(guides="collect")
+    combined = combined + theme(**{"legend.position": "none"})
+    labels = legend_labels(combined)
+    assert [item[0] for item in labels].count("a") == 0
+    table = combined.gtable(metrics=METRICS)
+    assert not [row for row in table.layout if row.name == "collected-guide-box"]
+
+
+def test_guides_collect_nested_layers_do_not_merge() -> None:
+    """嵌套层各自收集（patchwork `plot_table.patchwork()` 的传递语义）。"""
+    nested = wrap_plots(wrap_plots(legend_plot(), legend_plot()), legend_plot(), guides="collect")
+    labels = legend_labels(nested)
+    assert [item[0] for item in labels].count("a") == 2
+
+
+def test_guides_mode_is_validated() -> None:
+    with pytest.raises(ComposeError, match="guides"):
+        plot_layout(guides="everywhere")
+
+
+def test_patchwork_plus_theme_is_the_annotation_theme() -> None:
+    """`Patchwork + theme()` 只影响顶层图例排布，不改子图外观。"""
+    combined = (legend_plot() | legend_plot()) + theme(**{"legend.position": "bottom"})
+    assert isinstance(combined, Patchwork)
+    labels = legend_labels(combined + plot_layout(guides="collect"))
+    title = next(item for item in labels if item[0] == "g")
+    assert title[2] > 5.0 * 72.0 * 0.6

@@ -26,6 +26,9 @@ p1 + p2 + p3  # 顺序追加（缺省网格按 wrap_dims() / n2mfrow：n<=3 一�
 (p1 + p2 + p3 + p4) + gg4py.plot_layout(ncol=2, widths=[2, 1], heights=[1, 1])
 gg4py.wrap_plots(p1, p2, p3, ncol=2, byrow=False)
 gg4py.plot_spacer()  # 占位空格
+gg4py.guide_area()  # 占一格，guides="collect" 时图例放进这一格
+(p1 | p2) + gg4py.plot_layout(guides="collect")  # 同结构图例去重后提到顶层
+(p1 + gg4py.guide_area()) + gg4py.plot_layout(ncol=2, guides="collect")
 
 pw = (p1 | p2) / p3
 table = pw.gtable(metrics=metrics, width_in=7, height_in=5)  # GTable
@@ -34,12 +37,15 @@ gg4py.ggsave(pw, "out.png", width=7, height=5)  # PNG / SVG / PDF
 ```
 
 - `wrap_plots()` 接受位置参数或一个列表；`ncol` / `nrow` / `byrow` / `widths` /
-  `heights` 等同再 `+ plot_layout(...)`。
+  `heights` / `guides` 等同再 `+ plot_layout(...)`。
 - `widths` / `heights` 是**相对权重**（大表 panel 列的 `unit(w, "null")`），长度不足
   时循环（patchwork 的 `rep(..., length.out=)`）；给了多列 `widths` 而没给 `ncol`
   时，长度就是列数。
 - `p + theme()` / `p + geom_*()` / `p + labs()` 仍走 `gg_add` 的单图分派；只有
-  `ggplot` / `Patchwork` / `plot_spacer()` / `plot_layout()` 才进组合层。
+  `ggplot` / `Patchwork` / `plot_spacer()` / `guide_area()` / `plot_layout()` 才进
+  组合层。`Patchwork + theme()` 是 patchwork 的**注释主题**（annotation theme）：
+  本期只用于 `guides="collect"` 的顶层图例排布（`legend.position` / `legend.box` /
+  spacing / justification），不改变各子图自己的主题。
 
 ### 运算符优先级
 
@@ -142,7 +148,7 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 | 子图固定槽位（标题 / 轴 / 图例 / margin）的跨图统一 | 只统一 panel 几何；槽位按子图自身尺寸贴着 panel 摆 | 逐槽位取 max，标题在统一列里居中 | 视觉差异，留给后续 stage |
 | `wrap_plots()` 给的 `nrow × ncol` 装不下子图 | 抛 `ComposeError` | warning + 丢弃多余的图 | 显式报错，避免静默丢图 |
 | `Patchwork + theme()` / `+ geom_*()` | 抛 `TypeError` | 允许（对 patchwork 内的图批量加组件） | 不在本期验收内 |
-| `guides="collect"` / `guide_area()` | 未实现 | 有 | SIL-1002 |
+| `guides="collect"` / `guide_area()` | 已实现（§8） | 有 | SIL-1002 |
 | aplot 式 guide area / guide layout | 未实现 | aplot 独有 | SIL-1003 |
 | `panel_spacing` / `insert_*` | 未实现 | aplot / patchwork 语法糖 | SIL-1004 |
 | `&` / `-` / `design` / `area` / 重叠 / inset | 未实现 | 有 | 非本期 |
@@ -164,3 +170,46 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 `gtable()` 是首次合并的完整成本（含每张子图的 `build_plot()` 与 grob 树）；重复
 渲染同一组合时，`scene()` 的指令缓存（`ggcore.perf`）照常生效。IR 体积随子图数
 线性增长，没有逐元素 JSON。
+
+## 8. 图例：`guides="collect"` / `guide_area()`
+
+`plot_layout(guides="auto"|"collect"|"keep")` 照 patchwork `build_patchwork()` /
+`add_guides()` / `attach_guides()` 的口径：
+
+- **抓槽位**：每个 `ggplot` 子图先走 `plot_gtable()`，从 layout 里抓
+  `guide-box-left/right/top/bottom`（`inside` 不算外侧槽），记下盒与相邻
+  `legend.box.spacing` 槽的列 / 行号；`collect` 时把这些槽的尺寸清零 —— 等价于
+  patchwork `add_guides(collect = TRUE)`。`keep` / `auto` 原样保留。
+- **去重**：结构 key = 美学 + guide 定义（`repr` 稳定化）+ 标题 + 每个键的
+  label / 断点原值 / 映射值 + 标度范围 + 影响图例外观的 `legend.*` / `guide.*`
+  主题元素。同一 key 只留第一次出现的那张；主题不同（`legend.text` 大小、
+  `legend.position` 等都进指纹）**不合并**。
+- **顶层排布**：用注释主题（默认 `Theme()`，`Patchwork + theme(...)` 覆盖）的
+  `legend.position`（缺省 `right`），把所有保留的图例按 `legend_box_layout()`
+  排成一个 guide-box。数值位置按 patchwork 的 warning 回落到 `right`；
+  `none` / `inside` 不往外侧放（与 patchwork 的 `attach_guides()` 一致）。
+- **落点**：没有 `guide_area()` 时，在最右 / 最左子图块的 `guide-box-<side>` 槽位
+  写「盒宽 + spacing」并加一条覆盖整页的 `collected-guide-box` 渲染记录；盒纵向
+  跨 panel 行（top / bottom 则横向跨 panel 列）。有 `guide_area()` 时盒直接放进
+  那一格的 panel 单元（不额外占行列）。
+- **嵌套**：`guides` 会往内层传（patchwork `plot_table.patchwork()`）；显式
+  `guides="keep"` 的层保留自己的图例。跨嵌套层**不**合并，与 patchwork 相同。
+- **子图渲染**：`collect` 时子图用 `plot_layout(draw_guides=False)` 重算版式，
+  不再画、也不为图例占位；panel 矩形仍由组合表给定。
+
+验收（`tests/test_composition.py` 与 `tests/test_composition_r_parity.py`）：`keep`
+同结构图例 2 份、`collect` 1 份、主题不同 2 份；`collect` 后 panel 变宽；
+`guide_area()` 的格与同行 panel 同宽同高（R 夹具的 `matches_patch_cell`）；顶层
+`legend.position` 的四个方位；图例数从渲染后的 IR 文本里数（与 R 的 SVG 计数
+同一判据）。
+
+已知差异（与 R 夹具对照）：
+
+| 项 | 本实现 | patchwork 1.3.2 | 说明 |
+| --- | --- | --- | --- |
+| 去重判据 | GuideKey（结构 + 主题指纹） | 渲染后的 guide grob `all.equal()` | 数据不同但结构相同的图例：R 在 ggplot2 4.0.3 下不合并（grob 里有随数据变化的字符串），本实现合并（SIL-1002 定的验收） |
+| guide-box 槽的绝对偏移 | panel 列 + 4 | panel 列 + 5 | `plot_gtable()` 的 `guide-box-right` 槽比 ggplot2 4.0.3 少一列（SIL-999 已知差异）；「在 panel 右侧、跨 panel 行」的关系一致 |
+| `guides="collect"` 时手工 `legend.position = c(x, y)` | warning + `right` | warning + `right` | 同一语义 |
+| `legend.box.background` | 未画 | 画在 guide-box 外框 | 只影响语义槽位外观，不影响图例次数 / 位置 |
+| 顶层 `theme` 的其它元素 | 不应用 | 整体作用于注释层 | 本期只取图例排布相关元素（见 §1） |
+| 轴收集（`axes` / `axis_titles`） | 未实现 | 有 | 仍不在本期 |

@@ -647,6 +647,7 @@ def plot_layout(
     height_in: float = DEFAULT_HEIGHT_IN,
     metrics: Any = None,
     panel_box: Any = None,
+    draw_guides: bool = True,
 ) -> PlotLayout:
     """算整页版式（不画）：标题行、轴占位、图例盒、面板区与每面板矩形。
 
@@ -654,6 +655,10 @@ def plot_layout(
     直接取它，标题 / 副标题 / 注脚 / 轴 / 图例 / tag 相对它落位（`inner` 由
     四条边反推）。默认 `None` 与旧行为逐值一致。`coord_fixed` 的 aspect 收缩在
     这一支**不**再做：组合表里的 panel 单位已经是解析后的最终尺寸。
+
+    `draw_guides=False` 给组合层的 `guides="collect"` 用：图例已经被提到顶层，
+    这张子图不再画、也不为图例预留版面（patchwork `add_guides(collect = TRUE)`
+    把子表 guide-box 槽位清零的等价物）。
     """
     theme = _theme_of(build)
     width_cm = float(width_in) * CM_PER_INCH
@@ -699,8 +704,8 @@ def plot_layout(
     subtitle_cm, _subtitle_element = _text_row_cm(theme, "plot.subtitle", subtitle_text)
     caption_cm, _caption_element = _text_row_cm(theme, "plot.caption", caption_text)
 
-    position = _legend_position(theme)
-    guides = build_guides(build) if position != "none" else ()
+    position = _legend_position(theme) if draw_guides else None
+    guides = build_guides(build) if position not in (None, "none") else ()
     guide_sides = tuple(guide.position or position for guide in guides)
     legend_layouts = tuple(
         legend_layout(guide, theme, side, metrics=metrics)
