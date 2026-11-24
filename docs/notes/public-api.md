@@ -67,10 +67,15 @@ p + gg4py.geom_mygeom()  # 顶层就能用，不需要改 gg4py 的代码
 - `test_newly_registered_component_appears_at_the_top_level_without_edits`：临时
   注册一个 geom，断言它出现在 `__all__`、能构图、能当方法用；注销后立刻消失。
 
-顶层清单的构成（2026-11-09 实测）：`ggcore.plot.__all__` 275 项 +
-`ggio.frame.__all__` 中的可调用入口 4 项（`from_arrow` / `from_dict` /
-`from_pandas` / `to_column_table`）+ `ggsave` + `__version__` = **281** 项。
+顶层清单的构成（2026-11-25 实测）：`ggcore.plot.__all__` 276 项（注册表 + 手工
+补充的 `aes` / `gg_add` / `guides` / `align_scales` 等）+ `ggio.frame.__all__`
+中的可调用入口 4 项（`from_arrow` / `from_dict` / `from_pandas` /
+`to_column_table`）+ `ggsave` + `__version__` = **282** 项。
 `SUPPORTED_INPUTS` 是说明性字符串，不提升。
+
+`align_scales()`（SIL-1000）是多图合并的 pre-IR 入口，与 `ggplot()` / `gg_add()`
+同层，因此挂在 `ggcore.plot` 的公开面上；它不是注册表项（没有 `geom_` / `scale_`
+前缀），由 `ggcore/plot.py` 末尾显式绑定，口径见 `docs/notes/align-scales.md`。
 
 **刻意不做过滤清单。** `ggcore.plot.__all__` 里也有 `draw_key_*` /
 `guide_gengrob` / `coord_munch` / `theme_sub_*` 这类偏底层的名字——它们同样是

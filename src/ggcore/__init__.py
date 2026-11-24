@@ -21,6 +21,7 @@ IR（已解析几何的唯一中间表示）在 `ggcore.ir`，口径见 `docs/no
 from __future__ import annotations
 
 import ggcore.aes as aes
+import ggcore.align as align
 import ggcore.build as build
 import ggcore.components as components
 import ggcore.data as data
@@ -38,6 +39,7 @@ import ggcore.viewport as viewport
 __all__ = [
     "__version__",
     "aes",
+    "align",
     "build",
     "components",
     "data",

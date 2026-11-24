@@ -1,0 +1,270 @@
+{
+  "aplot": "0.3.2",
+  "ggplot2": "4.0.3",
+  "patchwork": "1.3.2",
+  "cases": [
+    {
+      "name": "continuous_first",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [1, 3],
+        "discrete": false,
+        "panel_range": [0.90000000000000002, 3.10000000000000009],
+        "breaks": [1.0, 1.5, 2.0, 2.5, 3.0],
+        "labels": [
+          "1.0",
+          "1.5",
+          "2.0",
+          "2.5",
+          "3.0"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [1, 3],
+        "discrete": false,
+        "panel_range": [0.90000000000000002, 3.10000000000000009],
+        "breaks": [1.0, 1.5, 2.0, 2.5, 3.0],
+        "labels": [
+          "1.0",
+          "1.5",
+          "2.0",
+          "2.5",
+          "3.0"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 2,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "continuous_explicit",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [1, 3],
+        "discrete": false,
+        "panel_range": [0.90000000000000002, 3.10000000000000009],
+        "breaks": [1.0, 1.5, 2.0, 2.5, 3.0],
+        "labels": [
+          "1.0",
+          "1.5",
+          "2.0",
+          "2.5",
+          "3.0"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [-1, 6],
+        "discrete": false,
+        "panel_range": [-1.3500000000000001, 6.3499999999999996],
+        "breaks": [null, 0, 2, 4, 6],
+        "labels": [
+          "NA",
+          "0",
+          "2",
+          "4",
+          "6"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 0,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "discrete_first",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [
+          "a",
+          "b"
+        ],
+        "discrete": true,
+        "panel_range": [0.40000000000000002, 2.60000000000000009],
+        "breaks": [
+          "a",
+          "b"
+        ],
+        "labels": [
+          "a",
+          "b"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [
+          "a",
+          "b"
+        ],
+        "discrete": true,
+        "panel_range": [0.40000000000000002, 2.60000000000000009],
+        "breaks": [
+          "a",
+          "b"
+        ],
+        "labels": [
+          "a",
+          "b"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 1,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "log10_first",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [0, 1],
+        "discrete": false,
+        "panel_range": [-0.050000000000000003, 1.050000000000000044],
+        "breaks": [null, 0.00000000000000000, 0.47712125471966244, 1.00000000000000000, null],
+        "labels": [
+          "NA",
+          "1",
+          "3",
+          "10",
+          "NA"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [0, 1],
+        "discrete": false,
+        "panel_range": [-0.050000000000000003, 1.050000000000000044],
+        "breaks": [null, 0.00000000000000000, 0.47712125471966244, 1.00000000000000000, null],
+        "labels": [
+          "NA",
+          "1",
+          "3",
+          "10",
+          "NA"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 2,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "reverse_first",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [-2, -1],
+        "discrete": false,
+        "panel_range": [-2.04999999999999982, -0.94999999999999996],
+        "breaks": [-1.00, -1.25, -1.50, -1.75, -2.00],
+        "labels": [
+          "1.00",
+          "1.25",
+          "1.50",
+          "1.75",
+          "2.00"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [-2, -1],
+        "discrete": false,
+        "panel_range": [-2.04999999999999982, -0.94999999999999996],
+        "breaks": [-1.00, -1.25, -1.50, -1.75, -2.00],
+        "labels": [
+          "1.00",
+          "1.25",
+          "1.50",
+          "1.75",
+          "2.00"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 2,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "date_first",
+      "axis": "x",
+      "prune_axis": "x",
+      "main": {
+        "limits": [18262, 18414],
+        "discrete": false,
+        "panel_range": [18254.400000000001, 18421.599999999999],
+        "breaks": [null, 18262, 18293, 18322, 18353, 18383, 18414, null],
+        "labels": [
+          "Dec",
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [18262, 18414],
+        "discrete": false,
+        "panel_range": [18254.400000000001, 18421.599999999999],
+        "breaks": [null, 18262, 18293, 18322, 18353, 18383, 18414, null],
+        "labels": [
+          "Dec",
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 1,
+      "coord": "CoordCartesian"
+    },
+    {
+      "name": "flip_first",
+      "axis": "x",
+      "prune_axis": "y",
+      "main": {
+        "limits": [10, 20],
+        "discrete": false,
+        "panel_range": [9.5, 20.5],
+        "breaks": [10.0, 12.5, 15.0, 17.5, 20.0],
+        "labels": [
+          "10.0",
+          "12.5",
+          "15.0",
+          "17.5",
+          "20.0"
+        ],
+        "expand": [0, 0]
+      },
+      "aligned": {
+        "limits": [10, 20],
+        "discrete": false,
+        "panel_range": [9.5, 20.5],
+        "breaks": [10.0, 12.5, 15.0, 17.5, 20.0],
+        "labels": [
+          "10.0",
+          "12.5",
+          "15.0",
+          "17.5",
+          "20.0"
+        ],
+        "expand": [0, 0]
+      },
+      "removed": 2,
+      "coord": "CoordFlip"
+    },
+    {
+      "name": "adjust_coord_ratio",
+      "axis": "xy",
+      "ratio": 2,
+      "main_was_fixed": true
+    }
+  ]
+}

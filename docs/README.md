@@ -25,6 +25,7 @@
 | [`notes/upstream-map.md`](notes/upstream-map.md) | Python 模块 ↔ 上游 `file:line` 对照 |
 | [`notes/extension.md`](notes/extension.md) | 写一个自定义 geom / stat / scale：组件类怎么写、布局不用碰 |
 | [`notes/public-api.md`](notes/public-api.md) | 公开 API 分层：`gg4py` 顶层提升什么、`gg4py.io` / `ir` / `diff` 留什么、冲突规则与迁移（SIL-911） |
+| [`notes/align-scales.md`](notes/align-scales.md) | 多图刻度对齐：`align_scales()` 的 limits / 裁剪统计 / `coord_fixed` 适配与 aplot 0.3.2 对拍（SIL-1000） |
 
 ## 2. 语法核心（`ggcore`）
 

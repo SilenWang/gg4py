@@ -415,3 +415,11 @@ def _export_registry_entries() -> list[str]:
 
 
 __all__ = _export_registry_entries()
+
+# M3-1（SIL-1000）：`align_scales()` 是多图合并的 pre-IR 层入口，与 `ggplot()` /
+# `gg_add()` 同层，所以挂在 `ggcore.plot` 的公开面上（顶层 `gg4py.align_scales`
+# 由同一份 `__all__` 自动提升）。这里是模块末尾的延迟导入：`ggcore.align` 会
+# import `ggcore.build`，放在顶部会让 `ggcore.build` 反向看到半初始化的本模块。
+from ggcore.align import align_scales as align_scales  # noqa: E402
+
+__all__.append("align_scales")
