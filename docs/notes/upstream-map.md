@@ -185,6 +185,7 @@ Python 模块，反之亦然；反过来，标着 `—` 的模块是上游没有
 
 | Python 模块 | 上游文件:行 | 上游符号 | 状态 | 依据 / 缺口 |
 | --- | --- | --- | --- | --- |
+| `ggcore.align` | `R/plot-build.R` 的 `xlim2()` / `ylim2()`（aplot 的 `xlim2` / `adjust_coord`） | `align_scales()`：跨图统一 limits / levels + `coord_fixed` 适配 | 已实现 | SIL-1000；`tests/test_align.py`；上游对应物是 aplot 0.3.2 的画布层，这里落在语法层 |
 | `ggcore.cli` | — | CLI 辅助：`unimplemented()` 占位与 `EXIT_NOT_IMPLEMENTED` | 已实现 | 上游无对应；真正的 `render` / `diff` 入口在 `ggskia.cli` / `ggdiff.cli`（`ggcore` 的 X1 白名单不放 skia / Pillow） |
 
 ## 刻意不做的格子

@@ -511,3 +511,45 @@ size_area / size_binned_area / radius / size_ordinal / alpha_ordinal / alpha_man
 - **`scale_*_viridis_d` 的十六进制是 8 位**（`#440154FF`）：R 的 `pal_viridis()`
   把 alpha 一起编码，`$data$colour` 里就是 8 位；`gpar` 的 `col2rgb` 认 8 位，
   渲染结果与 6 位相同。viridis_c 走 `colour_ramp()`，输出是 6 位。
+
+## 13. 多图对齐：`align_scales()`（SIL-1000）
+
+aplot 的 `xlim2()` / `ylim2()` 在画布层统一各图的坐标范围，再用 `adjust_coord()`
+给面板补 `coord_fixed`，否则同列 / 同行的面板会因范围不同而错位。gg4py 把它落在
+**语法层**：
+
+```python
+aligned = align_scales([p1, p2, p3], axis="xy", limits="union")
+aligned.plots        # 三张 clone 后的 ggplot
+aligned.limits       # {"x": (…), "y": (…)}
+aligned.dropped      # {图号: {"x": 被裁行数, "y": …}}
+aligned.coord_ratio  # 补上的 coord_fixed(ratio=)，没有就是 None
+```
+
+口径：
+
+- **`limits`**
+  - `"union"`（默认）：各图训练范围的并集，不丢数据；
+  - `"first"`：复刻 aplot，以第一张（主图）的 limits 为准；
+  - `"explicit"`：`x=` / `y=` 给值；直接给 2 元序列是「所有被 align 的轴共用
+    这个范围」的简写，`{"x": …, "y": …}` 可以分别给。没给显式值的轴退回并集
+    （不擅自丢数据）。
+- **连续**：在**变换后空间**取范围再逆变换回数据空间，所以 `scale_x_log10()` /
+  `reverse` / `sqrt` 与日期时间都适用。写回时 `limits` 仍按数据空间解释
+  （`scale_x_log10(limits = c(1, 1000))` 的口径），由标度自己再变换。
+- **离散**：统一的是 `levels`（并集保持首图顺序，显式值即新顺序），不是数值
+  limits。断点 / 位置编码都走 `ScaleDiscrete.limits()`，两张图因此同序。
+- **日期 / 时间**：按底层数值统一（`date` 是天、`datetime` 是秒），并保留原来的
+  `date` / `time` 变换（默认标度仍解析成 `scale_x_date()` / `scale_x_datetime()`）。
+- **`axis` 指数据轴**：`coord_flip()` 只换视觉方向，`axis="x"` 改的仍是数据 x。
+- **`oob`**：默认 `"censor"`（超出 limits 的行被丢掉，行数记进 `dropped`，按层
+  的数据行计数）；`"squish"` 不丢行，`dropped` 全 0。
+- **`coord_fixed` 适配**：主图（或任一子图）有固定比例的，给其余没设比例的图补
+  `coord_fixed(ratio=同值)`；都没设就不动。`adjust_coord=False` 关掉这一步。
+- **不改原图**：每张图先 `clone()`，再改 `scales` / `coordinates`。
+
+裁剪计数用**原始数据**（`compute_aesthetics()` 的表）：`LayerBuild.aesthetics`
+是位置标度映射之后的表，离散 x 已变成 1..n，拿水平名去比会全判成越界。
+
+非范围（SIL-998）：跨图共享同一个 scale 对象、free-scale 跨图、双轴、极坐标 /
+固定纵横比的刻度对齐（只做 `coord_fixed` 适配）。

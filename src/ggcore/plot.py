@@ -387,6 +387,27 @@ def _rename_aesthetic(name: str) -> str:
     return "colour" if name == "color" else name
 
 
+def align_scales(
+    plots: Any,
+    *,
+    axis: str = "xy",
+    limits: Any = "union",
+    x: Any = None,
+    y: Any = None,
+    adjust_coord: bool = True,
+    oob: str = "censor",
+) -> Any:
+    """统一多张图的 scale limits / breaks，并按需补 `coord_fixed`（SIL-1000）。
+
+    实现与口径见 `ggcore.align`。返回 `AlignedPlots`（可直接当序列迭代）。
+    """
+    from ggcore.align import align_scales as _align_scales
+
+    return _align_scales(
+        plots, axis=axis, limits=limits, x=x, y=y, adjust_coord=adjust_coord, oob=oob
+    )
+
+
 # 模块级函数与 registry 里的**同一个函数对象**（两个入口，一条注册表）。
 # label 的入口叫 `labs`，没有前缀，其余形如 `geom_point` / `scale_x_log10`。
 def _export_registry_entries() -> list[str]:
@@ -395,6 +416,7 @@ def _export_registry_entries() -> list[str]:
     names = [
         "aes",
         "after_stat",
+        "align_scales",
         "arrow",
         "ggplot",
         "gg_add",
