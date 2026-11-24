@@ -129,6 +129,28 @@ def test_continuous_explicit_matches_aplot() -> None:
     assert_limits(elems, theirs)
 
 
+def test_dual_axis_first_matches_aplot() -> None:
+    """双轴同时裁剪：R 的 "Removed N rows" 是 x / y 的行级并集，不是两轴相加。"""
+    case = CASES["dual_axis_first"]
+    main = point(numeric_table([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]))
+    child = point(numeric_table([1.0, 2.0, 4.0, 5.0], [1.0, 5.0, 4.0, 2.0]))
+
+    aligned = align_scales([main, child], axis="xy", limits="first")
+
+    for name in ("x", "y"):
+        assert_limits(aligned.report.limits[name].transformed, case["main"][name]["limits"])
+        panel = build_plot(aligned[1]).panel_params
+        assert_limits(panel.limits[name], case["aligned"][name]["limits"])
+        assert_limits(panel.ranges[name], case["aligned"][name]["panel_range"])
+
+    per_axis = {item.axis: item.rows for item in aligned.report.clipped if item.plot == 1}
+    assert per_axis == {"x": case["removed_x"], "y": case["removed_y"]}
+    assert case["removed_x"] == 2 and case["removed_y"] == 2
+    assert aligned.report.clipped_rows == case["removed"] == 3
+    assert aligned.report.rows_dropped(1) == case["removed"]
+    assert build_plot(aligned[1]).panel_params.rows_dropped == case["removed"]
+
+
 def test_discrete_first_matches_aplot() -> None:
     case = CASES["discrete_first"]
     main = bar(["a", "b"])

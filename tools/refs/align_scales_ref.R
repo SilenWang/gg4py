@@ -11,7 +11,9 @@
 #   = `panel_params[[1]]$x$limits`（**标度空间**、不含 expand）；
 # - 应用到目标图时 `set_scale_limits()` 保留原 scale 的 `expand`；
 # - 离散轴上 aplot 还会写 `continuous_limits` 并把 `expand` 改成 `c(0, 0)`；
-# - 裁剪行数取 `ggplot_build()` 的 "Removed N rows" 消息之和。
+# - 裁剪行数**不**读 "Removed N rows" 消息（`ggplot_build()` 只 censor 不断行、
+#   也不打印它）：数 `data[[1]]` 里由 censor 新增的 NA；双轴 case 取 x / y 的
+#   行级并集。
 #
 # 本脚本不重算任何公式：夹具里的每个数都是 R 跑出来的，Python 侧只比夹具。
 
@@ -173,6 +175,44 @@ child_flip <- point_plot(data.frame(x = c(1, 2), y = c(5, 25))) + coord_flip()
 cases[[length(cases) + 1]] <- c(
   list(name = "flip_first"),
   base_case(main_flip, child_flip, prune_axis = "y")
+)
+
+# --- 双轴同时裁剪（xlim2 + ylim2） -----------------------------------------
+dual_case <- function(name, main, child) {
+  main_build <- ggplot_build(main)
+  child_build <- ggplot_build(child)
+  aligned <- child + xlim2(main) + ylim2(main)
+  built <- with_removed(function() ggplot_build(aligned))
+  panel_params <- built$value$layout$panel_params[[1]]
+  child_data <- child_build$data[[1]]
+  aligned_data <- built$value$data[[1]]
+  removed_axis <- function(axis) {
+    as.integer(sum(!is.na(child_data[[axis]])) - sum(!is.na(aligned_data[[axis]])))
+  }
+  row_missing <- function(data) is.na(data$x) | is.na(data$y)
+  list(
+    name = name,
+    axis = "xy",
+    main = list(
+      x = axis_view(main_build$layout$panel_params[[1]], "x"),
+      y = axis_view(main_build$layout$panel_params[[1]], "y")
+    ),
+    aligned = list(
+      x = axis_view(panel_params, "x"),
+      y = axis_view(panel_params, "y")
+    ),
+    removed = as.integer(sum(row_missing(aligned_data)) - sum(row_missing(child_data))),
+    removed_x = removed_axis("x"),
+    removed_y = removed_axis("y"),
+    coord = class(aligned$coordinates)[1]
+  )
+}
+
+# x 越界在第 3、4 行、y 越界在第 2、3 行 → 行级并集 3 行（不是 2 + 2）。
+cases[[length(cases) + 1]] <- dual_case(
+  "dual_axis_first",
+  point_plot(numeric_data(c(1, 2, 3), c(1, 2, 3))),
+  point_plot(numeric_data(c(1, 2, 4, 5), c(1, 5, 4, 2)))
 )
 
 # --- adjust_coord：主图 coord_fixed、子图 cartesian ------------------------

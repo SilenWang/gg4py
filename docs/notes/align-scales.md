@@ -35,8 +35,9 @@ aligned = gg4py.align_scales(
 
 p1_aligned, p2_aligned, p3_aligned = aligned
 aligned.report.limits["x"].limits  # (0.0, 10.0) 之类（数据空间）
-aligned.report.clipped  # first / explicit 的裁剪计数
-aligned.report.clipped_rows  # 所有图、所有轴的新增裁剪行数
+aligned.report.clipped  # 每图每轴的裁剪明细（ClipCount）
+aligned.report.clipped_plots  # 每图一条的跨轴行并集（PlotClip）
+aligned.report.clipped_rows  # 所有图的新增裁剪行数（跨轴并集，不重复计同一行）
 ```
 
 返回值 `AlignedPlots` 是 `Sequence[ggplot]`：可以遍历 / 下标 / 解包，报告挂在
@@ -75,24 +76,41 @@ aligned.report.clipped_rows  # 所有图、所有轴的新增裁剪行数
 
 ## 3. 裁剪不静默
 
-`limits="first"` / `"explicit"` 会按 `oob` 丢数据。丢了什么记在
-`report.clipped`（`ClipCount`）：
+`limits="first"` / `"explicit"` 会按 `oob` 丢数据。报告分**两份口径**：
+
+`report.clipped`（`ClipCount`，每图每轴的明细）：
 
 | 字段 | 含义 |
 | --- | --- |
 | `plot` | 图序号（0 起） |
 | `axis` | `"x"` / `"y"` |
-| `rows` | 新增的**行级**缺失（x / y 任一越界即一行）= R 的 "Removed N rows" |
-| `values` | 该轴新增的缺失值数 |
+| `rows` | **这条轴**自己的越界行数 |
+| `values` | 与 `rows` 相同（保留的别名） |
 | `levels` | 离散轴上被去掉的水平 |
 
-`rows` 在**原始数据**（`LayerBuild.aesthetics`，映射后、stat 前）上按新 limits
-判定，而不是在重建后的 `rows_dropped` 里取差值：`stat_count()` / `stat_bin()`
-会在统计阶段就把越界行删掉，留在 `rows_dropped` 里的恒为 0，看起来像「没丢数据」。
+`report.clipped_plots`（`PlotClip`，每图一条）= R 的 "Removed N rows" 口径：
+**跨轴行级并集**（x 或 y 任一越界即一行，同一行只算一次）。
+`report.clipped_rows` / `report.rows_dropped(plot)` 读这一份，所以双轴同时裁剪时
+不会把同一行数两次：
+
+```python
+# child 的 x = [1,2,4,5]、y = [1,5,4,2]，统一到 1..3：
+aligned.report.clipped  # x 轴 rows=2、y 轴 rows=2（明细）
+aligned.report.clipped_rows  # 3（第 2/3/4 行，跨轴并集）
+```
+
+**不要**把 `report.clipped` 的 `rows` 直接相加——`axis="xy"` 时同一行会在两条轴
+上各出现一次。
+
+判定位置是**映射后、stat 前**的表（`LayerBuild.aesthetics`）：连续轴已是标度空间、
+离散轴是旧水平号，`_outside_by_layer()` 负责翻回数据空间比较。不在重建后的
+`rows_dropped` 里取差值：`stat_count()` / `stat_bin()` 会在统计阶段就把越界行删掉，
+留在 `rows_dropped` 里的恒为 0，看起来像「没丢数据」。
 
 `oob` 默认 `None` = 沿用各标度自己的默认（连续 `censor`、分箱位置 `squish`），
 与 issue 要求的「默认 censor」在连续位置上等价；显式 `oob="censor"` /
-`"squish"` 才覆盖所有图。`oob="squish"` 不删行，`report.clipped` 为空。
+`"squish"` 才覆盖所有图。`oob="squish"` 不删行，`report.clipped` 与
+`report.clipped_plots` 都为空。
 
 ## 4. breaks / expand
 
@@ -101,9 +119,16 @@ aligned.report.clipped_rows  # 所有图、所有轴的新增裁剪行数
   那套，与 aplot 的 `set_scale_limits()`（只改 limits）相同。
 - `breaks="first"`：把第一张图算出来的断点（数据空间）写到所有图上；显式序列则
   直接写。离散轴的断点就是 levels，不需要单独统一。
-- `expand="keep"`（默认，与 aplot 相同）保留各图自己的 `expand`；要让 **tick 在
-  页面上的坐标**也严格一致（不只是值集合），用 `expand="first"` 把第一张图的
-  `expand` 抄给所有图。
+- `expand="keep"`（默认，与 aplot 相同）保留各图自己的 `expand`。**这条默认值
+  不保证 tick 的页面坐标相同**：只要有一张图显式设过 `expand`（例如
+  `scale_x_continuous(expand = (0, 0))`），统一 limits 后它的面板范围仍与其他图
+  不同，tick 的 npc 位置就会差一截（PR 的
+  `test_expand_first_makes_the_panel_ranges_identical` 直接钉住这个差别：
+  `(1.0, 2.0)` vs `(0.95, 2.05)`）。
+
+  所以组合层（SIL-1001 的 `wrap_plots()` / `plot_gtable()`）**必须**传
+  `expand="first"`，或由调用方保证所有图 `expand` 一致；只比「tick 值集合」时
+  `"keep"` 够用。`expand="first"` 把第一张图的 `expand` 抄给所有图。
 
 ## 5. `coord_fixed` 适配（`adjust_coord`）
 
@@ -132,6 +157,7 @@ aligned.report.clipped_rows  # 所有图、所有轴的新增裁剪行数
 | `reverse_first` | `child + xlim2(main)` | `-2..-1`（reverse 空间） | 2 | 同上 |
 | `date_first` | `child + xlim2(main)` | `18262..18414`（天） | 1 | 同上 |
 | `flip_first` | `child + xlim2(main)` | 视觉 x = 数据 y `10..20` | 2 | `axis="y"`（数据轴） |
+| `dual_axis_first` | `child + xlim2(main) + ylim2(main)` | x `1..3` / y `1..3` | 3（x 2 + y 2 的行并集） | `axis="xy", limits="first"` |
 | `adjust_coord_ratio` | `aplot:::adjust_coord(...)` | — | — | `coord_fixed(ratio=2)` |
 
 逐项对拍的口径：
@@ -140,7 +166,8 @@ aligned.report.clipped_rows  # 所有图、所有轴的新增裁剪行数
   `panel_params[[1]]$x$limits`，是**标度空间**的值；gg4py 比
   `report.limits[axis].transformed`（同一空间），离散轴比 levels；
 - aplot 侧**不打印** "Removed N rows"（`ggplot_build()` 只 censor 不断行），所以
-  fixture 数 `data[[1]]` 里新增的 NA；gg4py 比 `report.clipped[*].rows`；
+  fixture 数 `data[[1]]` 里新增的 NA；单轴 case 比 `ClipCount.rows`，双轴 case
+  比 `clipped_rows` / `rows_dropped()`（跨轴行并集）；
 - 面板范围（`panel_range`）也逐值比：log10 / reverse 的 `x.range` 在映射空间，
   gg4py 的 reverse range 保持递减顺序（消费方按 `sorted()` 处理），测试排序后比。
 

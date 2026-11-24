@@ -10,8 +10,10 @@
   `coord_flip()` 只交换**视觉**轴，不影响这里的选择；比例适配（`adjust_coord`）
   才按视觉轴取范围。
 - **不修改原图**：`ggplot.clone()` 之后替换标度；原对象的 `scales` 一个字不变。
-- **裁剪不静默**：`limits="first"` / `"explicit"` 会按 `oob` 丢数据，丢了多少行
-  记在返回值的 `report` 里（行级 + 按轴），对应 R 的 "Removed N rows"。
+- **裁剪不静默**：`limits="first"` / `"explicit"` 会按 `oob` 丢数据。丢了多少
+  行记在 `report.clipped_plots`（每图一条的跨轴行并集 = R 的 "Removed N rows"），
+  每图每轴的明细在 `report.clipped`；`clipped_rows` / `rows_dropped()` 用并集口径，
+  不会把同一行数两次。
 - **变换在变换后的空间里取**：`scale_x_log10()` 的并集是 `log10(值)` 的并集，
   再反变换回数据空间写进 `limits=`；日期按底层数值（Date = 天，POSIXct = 秒）。
 
@@ -50,6 +52,7 @@ __all__ = [
     "AlignedPlots",
     "AxisLimits",
     "ClipCount",
+    "PlotClip",
     "align_scales",
 ]
 
@@ -100,16 +103,29 @@ class AxisLimits:
 
 @dataclass(frozen=True, slots=True)
 class ClipCount:
-    """一张图在一条轴上因对齐新增的裁剪。"""
+    """一张图在**一条轴**上因对齐新增的裁剪。
+
+    `rows` 是这条轴自己的越界行数；跨轴的行级并集（R 的 "Removed N rows"）在
+    :class:`PlotClip` / :attr:`AlignReport.clipped_plots` 里。双轴同时裁剪时同一
+    行会在两条轴上各出现一次，所以**不要**把 `clipped` 的 `rows` 直接相加。
+    """
 
     plot: int
     axis: str
-    #: 新增的**行级**缺失（x / y 任一缺失即一行）= R 的 "Removed N rows"。
+    #: 这条轴自己的越界行数。
     rows: int
-    #: 该轴自己的越界行数（`rows` 是跨轴取并集后的行级计数）。
+    #: 与 `rows` 相同（保留的别名，便于按轴读「值数」）。
     values: int
     #: 离散轴上被统一 levels 去掉的水平（连续轴为空）。
     levels: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class PlotClip:
+    """一张图的跨轴行级裁剪 = R 的 "Removed N rows"（x / y 任一越界即一行）。"""
+
+    plot: int
+    rows: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,17 +134,20 @@ class AlignReport:
 
     axis: str
     limits: Mapping[str, AxisLimits]
+    #: 每图每轴的明细（同一行可能在 x / y 上各记一条）。
     clipped: tuple[ClipCount, ...] = ()
+    #: 每图一条的跨轴行级并集（R 口径）；`clipped_rows` / `rows_dropped()` 用它。
+    clipped_plots: tuple[PlotClip, ...] = ()
     warnings: tuple[str, ...] = ()
 
     @property
     def clipped_rows(self) -> int:
-        """所有图、所有轴的新增裁剪行数之和。"""
-        return sum(item.rows for item in self.clipped)
+        """所有图的新增裁剪行数（跨轴并集，不重复计同一行）。"""
+        return sum(item.rows for item in self.clipped_plots)
 
     def rows_dropped(self, plot: int) -> int:
-        """第 `plot` 张图因对齐新增的裁剪行数（所有轴相加）。"""
-        return sum(item.rows for item in self.clipped if item.plot == plot)
+        """第 `plot` 张图因对齐新增的裁剪行数（跨轴并集）。"""
+        return sum(item.rows for item in self.clipped_plots if item.plot == plot)
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,7 +238,13 @@ def align_scales(
         `"first"`（把第一张图算出来的断点写到所有图上）或显式的数据空间序列。
     expand:
         `"keep"`（默认，与 aplot 相同）保留各图自己的 `expand`；`"first"` 用第一
-        张图的 `expand`（要让 tick 在页面上的坐标也严格相同，用这个）。
+        张图的 `expand`。
+
+        **默认值不保证 tick 的页面坐标相同**：只要某张图显式设过 `expand`（例如
+        `scale_x_continuous(expand = (0, 0))`），统一 limits 后它与其他图的面板
+        范围仍不同，tick 的 npc 位置就会差一截。组合层（SIL-1001 的
+        `wrap_plots()` / `plot_gtable()`）必须传 `expand="first"`，或者调用方自己
+        保证所有图 `expand` 一致；只比「tick 值集合」时 `"keep"` 够用。
     adjust_coord:
         主图（第一张）是 `coord_fixed()` 时，给其它没设 `coord_fixed()` 的图补
         一个，避免组合后 panel 错位（aplot `adjust_coord()` 的对应物）。
@@ -297,7 +322,7 @@ def align_scales(
             )
         aligned[index] = clone
 
-    clipped = _clip_counts(measurements, axes, unified)
+    clipped, clipped_plots = _clip_counts(measurements, axes, unified)
     if adjust_coord:
         aligned, notes = _adjust_coord(aligned, unified, coord_size)
         warnings_out.extend(notes)
@@ -311,6 +336,7 @@ def align_scales(
             }
         ),
         clipped=clipped,
+        clipped_plots=clipped_plots,
         warnings=tuple(warnings_out),
     )
     for note in warnings_out:
@@ -738,14 +764,21 @@ def _clip_counts(
     before: Sequence[Mapping[str, _Measurement]],
     axes: tuple[str, ...],
     unified: Mapping[str, _Unified],
-) -> tuple[ClipCount, ...]:
-    """对齐引入的裁剪：在**原始数据**（`layer.aesthetics`）上按新 limits 判越界。
+) -> tuple[tuple[ClipCount, ...], tuple[PlotClip, ...]]:
+    """对齐引入的裁剪：在**映射后、stat 前**的表（`LayerBuild.aesthetics`）上判越界。
 
-    不在对齐后的构建里数 NA：`stat_count()` / `stat_bin()` 会在映射阶段就把越界
-    行删掉，留下的 `rows_dropped` 恒为 0，看起来像「没丢数据」。这里逐层比对
-    原始列，跨轴按行取并集，与 R 的 "Removed N rows" 同一个口径。
+    为什么不在对齐后的构建里数 NA：`stat_count()` / `stat_bin()` 会在统计阶段就
+    把越界行删掉，留下的 `rows_dropped` 恒为 0，看起来像「没丢数据」。为什么用
+    `layer.aesthetics` 而不是更早的原始列：它就是 `map_position()` 之后的表，
+    连续轴在标度空间、离散轴是旧水平号，`_outside_by_layer()` 有对应的翻回逻辑。
+
+    返回两份口径：
+
+    - `ClipCount`：每图每轴的明细（`rows` 只算该轴）；
+    - `PlotClip`：每图一条的跨轴行并集，= R 的 "Removed N rows"。
     """
     out: list[ClipCount] = []
+    plots: list[PlotClip] = []
     for index in range(len(before)):
         per_axis: dict[str, int] = {}
         per_layer: dict[int, np.ndarray] = {}
@@ -762,6 +795,8 @@ def _clip_counts(
                 merged = per_layer.get(layer_index)
                 per_layer[layer_index] = mask if merged is None else (merged | mask)
         rows = int(sum(int(mask.sum()) for mask in per_layer.values()))
+        if rows:
+            plots.append(PlotClip(plot=index, rows=rows))
         for name in axes:
             if name not in unified:
                 continue
@@ -771,11 +806,11 @@ def _clip_counts(
                 kept = set(unified[name][0])
                 levels = tuple(level for level in source.limits if level not in kept)
             values = per_axis.get(name, 0)
-            if rows or values or levels:
+            if values or levels:
                 out.append(
-                    ClipCount(plot=index, axis=name, rows=rows, values=values, levels=levels)
+                    ClipCount(plot=index, axis=name, rows=values, values=values, levels=levels)
                 )
-    return tuple(out)
+    return tuple(out), tuple(plots)
 
 
 def _outside_by_layer(

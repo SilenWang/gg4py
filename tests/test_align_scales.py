@@ -131,6 +131,7 @@ def test_union_does_not_drop_any_rows() -> None:
     aligned = align_scales([first, second], axis="xy")
 
     assert aligned.report.clipped == ()
+    assert aligned.report.clipped_plots == ()
     assert aligned.report.clipped_rows == 0
     for plot in aligned:
         assert build_plot(plot).panel_params.rows_dropped == 0
@@ -178,6 +179,39 @@ def test_first_uses_the_main_plot_and_reports_cropped_rows(
     # 与 R 的 "Removed N rows" 对齐：剩下 2 行。
     assert build_plot(aligned[1]).panel_params.rows_dropped == 2
     assert build_plot(aligned[0]).panel_params.rows_dropped == 0
+
+
+def test_dual_axis_crops_are_counted_once_across_axes() -> None:
+    """审计复现：同一批行在 x / y 上都越界时，`clipped_rows` 只算一次。"""
+    main = point(numeric_table([1.0, 2.0], [1.0, 2.0]))
+    child = point(numeric_table([1.0, 2.0, 4.0, 5.0], [1.0, 2.0, 4.0, 5.0]))
+
+    aligned = align_scales([main, child], axis="xy", limits="first")
+
+    per_axis = {item.axis: item.rows for item in aligned.report.clipped if item.plot == 1}
+    assert per_axis == {"x": 2, "y": 2}  # 每条轴自己的越界行数
+    assert [(item.plot, item.rows) for item in aligned.report.clipped_plots] == [(1, 2)]
+    assert aligned.report.clipped_rows == 2  # 不是 2 + 2
+    assert aligned.report.rows_dropped(0) == 0
+    assert aligned.report.rows_dropped(1) == 2
+    # 与重建后的行级计数一致（R 的 "Removed N rows"）。
+    assert build_plot(aligned[1]).panel_params.rows_dropped == 2
+
+
+def test_dual_axis_crops_union_of_distinct_rows() -> None:
+    """x / y 越界的行不完全重叠：行级计数是并集，不是两条轴相加。"""
+    main = point(numeric_table([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]))
+    # x = 1,2,4,5 → 第 3、4 行越界；y = 1,5,4,2 → 第 2、3 行越界。
+    child = point(numeric_table([1.0, 2.0, 4.0, 5.0], [1.0, 5.0, 4.0, 2.0]))
+
+    aligned = align_scales([main, child], axis="xy", limits="first")
+
+    per_axis = {item.axis: item.rows for item in aligned.report.clipped if item.plot == 1}
+    assert per_axis == {"x": 2, "y": 2}
+    assert [(item.plot, item.rows) for item in aligned.report.clipped_plots] == [(1, 3)]
+    assert aligned.report.clipped_rows == 3
+    assert aligned.report.rows_dropped(1) == 3
+    assert build_plot(aligned[1]).panel_params.rows_dropped == 3
 
 
 def test_explicit_limits_accept_a_sequence_shorthand() -> None:
