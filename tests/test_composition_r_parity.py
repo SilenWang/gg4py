@@ -21,7 +21,7 @@ import pytest
 
 import gg4py
 from ggcore.plot import aes, geom_point, ggplot, labs
-from ggcore.theme import element_rect, theme
+from ggcore.theme import element_rect, element_text, theme
 from ggio.frame import from_dict
 from ggskia.text import ShaperMetrics
 
@@ -190,3 +190,128 @@ def test_aligned_scales_keeps_tick_geometry_in_the_composition() -> None:
     assert sum(sizes.heights_cm[: left.t - 1]) == pytest.approx(
         sum(sizes.heights_cm[: right.t - 1]), abs=1e-9
     )
+
+
+# ---------------------------------------------------------------------------
+# guides="collect" / guide_area()（SIL-1002）
+# ---------------------------------------------------------------------------
+
+
+def _legend_plots() -> tuple[ggplot, ggplot]:
+    """与 `compose_ref.R` 的 `l1` / `l3` 同构：同图例 + 一个改了 `legend.text`。"""
+    data = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "y": [2.0, 4.0, 3.0, 5.0, 6.0, 3.0],
+            "g": ["a", "b", "a", "b", "a", "b"],
+        }
+    )
+    base = ggplot(data, aes(x="x", y="y", colour="g")) + geom_point() + labs(colour="gear")
+    return base, base + theme(**{"legend.text": element_text(size=20)})
+
+
+def _legend_labels(plot: Any) -> list[str]:
+    """渲染后图例里的键文本（`a` / `b`）：R 侧数 SVG 里的 `>aa<` 是同一件事。"""
+    scene = plot.to_scene(metrics=METRICS, width_in=7.0, height_in=5.0)
+    labels: list[str] = []
+
+    def walk(node: Any) -> None:
+        labels.extend(label for label in node.texts if label in ("a", "b", "g"))
+        for child in node.children or ():
+            walk(child)
+
+    walk(scene.root)
+    return labels
+
+
+def test_r_guides_fixture_is_the_documented_behaviour() -> None:
+    """夹具自证：patchwork 1.3.2 的 keep / collect / 主题差异确实如此。"""
+    guides = _reference()["guides"]
+    assert guides["keep"]["guide_count"] == 2
+    assert guides["keep"]["legend_label_count"] == 2
+    assert guides["collect"]["guide_count"] == 1
+    assert guides["collect"]["legend_label_count"] == 1
+    assert guides["different_theme"]["guide_count"] == 2
+    # collect 的顶层 guide-box 在 panel 右侧第 5 列、跨 panel 行。
+    box = guides["collect"]["guide_box"]
+    assert box["col_offset_from_panel"] == 5
+    assert box["spans_panel_rows"] is True
+    # guide_area()：占用普通 panel 格（与同格 patch 的矩形相同）。
+    area = guides["area"]["guide_area"]
+    assert area["matches_patch_cell"] is True
+    assert area["w"] > 0 and area["h"] > 0
+
+
+def test_our_guides_collect_matches_r_counts() -> None:
+    ref = _reference()["guides"]
+    first, third = _legend_plots()
+    keep = _legend_labels(gg4py.wrap_plots(first, first, guides="keep"))
+    collect = _legend_labels(gg4py.wrap_plots(first, first, guides="collect"))
+    different = _legend_labels(gg4py.wrap_plots(first, third, guides="collect"))
+    assert keep.count("a") == ref["keep"]["legend_label_count"] == 2
+    assert collect.count("a") == ref["collect"]["legend_label_count"] == 1
+    assert different.count("a") == ref["different_theme"]["legend_label_count"] == 2
+
+
+def test_our_guide_box_sits_where_r_puts_it() -> None:
+    """关系对拍：盒在 panel 块的右侧图例槽、纵向跨 panel 行。
+
+    绝对偏移不逐值比：本仓 `plot_gtable()` 的 `guide-box-right` 槽比 ggplot2
+    4.0.3 少一列（SIL-999 的已知差异，见 `docs/notes/gtable.md`），R 是
+    panel 列 + 5，我们是 + 4；「在 panel 右侧的图例槽、跨 panel 行」一致。
+    """
+    ref = _reference()["guides"]["collect"]
+    first, _third = _legend_plots()
+    combined = gg4py.wrap_plots(first, first, guides="collect")
+    from ggcore import composition
+    from ggcore.composition import PANEL_COL, TABLE_COLS
+
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None
+    t, left, b, right = units.guide.area
+    assert left == right
+    assert left - (TABLE_COLS + PANEL_COL) > 0
+    assert ref["guide_box"]["spans_panel_rows"] is True
+    # 单行组合：盒的上下边就是 panel 行（与 R 的 t / b == panel t / b 同一关系）。
+    assert t == b == composition._panel_rows(units)[0] + 1
+    assert units.guide.layout.width_cm > 0
+
+
+def test_our_guide_area_matches_the_r_cell() -> None:
+    """`guide_area()` 的格就是普通 panel 格（R 的 `matches_patch_cell`）。"""
+    first, _third = _legend_plots()
+    combined = gg4py.wrap_plots(first, gg4py.guide_area(), guides="collect")
+    from ggcore import composition
+    from ggcore.composition import PANEL_COL, PANEL_ROW, TABLE_COLS
+
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None and units.guide.guide_area
+    assert units.guide.area == (
+        PANEL_ROW,
+        TABLE_COLS + PANEL_COL,
+        PANEL_ROW,
+        TABLE_COLS + PANEL_COL,
+    )
+    assert _legend_labels(combined).count("a") == 1
+
+
+def test_different_data_is_a_documented_known_difference() -> None:
+    """已知差异：数据不同、结构相同的图例，patchwork 不合并、本实现合并。
+
+    patchwork 1.3.2 的 `collapse_guides()` 比较渲染后的 guide grob，ggplot2
+    4.0.3 的 grob 里带随图层数据变化的字符串；SIL-1002 定的 GuideKey
+    （aesthetic + scale spec + breaks/labels + theme 指纹）会合并。夹具把 R 的
+    2 份记下来，本测试把差异钉住，避免以后误读成回归。
+    """
+    ref = _reference()["guides"]["different_data"]
+    assert ref["legend_label_count"] == 2  # R：不合并
+    first, _third = _legend_plots()
+    data = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "y": [6.0, 5.0, 4.0, 3.0, 2.0, 1.0],
+            "g": ["a", "b", "a", "b", "a", "b"],
+        }
+    )
+    other = ggplot(data, aes(x="x", y="y", colour="g")) + geom_point() + labs(colour="gear")
+    assert _legend_labels(gg4py.wrap_plots(first, other, guides="collect")).count("a") == 1

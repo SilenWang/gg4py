@@ -111,5 +111,116 @@
         }
       ]
     }
+  },
+  "guides": {
+    "keep": {
+      "width_in": 7,
+      "height_in": 5,
+      "guide_count": 2,
+      "legend_label_count": 2,
+      "panel": {
+        "t": 11,
+        "l": 9,
+        "b": 11,
+        "r": 24,
+        "w": 399.0074475,
+        "h": 311.46965
+      }
+    },
+    "collect": {
+      "width_in": 7,
+      "height_in": 5,
+      "guide_count": 1,
+      "legend_label_count": 1,
+      "panel": {
+        "t": 11,
+        "l": 9,
+        "b": 11,
+        "r": 24,
+        "w": 399.0074475,
+        "h": 311.46965
+      },
+      "guide_box": {
+        "t": 11,
+        "l": 29,
+        "b": 11,
+        "r": 29,
+        "w": 43.89033,
+        "h": 311.46965,
+        "col_offset_from_panel": 5,
+        "spans_panel_rows": true
+      }
+    },
+    "different_theme": {
+      "width_in": 7,
+      "height_in": 5,
+      "guide_count": 2,
+      "legend_label_count": 2,
+      "panel": {
+        "t": 11,
+        "l": 9,
+        "b": 11,
+        "r": 24,
+        "w": 386.7295775,
+        "h": 311.46965
+      },
+      "guide_box": {
+        "t": 11,
+        "l": 29,
+        "b": 11,
+        "r": 29,
+        "w": 56.1682,
+        "h": 311.46965,
+        "col_offset_from_panel": 5,
+        "spans_panel_rows": true
+      }
+    },
+    "different_data": {
+      "width_in": 7,
+      "height_in": 5,
+      "guide_count": 2,
+      "legend_label_count": 2,
+      "panel": {
+        "t": 11,
+        "l": 9,
+        "b": 11,
+        "r": 24,
+        "w": 399.0074475,
+        "h": 311.46965
+      },
+      "guide_box": {
+        "t": 11,
+        "l": 29,
+        "b": 11,
+        "r": 29,
+        "w": 43.89033,
+        "h": 311.46965,
+        "col_offset_from_panel": 5,
+        "spans_panel_rows": true
+      }
+    },
+    "area": {
+      "width_in": 7,
+      "height_in": 5,
+      "guide_count": 1,
+      "legend_label_count": 1,
+      "panel": {
+        "t": 11,
+        "l": 9,
+        "b": 11,
+        "r": 24,
+        "w": 453.8977775,
+        "h": 311.46965
+      },
+      "guide_area": {
+        "t": 11,
+        "l": 24,
+        "b": 11,
+        "r": 24,
+        "w": 221.44888875,
+        "h": 311.46965,
+        "matches_patch_cell": true
+      }
+    }
   }
 }
