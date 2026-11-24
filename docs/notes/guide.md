@@ -205,11 +205,17 @@ R 的 `guide$widths / heights`（容差 0.05cm）。
 
 R 的 `ggplotGrob()` 在 4.0.3 里是一个 **16×13** 的 gtable（`layout` 里 21 行，
 含 `background` / `spacer` / `axis-*` / `xlab-*` / `ylab-*` / `guide-box-*` /
-`title` / `subtitle` / `caption`）。ggcore 不复刻这张表：`plot_layout()` 直接把
-`plot.margin` / 标题行 / 图例盒 / 轴带 / 面板区算成 cm 矩形，`FacetTable` 只在
+`title` / `subtitle` / `caption`）。**单图渲染**不复刻这张表：`plot_layout()` 直接
+把 `plot.margin` / 标题行 / 图例盒 / 轴带 / 面板区算成 cm 矩形，`FacetTable` 只在
 面板区里解析。区域语义一一对应（夹具的 `structure.regions` 记录了 R 的区域名，
 `test_page_layout_covers_the_r_gtable_regions` 断言我们实现了同一组），但**行列数
 不同**——像素级差异来自各区域的尺寸（上面那张表），不是表格行数。
+
+多图合并需要可合并的整页表，所以 SIL-999 另加 `plot_gtable()`：
+它按同一套尺寸函数组装 R 结构的 unit-based gtable（panel 行列是 `null`），
+行列数 / 命名与 `ggplotGrob()` 逐条对拍（`refs:plot-gtable`、
+`tests/test_plot_gtable_r_parity.py`）。单图渲染仍走 `plot_layout()`；
+两条路的分工与已知差异见 `docs/notes/gtable.md` §「`plot_gtable()`」。
 
 **竖向图例的纵向位置**：R 的 guide 列挂在**面板行**上（strip 在 gtable 里是独立
 行，`guide-box-right` 的 `t`/`b` 只跨 panel 行），所以居中区 = 所有面板单元格的

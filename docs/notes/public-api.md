@@ -27,7 +27,7 @@ gg4py.ggsave(p, "first-plot.png", width=6, height=4, dpi=150)
 
 | 层 | 入口 | 内容 | 理由 |
 | --- | --- | --- | --- |
-| **顶层** | `gg4py` | `ggplot` / `aes` / `labs` / `guides`、全部 `geom_*` / `stat_*` / `position_*` / `scale_*` / `coord_*` / `facet_*` / `guide_*` / `theme_*`、输入适配 `from_*` / `to_column_table`、`ggsave`、`__version__` | ggplot2 里 `library(ggplot2)` 就能用的那批名字；画一张图不需要第二个 import |
+| **顶层** | `gg4py` | `ggplot` / `aes` / `labs` / `guides`、全部 `geom_*` / `stat_*` / `position_*` / `scale_*` / `coord_*` / `facet_*` / `guide_*` / `theme_*`、输入适配 `from_*` / `to_column_table`、`plot_gtable`、`ggsave`、`__version__` | ggplot2 里 `library(ggplot2)` 就能用的那批名字；画一张图不需要第二个 import |
 | **子命名空间** | `gg4py.io` / `gg4py.ir` / `gg4py.diff` | IR 编解码（`encode` / `decode` / `Scene` / `Node` …）、IR 落盘与后端注册（`save_ir` / `export_ir_json` / `register_backend` …）、差分（`compare_images` / `rasterize_svg` …） | 开发者 API：写渲染器、对拍、调试 IR 时才用；首次访问才导入 |
 | **内部包** | `ggcore.*` / `ggio` / `ggshape` / `ggskia` / `ggdiff` | 原样保留 | 高级入口、扩展写法、既有文档与 `pixi run` 任务都按这些路径写 |
 

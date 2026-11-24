@@ -48,6 +48,8 @@ from ggcore.facet import labeller as labeller
 from ggcore.fills import linear_gradient as linear_gradient
 from ggcore.fills import radial_gradient as radial_gradient
 from ggcore.fills import tile_pattern as tile_pattern
+from ggcore.geom.scene import PlotGrob as PlotGrob
+from ggcore.geom.scene import plot_gtable as plot_gtable
 
 # SIL-745：NAMESPACE 里这些导出不是「可加到图上的组件」（全局主题状态、4.0 的
 # theme_sub_* 简写、guide 的协议钩子），所以不进注册表，也不该被
@@ -403,6 +405,7 @@ def _export_registry_entries() -> list[str]:
         "sec_axis",
         "dup_axis",
         "update_geom_defaults",
+        "plot_gtable",
         "geom_sf_text",
         "geom_sf_label",
     ]

@@ -74,7 +74,7 @@ Python 模块，反之亦然；反过来，标着 `—` 的模块是上游没有
 | `ggcore.geom.dist` | `R/geom-density.R`、`R/geom-violin.R`、`R/geom-dotplot.R`、`R/geom-bin2d.R`、`R/geom-hex.R`、`R/geom-contour.R`、`R/geom-density2d.R`、`R/geom-jitter.R`、`R/geom-count.R`、`R/stat-qq.R`、`R/geom-quantile.R`、`R/geom-function.R` | 15 个 `*Renderer`（density / violin / dotplot / bin2d / hex / contour / contour_filled / density_2d(_filled) / jitter / count / qq / qq_line / quantile / function） | 已实现 | M2-7 长尾 B；逐列对拍 `tests/test_stat_2d_r_parity.py` |
 | `ggcore.geom.stat2d` | `R/geom-contour.R`、`R/geom-bin2d.R`、`R/geom-hex.R`、`R/geom-density2d.R` | 2D 族的 **build 级** geom（`setup_data()`） | 已实现 | M2-6 的兼容层：5 个名字的 `setup_data` 仍从这里取，`draw()` 已由 `ggcore.geom.dist` 接管，`build_only_renderers()` 为空（`tests/test_stat_2d_r_parity.py` 断言） |
 | `ggcore.geom.sf` | `R/geom-sf.R:121` | `GeomSf` / `GeomSfText` / `GeomSfLabel` | 已实现 | M3-2：点 / 线 / 面 / 几何集合按类型分派 + 图例 key；CRS 缺口归 `ggcore.sf` |
-| `ggcore.geom.scene` | `R/plot-build.R`（`ggplot_gtable()` 的整页装配） | 上游的 grob 树：背景 + panel + strip + 轴 + 图例 + 标题 | 已实现 | 本项目自造 IR 场景，见 `docs/notes/ir.md`；上游对应物是 `ggplotGrob()` 的产物 |
+| `ggcore.geom.scene` | `R/plot-build.R`（`ggplot_gtable()` 的整页装配） | 上游的 grob 树：背景 + panel + strip + 轴 + 图例 + 标题；`plot_gtable()` 是 `ggplotGrob()` 的 unit-based 整页表（SIL-999） | 已实现 | 本项目自造 IR 场景，见 `docs/notes/ir.md`；`plot_gtable()` 的行列/命名与 `ggplotGrob()` 逐条对拍（`docs/notes/gtable.md`） |
 
 ## stat
 

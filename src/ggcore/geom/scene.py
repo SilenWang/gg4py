@@ -30,7 +30,7 @@ page viewport（整页，plot.background）
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -81,7 +81,15 @@ from ggcore.grobs import (
     segments_grob,
     text_grob,
 )
-from ggcore.gtable import CellBox
+from ggcore.gtable import (
+    CellBox,
+    GTable,
+    Placement,
+    gtable_add_cols,
+    gtable_add_grob,
+    gtable_add_padding,
+    gtable_add_rows,
+)
 from ggcore.guide import (
     GuideBuild,
     GuideError,
@@ -102,15 +110,17 @@ from ggcore.theme import (
     element_grob,
     resolve_theme,
 )
-from ggcore.units import CM_PER_INCH, UnitContext, unit
+from ggcore.units import CM_PER_INCH, Unit, UnitContext, unit, unit_c
 from ggcore.viewport import NA, Device, ViewportTree, gpar, viewport
 
 __all__ = [
     "DEFAULT_HEIGHT_IN",
     "DEFAULT_WIDTH_IN",
     "Box",
+    "PlotGrob",
     "PlotLayout",
     "axis_title_area",
+    "plot_gtable",
     "plot_layout",
     "scene_from_build",
     "scene_from_plot",
@@ -1141,6 +1151,873 @@ def plot_layout(
         tag_element=tag_element if tag_box is not None else None,
         facet_table=table,
     )
+
+
+# ---------------------------------------------------------------------------
+# plot_gtable：ggplot2 `ggplotGrob()` 的等价物（SIL-999）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PlotGrob:
+    """整页 gtable 里的一个占位 grob（组合层只关心几何与名字）。
+
+    真实绘制仍走 `scene_from_build()`；这张表是 `ggplotGrob()` 的对等物，
+    给多图合并（patchwork 骨架）提供可合并的 unit-based 整页结构。
+    """
+
+    kind: str
+    name: str
+    text: str | None = None
+    panel: int | None = None
+    side: str | None = None
+    element: Any = None
+
+
+def _cm(value: float) -> Unit:
+    return unit(float(value), "cm")
+
+
+def _panel_frames(table: GTable) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """面板 grob 的行 / 列范围（`(t, b)` / `(l, r)`），按位置排序。
+
+    对齐 R 的 `panel_rows()` / `panel_cols()`：只看 `^panel` 名字。
+    """
+    panels = [row for row in table.layout if row.name.startswith("panel")]
+    rows = sorted({(row.t, row.b) for row in panels})
+    cols = sorted({(row.l, row.r) for row in panels})
+    return rows, cols
+
+
+def _weave_rows(
+    table: GTable,
+    grobs: Sequence[Sequence[Any]],
+    shift: int,
+    sizes: Sequence[Unit],
+    name: str,
+    *,
+    z: float = 1.0,
+) -> GTable:
+    """R `weave_tables_row()`：给**每个**面板行插一行，并跨所有面板列放 grob。
+
+    `shift = -1` 插在面板行上方（strip / axis-t），`shift = 0` 插在下方
+    （axis-b / bottom strip）。
+    """
+    rows, cols = _panel_frames(table)
+    positions = [top for top, _ in rows]
+    columns = [left for left, _ in cols]
+    for index in range(len(positions) - 1, -1, -1):
+        row_ind = positions[index] + shift
+        table = gtable_add_rows(table, sizes[index], pos=row_ind)
+        names = [f"{name}-{col + 1}-{index + 1}" for col in range(len(columns))]
+        table = gtable_add_grob(
+            table,
+            list(grobs[index]),
+            t=row_ind + 1,
+            l=columns,
+            z=z,
+            clip="off",
+            name=names,
+        )
+    return table
+
+
+def _weave_cols(
+    table: GTable,
+    grobs: Sequence[Sequence[Any]],
+    shift: int,
+    sizes: Sequence[Unit],
+    name: str,
+    *,
+    z: float = 1.0,
+) -> GTable:
+    """R `weave_tables_col()`：给每个面板列插一列（`shift = 0` 右侧 / `-1` 左侧）。"""
+    rows, cols = _panel_frames(table)
+    positions = [left for left, _ in cols]
+    row_positions = [top for top, _ in rows]
+    for index in range(len(positions) - 1, -1, -1):
+        col_ind = positions[index] + shift
+        table = gtable_add_cols(table, sizes[index], pos=col_ind)
+        names = [f"{name}-{row + 1}-{index + 1}" for row in range(len(row_positions))]
+        table = gtable_add_grob(
+            table,
+            list(grobs[index]),
+            t=row_positions,
+            l=col_ind + 1,
+            z=z,
+            clip="off",
+            name=names,
+        )
+    return table
+
+
+def _seam_rows(
+    table: GTable,
+    grobs: Sequence[Any],
+    *,
+    side: str,
+    size: Unit,
+    name: str,
+    z: float = 1.0,
+) -> GTable:
+    """R `seam_table()` 的行版本：整行一条（`facet_grid` 的轴 / strip）。"""
+    rows, cols = _panel_frames(table)
+    if side == "top":
+        position = rows[0][0] - 1
+    else:
+        position = rows[-1][1]
+    table = gtable_add_rows(table, size, pos=position)
+    columns = [left for left, _ in cols]
+    names = [f"{name}-{index + 1}" for index in range(len(columns))]
+    return gtable_add_grob(
+        table, list(grobs), t=position + 1, l=columns, z=z, clip="off", name=names
+    )
+
+
+def _seam_cols(
+    table: GTable,
+    grobs: Sequence[Any],
+    *,
+    side: str,
+    size: Unit,
+    name: str,
+    z: float = 1.0,
+) -> GTable:
+    """R `seam_table()` 的列版本：整列一条。"""
+    rows, cols = _panel_frames(table)
+    if side == "left":
+        position = cols[0][0] - 1
+    else:
+        position = cols[-1][1]
+    table = gtable_add_cols(table, size, pos=position)
+    row_positions = [top for top, _ in rows]
+    names = [f"{name}-{index + 1}" for index in range(len(row_positions))]
+    return gtable_add_grob(
+        table, list(grobs), t=row_positions, l=position + 1, z=z, clip="off", name=names
+    )
+
+
+def _replace_first(units: Unit, value: Unit) -> Unit:
+    return unit_c(value, units[1:])
+
+
+def _replace_last(units: Unit, value: Unit) -> Unit:
+    return unit_c(units[:-1], value)
+
+
+def _add_panel_labels(
+    table: GTable,
+    layout: PlotLayout,
+    *,
+    title_top: str | None,
+    title_bottom: str | None,
+    title_left: str | None,
+    title_right: str | None,
+) -> GTable:
+    """R `Facet$draw_labels()`：xlab-t / xlab-b 行 + ylab-l / ylab-r 列。"""
+    rows, cols = _panel_frames(table)
+    left, right = cols[0][0], cols[-1][1]
+    table = gtable_add_rows(table, _cm(layout.x_title_top_cm), pos=0)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("axis-title", "xlab-t", text=title_top, side="top"),
+        t=1,
+        l=left,
+        r=right,
+        name="xlab-t",
+        clip="off",
+    )
+    table = gtable_add_rows(table, _cm(layout.x_title_cm), pos=-1)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("axis-title", "xlab-b", text=title_bottom, side="bottom"),
+        t=-1,
+        b=-1,
+        l=left,
+        r=right,
+        name="xlab-b",
+        clip="off",
+    )
+    rows, _cols = _panel_frames(table)
+    top, bottom = rows[0][0], rows[-1][1]
+    table = gtable_add_cols(table, _cm(layout.y_title_cm), pos=0)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("axis-title", "ylab-l", text=title_left, side="left"),
+        t=top,
+        b=bottom,
+        l=1,
+        name="ylab-l",
+        clip="off",
+    )
+    table = gtable_add_cols(table, _cm(layout.y_title_right_cm), pos=-1)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("axis-title", "ylab-r", text=title_right, side="right"),
+        t=top,
+        b=bottom,
+        l=-1,
+        r=-1,
+        name="ylab-r",
+        clip="off",
+    )
+    return table
+
+
+def _single_panel_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> GTable:
+    """单面板：R `FacetNull$draw_panels()` 的 3×3 表（再用 draw_labels 加两行两列）。"""
+    table_src = layout.facet_table
+    aspect = 1.0
+    respect = False
+    if table_src is not None:
+        aspect = float(table_src.height_weights[0]) if table_src.height_weights else 1.0
+        respect = bool(table_src.respect)
+    table = GTable(
+        widths=unit_c(_cm(layout.y_axis_cm), unit(1.0, "null"), _cm(layout.y_axis_right_cm)),
+        heights=unit_c(_cm(layout.x_axis_top_cm), unit(aspect, "null"), _cm(layout.x_axis_cm)),
+        respect=respect,
+        name="layout",
+    )
+    # 列优先，z / 名字照 R 的 gtable_matrix：spacer 四角 + 四条轴。
+    items = (
+        (1, 1, 5.0, "spacer", None),
+        (2, 1, 7.0, "axis-l", "left"),
+        (3, 1, 3.0, "spacer", None),
+        (1, 2, 6.0, "axis-t", "top"),
+        (2, 2, 1.0, "panel", None),
+        (3, 2, 9.0, "axis-b", "bottom"),
+        (1, 3, 4.0, "spacer", None),
+        (2, 3, 8.0, "axis-r", "right"),
+        (3, 3, 2.0, "spacer", None),
+    )
+    grobs: list[Any] = []
+    placements: list[Placement] = []
+    for top, left, z, kind, side in items:
+        name = kind
+        grobs.append(
+            PlotGrob(
+                "panel" if kind == "panel" else ("axis" if kind.startswith("axis") else "spacer"),
+                name,
+                panel=1 if kind == "panel" else None,
+                side=side,
+            )
+        )
+        placements.append(Placement(t=top, l=left, b=top, r=left, z=z, clip="off", name=name))
+    table = replace(table, grobs=tuple(grobs), layout=tuple(placements))
+    return _add_panel_labels(
+        table,
+        layout,
+        title_top=_guide_title(guide_for(build, "x"), _axis_title_text(build, "x")),
+        title_bottom=_guide_title(guide_for(build, "x"), _axis_title_text(build, "x")),
+        title_left=_guide_title(guide_for(build, "y"), _axis_title_text(build, "y")),
+        title_right=None,
+    )
+
+
+def _facet_panel_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> GTable:
+    """分面：R `Facet$init_gtable()` + `attach_axes()` + `attach_strips()`。"""
+    ftable = layout.facet_table
+    if ftable is None:  # pragma: no cover - plot_layout() 总会给出
+        raise ValueError("plot_gtable() 需要 plot_layout() 解析出的 facet 表")
+    flayout = ftable.layout
+    nrow, ncol = flayout.nrow, flayout.ncol
+    facet = build.facet
+    kind = str(getattr(facet, "kind", "wrap") or "wrap")
+    spacing_x = _cm(_spacing_cm(theme, "panel.spacing.x"))
+    spacing_y = _cm(_spacing_cm(theme, "panel.spacing.y"))
+
+    widths: list[Unit] = []
+    for col in range(1, ncol + 1):
+        if col > 1:
+            widths.append(spacing_x)
+        weight = ftable.width_weights[col - 1] if ftable.width_weights else 1.0
+        widths.append(unit(float(weight), "null"))
+    heights: list[Unit] = []
+    for row in range(1, nrow + 1):
+        if row > 1:
+            heights.append(spacing_y)
+        weight = ftable.height_weights[row - 1] if ftable.height_weights else 1.0
+        heights.append(unit(float(weight), "null"))
+    table = GTable(
+        widths=unit_c(*widths),
+        heights=unit_c(*heights),
+        respect=bool(ftable.respect),
+        name="layout",
+    )
+
+    panels_at: dict[tuple[int, int], int] = {}
+    for panel in flayout.panel_ids:
+        panels_at[(int(flayout.row_of(panel)), int(flayout.col_of(panel)))] = int(panel)
+    grobs: list[Any] = []
+    placements: list[Placement] = []
+    for col in range(1, ncol + 1):
+        for row in range(1, nrow + 1):
+            top, left = 2 * row - 1, 2 * col - 1
+            name = f"panel-{col}-{row}"
+            grobs.append(PlotGrob("panel", name, panel=panels_at.get((row, col))))
+            placements.append(Placement(t=top, l=left, b=top, r=left, z=1.0, clip="off", name=name))
+    table = replace(table, grobs=tuple(grobs), layout=tuple(placements))
+
+    # ---- 轴（R `attach_axes()`）------------------------------------------
+    visible = {
+        "top": layout.x_axis_top_cm,
+        "bottom": layout.x_axis_cm,
+        "left": layout.y_axis_cm,
+        "right": layout.y_axis_right_cm,
+    }
+
+    def axis_size(side: str, panel: Any) -> float:
+        if panel is None:
+            return 0.0
+        shown = _axis_visible(build, panel, side)[0]
+        return float(visible[side]) if shown else 0.0
+
+    def axis_grob(side: str, name: str, panel: Any) -> PlotGrob:
+        return PlotGrob("axis", name, side=side, panel=panel)
+
+    if kind == "grid":
+        # `facet_grid`：每侧一整条（`seam_table()`），不是每个面板一条。
+        top_panels = [panels_at.get((1, col)) for col in range(1, ncol + 1)]
+        right_panels = [panels_at.get((row, ncol)) for row in range(1, nrow + 1)]
+        bottom_panels = [panels_at.get((nrow, col)) for col in range(1, ncol + 1)]
+        left_panels = [panels_at.get((row, 1)) for row in range(1, nrow + 1)]
+        table = _seam_rows(
+            table,
+            [axis_grob("top", f"axis-t-{col}", panel) for col, panel in enumerate(top_panels, 1)],
+            side="top",
+            size=_cm(max((axis_size("top", panel) for panel in top_panels), default=0.0)),
+            name="axis-t",
+            z=3.0,
+        )
+        table = _seam_cols(
+            table,
+            [
+                axis_grob("right", f"axis-r-{row}", panel)
+                for row, panel in enumerate(right_panels, 1)
+            ],
+            side="right",
+            size=_cm(max((axis_size("right", panel) for panel in right_panels), default=0.0)),
+            name="axis-r",
+            z=3.0,
+        )
+        table = _seam_rows(
+            table,
+            [
+                axis_grob("bottom", f"axis-b-{col}", panel)
+                for col, panel in enumerate(bottom_panels, 1)
+            ],
+            side="bottom",
+            size=_cm(max((axis_size("bottom", panel) for panel in bottom_panels), default=0.0)),
+            name="axis-b",
+            z=3.0,
+        )
+        table = _seam_cols(
+            table,
+            [axis_grob("left", f"axis-l-{row}", panel) for row, panel in enumerate(left_panels, 1)],
+            side="left",
+            size=_cm(max((axis_size("left", panel) for panel in left_panels), default=0.0)),
+            name="axis-l",
+            z=3.0,
+        )
+    else:
+
+        def axis_of(side: str, name: str) -> list[list[PlotGrob]]:
+            """每个面板行 / 列一组的轴 grob（`weave` 的 `table2[i, ]`）。"""
+            if side in ("top", "bottom"):
+                return [
+                    [
+                        axis_grob(side, f"{name}-{col}-{row}", panels_at.get((row, col)))
+                        for col in range(1, ncol + 1)
+                    ]
+                    for row in range(1, nrow + 1)
+                ]
+            return [
+                [
+                    axis_grob(side, f"{name}-{row}-{col}", panels_at.get((row, col)))
+                    for row in range(1, nrow + 1)
+                ]
+                for col in range(1, ncol + 1)
+            ]
+
+        def row_sizes(side: str) -> list[Unit]:
+            return [
+                _cm(
+                    max(
+                        (axis_size(side, panels_at.get((row, col))) for col in range(1, ncol + 1)),
+                        default=0.0,
+                    )
+                )
+                for row in range(1, nrow + 1)
+            ]
+
+        def col_sizes(side: str) -> list[Unit]:
+            return [
+                _cm(
+                    max(
+                        (axis_size(side, panels_at.get((row, col))) for row in range(1, nrow + 1)),
+                        default=0.0,
+                    )
+                )
+                for col in range(1, ncol + 1)
+            ]
+
+        table = _weave_rows(
+            table,
+            axis_of("top", "axis-t"),
+            shift=-1,
+            sizes=row_sizes("top"),
+            name="axis-t",
+            z=3.0,
+        )
+        table = _weave_cols(
+            table,
+            axis_of("right", "axis-r"),
+            shift=0,
+            sizes=col_sizes("right"),
+            name="axis-r",
+            z=3.0,
+        )
+        table = _weave_rows(
+            table,
+            axis_of("bottom", "axis-b"),
+            shift=0,
+            sizes=row_sizes("bottom"),
+            name="axis-b",
+            z=3.0,
+        )
+        table = _weave_cols(
+            table,
+            axis_of("left", "axis-l"),
+            shift=-1,
+            sizes=col_sizes("left"),
+            name="axis-l",
+            z=3.0,
+        )
+
+    # ---- strip（R `attach_strips()`）-------------------------------------
+    sides = {strip.side for strip in ftable.strips}
+
+    def strip_text(row: int, col: int) -> str | None:
+        panel = panels_at.get((row, col))
+        if panel is None:
+            return None
+        return next(
+            (strip.text for strip in ftable.strips if strip.panel == panel),
+            None,
+        )
+
+    if kind == "grid":
+        if "top" in sides or "bottom" in sides:
+            side = "bottom" if "bottom" in sides else "top"
+            texts = [strip_text(1, col) for col in range(1, ncol + 1)]
+            grobs = [
+                PlotGrob("strip", f"strip-{side[0]}-{col + 1}", text=texts[col], side=side)
+                for col in range(ncol)
+            ]
+            table = _seam_rows(
+                table,
+                grobs,
+                side=side,
+                size=_cm(ftable.strip_height_cm),
+                name=f"strip-{side[0]}",
+                z=2.0,
+            )
+        if "right" in sides or "left" in sides:
+            side = "left" if "left" in sides else "right"
+            texts = [strip_text(row, 1) for row in range(1, nrow + 1)]
+            grobs = [
+                PlotGrob("strip", f"strip-{side[0]}-{row + 1}", text=texts[row], side=side)
+                for row in range(nrow)
+            ]
+            table = _seam_cols(
+                table,
+                grobs,
+                side=side,
+                size=_cm(ftable.strip_width_cm),
+                name=f"strip-{side[0]}",
+                z=2.0,
+            )
+    else:
+        if "top" in sides or "bottom" in sides:
+            side = "bottom" if "bottom" in sides else "top"
+            table = _weave_rows(
+                table,
+                [
+                    [
+                        PlotGrob(
+                            "strip",
+                            f"strip-{side[0]}-{col}-{row}",
+                            text=strip_text(row, col),
+                            side=side,
+                        )
+                        for col in range(1, ncol + 1)
+                    ]
+                    for row in range(1, nrow + 1)
+                ],
+                shift=-1 if side == "top" else 0,
+                sizes=[_cm(ftable.strip_height_cm) for _ in range(nrow)],
+                name=f"strip-{side[0]}",
+                z=2.0,
+            )
+        if "right" in sides or "left" in sides:
+            side = "left" if "left" in sides else "right"
+            table = _weave_cols(
+                table,
+                [
+                    [
+                        PlotGrob(
+                            "strip",
+                            f"strip-{side[0]}-{row}-{col}",
+                            text=strip_text(row, col),
+                            side=side,
+                        )
+                        for row in range(1, nrow + 1)
+                    ]
+                    for col in range(1, ncol + 1)
+                ],
+                shift=-1 if side == "left" else 0,
+                sizes=[_cm(ftable.strip_width_cm) for _ in range(ncol)],
+                name=f"strip-{side[0]}",
+                z=2.0,
+            )
+
+    x_title = _guide_title(guide_for(build, "x"), _axis_title_text(build, "x"))
+    y_title = _guide_title(guide_for(build, "y"), _axis_title_text(build, "y"))
+    return _add_panel_labels(
+        table,
+        layout,
+        title_top=x_title,
+        title_bottom=x_title,
+        title_left=y_title,
+        title_right=None,
+    )
+
+
+def _spacing_cm(theme: ResolvedTheme, name: str) -> float:
+    from ggcore.units import convert_width
+
+    value = theme.get(name)
+    if value is None:
+        return 0.0
+    if isinstance(value, Unit):
+        return float(np.asarray(convert_width(value, "cm", ctx=UnitContext())).sum())
+    return float(value)
+
+
+def _legend_box_sides(layout: PlotLayout) -> dict[str, tuple[Any, tuple[int, ...]]]:
+    """`side → (guide-box 布局, 该侧 guide 下标)`（复用 `plot_layout()` 的盒子）。"""
+    guides = layout.guides
+    if not guides or not layout.legend_box_layouts:
+        return {}
+    sides = [str(guide.position or layout.legend_side) for guide in guides]
+    order: list[str] = []
+    keys: dict[str, list[int]] = {}
+    for side in ("top", "right", "bottom", "left", "inside"):
+        for index, value in enumerate(sides):
+            key = f"inside:{index}" if value == "inside" else value
+            if value == side and key not in order:
+                order.append(key)
+            if value == side:
+                keys.setdefault(key, []).append(index)
+    boxes = dict(zip(order, layout.legend_box_layouts, strict=False))
+    out: dict[str, tuple[Any, tuple[int, ...]]] = {}
+    for key, box in boxes.items():
+        side = "inside" if key.startswith("inside") else key
+        if side != "inside":
+            out[side] = (box, tuple(keys.get(key, ())))
+    return out
+
+
+def _legend_box_width(
+    box: Any, indices: Sequence[int], layout: PlotLayout, theme: ResolvedTheme, metrics: Any
+) -> Unit:
+    """guide-box 的宽度单位：固定部分用 cm，标签宽度用 `strwidth`。
+
+    R 的 `guide-box` 是嵌套 gtable，`gtable_width()` 里就含标签的 `stringWidth`。
+    这里把最宽标签的宽度留给 `strwidth`，其余（键、间距、margin）落成 cm：
+    同一 metrics 下两者相加就是 `legend_box_layout()` 的 `width_cm`；没有
+    metrics 时 `resolve()` 会按现有约定抛 `UnitError`，而不是静默给 0。
+    """
+    element = theme.get("legend.text")
+    if not isinstance(element, ElementText):
+        return _cm(box.width_cm)
+    size = float(element.size or 0.0)
+    if size <= 0:
+        return _cm(box.width_cm)
+    widest = 0.0
+    widest_text: str | None = None
+    for index in indices:
+        if index >= len(layout.legend_layouts):
+            continue
+        for cell in layout.legend_layouts[index].keys:
+            label = cell.key.label
+            if not label or plotmath.is_math(label):
+                continue
+            width = text_width_cm(label, size, metrics, element.family or "")
+            if width > widest:
+                widest, widest_text = width, label
+    if widest_text is None or widest <= 0 or widest >= float(box.width_cm):
+        return _cm(box.width_cm)
+    return _cm(float(box.width_cm) - widest) + unit(size / 12.0, "strwidth", data=widest_text)
+
+
+def _add_legend_boxes(
+    table: GTable, theme: ResolvedTheme, layout: PlotLayout, metrics: Any
+) -> GTable:
+    """R `table_add_legends()`：四个方位各加「间距 + 盒宽」列/行，再放 inside。"""
+    boxes = _legend_box_sides(layout)
+    spacing = _box_spacing_cm(theme)
+
+    rows, cols = _panel_frames(table)
+    top, bottom = rows[0][0], rows[-1][1]
+
+    right = boxes.get("right")
+    table = gtable_add_cols(table, _cm(spacing if right is not None else 0.0), pos=-1)
+    table = gtable_add_cols(
+        table,
+        _legend_box_width(right[0], right[1], layout, theme, metrics)
+        if right is not None
+        else _cm(0.0),
+        pos=-1,
+    )
+    table = gtable_add_grob(
+        table,
+        PlotGrob("guide-box", "guide-box-right", side="right"),
+        t=top,
+        b=bottom,
+        l=-1,
+        r=-1,
+        name="guide-box-right",
+        clip="off",
+    )
+    left = boxes.get("left")
+    table = gtable_add_cols(table, _cm(spacing if left is not None else 0.0), pos=0)
+    table = gtable_add_cols(
+        table,
+        _legend_box_width(left[0], left[1], layout, theme, metrics)
+        if left is not None
+        else _cm(0.0),
+        pos=0,
+    )
+    table = gtable_add_grob(
+        table,
+        PlotGrob("guide-box", "guide-box-left", side="left"),
+        t=top,
+        b=bottom,
+        l=1,
+        r=1,
+        name="guide-box-left",
+        clip="off",
+    )
+
+    rows, cols = _panel_frames(table)
+    top, bottom = rows[0][0], rows[-1][1]
+    left_col, right_col = cols[0][0], cols[-1][1]
+    below = boxes.get("bottom")
+    table = gtable_add_rows(table, _cm(spacing if below is not None else 0.0), pos=-1)
+    table = gtable_add_rows(table, _cm(below[0].height_cm if below is not None else 0.0), pos=-1)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("guide-box", "guide-box-bottom", side="bottom"),
+        t=-1,
+        b=-1,
+        l=left_col,
+        r=right_col,
+        name="guide-box-bottom",
+        clip="off",
+    )
+
+    rows, cols = _panel_frames(table)
+    top, bottom = rows[0][0], rows[-1][1]
+    left_col, right_col = cols[0][0], cols[-1][1]
+    above = boxes.get("top")
+    table = gtable_add_rows(table, _cm(spacing if above is not None else 0.0), pos=0)
+    table = gtable_add_rows(table, _cm(above[0].height_cm if above is not None else 0.0), pos=0)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("guide-box", "guide-box-top", side="top"),
+        t=1,
+        b=1,
+        l=left_col,
+        r=right_col,
+        name="guide-box-top",
+        clip="off",
+    )
+
+    rows, cols = _panel_frames(table)
+    top, bottom = rows[0][0], rows[-1][1]
+    left_col, right_col = cols[0][0], cols[-1][1]
+    return gtable_add_grob(
+        table,
+        PlotGrob("guide-box", "guide-box-inside", side="inside"),
+        t=top,
+        b=bottom,
+        l=left_col,
+        r=right_col,
+        name="guide-box-inside",
+        clip="off",
+    )
+
+
+def _add_title_rows(table: GTable, theme: ResolvedTheme, layout: PlotLayout) -> GTable:
+    """R `ggplot_gtable()` 的 title / subtitle / caption 三行。"""
+    _rows, cols = _panel_frames(table)
+    title_pos = theme.get("plot.title.position") == "plot"
+    caption_pos = theme.get("plot.caption.position") == "plot"
+    if title_pos:
+        title_left, title_right = 1, table.ncol
+    else:
+        title_left, title_right = cols[0][0], cols[-1][1]
+    if caption_pos:
+        caption_left, caption_right = 1, table.ncol
+    else:
+        caption_left, caption_right = cols[0][0], cols[-1][1]
+
+    table = gtable_add_rows(table, _cm(layout.subtitle_cm), pos=0)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("title", "subtitle", text=layout.subtitle_text),
+        t=1,
+        b=1,
+        l=title_left,
+        r=title_right,
+        name="subtitle",
+        clip="off",
+    )
+    table = gtable_add_rows(table, _cm(layout.title_cm), pos=0)
+    table = gtable_add_grob(
+        table,
+        PlotGrob("title", "title", text=layout.title_text),
+        t=1,
+        b=1,
+        l=title_left,
+        r=title_right,
+        name="title",
+        clip="off",
+    )
+    table = gtable_add_rows(table, _cm(layout.caption_cm), pos=-1)
+    return gtable_add_grob(
+        table,
+        PlotGrob("title", "caption", text=layout.caption_text),
+        t=-1,
+        b=-1,
+        l=caption_left,
+        r=caption_right,
+        name="caption",
+        clip="off",
+    )
+
+
+def _add_tag(table: GTable, theme: ResolvedTheme, layout: PlotLayout, metrics: Any) -> GTable:
+    """R `table_add_tag()`：四边 0pt padding + margin 单元格扩到 tag 尺寸。"""
+    table = gtable_add_padding(table, unit(0.0, "points"))
+    if layout.tag is None or layout.tag_text is None:
+        return table
+    position = _tag_position(theme)
+    width, height, element = _tag_size(theme, layout.tag_text, metrics)
+    if width <= 0 or height <= 0:
+        return table
+    numeric = not isinstance(position[0], bool)
+    location = str(theme.get("plot.tag.location") or ("plot" if numeric else "margin"))
+    if location == "margin" and not numeric:
+        top, left, right, bottom = position  # type: ignore[misc]
+        if top:
+            table = replace(table, heights=_replace_first(table.heights, _cm(height)))
+        if bottom:
+            table = replace(table, heights=_replace_last(table.heights, _cm(height)))
+        if left:
+            table = replace(table, widths=_replace_first(table.widths, _cm(width)))
+        if right:
+            table = replace(table, widths=_replace_last(table.widths, _cm(width)))
+        t, left_col, b, right_col = 1, 1, table.nrow, table.ncol
+        if top:
+            b = t
+        if bottom:
+            t = b
+        if left:
+            right_col = left_col
+        if right:
+            left_col = right_col
+    elif location == "panel":
+        rows, cols = _panel_frames(table)
+        t, left_col = rows[0][0], cols[0][0]
+        b, right_col = rows[-1][1], cols[-1][1]
+    else:
+        t, left_col, b, right_col = 1, 1, table.nrow, table.ncol
+    return gtable_add_grob(
+        table,
+        PlotGrob("tag", "tag", text=layout.tag_text, element=element),
+        t=t,
+        l=left_col,
+        b=b,
+        r=right_col,
+        name="tag",
+        clip="off",
+    )
+
+
+def _add_plot_margin(table: GTable, theme: ResolvedTheme) -> GTable:
+    top, bottom, right, left = _plot_margin(theme)
+    return gtable_add_padding(
+        table,
+        unit_c(_cm(top), _cm(right), _cm(bottom), _cm(left)),
+    )
+
+
+def _add_background(table: GTable, theme: ResolvedTheme) -> GTable:
+    element = theme.get("plot.background")
+    if not isinstance(element, ElementRect):
+        return table
+    table = gtable_add_grob(
+        table,
+        PlotGrob("background", "background", element=element),
+        t=1,
+        l=1,
+        b=-1,
+        r=-1,
+        z=-math.inf,
+        name="background",
+        clip="on",
+    )
+    # R 把 background 的记录挪到 layout / grobs 的第一条。
+    layout = (table.layout[-1], *table.layout[:-1])
+    grobs = (table.grobs[-1], *table.grobs[:-1])
+    return replace(table, layout=layout, grobs=grobs)
+
+
+def plot_gtable(plot: Any, metrics: Any = None) -> GTable:
+    """`ggplot()` / `PlotBuild` → 整页 unit-based gtable（`ggplotGrob()` 等价物）。
+
+    与 :func:`plot_layout` 的分工：后者按目标画布直接算绝对 cm，是现有单图渲染
+    路径；这里组装一张**带 `null` 权重**的 gtable，panel 行 / 列留给调用方按目标
+    画布解析（`resolve(width_cm, height_cm)`），供多图合并使用。
+
+    结构与 ggplot2 4.0.3 的 `ggplotGrob()` 对齐：单面板是 5×5 基础表（
+    `xlab-t/axis-t/panel/axis-b/xlab-b` × `ylab-l/axis-l/panel/axis-r/ylab-r`），
+    分面沿用 `FacetTable` 的面板网格 / 行权重 / strip / `respect`，再依次叠加
+    `guide-box-*`、`title` / `subtitle` / `caption`、`tag`、`plot.margin` 与
+    `background`。
+
+    `metrics` 是 `ggcore.units.Metrics`（`ggskia.text.ShaperMetrics`）；不传时
+    用 `plot_layout()` 的同一套占位度量，只保证「能出表、结构稳定」。
+    """
+    build = plot if isinstance(plot, PlotBuild) else build_plot(plot)
+    if metrics is None:
+        metrics = _FALLBACK_METRICS
+    elif build.metrics is not metrics:
+        build = replace(build, metrics=metrics)
+    theme = _theme_of(build)
+    layout = plot_layout(build, metrics=metrics)
+    kind = str(getattr(build.facet, "kind", "null") or "null")
+    if kind == "null":
+        table = _single_panel_sheet(build, theme, layout)
+    else:
+        table = _facet_panel_sheet(build, theme, layout)
+    table = _add_legend_boxes(table, theme, layout, metrics)
+    table = _add_title_rows(table, theme, layout)
+    table = _add_tag(table, theme, layout, metrics)
+    table = _add_plot_margin(table, theme)
+    return _add_background(table, theme)
 
 
 def _aspect_panel_area(build: PlotBuild, area: Box, table: FacetTable) -> Box:

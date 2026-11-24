@@ -232,3 +232,85 @@ M0-6 需要在这里做决定：
 （`region_box` 已含居中偏移），路径名比 R 少一段。实现与用例见
 `docs/notes/grobs.md` §9 与
 `tests/test_grobs.py::test_gtable_cells_get_their_own_viewports_in_drawing_order`。
+
+## `plot_gtable()`：`ggplotGrob()` 的等价物（SIL-999）
+
+`ggcore.geom.scene.plot_gtable(plot, metrics=None)` 把一张图装配成**整页**
+`GTable`，命名 / 行列结构与 ggplot2 4.0.3 的 `ggplotGrob()` 一致。它与
+`plot_layout()` 是两条并存的路：
+
+| | `plot_layout()` | `plot_gtable()` |
+| --- | --- | --- |
+| 输出 | 绝对 cm（`PlotLayout`，含每个面板的矩形） | unit 向量（panel 行列是 `null`） |
+| 画布 | 构造时按目标画布解算 | 由调用方 `resolve(width_cm, height_cm)` 解算 |
+| 用途 | 现有单图渲染（`scene_from_build()`） | 多图合并（patchwork 骨架）的输入 |
+
+**单图渲染路径没动**：`scene_from_build()` 仍走 `plot_layout()`；`plot_gtable()`
+只新增导出，组合层（SIL-1001）再用它。
+
+### 结构
+
+单面板（`facet_null`）是 R `FacetNull$draw_panels()` 的 3×3 表，再由
+`Facet$draw_labels()` 加两行两列 → **5×5 基础表**：
+
+```
+行：xlab-t, axis-t, panel, axis-b, xlab-b
+列：ylab-l, axis-l, panel, axis-r, ylab-r
+```
+
+分面沿用 `FacetTable` 的面板网格 / `width_weights` / `height_weights` /
+`respect`，再按 R 的 `attach_axes()` / `attach_strips()` 加槽：
+
+- `facet_wrap`：每面板列一组 `axis-l` / `panel` / `axis-r`，每面板行一组
+  `axis-t` / `panel` / `axis-b`（名字 `axis-l-<row>-<col>` 等）；strip 每个面板
+  行 / 列一条；
+- `facet_grid`：每侧**一条**轴 / strip（`seam_table()`），名字 `axis-l-<row>` /
+  `strip-t-<col>`。
+
+然后依次叠加（顺序照 `ggplot_gtable()` 源码）：`guide-box-right/left/bottom/top/inside`
+（每个方位「间距 + 盒宽」两列 / 两行，没有图例时也是 0 尺寸的槽）、
+`subtitle` / `title` / `caption`、`tag`（四边 0pt padding 后扩 margin 单元格）、
+`plot.margin`（`gtable_add_padding()`）、`background`（`z = -Inf` 并挪到 layout
+第一条）。
+
+### 单位口径
+
+- panel 行列：`unit(<权重>, "null")`，权重来自 `FacetTable`（`space = "free"` 时是
+  范围差，`aspect` 已折进行权重），`respect` 沿用同一张表；
+- 固定尺寸（轴、轴标题、标题、strip、间距、margin、图例键）：cm；
+- **图例盒宽度**：`cm 固定部分 + strwidth(最宽标签)` 的复合单位。R 的
+  `guide-box` 是嵌套 gtable，`gtable_width()` 里含标签的 `stringWidth`；这样
+  宽度随字体变化，且 `UnitContext` 没有 `metrics` 时 `resolve()` 会按现有约定抛
+  `UnitError`（不静默给 0）。没有图例的表不含文字度量单位，无 `metrics` 也能解析；
+- 构建与解析要用**同一个** `metrics`（`ggskia.text.ShaperMetrics`）：标签宽度
+  的固定部分是按构建时的度量扣出来的。
+
+### 与 R 的对拍
+
+```bash
+pixi run -e refs refs:plot-gtable     # Rscript tools/refs/plot_gtable_ref.R
+pixi run test -- tests/test_plot_gtable_r_parity.py
+```
+
+夹具 `tests/fixtures/plot_gtable_r_reference.json` 有 6 个 case（普通图 /
+`facet_wrap` / `facet_grid` / legend+title+tag+自定义 margin / legend 下置 /
+分面+图例+标题），7×5in 的 svglite 页面上画一遍后，**逐条 layout 记录**用
+`downViewport("<name>.<t>-<r>-<b>-<l>")` 读回宽高（`convertWidth(g$widths)` 对
+`null` 只给 0，不能用于对拍）。断言三层：
+
+1. `nrow` / `ncol` 与每条记录的 `(name, t, l, b, r)` **逐条相等**；
+2. 每条记录的宽 / 高在 **0.05cm（0.5mm）** 内；
+3. R 里声明为 `1null` 的行 / 列，gg4py 的对应位置必须是纯 null。
+
+实测 6 个 case、全部记录 0 差异（容差内），例如 `plain` 是 16×13、
+`facet_wrap` 17×17、`facet_grid` 19×16 —— 行列数与 R 完全一致。
+
+### 已知差异 / 首期不做
+
+| 行为 | 现在 | 说明 |
+| --- | --- | --- |
+| `scales = "free"` 的逐面板轴尺寸 | 统一用全局 max（`plot_layout()` 同口径） | R 每列 / 每行取各自 max；首期父任务要求单 panel 或 `scales="fixed"` |
+| `strip.placement = "outside"` | strip 仍进 gtable（按 inside 的槽） | R 会另插 `strip.switch.pad` 行 / 列；组合层首期不需要 |
+| `legend.key.* = unit(1, "null")` 的 stretchy key | 按 7×7in 参考画布把拉伸量落成 cm | R 保留 null 权重、随画布再分配 |
+| `plot.tag.location = "plot"/"panel"` 的数值位置 | 只记录覆盖 grob 与所在区域 | grob 的 x/y（npc）不属于 gtable 几何 |
+| polar / 次轴的轴槽 | 沿用 `plot_layout()` 已算好的整体占位 | 单面板按 `FacetNull` 的 3×3 槽照放 |
