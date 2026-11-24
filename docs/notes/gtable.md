@@ -237,6 +237,12 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
   夹在 panel 与 axis-r 之间），组间是 `panel.spacing.x`。内轴不画标签：只有最左
   一条 `axis-l` / 最右一条 `axis-r` 有宽度，其余 `0cm`（R 实测：`axis-l-1-1` =
   0.3505cm、`axis-l-1-2` = 0cm）。
+- **带高只看外边缘那一行**（`axes = "margins"`）：`axis-b` 只有**最后一个面板行**
+  满高，内部带是字面量 `0cm`；`axis-t` 对称（只有第一行，默认是 0）。ragged
+  （末行不满）时 R 的 `attach_axes()` 先 `bottom[-dim[1], ] <- zeroGrob()`，再由
+  `measure_axes()` 把空洞相邻的带清零——**空洞只挪 grob、不给内部带高度**。早期
+  版本按 `_axis_visible()`（每列最底面板）给带，ragged 的内部带会凭空多出
+  0.4517cm；`dir = "v"` 与 `as.table = FALSE` 走同一条规则。
 - `facet_grid`：每侧**一条**轴 / strip（`seam_table()`）；轴跨整列 / 整行，不是
   每个面板各插一对。
 
@@ -250,6 +256,9 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 | `facet_grid(g ~ .)` 2×1 | 18×14 | 18×14 |
 | `facet_grid(. ~ g)` 1×2 | 17×15 | 17×15 |
 | `facet_grid(h ~ g)` 2×2 | 19×16 | 19×16 |
+| `facet_wrap(~five, ncol = 3)` 2×3 ragged | 22×21 | 22×21 |
+| `facet_wrap(~five, ncol = 2)` 3×2 ragged | 27×17 | 27×17 |
+| `facet_wrap(~five, ncol = 2, dir = "v")` | 27×17 | 27×17 |
 
 命名照 R 的实测顺序，注意 **panel 与 axis 的行列顺序相反**；多行 / 多列时每个
 layout 名必须**唯一**——`GTable.grob(name)` / `placements(name)` 取第一个匹配，
@@ -280,6 +289,17 @@ test_plot_gtable.py::test_without_metrics_resolve_raises_unit_error` 钉住普�
 `::test_legend_width_keeps_strwidth_and_needs_metrics` 钉住图例的 `strwidth`。
 构建与解析必须用**同一个** `metrics`：`strheight` / `strwidth` 的 amount 是按
 构建时度量校准的。
+
+**逐条记录的 cm 对拍**：`tools/refs/plot_gtable_ref.R` 除了 `widths` / `heights`
+的 `as.character()`，还会把表画在 7×7in 视口里、用
+`downViewport("<name>.<t>-<r>-<b>-<l>")` 读回**每条 layout 记录**的宽高（`1null`
+行列因此拿到分配后的真实 cm，而不是 `convertWidth()` 对 null 给的 0）。
+`tests/test_plot_gtable_r_parity.py::test_resolved_records_match_r` 逐条比较，
+容差 **0.105cm**：结构类错误（例如 ragged 的内部 `axis-b` 带满高）是 0.45cm 级，
+这条能直接抓住；0.105 的余量来自**既有的文字行高口径差**——我们按 `text_line_cm`
+的 0.955em，R 的 `stringHeight` 比它小 0.017em（`docs/notes/guide.md`），单行
+约 0.17mm，整页表按行数累计到 **0.1013cm**（`titled` 的 `panel` / span 记录，
+实测）。这是已知边界，不随本任务修（改它会动 532 份 `expected.svg`）。
 
 `coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
 `1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自

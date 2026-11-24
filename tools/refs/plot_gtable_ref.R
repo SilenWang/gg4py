@@ -76,6 +76,27 @@ to_json <- function(x, indent = 0L) {
 # 采集
 # ---------------------------------------------------------------------------
 
+# 按 7×7 视口把每条 layout 记录解析成 cm：进它的单元格包装视口读 `1npc`。
+# `convertWidth(grob$widths)` 对 `1null` 只给 0，不能用来断言 null 行 / 列。
+measure_record <- function(lay, i) {
+  vp <- paste0(
+    lay$name[i], ".", lay$t[i], "-", lay$r[i], "-", lay$b[i], "-", lay$l[i]
+  )
+  ok <- tryCatch({
+    downViewport("layout")
+    downViewport(vp)
+    TRUE
+  }, error = function(...) FALSE)
+  if (!ok) {
+    upViewport(0)
+    return(NULL)
+  }
+  width <- convertWidth(unit(1, "npc"), "cm", valueOnly = TRUE)
+  height <- convertHeight(unit(1, "npc"), "cm", valueOnly = TRUE)
+  upViewport(0)
+  list(width = width, height = height)
+}
+
 measure_case <- function(name, plot) {
   grob <- ggplotGrob(plot)
   lay <- grob$layout
@@ -88,6 +109,24 @@ measure_case <- function(name, plot) {
       r = as.integer(lay$r[i])
     )
   })
+  grid.newpage()
+  grid.draw(grob)
+  records <- lapply(seq_len(nrow(lay)), function(i) {
+    size <- measure_record(lay, i)
+    if (is.null(size)) {
+      return(NULL)
+    }
+    list(
+      name = lay$name[i],
+      t = as.integer(lay$t[i]),
+      l = as.integer(lay$l[i]),
+      b = as.integer(lay$b[i]),
+      r = as.integer(lay$r[i]),
+      width = size$width,
+      height = size$height
+    )
+  })
+  upViewport(0)
   list(
     name = name,
     nrow = as.integer(nrow(grob)),
@@ -95,7 +134,8 @@ measure_case <- function(name, plot) {
     respect = isTRUE(grob$respect),
     widths = vapply(as.character(grob$widths), identity, character(1), USE.NAMES = FALSE),
     heights = vapply(as.character(grob$heights), identity, character(1), USE.NAMES = FALSE),
-    layout = placements
+    layout = placements,
+    records = Filter(Negate(is.null), records)
   )
 }
 
@@ -105,7 +145,9 @@ data <- data.frame(
   g = factor(c("a", "b", "a", "b", "a", "b", "a", "b"), levels = c("a", "b")),
   h = factor(c("u", "u", "u", "u", "v", "v", "v", "v"), levels = c("u", "v")),
   four = factor(c("p", "q", "r", "s", "p", "q", "r", "s"),
-                levels = c("p", "q", "r", "s"))
+                levels = c("p", "q", "r", "s")),
+  five = factor(c("p", "q", "r", "s", "t", "p", "q", "r"),
+                levels = c("p", "q", "r", "s", "t"))
 )
 
 base <- ggplot(data, aes(x, y)) + geom_point()
@@ -128,6 +170,11 @@ cases <- list(
   measure_case("wrap_2x2", base + facet_wrap(~four)),
   measure_case("grid_1x2", base + facet_grid(. ~ g)),
   measure_case("grid_2x2", base + facet_grid(h ~ g)),
+  # ragged（末行不满）：`axis-b` 内部带在 R 里是字面量 0cm，只有最后一个面板行满高。
+  measure_case("wrap_ragged_ncol3", base + facet_wrap(~five, ncol = 3)),
+  measure_case("wrap_ragged_ncol2", base + facet_wrap(~five, ncol = 2)),
+  # `dir = "v"`：按列优先填充，ragged 空洞在右下角。
+  measure_case("wrap_dir_v_ncol2", base + facet_wrap(~five, ncol = 2, dir = "v")),
   # `plot.title.position = "plot"`：title / subtitle 的跨列范围。
   measure_case(
     "title_plot_position",

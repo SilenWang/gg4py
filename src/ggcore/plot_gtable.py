@@ -91,7 +91,7 @@ from ggcore.geom.scene import (
     DEFAULT_WIDTH_IN,
     PlotLayout,
     _axis_title_text,
-    _axis_visible,
+    _draw_axes,
     _guide_title,
     _tag_position,
     layout_metrics,
@@ -483,25 +483,33 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
         "right": float(layout.y_axis_right_cm),
     }
 
-    def axis_size(side: str, panel: Any) -> float:
-        if panel is None:
-            return 0.0
-        return extents[side] if _axis_visible(build, panel, side)[0] else 0.0
+    draw_x, draw_y = _draw_axes(build)
+
+    def axis_row_size(side: str, row: int) -> float:
+        """`axis-t` / `axis-b` 的带高：只有外边缘那一行满高（`axes = "margins"`）。
+
+        R 的 `attach_axes()` 先把 `bottom[-dim[1], ] <- zeroGrob()`（`top` 对称），
+        `measure_axes()` 再把空洞相邻的带清零：ragged 时**内部带是字面量 `0cm`**，
+        空洞只挪 grob、不给内部带高度。`axes = "all_x"` 时每行都画，才逐行满高。
+        """
+        active = draw_x or (row == 1 if side == "top" else row == nrow)
+        return extents[side] if active else 0.0
+
+    def axis_col_size(side: str, col: int) -> float:
+        """`axis-l` / `axis-r` 的带宽：只有外边缘那一列满高（`axes = "margins"`）。"""
+        active = draw_y or (col == 1 if side == "left" else col == ncol)
+        return extents[side] if active else 0.0
 
     def axis_cell(side: str, name: str) -> PlotCell:
         return PlotCell(name, "axis", side=side)
 
     if kind == "grid":
         # `facet_grid`：每侧一整条（`seam_table()`），名字只带另一维编号。
-        top_panels = [panels_at.get((1, col)) for col in range(1, ncol + 1)]
-        right_panels = [panels_at.get((row, ncol)) for row in range(1, nrow + 1)]
-        bottom_panels = [panels_at.get((nrow, col)) for col in range(1, ncol + 1)]
-        left_panels = [panels_at.get((row, 1)) for row in range(1, nrow + 1)]
         table = _seam_rows(
             table,
             [axis_cell("top", f"axis-t-{col}") for col in range(1, ncol + 1)],
             side="top",
-            size=_cm(max((axis_size("top", panel) for panel in top_panels), default=0.0)),
+            size=_cm(axis_row_size("top", 1)),
             name="axis-t",
             z=3.0,
         )
@@ -509,7 +517,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
             table,
             [axis_cell("right", f"axis-r-{row}") for row in range(1, nrow + 1)],
             side="right",
-            size=_cm(max((axis_size("right", panel) for panel in right_panels), default=0.0)),
+            size=_cm(axis_col_size("right", ncol)),
             name="axis-r",
             z=3.0,
         )
@@ -517,7 +525,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
             table,
             [axis_cell("bottom", f"axis-b-{col}") for col in range(1, ncol + 1)],
             side="bottom",
-            size=_cm(max((axis_size("bottom", panel) for panel in bottom_panels), default=0.0)),
+            size=_cm(axis_row_size("bottom", nrow)),
             name="axis-b",
             z=3.0,
         )
@@ -525,7 +533,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
             table,
             [axis_cell("left", f"axis-l-{row}") for row in range(1, nrow + 1)],
             side="left",
-            size=_cm(max((axis_size("left", panel) for panel in left_panels), default=0.0)),
+            size=_cm(axis_col_size("left", 1)),
             name="axis-l",
             z=3.0,
         )
@@ -538,15 +546,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
                 for row in range(1, nrow + 1)
             ],
             shift=-1,
-            sizes=[
-                _cm(
-                    max(
-                        (axis_size("top", panels_at.get((row, col))) for col in range(1, ncol + 1)),
-                        default=0.0,
-                    )
-                )
-                for row in range(1, nrow + 1)
-            ],
+            sizes=[_cm(axis_row_size("top", row)) for row in range(1, nrow + 1)],
             name="axis-t",
             z=3.0,
         )
@@ -557,18 +557,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
                 for col in range(1, ncol + 1)
             ],
             shift=0,
-            sizes=[
-                _cm(
-                    max(
-                        (
-                            axis_size("right", panels_at.get((row, col)))
-                            for row in range(1, nrow + 1)
-                        ),
-                        default=0.0,
-                    )
-                )
-                for col in range(1, ncol + 1)
-            ],
+            sizes=[_cm(axis_col_size("right", col)) for col in range(1, ncol + 1)],
             name="axis-r",
             z=3.0,
         )
@@ -579,18 +568,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
                 for row in range(1, nrow + 1)
             ],
             shift=0,
-            sizes=[
-                _cm(
-                    max(
-                        (
-                            axis_size("bottom", panels_at.get((row, col)))
-                            for col in range(1, ncol + 1)
-                        ),
-                        default=0.0,
-                    )
-                )
-                for row in range(1, nrow + 1)
-            ],
+            sizes=[_cm(axis_row_size("bottom", row)) for row in range(1, nrow + 1)],
             name="axis-b",
             z=3.0,
         )
@@ -601,18 +579,7 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
                 for col in range(1, ncol + 1)
             ],
             shift=-1,
-            sizes=[
-                _cm(
-                    max(
-                        (
-                            axis_size("left", panels_at.get((row, col)))
-                            for row in range(1, nrow + 1)
-                        ),
-                        default=0.0,
-                    )
-                )
-                for col in range(1, ncol + 1)
-            ],
+            sizes=[_cm(axis_col_size("left", col)) for col in range(1, ncol + 1)],
             name="axis-l",
             z=3.0,
         )

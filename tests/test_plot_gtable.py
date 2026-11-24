@@ -57,6 +57,7 @@ FACET_DATA = from_dict(
         "g": ["a", "b", "a", "b", "a", "b", "a", "b"],
         "h": ["u", "u", "u", "u", "v", "v", "v", "v"],
         "four": ["p", "q", "r", "s", "p", "q", "r", "s"],
+        "five": ["p", "q", "r", "s", "t", "p", "q", "r"],
     }
 )
 
@@ -192,6 +193,35 @@ def test_multi_row_wrap_has_one_axis_group_per_panel_row() -> None:
     table = plot_gtable(base + facet_wrap("g", ncol=1), metrics=METRICS)
     assert {"axis-t-1-1", "axis-t-1-2", "axis-b-1-1", "axis-b-1-2"} <= _names(table)
     assert (_placement(table, "axis-t-1-2").t, _placement(table, "panel-1-2").t) == (13, 15)
+
+
+def _box_of(table: GTable, name: str) -> Any:
+    """按 layout 名取解析后的单元格框（7×7in）。"""
+    boxes = table.boxes(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=CTX)
+    for row, box in zip(table.layout, boxes, strict=True):
+        if row.name == name:
+            return box
+    raise KeyError(name)
+
+
+def test_ragged_wrap_inner_axis_bands_are_zero() -> None:
+    """ragged（末行不满）：只有最后一个面板行的 `axis-b` 满高，内部带是 0cm。
+
+    R 的 `attach_axes()` 先 `bottom[-dim[1], ] <- zeroGrob()`，`measure_axes()`
+    再把空洞相邻的带清零：空洞只挪 grob，不给内部带高度（审计缺口 1 残留）。
+    `dir = "v"` 触发同一处。
+    """
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    for plot in (
+        base + facet_wrap("five", ncol=2),  # 3 行 2 列，末行 1 格
+        base + facet_wrap("five", ncol=2, dir="v"),
+    ):
+        table = plot_gtable(plot, metrics=METRICS)
+        assert _box_of(table, "axis-b-1-1").height_cm == 0.0
+        assert _box_of(table, "axis-b-2-1").height_cm == 0.0
+        assert _box_of(table, "axis-b-1-3").height_cm > 0.4
+        # `axis-t` 默认只在第一行（`margins`），这里 top 轴本身是 0。
+        assert _box_of(table, "axis-t-1-1").height_cm == 0.0
 
 
 def test_grid_axes_are_shared_and_named_by_the_other_dimension() -> None:

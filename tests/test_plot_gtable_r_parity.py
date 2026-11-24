@@ -44,6 +44,12 @@ METRICS = ShaperMetrics()
 CTX = UnitContext(metrics=METRICS)
 SIZE_IN = 7.0
 TOLERANCE_CM = 0.05
+#: 逐条 layout 记录的**实测** cm（R 按 7×7 视口解析 null 后读回）。结构类错误
+#: （比如 ragged 的内部 `axis-b` 带凭空满高）是 0.45cm 级；这里留 0.105cm 是因为
+#: 文字行高与 R 有 0.017em 的既有口径差（`docs/notes/guide.md`），在整页表里按
+#: 行数累计到 0.1013cm（`titled` 的 panel / span 记录）。实测数字见
+#: `docs/notes/gtable.md`。
+TOLERANCE_RECORD_CM = 0.105
 
 #: 与 `tools/refs/plot_gtable_ref.R` 的 `data` 同一份（8 行、4 个 facet 水平）。
 _DATA = from_dict(
@@ -53,6 +59,7 @@ _DATA = from_dict(
         "g": ["a", "b", "a", "b", "a", "b", "a", "b"],
         "h": ["u", "u", "u", "u", "v", "v", "v", "v"],
         "four": ["p", "q", "r", "s", "p", "q", "r", "s"],
+        "five": ["p", "q", "r", "s", "t", "p", "q", "r"],
     }
 )
 
@@ -77,6 +84,9 @@ def _build(name: str) -> ggplot:
         "wrap_2x2": lambda: base + facet_wrap("four"),
         "grid_1x2": lambda: base + facet_grid(None, "g"),
         "grid_2x2": lambda: base + facet_grid("h", "g"),
+        "wrap_ragged_ncol3": lambda: base + facet_wrap("five", ncol=3),
+        "wrap_ragged_ncol2": lambda: base + facet_wrap("five", ncol=2),
+        "wrap_dir_v_ncol2": lambda: base + facet_wrap("five", ncol=2, dir="v"),
         "title_plot_position": lambda: (
             ggplot(_DATA, aes(x="x", y="y", colour="g"))
             + geom_point()
@@ -112,6 +122,9 @@ def test_fixture_pin() -> None:
         "wrap_2x2",
         "grid_1x2",
         "grid_2x2",
+        "wrap_ragged_ncol3",
+        "wrap_ragged_ncol2",
+        "wrap_dir_v_ncol2",
         "title_plot_position",
     }
 
@@ -164,6 +177,37 @@ def test_plain_case_checks_the_axis_and_margin_rows() -> None:
     assert sum(value is not None for value in literal) >= 6
 
 
+@pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])
+def test_resolved_records_match_r(case: dict[str, Any]) -> None:
+    """按 7×7 视口逐条记录比 cm：null 行 / 列（panel、strip、axis 带）也在这里断言。
+
+    R 侧用 `downViewport("<name>.<t>-<r>-<b>-<l>")` 读 `1npc`（见
+    `tools/refs/plot_gtable_ref.R`），所以 `1null` 行 / 列拿到的是**分配后**的
+    真实 cm，不是 `convertWidth()` 对 null 给的 0。
+    """
+    records = case.get("records") or []
+    assert records, f"{case['name']}: 夹具缺 records"
+    table = plot_gtable(_build(case["name"]), metrics=METRICS)
+    boxes = {
+        (row.name, row.t, row.l, row.b, row.r): box
+        for row, box in zip(
+            table.layout,
+            table.boxes(SIZE_IN * CM_PER_INCH, SIZE_IN * CM_PER_INCH, ctx=CTX),
+            strict=True,
+        )
+    }
+    for record in records:
+        key = (record["name"], record["t"], record["l"], record["b"], record["r"])
+        assert key in boxes, f"{case['name']}: 缺记录 {key}"
+        box = boxes[key]
+        assert box.width_cm == pytest.approx(record["width"], abs=TOLERANCE_RECORD_CM), (
+            f"{case['name']}: {key} 宽 {box.width_cm:.4f} vs R {record['width']:.4f}"
+        )
+        assert box.height_cm == pytest.approx(record["height"], abs=TOLERANCE_RECORD_CM), (
+            f"{case['name']}: {key} 高 {box.height_cm:.4f} vs R {record['height']:.4f}"
+        )
+
+
 def test_legend_column_is_measured_against_r() -> None:
     """`legend.box.spacing` 在 R 里是独立的 spacer 列（列 10 = 11points）。"""
     case = next(item for item in CASES if item["name"] == "legend")
@@ -194,6 +238,9 @@ def test_resolved_panel_matches_plot_layout_for_every_case() -> None:
             "wrap_2x2",
             "grid_1x2",
             "grid_2x2",
+            "wrap_ragged_ncol3",
+            "wrap_ragged_ncol2",
+            "wrap_dir_v_ncol2",
         ):
             continue  # 分面的面板区在 FacetTable 里，另有 facet 对拍
         plot = _build(case["name"])
