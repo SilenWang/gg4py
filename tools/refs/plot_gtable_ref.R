@@ -186,6 +186,15 @@ cases <- list(
     "wrap_axes_all_labels_all",
     base + facet_wrap(~four, axes = "all", axis.labels = "all") + labs(x = "XX", y = "YY")
   ),
+  # 单方向 `all_x` / `all_y` + labels="margins"：只有该方向的内侧带留刻度。
+  measure_case(
+    "wrap_axes_allx_labels_margins",
+    base + facet_wrap(~four, axes = "all_x", axis.labels = "margins") + labs(x = "XX", y = "YY")
+  ),
+  measure_case(
+    "wrap_axes_ally_labels_margins",
+    base + facet_wrap(~four, axes = "all_y", axis.labels = "margins") + labs(x = "XX", y = "YY")
+  ),
   # `plot.title.position = "plot"`：title / subtitle 的跨列范围。
   measure_case(
     "title_plot_position",

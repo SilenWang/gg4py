@@ -300,11 +300,31 @@ test_plot_gtable.py::test_without_metrics_resolve_raises_unit_error` 钉住普�
 `downViewport("<name>.<t>-<r>-<b>-<l>")` 读回**每条 layout 记录**的宽高（`1null`
 行列因此拿到分配后的真实 cm，而不是 `convertWidth()` 对 null 给的 0）。
 `tests/test_plot_gtable_r_parity.py::test_resolved_records_match_r` 逐条比较，
-容差 **0.105cm**：结构类错误（例如 ragged 的内部 `axis-b` 带满高）是 0.45cm 级，
-这条能直接抓住；0.105 的余量来自**既有的文字行高口径差**——我们按 `text_line_cm`
-的 0.955em，R 的 `stringHeight` 比它小 0.017em（`docs/notes/guide.md`），单行
-约 0.17mm，整页表按行数累计到 **0.1013cm**（`titled` 的 `panel` / span 记录，
-实测）。这是已知边界，不随本任务修（改它会动 532 份 `expected.svg`）。
+容差按「记录是否落在 **null 行**」拆开：
+
+| 分组 | 最大残差（实测） | 容差 |
+| --- | --- | --- |
+| null 行（`1null`） | **0.1013cm**（`titled` 的 `panel` / `axis-l` / `ylab-l` / `guide-box-*`） | 0.105cm |
+| null 列 / 固定行 / 固定列 | 0.0409 / 0.0201 / 0.0201cm | 0.05cm（项目既有口径） |
+
+null 行的残差来自**文字行高**：R 的文字行比我们高，实测（R 行高减该元素的
+margin，按设备 72.27 折 pt）：
+
+| 行 | 字号 | R 文字高 | 我们 | Δ |
+| --- | --- | --- | --- | --- |
+| `title` | 13.2pt | 12.24pt | 11.85pt | −0.39pt（0.0136cm） |
+| `subtitle` | 11pt | 10.36pt | 9.88pt | −0.48pt（0.0169cm） |
+| `xlab-b` | 11pt | 10.36pt | 9.88pt | −0.48pt（0.0169cm） |
+| `caption` | 8.8pt | 8.47pt | 7.90pt | −0.57pt（0.0201cm） |
+| `axis-b` 标签 | 8.8pt | 8.47pt | 7.90pt | −0.57pt（0.0201cm） |
+
+三点落在一条直线 `文字高 ≈ 0.856·size + 0.94pt` 上，而我们用的是纯比例
+（`text_line_cm` 的 0.8945em）——**字号越小亏得越多**。这些负差被高度守恒推进
+null 面板行，`titled` 合计 **0.1012cm**（tag 0.0136 + title 0.0136 +
+subtitle 0.0169 + xlab-b 0.0169 + caption 0.0201 + axis-b 0.0201）。
+所以别把非 null 记录的容差一起放宽：固定行 / 列实测只差 0.0201cm，0.05cm 足够
+抓住 1mm 级的真实结构错。要收掉这 0.02cm 得让 gtable 的文字行按上面那条直线
+算，是独立改动；**不要**顺手改 `TEXT_LINE_EM`（会动 532 份 `expected.svg`）。
 
 `coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
 `1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自
@@ -323,6 +343,14 @@ pytest -q tests/test_plot_gtable.py tests/test_plot_gtable_r_parity.py
 
 **已知差异 / 首期不做**：
 
+- **`facet_grid` 的 `axes =` 非默认值不复刻**（`axes = "all" / "all_x" /
+  "all_y"`，`axis.labels =` 同理）：R 会给每条内面板行 / 列各插一条轴带
+  （`axes = "all"` 是 21×18、`all_x` 21×16、`all_y` 19×18，2×2 的
+  `facet_grid(h ~ g)`），`plot_gtable()` 仍按 `axes = "margins"` 的 **19×16**
+  建表——`_seam_*` 每侧只建一条，`axes =` 参数在本路径被忽略；
+  `tests/test_plot_gtable.py::test_grid_non_default_axes_is_a_registered_gap`
+  钉住当前形状，防止以后误以为已对拍。`axis_row_size()` / `axis_col_size()` 的
+  「内侧只留刻度」只服务 `facet_wrap`。
 - `scales = "free"` 的逐面板轴尺寸统一用全局 max（父任务首期要求单 panel 或
   `scales = "fixed"`）；
 - `strip.placement = "outside"` 仍按 inside 的槽放进表里；

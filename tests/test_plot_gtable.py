@@ -245,6 +245,40 @@ def test_axes_all_with_margins_labels_only_keeps_the_tick() -> None:
     assert _box_of(labelled, "axis-b-1-1").height_cm > 0.4
     assert _box_of(labelled, "axis-l-1-2").width_cm > 0.3
 
+    # 单方向 `all_x` / `all_y`：只有该方向的内侧带留刻度，另一方向仍是 margins（0）。
+    all_x = plot_gtable(
+        base + facet_wrap("four", axes="all_x", axis_labels="margins"), metrics=METRICS
+    )
+    assert _box_of(all_x, "axis-b-1-1").height_cm == pytest.approx(0.0967, abs=1e-3)
+    assert _box_of(all_x, "axis-l-1-2").width_cm == 0.0
+    all_y = plot_gtable(
+        base + facet_wrap("four", axes="all_y", axis_labels="margins"), metrics=METRICS
+    )
+    assert _box_of(all_y, "axis-b-1-1").height_cm == 0.0
+    assert _box_of(all_y, "axis-l-1-2").width_cm == pytest.approx(0.0967, abs=1e-3)
+
+
+def test_grid_non_default_axes_is_a_registered_gap() -> None:
+    """`facet_grid` 的 `axes=` 非默认值不复刻（已知差异，见 `docs/notes/gtable.md`）。
+
+    R 4.0.3 会给每条内面板行 / 列各插一条轴带（2×2 的 `facet_grid(h ~ g)`：
+    `all` = 21×18、`all_x` = 21×16、`all_y` = 19×18）；`plot_gtable()` 在本期
+    仍按 `axes = "margins"` 的 19×16 建表。这条测试钉住当前形状，避免以后把
+    「结构没展开」误当成「已对拍」。
+    """
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    for kwargs in (
+        {"axes": "margins"},
+        {"axes": "all"},
+        {"axes": "all_x"},
+        {"axes": "all_y"},
+        {"axes": "all", "axis_labels": "margins"},
+    ):
+        table = plot_gtable(base + facet_grid("h", "g", **kwargs), metrics=METRICS)
+        assert (table.nrow, table.ncol) == (19, 16), kwargs
+        names = {item.name for item in table.layout}
+        assert {"axis-l-1", "axis-l-2", "axis-t-1", "axis-t-2"} <= names
+
 
 def test_grid_axes_are_shared_and_named_by_the_other_dimension() -> None:
     """`facet_grid` 每侧一条轴；名字带列号（axis-t）/ 行号（axis-l），不重复。"""

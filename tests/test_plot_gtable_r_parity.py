@@ -44,12 +44,24 @@ METRICS = ShaperMetrics()
 CTX = UnitContext(metrics=METRICS)
 SIZE_IN = 7.0
 TOLERANCE_CM = 0.05
-#: 逐条 layout 记录的**实测** cm（R 按 7×7 视口解析 null 后读回）。结构类错误
-#: （比如 ragged 的内部 `axis-b` 带凭空满高）是 0.45cm 级；这里留 0.105cm 是因为
-#: 文字行高与 R 有 0.017em 的既有口径差（`docs/notes/guide.md`），在整页表里按
-#: 行数累计到 0.1013cm（`titled` 的 panel / span 记录）。实测数字见
-#: `docs/notes/gtable.md`。
-TOLERANCE_RECORD_CM = 0.105
+#: 逐条 layout 记录的**实测** cm（R 按 7×7 视口解析 null 后读回）。
+#:
+#: 容差按「是否落在 null 行」拆开（审计要求）：
+#:
+#: - null **行**（`1null`）会被文字行高的亏损**挤高**：R 的文字行比我们高
+#:   （实测 `title` −0.39pt、`subtitle` / `xlab-b` −0.48pt、`caption` /
+#:   `axis-b` 标签 −0.57pt，见 `docs/notes/gtable.md`），这些负差被高度守恒推进
+#:   null 面板行，`titled` 合计 0.1013cm；
+#: - null **列**、固定行 / 列最大只有 0.0409 / 0.0201cm，继续用项目既有的
+#:   0.05cm（也能抓住 1mm 级的真实结构错，比如内部 `axis-b` 带凭空满高）。
+TOLERANCE_NULL_ROW_CM = 0.105
+
+
+def _covers_null_row(case: dict[str, Any], record: dict[str, Any]) -> bool:
+    """记录覆盖的行里是否有 `1null`（R 的 `heights` 字符串）。"""
+    rows = case["heights"][record["t"] - 1 : record["b"]]
+    return any(text == "1null" for text in rows)
+
 
 #: 与 `tools/refs/plot_gtable_ref.R` 的 `data` 同一份（8 行、4 个 facet 水平）。
 _DATA = from_dict(
@@ -93,6 +105,12 @@ def _build(name: str) -> ggplot:
         "wrap_axes_all_labels_all": lambda: (
             base + facet_wrap("four", axes="all", axis_labels="all") + labs(x="XX", y="YY")
         ),
+        "wrap_axes_allx_labels_margins": lambda: (
+            base + facet_wrap("four", axes="all_x", axis_labels="margins") + labs(x="XX", y="YY")
+        ),
+        "wrap_axes_ally_labels_margins": lambda: (
+            base + facet_wrap("four", axes="all_y", axis_labels="margins") + labs(x="XX", y="YY")
+        ),
         "title_plot_position": lambda: (
             ggplot(_DATA, aes(x="x", y="y", colour="g"))
             + geom_point()
@@ -133,6 +151,8 @@ def test_fixture_pin() -> None:
         "wrap_dir_v_ncol2",
         "wrap_axes_all_labels_margins",
         "wrap_axes_all_labels_all",
+        "wrap_axes_allx_labels_margins",
+        "wrap_axes_ally_labels_margins",
         "title_plot_position",
     }
 
@@ -208,10 +228,11 @@ def test_resolved_records_match_r(case: dict[str, Any]) -> None:
         key = (record["name"], record["t"], record["l"], record["b"], record["r"])
         assert key in boxes, f"{case['name']}: 缺记录 {key}"
         box = boxes[key]
-        assert box.width_cm == pytest.approx(record["width"], abs=TOLERANCE_RECORD_CM), (
+        tolerance = TOLERANCE_NULL_ROW_CM if _covers_null_row(case, record) else TOLERANCE_CM
+        assert box.width_cm == pytest.approx(record["width"], abs=tolerance), (
             f"{case['name']}: {key} 宽 {box.width_cm:.4f} vs R {record['width']:.4f}"
         )
-        assert box.height_cm == pytest.approx(record["height"], abs=TOLERANCE_RECORD_CM), (
+        assert box.height_cm == pytest.approx(record["height"], abs=tolerance), (
             f"{case['name']}: {key} 高 {box.height_cm:.4f} vs R {record['height']:.4f}"
         )
 
@@ -251,6 +272,8 @@ def test_resolved_panel_matches_plot_layout_for_every_case() -> None:
             "wrap_dir_v_ncol2",
             "wrap_axes_all_labels_margins",
             "wrap_axes_all_labels_all",
+            "wrap_axes_allx_labels_margins",
+            "wrap_axes_ally_labels_margins",
         ):
             continue  # 分面的面板区在 FacetTable 里，另有 facet 对拍
         plot = _build(case["name"])

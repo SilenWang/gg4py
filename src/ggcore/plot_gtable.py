@@ -498,9 +498,11 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
         - `axes = "margins"`：只有外边缘那一行满高；ragged 的内部带是字面量
           `0cm`（R `attach_axes()` 的 `bottom[-dim[1], ] <- zeroGrob()`，再由
           `measure_axes()` 把空洞相邻的带清零——空洞只挪 grob，不给高度）。
-        - `axes = "all"`：每个面板都画轴。`axis.labels` 内面板也带标签时内部带
-          与边缘同高；`axis.labels = "margins"` 时 `censor_labels()` 删掉内面板
-          标签，内部带**只剩刻度**（R 实测 `0.0967cm`，不是满高）。
+        - `axes = "all" / "all_x"`：每个面板都画轴。`axis.labels` 含该方向时
+          内部带与边缘同高；`axis.labels = "margins"` 时 `censor_labels()` 删掉
+          内面板标签，内部带**只剩刻度**（R 实测 `0.0967cm`，不是满高）。
+        这条只服务 `facet_wrap`：`facet_grid` 的 `axes` 非默认值不复刻（每侧只
+        建一条 `_seam_*`，19×16 固定），见 `docs/notes/gtable.md` 的已知差异。
         """
         if extents[side] <= 0:
             return 0.0
@@ -512,7 +514,10 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
         return extents[side] if labels_x else ticks[side]
 
     def axis_col_size(side: str, col: int) -> float:
-        """`axis-l` / `axis-r` 的带宽：边缘满高；`axes = "all"` 时内部按标签口径。"""
+        """`axis-l` / `axis-r` 的带宽：边缘满高；`axes = "all" / "all_y"` 时内部按标签口径。
+
+        同 `axis_row_size()`：`facet_grid` 非默认 `axes` 不复刻。
+        """
         if extents[side] <= 0:
             return 0.0
         edge = col == 1 if side == "left" else col == ncol
@@ -527,6 +532,9 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
 
     if kind == "grid":
         # `facet_grid`：每侧一整条（`seam_table()`），名字只带另一维编号。
+        # 已知差异：R 在 `axes != "margins"` 时会按内面板行 / 列再 weave 轴带
+        # （2×2 是 21×18 / 21×16 / 19×18），这里固定按 margins 的 19×16 建表；
+        # 见 `docs/notes/gtable.md` 的已知差异与 `test_grid_non_default_axes_*`。
         table = _seam_rows(
             table,
             [axis_cell("top", f"axis-t-{col}") for col in range(1, ncol + 1)],
