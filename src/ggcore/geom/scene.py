@@ -293,17 +293,26 @@ def scene_from_build(
     height_in: float = DEFAULT_HEIGHT_IN,
     dpi: float = 72.0,
     metrics: Any = None,
+    panel_box: Box | None = None,
 ) -> ir.Scene:
-    """`PlotBuild` → `ir.Scene`（pt、y 向下交给 IR）。"""
+    """`PlotBuild` → `ir.Scene`（pt、y 向下交给 IR）。
+
+    `panel_box` 是组合层（`ggcore.composition`）用的**外部面板矩形**（页面 cm
+    坐标，原点在左下）：给出时 `plot_layout()` 以它为面板区，标题 / 轴 / 图例
+    / margin 相对它落位，于是这张子图的 panel 与组合表解析出的矩形完全一致。
+    默认 `None` 走原路径（单图渲染，532 份快照不受影响）。
+    """
     del dpi  # 设备分辨率不属于场景；`Scene.dpi` 由 `ir.Scene` 的默认值给出
     metrics = metrics if metrics is not None else _FALLBACK_METRICS
     prepared = build if build.metrics is metrics else replace(build, metrics=metrics)
-    layout = plot_layout(prepared, width_in=width_in, height_in=height_in, metrics=metrics)
-    theme = _theme_of(prepared)
-    table = layout.facet_table
-    if table is None:  # pragma: no cover - `plot_layout()` 总会给出
-        table = prepared.facet_table(metrics=metrics)
-
+    layout = plot_layout(
+        prepared,
+        width_in=width_in,
+        height_in=height_in,
+        metrics=metrics,
+        panel_box=panel_box,
+    )
+    grobs = page_grobs(prepared, layout, metrics)
     tree = ViewportTree(Device(float(width_in), float(height_in)), metrics=metrics)
     tree.push(
         viewport(
@@ -316,6 +325,20 @@ def scene_from_build(
             gp=gpar(fontsize=12.0, fontfamily=""),
         )
     )
+    return scene(grobs, tree, cache=_scene_cache()).to_ir_scene()
+
+
+def page_grobs(build: PlotBuild, layout: PlotLayout, metrics: Any) -> list[Any]:
+    """一张图的页面级 grob 列表（`scene_from_build()` 的组装半边）。
+
+    坐标是**页面 cm**（原点左下）。组合层拿它把多张子图的 grob 放进同一棵
+    场景树：每个子图的页面就是它在组合表里的 18×15 块，所以这里不需要知道
+    「自己在哪个块里」——外层的块视口负责平移。
+    """
+    theme = _theme_of(build)
+    table = layout.facet_table
+    if table is None:  # pragma: no cover - `plot_layout()` 总会给出
+        table = build.facet_table(metrics=metrics)
 
     grobs: list[Any] = []
     background = _rect_for(theme, "plot.background", layout.width_cm, layout.height_cm, centre=True)
@@ -323,14 +346,14 @@ def scene_from_build(
         grobs.append(background)
     grobs.extend(_text_row_grobs(theme, layout, "title"))
 
-    prepared_layers = [_prepare_layer(layer) for layer in prepared.layers]
+    prepared_layers = [_prepare_layer(layer) for layer in build.layers]
     theme_key = _theme_fingerprint(theme)
-    for panel, params in _panels(prepared):
+    for panel, params in _panels(build):
         box = layout.panel_boxes.get(panel)
         if box is None:  # pragma: no cover - FacetTable 一定覆盖每个 panel
             continue
         children = _panel_children(
-            prepared,
+            build,
             prepared_layers,
             panel,
             params,
@@ -362,10 +385,10 @@ def scene_from_build(
     grobs.extend(_text_row_grobs(theme, layout, "subtitle"))
     grobs.extend(_text_row_grobs(theme, layout, "caption"))
     grobs.extend(_strip_grobs(table, theme, layout, metrics))
-    grobs.extend(_axis_grobs(prepared, theme, layout, metrics, table=table))
-    grobs.extend(_legend_grobs(prepared, theme, layout, metrics))
+    grobs.extend(_axis_grobs(build, theme, layout, metrics, table=table))
+    grobs.extend(_legend_grobs(build, theme, layout, metrics))
     grobs.extend(_tag_grobs(layout))
-    return scene(grobs, tree, cache=_scene_cache()).to_ir_scene()
+    return grobs
 
 
 # ---------------------------------------------------------------------------
@@ -623,8 +646,15 @@ def plot_layout(
     width_in: float = DEFAULT_WIDTH_IN,
     height_in: float = DEFAULT_HEIGHT_IN,
     metrics: Any = None,
+    panel_box: Any = None,
 ) -> PlotLayout:
-    """算整页版式（不画）：标题行、轴占位、图例盒、面板区与每面板矩形。"""
+    """算整页版式（不画）：标题行、轴占位、图例盒、面板区与每面板矩形。
+
+    `panel_box`（`Box`，页面 cm，原点左下）是组合层的外部覆盖：给出时面板区
+    直接取它，标题 / 副标题 / 注脚 / 轴 / 图例 / tag 相对它落位（`inner` 由
+    四条边反推）。默认 `None` 与旧行为逐值一致。`coord_fixed` 的 aspect 收缩在
+    这一支**不**再做：组合表里的 panel 单位已经是解析后的最终尺寸。
+    """
     theme = _theme_of(build)
     width_cm = float(width_in) * CM_PER_INCH
     height_cm = float(height_in) * CM_PER_INCH
@@ -941,6 +971,38 @@ def plot_layout(
         panel_right - panel_left,
         panel_top - panel_bottom,
     )
+    if panel_box is not None:
+        # 组合层给的外部面板矩形：先取它，再把 content / inner 反推回来，
+        # 让 title / caption / legend / tag 贴着这个 panel 落位。
+        panel_area = panel_box
+        content_bottom = panel_area.y_cm - x_axis - x_title
+        content_left = panel_area.x_cm - y_axis - y_title
+        content_right = (
+            panel_area.right + y_axis_right + y_title_right + strip_band_right + strip_pad_y
+        )
+        content_top = panel_area.top + x_axis_top + x_title_top + strip_band_top + strip_pad_x
+        inner = Box(
+            content_left - left_extent,
+            content_bottom - caption_cm - bottom_extent,
+            (content_right + right_extent) - (content_left - left_extent),
+            (content_top + title_cm + subtitle_cm + top_extent)
+            - (content_bottom - caption_cm - bottom_extent),
+        )
+        top_strip_band = (
+            Box(panel_area.x_cm, content_top - strip_band_top, panel_area.width_cm, strip_band_top)
+            if strip_band_top > 0
+            else None
+        )
+        right_strip_band = (
+            Box(
+                panel_area.right + strip_pad_y,
+                panel_area.y_cm,
+                strip_band_right,
+                panel_area.height_cm,
+            )
+            if strip_band_right > 0
+            else None
+        )
     if panel_area.width_cm <= 0 or panel_area.height_cm <= 0:
         raise ValueError(
             "轴 / 图例 / 标题吃掉了整块面板区："
@@ -962,7 +1024,8 @@ def plot_layout(
         if strip_band_right > 0
         else None
     )
-    panel_area = _aspect_panel_area(build, panel_area, table)
+    if panel_box is None:
+        panel_area = _aspect_panel_area(build, panel_area, table)
     facet_boxes = table.panel_boxes(panel_area.width_cm, panel_area.height_cm)
     panel_boxes = {
         panel: Box(
