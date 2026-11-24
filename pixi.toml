@@ -30,6 +30,10 @@ solve-group = "refs"
 
 [environments.refs.dependencies]
 r-sf = ">=1.1_3,<2"
+# SIL-1000：`align_scales()` 的 R 对拍要 aplot 0.3.2 的 `xlim2()` / `ylim2()` /
+# `adjust_coord()`（`R/axis.R`、`R/utilities.R`）。aplot 自己拉 patchwork /
+# ggfun / ggplotify；r45 build 才能配 `r-base = 4.5.*`（r44 的 build 解不出来）。
+r-aplot = ">=0.3.2,<0.4"
 
 [dependencies]
 python = "3.12.*"
@@ -322,6 +326,10 @@ r-quantreg = ">=6.1,<7"
 # 第二个脚本生成色板取值表 `src/ggcore/palette_data.py`（brewer 逐 n 表 + viridis
 # 8 档映射）与色板夹具 `tests/fixtures/palettes_r_reference.json`。
 "refs:scales" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/scales_ref.R && LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/palettes_ref.R"
+# SIL-1000：`align_scales()` 对拍夹具。aplot 0.3.2 的 `xlim2()` / `ylim2()` /
+# `adjust_coord()` 逐值跑一遍，产物 `tests/fixtures/align_scales_r_reference.json`
+# 入库；CI 不装 R。口径见 docs/notes/align-scales.md。
+"refs:align" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/align_scales_ref.R"
 # SIL-800：Date 列**不写** `scale_x_date()` 的参考图（默认标度解析）。独立脚本是
 # 刻意的：`refs:cases` 会重写全部历史 expected.svg，这里只产一条新 case。
 "refs:date-default" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/date_scale_ref.R"
