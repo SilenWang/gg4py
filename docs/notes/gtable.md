@@ -229,22 +229,50 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
   tag 单独占第 2 行 / 第 2 列，否则 tag 会被算两遍。`tag_width_cm` /
   `tag_height_cm` 是同一任务新增的字段。
 
-分面时 R 把中间的「axis-t / panel / axis-b × axis-l / panel / axis-r」3×3 区域
-**展开**成逐面板网格：
+分面时 R 把面板区**展开**成逐面板网格，规则按 `facet_wrap` / `facet_grid` 分开
+（SIL-999 审计缺口 1 修的就是这条，早期版本只对「单一面板行 / 列」成立）：
 
-- 行 = `axis-t` + `FacetTable` 的所有行 + `axis-b`；
-- 列 = 每个面板列前插 `axis-l`、组末插 `axis-r`（strip 列归入它所在的面板组；
-  `panel.spacing` 列原样保留）。
+- `facet_wrap`：**每个面板行**一组 `axis-t` + strip + `panel` + `axis-b`，组间才是
+  `panel.spacing.y`；**每个面板列**一组 `axis-l` + `panel` + `axis-r`（right strip
+  夹在 panel 与 axis-r 之间），组间是 `panel.spacing.x`。内轴不画标签：只有最左
+  一条 `axis-l` / 最右一条 `axis-r` 有宽度，其余 `0cm`（R 实测：`axis-l-1-1` =
+  0.3505cm、`axis-l-1-2` = 0cm）。
+- `facet_grid`：每侧**一条**轴 / strip（`seam_table()`）；轴跨整列 / 整行，不是
+  每个面板各插一对。
 
-于是 `facet_wrap(~g)` 两列 = 17×17、`facet_grid(g ~ .)` 两行 = 18×14，与 R 实测
-一致。内轴不画标签：只有最左一条 `axis-l` / 最右一条 `axis-r` 有宽度，其余为
-`0cm`（R 的 `facet_wrap` 实测：`axis-l-1-1` = 0.3505cm、`axis-l-1-2` = 0cm）。
+六个 shape 的实测（R 4.5.3 / ggplot2 4.0.3，7×7in）：
 
-命名照 R 的实测顺序，注意 **panel 与 axis 的行列顺序相反**：
+| case | gg4py | R |
+| --- | --- | --- |
+| `facet_wrap(~g)` 1×2 | 17×17 | 17×17 |
+| `facet_wrap(~g, ncol = 1)` 2×1 | 22×13 | 22×13 |
+| `facet_wrap(~four)` 2×2 | 22×17 | 22×17 |
+| `facet_grid(g ~ .)` 2×1 | 18×14 | 18×14 |
+| `facet_grid(. ~ g)` 1×2 | 17×15 | 17×15 |
+| `facet_grid(h ~ g)` 2×2 | 19×16 | 19×16 |
+
+命名照 R 的实测顺序，注意 **panel 与 axis 的行列顺序相反**；多行 / 多列时每个
+layout 名必须**唯一**——`GTable.grob(name)` / `placements(name)` 取第一个匹配，
+重名会让组合层静默拿到错格（早期 `facet_grid` 多列就踩了这个坑）：
 
 - `panel-{col}-{row}`（`facet_wrap` 两列：`panel-1-1` / `panel-2-1`）；
-- `axis-l-{row}-{col}`、`axis-t-{col}-{row}`；
-- `facet_grid` 的轴跨整行 / 整列，名字只带行号（`axis-l-1`）。
+- `facet_wrap` 的轴每面板一组：`axis-l-{row}-{col}` / `axis-r-{row}-{col}`、
+  `axis-t-{col}-{row}` / `axis-b-{col}-{row}`；
+- `facet_grid` 的轴每侧一条，名字带**另一维**的编号：`axis-l-{row}` /
+  `axis-r-{row}`、`axis-t-{col}` / `axis-b-{col}`。
+
+`plot.title.position = "plot"` / `plot.caption.position = "plot"` 时 R 的
+title / caption 跨 `guide-box-left .. guide-box-right` 的列范围（13 列的表里是
+3..11，实测），不是整张表；`legend.location = "plot"` 不改变这一点。
+
+**单位与 `metrics`**：panel 行列是 `null`，其余固定尺寸来自 `plot_layout()` 的
+cm；图例盒宽度 = `cm 固定部分 + strwidth(最宽标签)`（R 的 guide-box 是嵌套
+gtable，宽度里含标签的 `stringWidth`）。因此：
+
+- 含图例的表在 `UnitContext` 没有 `metrics` 时 `resolve()` 按现有约定抛
+  `UnitError`（不静默给 0），`tests/test_plot_gtable.py` 钉住这条；
+- 没有图例的表是纯 cm + null，不需要度量也能解析（文字尺寸已在构建期量成 cm）；
+- 构建与解析用**同一个** `metrics`：标签宽度的固定部分是按构建时度量扣出来的。
 
 `coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
 `1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自
@@ -260,6 +288,15 @@ guide-box / spacer，带主题元素或 `LegendBoxLayout`）。组合层按名�
 pixi run -e refs refs:plot-gtable
 pytest -q tests/test_plot_gtable.py tests/test_plot_gtable_r_parity.py
 ```
+
+**已知差异 / 首期不做**：
+
+- `scales = "free"` 的逐面板轴尺寸统一用全局 max（父任务首期要求单 panel 或
+  `scales = "fixed"`）；
+- `strip.placement = "outside"` 仍按 inside 的槽放进表里；
+- stretchy legend key（`unit(1, "null")`）按参考画布把拉伸量落成 cm；
+- `plot.tag.location = "plot"` / `"panel"` 的数值位置只记录覆盖区域，x/y（npc）
+  不属于 gtable 几何。
 
 ## 与后续模块的接口
 

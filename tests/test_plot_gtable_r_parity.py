@@ -32,6 +32,8 @@ from ggcore.plot import (
     labs,
     plot_gtable,
 )
+from ggcore.theme import theme
+from ggcore.units import CM_PER_INCH, UnitContext
 from ggio.frame import from_dict
 from ggskia.text import ShaperMetrics
 
@@ -39,14 +41,18 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "plot_gtable_r_referenc
 DOCUMENT = json.loads(FIXTURE.read_text(encoding="utf-8"))
 CASES: list[dict[str, Any]] = DOCUMENT["cases"]
 METRICS = ShaperMetrics()
+CTX = UnitContext(metrics=METRICS)
 SIZE_IN = 7.0
 TOLERANCE_CM = 0.05
 
+#: 与 `tools/refs/plot_gtable_ref.R` 的 `data` 同一份（8 行、4 个 facet 水平）。
 _DATA = from_dict(
     {
-        "x": [1.0, 2.0, 3.0, 4.0, 5.0],
-        "y": [2.0, 4.0, 3.0, 5.0, 6.0],
-        "g": ["a", "b", "a", "b", "a"],
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        "y": [2.0, 4.0, 3.0, 5.0, 6.0, 3.0, 4.0, 7.0],
+        "g": ["a", "b", "a", "b", "a", "b", "a", "b"],
+        "h": ["u", "u", "u", "u", "v", "v", "v", "v"],
+        "four": ["p", "q", "r", "s", "p", "q", "r", "s"],
     }
 )
 
@@ -66,6 +72,17 @@ def _build(name: str) -> ggplot:
         "facet_wrap": lambda: base + facet_wrap("g"),
         "facet_grid": lambda: base + facet_grid("g"),
         "coord_fixed": lambda: base + coord_fixed(ratio=2),
+        # SIL-999 审计补的 4 个 shape：多行 / 多列分面的展开规则。
+        "wrap_ncol1": lambda: base + facet_wrap("g", ncol=1),
+        "wrap_2x2": lambda: base + facet_wrap("four"),
+        "grid_1x2": lambda: base + facet_grid(None, "g"),
+        "grid_2x2": lambda: base + facet_grid("h", "g"),
+        "title_plot_position": lambda: (
+            ggplot(_DATA, aes(x="x", y="y", colour="g"))
+            + geom_point()
+            + labs(title="TT", subtitle="SS", x="XX", y="YY")
+            + theme(**{"plot.title.position": "plot"})
+        ),
     }
     return builders[name]()
 
@@ -91,6 +108,11 @@ def test_fixture_pin() -> None:
         "facet_wrap",
         "facet_grid",
         "coord_fixed",
+        "wrap_ncol1",
+        "wrap_2x2",
+        "grid_1x2",
+        "grid_2x2",
+        "title_plot_position",
     }
 
 
@@ -104,12 +126,17 @@ def test_shape_and_layout_names_match_r(case: dict[str, Any]) -> None:
         (item["name"], item["t"], item["l"], item["b"], item["r"]) for item in case["layout"]
     }
     assert ours == reference
+    # 审计缺口 1：`GTable.grob(name)` / `placements(name)` 取第一个匹配，重名会让
+    # 组合层静默拿到错格。单面板的 4 个 `spacer` 在 R 里就是同名（它们靠 t/l/b/r
+    # 区分），其余 layout 名必须唯一。
+    names = [item.name for item in table.layout if item.name != "spacer"]
+    assert len(names) == len(set(names)), f"{case['name']}: 重复的 layout 名"
 
 
 @pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])
 def test_literal_dimensions_match_r(case: dict[str, Any]) -> None:
     table = plot_gtable(_build(case["name"]), metrics=METRICS)
-    sizes = table.resolve(SIZE_IN * 2.54, SIZE_IN * 2.54)
+    sizes = table.resolve(SIZE_IN * CM_PER_INCH, SIZE_IN * CM_PER_INCH, ctx=CTX)
     checked = 0
     for index, text in enumerate(case["widths"]):
         expected = _literal_cm(text)
@@ -141,7 +168,7 @@ def test_legend_column_is_measured_against_r() -> None:
     """`legend.box.spacing` 在 R 里是独立的 spacer 列（列 10 = 11points）。"""
     case = next(item for item in CASES if item["name"] == "legend")
     table = plot_gtable(_build("legend"), metrics=METRICS)
-    sizes = table.resolve(SIZE_IN * 2.54, SIZE_IN * 2.54)
+    sizes = table.resolve(SIZE_IN * CM_PER_INCH, SIZE_IN * CM_PER_INCH, ctx=CTX)
     assert case["widths"][9] == "11points"
     # 主题的 pt → cm 与 R 的 `convertWidth` 在这位小数上有 0.0015cm 的口径差，
     # 用与其它尺寸相同的 0.5mm 容差。
@@ -160,12 +187,21 @@ def test_facet_panel_names_follow_r_order() -> None:
 def test_resolved_panel_matches_plot_layout_for_every_case() -> None:
     """面板区的物理尺寸与单图版式一致（两条路径不各算各的）。"""
     for case in CASES:
-        if case["name"] in ("facet_wrap", "facet_grid"):
+        if case["name"] in (
+            "facet_wrap",
+            "facet_grid",
+            "wrap_ncol1",
+            "wrap_2x2",
+            "grid_1x2",
+            "grid_2x2",
+        ):
             continue  # 分面的面板区在 FacetTable 里，另有 facet 对拍
         plot = _build(case["name"])
         table = plot_gtable(plot, metrics=METRICS)
         layout = plot_layout(build_plot_of(plot), metrics=METRICS)
-        box = table.region_box(9, 7, 9, 7, width_cm=SIZE_IN * 2.54, height_cm=SIZE_IN * 2.54)
+        box = table.region_box(
+            9, 7, 9, 7, width_cm=SIZE_IN * CM_PER_INCH, height_cm=SIZE_IN * CM_PER_INCH, ctx=CTX
+        )
         assert box.width_cm == pytest.approx(layout.panel_area.width_cm, abs=0.02)
         assert box.height_cm == pytest.approx(layout.panel_area.height_cm, abs=0.02)
 

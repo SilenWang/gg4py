@@ -20,6 +20,9 @@ suppressPackageStartupMessages({
   library(grid)
 })
 
+# 不开默认绘图设备：否则 `ggplotGrob()` 会在 CWD 留下 Rplots.pdf。
+invisible(pdf(NULL))
+
 out_path <- "tests/fixtures/plot_gtable_r_reference.json"
 
 # ---------------------------------------------------------------------------
@@ -97,9 +100,12 @@ measure_case <- function(name, plot) {
 }
 
 data <- data.frame(
-  x = c(1, 2, 3, 4, 5),
-  y = c(2, 4, 3, 5, 6),
-  g = c("a", "b", "a", "b", "a")
+  x = c(1, 2, 3, 4, 5, 6, 7, 8),
+  y = c(2, 4, 3, 5, 6, 3, 4, 7),
+  g = factor(c("a", "b", "a", "b", "a", "b", "a", "b"), levels = c("a", "b")),
+  h = factor(c("u", "u", "u", "u", "v", "v", "v", "v"), levels = c("u", "v")),
+  four = factor(c("p", "q", "r", "s", "p", "q", "r", "s"),
+                levels = c("p", "q", "r", "s"))
 )
 
 base <- ggplot(data, aes(x, y)) + geom_point()
@@ -116,7 +122,20 @@ cases <- list(
   ),
   measure_case("facet_wrap", base + facet_wrap(~g)),
   measure_case("facet_grid", base + facet_grid(g ~ .)),
-  measure_case("coord_fixed", base + coord_fixed(ratio = 2))
+  measure_case("coord_fixed", base + coord_fixed(ratio = 2)),
+  # SIL-999 审计补的 4 个 shape：多行 / 多列分面的展开规则与 R 对拍。
+  measure_case("wrap_ncol1", base + facet_wrap(~g, ncol = 1)),
+  measure_case("wrap_2x2", base + facet_wrap(~four)),
+  measure_case("grid_1x2", base + facet_grid(. ~ g)),
+  measure_case("grid_2x2", base + facet_grid(h ~ g)),
+  # `plot.title.position = "plot"`：title / subtitle 的跨列范围。
+  measure_case(
+    "title_plot_position",
+    ggplot(data, aes(x, y, colour = g)) +
+      geom_point() +
+      labs(title = "TT", subtitle = "SS", x = "XX", y = "YY") +
+      theme(plot.title.position = "plot")
+  )
 )
 
 doc <- list(

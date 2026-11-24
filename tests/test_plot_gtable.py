@@ -32,7 +32,8 @@ from ggcore.plot import (
     labs,
     plot_gtable,
 )
-from ggcore.units import Unit, UnitContext, convert_height, convert_width
+from ggcore.theme import theme
+from ggcore.units import Unit, UnitContext, UnitError, convert_height, convert_width
 from ggio.frame import from_dict
 from ggskia.text import ShaperMetrics
 
@@ -45,6 +46,17 @@ DATA = from_dict(
         "x": [1.0, 2.0, 3.0, 4.0, 5.0],
         "y": [2.0, 4.0, 3.0, 5.0, 6.0],
         "g": ["a", "b", "a", "b", "a"],
+    }
+)
+
+#: 多行 / 多列分面的 shape：与 `tools/refs/plot_gtable_ref.R` 的 `data` 同一份。
+FACET_DATA = from_dict(
+    {
+        "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+        "y": [2.0, 4.0, 3.0, 5.0, 6.0, 3.0, 4.0, 7.0],
+        "g": ["a", "b", "a", "b", "a", "b", "a", "b"],
+        "h": ["u", "u", "u", "u", "v", "v", "v", "v"],
+        "four": ["p", "q", "r", "s", "p", "q", "r", "s"],
     }
 )
 
@@ -158,6 +170,54 @@ def test_facet_grid_expands_like_ggplot_grob() -> None:
     assert {"axis-l-1", "axis-l-2", "axis-t-1"} <= names
 
 
+def test_multi_row_and_multi_column_facets_expand_like_r() -> None:
+    """审计缺口 1：多行 / 多列分面的展开规则（R 4.0.3 实测的行列数）。"""
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    cases = {
+        "wrap_ncol1": (base + facet_wrap("g", ncol=1), (22, 13)),
+        "wrap_2x2": (base + facet_wrap("four"), (22, 17)),
+        "grid_1x2": (base + facet_grid(None, "g"), (17, 15)),
+        "grid_2x2": (base + facet_grid("h", "g"), (19, 16)),
+    }
+    for name, (plot, shape) in cases.items():
+        table = plot_gtable(plot, metrics=METRICS)
+        assert (table.nrow, table.ncol) == shape, name
+        names = [item.name for item in table.layout]
+        assert len(names) == len(set(names)), f"{name}: 重复的 layout 名 {names}"
+
+
+def test_multi_row_wrap_has_one_axis_group_per_panel_row() -> None:
+    """`facet_wrap(ncol = 1)`：每个面板行一组 axis-t / strip / panel / axis-b。"""
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    table = plot_gtable(base + facet_wrap("g", ncol=1), metrics=METRICS)
+    assert {"axis-t-1-1", "axis-t-1-2", "axis-b-1-1", "axis-b-1-2"} <= _names(table)
+    assert (_placement(table, "axis-t-1-2").t, _placement(table, "panel-1-2").t) == (13, 15)
+
+
+def test_grid_axes_are_shared_and_named_by_the_other_dimension() -> None:
+    """`facet_grid` 每侧一条轴；名字带列号（axis-t）/ 行号（axis-l），不重复。"""
+    base = ggplot(FACET_DATA, aes(x="x", y="y")) + geom_point()
+    table = plot_gtable(base + facet_grid(None, "g"), metrics=METRICS)
+    assert {"axis-l-1", "axis-t-1", "axis-t-2", "axis-b-1", "axis-b-2"} <= _names(table)
+    assert "axis-l-2" not in _names(table)  # 只有一行面板
+
+
+def test_title_plot_position_spans_the_guide_boxes() -> None:
+    """`plot.title.position = "plot"`：R 的 title 跨 guide-box-left .. -right（3..11）。"""
+    plot = (
+        ggplot(FACET_DATA, aes(x="x", y="y", colour="g"))
+        + geom_point()
+        + labs(title="T", subtitle="S")
+        + theme(**{"plot.title.position": "plot"})
+    )
+    table = plot_gtable(plot, metrics=METRICS)
+    title = _placement(table, "title")
+    left = _placement(table, "guide-box-left")
+    right = _placement(table, "guide-box-right")
+    assert (title.l, title.r) == (left.l, right.r)
+    assert (title.l, title.r) == (3, 11)
+
+
 def test_coord_fixed_sets_respect_and_null_weights() -> None:
     table = plot_gtable(_base() + coord_fixed(ratio=2), metrics=METRICS)
     assert table.respect is True
@@ -200,8 +260,8 @@ def test_table_is_device_independent() -> None:
     )
 
 
-def test_without_metrics_the_table_is_still_stable() -> None:
-    """`metrics=None` 与 `plot_layout()` 用同一个占位度量，不静默给 0。"""
+def test_without_metrics_the_geometry_is_still_stable() -> None:
+    """没有图例的表是纯 cm + null：`metrics=None` 也能解析，且不静默给 0。"""
     table = plot_gtable(_base() + labs(title="T", x="XX"), metrics=None)
     assert (table.nrow, table.ncol) == (16, 13)
     sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH)
@@ -211,6 +271,16 @@ def test_without_metrics_the_table_is_still_stable() -> None:
     # 有正文的标题 / 轴标题不会变成 0 宽高（占位度量也要给出正的文字尺寸）。
     assert sizes.heights_cm[2] > 0
     assert sizes.heights_cm[10] > 0
+
+
+def test_legend_width_keeps_strwidth_and_needs_metrics() -> None:
+    """含图例的表里留了 `strwidth`（标签宽度）：无 metrics 时按约定报错。"""
+    plot = ggplot(FACET_DATA, aes(x="x", y="y", colour="g")) + geom_point()
+    table = plot_gtable(plot, metrics=METRICS)
+    with pytest.raises(UnitError, match="strwidth"):
+        table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH)
+    sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=CTX)
+    assert max(sizes.widths_cm) >= 1.0
 
 
 def test_accepts_a_build() -> None:
