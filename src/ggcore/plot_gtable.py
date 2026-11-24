@@ -57,14 +57,15 @@ gtable 的 grob 在 gg4py 里可以是任意对象。这里放三类**语义槽�
 
 ## 单位与 `metrics`
 
-- panel 行列是 `null`；其余固定尺寸（轴、轴标题、标题、strip、间距、margin、
-  图例键）用 cm，全部来自 `plot_layout()`；
-- **图例盒宽度** = `cm 固定部分 + strwidth(最宽标签)`：R 的 `guide-box` 是嵌套
-  gtable，`gtable_width()` 里含标签的 `stringWidth`。于是含图例的表在
-  `UnitContext` 没有 `metrics` 时 `resolve()` 会按现有约定抛 `UnitError`
-  （不静默给 0）；没有图例的表是纯 cm + null，不需要度量也能解析。
-- 构建与解析要用**同一个** `metrics`：标签宽度的固定部分是按构建时度量扣出来的
-  （`layout_metrics(None)` 退到 `_FallbackMetrics`，与 `plot_layout()` 一致）。
+- panel 行列是 `null`；固定尺寸（轴、strip、间距、margin、图例键）用 cm，
+  全部来自 `plot_layout()`；
+- **文字行 / 列**保留成文字度量单位：轴标题（xlab / ylab）与 title / subtitle /
+  caption 用 `strheight`（R 的 `1grobheight`；`amount` 按构建时 `metrics` 校准到
+  目标 cm，表按 `UnitContext(fontsize=12)` 定义）；图例盒宽度用
+  `cm + strwidth(最宽标签)`（R 的 guide-box 是嵌套 gtable）。
+- 因此 `UnitContext` 没有 `metrics` 时 `resolve()` **一律**抛 `UnitError`
+  （不静默 0，也不回退到占位度量算出一个看起来正常的表）；构建与解析必须用
+  **同一个** `metrics`。
 
 **不改单图渲染路径**：`scene_from_build()` 仍走 `PlotLayout` 的绝对 cm 矩形，
 `plot_gtable()` 是并行的新导出（与上游 `ggplotGrob()` 并列于绘制之外的位置
@@ -105,7 +106,7 @@ from ggcore.gtable import (
     gtable_add_rows,
 )
 from ggcore.theme import ElementRect, ElementText, ResolvedTheme, Theme, resolve_theme
-from ggcore.units import Unit, UnitContext, unit, unit_c
+from ggcore.units import CM_PER_INCH, Unit, UnitContext, unit, unit_c
 
 __all__ = ["PanelSlot", "PlotCell", "StripSlot", "plot_gtable"]
 
@@ -182,7 +183,7 @@ def plot_gtable(
         else _facet_sheet(build, theme, layout)
     )
     table = _add_legend_boxes(table, theme, layout, resolved)
-    table = _add_title_rows(table, theme, layout)
+    table = _add_title_rows(table, theme, layout, resolved)
     table = _add_tag(table, theme, layout)
     table = _add_plot_margin(table, theme)
     return _add_background(table, theme)
@@ -195,6 +196,25 @@ def plot_gtable(
 
 def _cm(value: float) -> Unit:
     return unit(float(value), _CM)
+
+
+def _text_height(target_cm: float, text: str | None, metrics: Any) -> Unit:
+    """把一段文字的行高 / 列宽（cm）表达成 `strheight` 单位。
+
+    R 的轴标题 / 标题行是 `1grobheight`（文字 grob 高），这里保留同一种
+    「随字体度量变」的单位：表按 `UnitContext(fontsize=12)` 定义，解析时
+    `amount * strheight(text, 12)` 就是目标 cm（`amount` 用构建时的 `metrics`
+    校准）。**没有 `metrics` 时 `resolve()` 按现有约定抛 `UnitError`**，不会
+    静默用占位值算出一个看起来正常的表。
+
+    目标尺寸为 0（没有该标题 / 元素是 blank）时仍保留一个 0 的 `strheight`
+    单位：这一行本身是文字行，度量缺席时就该报错。
+    """
+    probe = text if text else "M"
+    unit_cm = float(metrics.strheight(probe, fontsize=12.0, cex=1.0)) * CM_PER_INCH
+    if target_cm <= 0 or unit_cm <= 0:
+        return unit(0.0, "strheight", data=probe)
+    return unit(float(target_cm) / unit_cm, "strheight", data=probe)
 
 
 def _panel_frames(table: GTable) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
@@ -339,13 +359,19 @@ def _single_panel_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayo
     x_title = _guide_title(guide_for(build, "x"), _axis_title_text(build, "x"))
     y_title = _guide_title(guide_for(build, "y"), _axis_title_text(build, "y"))
     return _add_panel_labels(
-        table, layout, title_top=x_title, title_bottom=x_title, title_left=y_title
+        table,
+        layout,
+        build.metrics,
+        title_top=x_title,
+        title_bottom=x_title,
+        title_left=y_title,
     )
 
 
 def _add_panel_labels(
     table: GTable,
     layout: PlotLayout,
+    metrics: Any,
     *,
     title_top: str | None,
     title_bottom: str | None,
@@ -354,7 +380,7 @@ def _add_panel_labels(
     """R `Facet$draw_labels()`：xlab-t / xlab-b 行 + ylab-l / ylab-r 列。"""
     _rows, cols = _panel_frames(table)
     left, right = cols[0][0], cols[-1][1]
-    table = gtable_add_rows(table, _cm(layout.x_title_top_cm), pos=0)
+    table = gtable_add_rows(table, _text_height(layout.x_title_top_cm, title_top, metrics), pos=0)
     table = gtable_add_grob(
         table,
         PlotCell("xlab-t", "axis-title", text=title_top, side="top"),
@@ -364,7 +390,7 @@ def _add_panel_labels(
         name="xlab-t",
         clip="off",
     )
-    table = gtable_add_rows(table, _cm(layout.x_title_cm), pos=-1)
+    table = gtable_add_rows(table, _text_height(layout.x_title_cm, title_bottom, metrics), pos=-1)
     table = gtable_add_grob(
         table,
         PlotCell("xlab-b", "axis-title", text=title_bottom, side="bottom"),
@@ -377,7 +403,7 @@ def _add_panel_labels(
     )
     rows, _cols = _panel_frames(table)
     top, bottom = rows[0][0], rows[-1][1]
-    table = gtable_add_cols(table, _cm(layout.y_title_cm), pos=0)
+    table = gtable_add_cols(table, _text_height(layout.y_title_cm, title_left, metrics), pos=0)
     table = gtable_add_grob(
         table,
         PlotCell("ylab-l", "axis-title", text=title_left, side="left"),
@@ -387,7 +413,7 @@ def _add_panel_labels(
         name="ylab-l",
         clip="off",
     )
-    table = gtable_add_cols(table, _cm(layout.y_title_right_cm), pos=-1)
+    table = gtable_add_cols(table, _text_height(layout.y_title_right_cm, None, metrics), pos=-1)
     return gtable_add_grob(
         table,
         PlotCell("ylab-r", "axis-title", side="right"),
@@ -674,7 +700,12 @@ def _facet_sheet(build: PlotBuild, theme: ResolvedTheme, layout: PlotLayout) -> 
     x_title = _guide_title(guide_for(build, "x"), _axis_title_text(build, "x"))
     y_title = _guide_title(guide_for(build, "y"), _axis_title_text(build, "y"))
     return _add_panel_labels(
-        table, layout, title_top=x_title, title_bottom=x_title, title_left=y_title
+        table,
+        layout,
+        build.metrics,
+        title_top=x_title,
+        title_bottom=x_title,
+        title_left=y_title,
     )
 
 
@@ -846,7 +877,9 @@ def _plot_extent(table: GTable) -> tuple[int, int]:
     return min(row.l for row in boxes), max(row.r for row in boxes)
 
 
-def _add_title_rows(table: GTable, theme: ResolvedTheme, layout: PlotLayout) -> GTable:
+def _add_title_rows(
+    table: GTable, theme: ResolvedTheme, layout: PlotLayout, metrics: Any
+) -> GTable:
     """R `ggplot_gtable()` 的 title / subtitle / caption 三行。"""
     _rows, cols = _panel_frames(table)
     plot_left, plot_right = _plot_extent(table)
@@ -859,7 +892,9 @@ def _add_title_rows(table: GTable, theme: ResolvedTheme, layout: PlotLayout) -> 
     else:
         caption_left, caption_right = cols[0][0], cols[-1][1]
 
-    table = gtable_add_rows(table, _cm(layout.subtitle_cm), pos=0)
+    table = gtable_add_rows(
+        table, _text_height(layout.subtitle_cm, layout.subtitle_text, metrics), pos=0
+    )
     table = gtable_add_grob(
         table,
         PlotCell("subtitle", "subtitle", text=layout.subtitle_text),
@@ -870,7 +905,7 @@ def _add_title_rows(table: GTable, theme: ResolvedTheme, layout: PlotLayout) -> 
         name="subtitle",
         clip="off",
     )
-    table = gtable_add_rows(table, _cm(layout.title_cm), pos=0)
+    table = gtable_add_rows(table, _text_height(layout.title_cm, layout.title_text, metrics), pos=0)
     table = gtable_add_grob(
         table,
         PlotCell("title", "title", text=layout.title_text),
@@ -881,7 +916,9 @@ def _add_title_rows(table: GTable, theme: ResolvedTheme, layout: PlotLayout) -> 
         name="title",
         clip="off",
     )
-    table = gtable_add_rows(table, _cm(layout.caption_cm), pos=-1)
+    table = gtable_add_rows(
+        table, _text_height(layout.caption_cm, layout.caption_text, metrics), pos=-1
+    )
     return gtable_add_grob(
         table,
         PlotCell("caption", "caption", text=layout.caption_text),

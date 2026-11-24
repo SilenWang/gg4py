@@ -132,10 +132,10 @@ def test_panel_cell_matches_plot_layout_panel_area() -> None:
     layout = plot_layout(build_plot(plot), metrics=METRICS)
     width_cm = 7.0 * CM_PER_INCH
     height_cm = 7.0 * CM_PER_INCH
-    box = table.region_box(9, 7, 9, 7, width_cm=width_cm, height_cm=height_cm)
+    box = table.region_box(9, 7, 9, 7, width_cm=width_cm, height_cm=height_cm, ctx=CTX)
     assert box.width_cm == pytest.approx(layout.panel_area.width_cm, abs=0.02)
     assert box.height_cm == pytest.approx(layout.panel_area.height_cm, abs=0.02)
-    sizes = table.resolve(width_cm, height_cm)
+    sizes = table.resolve(width_cm, height_cm, ctx=CTX)
     assert sizes.total_width_cm == pytest.approx(width_cm, abs=1e-9)
     assert sizes.total_height_cm == pytest.approx(height_cm, abs=1e-9)
 
@@ -255,32 +255,58 @@ def test_table_is_device_independent() -> None:
     large = plot_gtable(plot, metrics=METRICS, width_in=10.0, height_in=8.0)
     assert str(small.widths) == str(large.widths)
     assert str(small.heights) == str(large.heights)
-    assert small.resolve(4.0 * CM_PER_INCH, 3.0 * CM_PER_INCH).total_width_cm == pytest.approx(
-        4.0 * CM_PER_INCH
-    )
+    assert small.resolve(
+        4.0 * CM_PER_INCH, 3.0 * CM_PER_INCH, ctx=CTX
+    ).total_width_cm == pytest.approx(4.0 * CM_PER_INCH)
 
 
-def test_without_metrics_the_geometry_is_still_stable() -> None:
-    """没有图例的表是纯 cm + null：`metrics=None` 也能解析，且不静默给 0。"""
+def test_without_metrics_resolve_raises_unit_error() -> None:
+    """文字尺寸以 `strheight` / `strwidth` 留在表里：没有 metrics 时按约定报错。
+
+    验收条文要求「无 metrics 时按现有方式报错，不静默 0」——轴标题 / 标题行
+    是 `strheight`、图例标签宽度是 `strwidth`，两者都走 `units` 的
+    `UnitError` 路径；不回退到占位度量算出一个看起来正常的表。
+    """
     table = plot_gtable(_base() + labs(title="T", x="XX"), metrics=None)
     assert (table.nrow, table.ncol) == (16, 13)
-    sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH)
+    with pytest.raises(UnitError, match="strheight"):
+        table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH)
+    with pytest.raises(UnitError, match="metric"):
+        table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=UnitContext())
+    sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=CTX)
     assert sizes.total_width_cm == pytest.approx(7.0 * CM_PER_INCH)
-    assert all(value >= 0 for value in sizes.widths_cm)
-    assert all(value >= 0 for value in sizes.heights_cm)
-    # 有正文的标题 / 轴标题不会变成 0 宽高（占位度量也要给出正的文字尺寸）。
+    # 有正文的标题 / 轴标题不会变成 0 宽高（同一 metrics 下解析回目标尺寸）。
     assert sizes.heights_cm[2] > 0
     assert sizes.heights_cm[10] > 0
 
 
 def test_legend_width_keeps_strwidth_and_needs_metrics() -> None:
-    """含图例的表里留了 `strwidth`（标签宽度）：无 metrics 时按约定报错。"""
+    """含图例的表多留一个 `strwidth`（标签宽度）：无 metrics 时同样报错。"""
     plot = ggplot(FACET_DATA, aes(x="x", y="y", colour="g")) + geom_point()
     table = plot_gtable(plot, metrics=METRICS)
-    with pytest.raises(UnitError, match="strwidth"):
+    with pytest.raises(UnitError, match=r"strheight|strwidth"):
         table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH)
+    widths = [str(item) for item in table.widths]
+    assert any("strwidth" in text for text in widths)
     sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=CTX)
     assert max(sizes.widths_cm) >= 1.0
+
+
+def test_text_rows_resolve_back_to_the_layout_cm() -> None:
+    """`strheight` 校准：同一 metrics 下解析回 `plot_layout()` 的 cm。"""
+    plot = _base() + labs(title="T", subtitle="S", caption="C", x="XX", y="YY")
+    table = plot_gtable(plot, metrics=METRICS)
+    layout = plot_layout(build_plot(plot), metrics=METRICS)
+    sizes = table.resolve(7.0 * CM_PER_INCH, 7.0 * CM_PER_INCH, ctx=CTX)
+    # 外层行：1 margin / 2 tag / 3 title / 4 subtitle / 5 guide-top / 6 spacing /
+    # 7 xlab-t / 8 axis-t / 9 panel / 10 axis-b / 11 xlab-b / 12 spacing /
+    # 13 guide-bottom / 14 caption / 15 spacer / 16 margin。
+    assert sizes.heights_cm[2] == pytest.approx(layout.title_cm, abs=1e-9)
+    assert sizes.heights_cm[3] == pytest.approx(layout.subtitle_cm, abs=1e-9)
+    assert sizes.heights_cm[6] == pytest.approx(layout.x_title_top_cm, abs=1e-9)
+    assert sizes.heights_cm[10] == pytest.approx(layout.x_title_cm, abs=1e-9)
+    assert sizes.heights_cm[13] == pytest.approx(layout.caption_cm, abs=1e-9)
+    assert sizes.widths_cm[4] == pytest.approx(layout.y_title_cm, abs=1e-9)
 
 
 def test_accepts_a_build() -> None:

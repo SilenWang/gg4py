@@ -266,13 +266,20 @@ title / caption 跨 `guide-box-left .. guide-box-right` 的列范围（13 列的
 3..11，实测），不是整张表；`legend.location = "plot"` 不改变这一点。
 
 **单位与 `metrics`**：panel 行列是 `null`，其余固定尺寸来自 `plot_layout()` 的
-cm；图例盒宽度 = `cm 固定部分 + strwidth(最宽标签)`（R 的 guide-box 是嵌套
-gtable，宽度里含标签的 `stringWidth`）。因此：
+cm；**文字行 / 列**保留成文字度量单位，而不是用占位度量算成 cm：
 
-- 含图例的表在 `UnitContext` 没有 `metrics` 时 `resolve()` 按现有约定抛
-  `UnitError`（不静默给 0），`tests/test_plot_gtable.py` 钉住这条；
-- 没有图例的表是纯 cm + null，不需要度量也能解析（文字尺寸已在构建期量成 cm）；
-- 构建与解析用**同一个** `metrics`：标签宽度的固定部分是按构建时度量扣出来的。
+- 轴标题行 / 列（xlab-t / xlab-b / ylab-l / ylab-r）与 title / subtitle /
+  caption 是 `strheight`（R 里是 `1grobheight`；表按 `UnitContext(fontsize=12)`
+  定义，`amount` 用构建时的 `metrics` 校准到目标 cm）；
+- 图例盒宽度是 `cm 固定部分 + strwidth(最宽标签)`（R 的 guide-box 是嵌套
+  gtable，宽度里含标签的 `stringWidth`）。
+
+于是 `UnitContext` 没有 `metrics` 时 `resolve()` 一律走 `units` 的 `UnitError`
+路径（不静默 0，也不回退到占位度量算出一个看起来正常的表）；`tests/
+test_plot_gtable.py::test_without_metrics_resolve_raises_unit_error` 钉住普通图，
+`::test_legend_width_keeps_strwidth_and_needs_metrics` 钉住图例的 `strwidth`。
+构建与解析必须用**同一个** `metrics`：`strheight` / `strwidth` 的 amount 是按
+构建时度量校准的。
 
 `coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
 `1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自
