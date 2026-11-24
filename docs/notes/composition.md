@@ -22,7 +22,7 @@ import gg4py
 
 p1 | p2  # 并排（一行）
 p1 / p2  # 上下（一列）
-p1 + p2 + p3  # 顺序追加（ncol / nrow 缺省时按 n2mfrow 近方形）
+p1 + p2 + p3  # 顺序追加（缺省网格按 wrap_dims() / n2mfrow：n<=3 一行）
 (p1 + p2 + p3 + p4) + gg4py.plot_layout(ncol=2, widths=[2, 1], heights=[1, 1])
 gg4py.wrap_plots(p1, p2, p3, ncol=2, byrow=False)
 gg4py.plot_spacer()  # 占位空格
@@ -69,14 +69,29 @@ patchwork 1.3.2 的 `plot_table()` = `ggplotGrob()` + `add_strips()`：单面板
 所以缩到「15 个列宽 + 18 个行高 + panel 位置」就够合并了。子表超出 18×15、
 或找不到 panel 时显式报 `ComposeError`。
 
+口径备注：patchwork 的 `simplify_gt()` 在坍缩 panel 块时，**块内行列全是绝对
+单位**才求和（`sum(convertWidth(...))`），否则给 `unit(1, "null")`；本实现一律
+`unit_sum()` 求和。这一项随后会被 `set_panel_dimensions()` 的 panel `null` 权重
+覆盖，对合并结果没有行为影响。
+
 ## 3. 合并：同列 / 同行取 max，panel 换 null
 
 `build_patchwork()` 的语义（源码实测）：
 
-1. design 是 `nrow × ncol` 的规则网格（`wrap_dims()` + `create_design()`，默认
-   `byrow = TRUE`），每个子图占一格；
+1. design 是 `nrow × ncol` 的规则网格（`ggplot2::wrap_dims()` + `create_design()`，
+   默认 `byrow = TRUE`），每个子图占一格。`nrow` / `ncol` 都缺省时走
+   `n2mfrow()`：**`n <= 3` 固定一行**（`1×2` / `1×3`），其余
+   `ncol = ceiling(sqrt(n))`、`nrow = ceiling(n / ncol)`。所以 `p1 + p2` 是并排
+   一行、`p1 + p2 + p3` 是 1×3，不是「近方形」的 2×2。实测表：
+
+   | n | 2 | 3 | 4 | 5..6 | 7..9 | 10..12 | 13..16 |
+   | --- | --- | --- | --- | --- | --- | --- | --- |
+   | nrow × ncol | 1×2 | 1×3 | 2×2 | 2×3 | 3×3 | 3×4 | 4×4 |
 2. `table_dims()`：对**同一 layout 列**的所有子表逐槽位取 max 列宽，对**同一
-   layout 行**的所有子表逐槽位取 max 行高；
+   layout 行**的所有子表逐槽位取 max 行高。源码按 panel 两侧拆（列 `<=
+   PANEL_COL` 归 `design$l`、`> PANEL_COL` 归 `design$r`；行同理 `t` / `b`），
+   只有 `design` / `area` 跨格时两侧才会不同；本期只支持规则网格，所以本节按
+   「同一 layout 列 / 行」的简化说法实现，行为与源码一致；
 3. `set_panel_dimensions()`：把这些列 / 行的 panel 槽位换成 `unit(权重, "null")`
    （权重来自 `plot_layout(widths/heights)`，缺省 1）；
 4. 子表的 layout 记录按 design 的行列平移到对应块，z 顺序按子图顺序累加。
@@ -110,15 +125,23 @@ fill 从 SVG 里读回 panel 矩形。实测（6×6 in，pt）：
 | `p1 \| p2`（7×5 in） | (38.26, 10.96, 205.81, 312.67)、(287.23, 10.96, 205.81, 312.67) | 同 y/h、x 递增 |
 | 嵌套 `(p1 \| p2) / p3` | 上层 167.37、下层 377.89 | **跨层宽不同**（patchwork 已知行为） |
 
+默认网格（`p1 + p2 + p3`，不带 `plot_layout()`）在 R 里是 **1×3**：三个 panel
+的 y / h 都是 `10.96 / 384.67`、x 依次 `38.26 / 180.24 / 322.22`。
+
 本仓字体度量与 R 不同，绝对 pt **不**逐值对拍；夹具记录的是这些**关系**，Python
 侧断同一组关系（`tests/test_composition_r_parity.py`），并从我们自己的 SVG 里读回
-panel 矩形验证渲染与表一致（容差 0.02pt）。
+panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽位不同宽**的情形：
+`test_panels_align_with_different_axis_slot_widths` 用「同列上方 `y ∈ 1..8`、
+下方 `y ∈ 1e6..8e6`」的 2×2，四个 panel 的 x / y / w / h 与表级逐个相等
+（渲染级，不只是表里相等）。
 
 ## 6. 已知差异 / 非范围
 
 | 项 | 本实现 | patchwork | 去向 |
 | --- | --- | --- | --- |
 | 子图固定槽位（标题 / 轴 / 图例 / margin）的跨图统一 | 只统一 panel 几何；槽位按子图自身尺寸贴着 panel 摆 | 逐槽位取 max，标题在统一列里居中 | 视觉差异，留给后续 stage |
+| `wrap_plots()` 给的 `nrow × ncol` 装不下子图 | 抛 `ComposeError` | warning + 丢弃多余的图 | 显式报错，避免静默丢图 |
+| `Patchwork + theme()` / `+ geom_*()` | 抛 `TypeError` | 允许（对 patchwork 内的图批量加组件） | 不在本期验收内 |
 | `guides="collect"` / `guide_area()` | 未实现 | 有 | SIL-1002 |
 | aplot 式 guide area / guide layout | 未实现 | aplot 独有 | SIL-1003 |
 | `panel_spacing` / `insert_*` | 未实现 | aplot / patchwork 语法糖 | SIL-1004 |
@@ -135,8 +158,8 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。
 
 | 子图数 | `gtable()`（构建 + resolve + 渲染树） | `to_scene()` | IR（CBOR） |
 | --- | --- | --- | --- |
-| 4（2 列） | 105 ms | 118 ms | 24,206 B |
-| 9（3 列） | 217 ms | 245 ms | 54,332 B |
+| 4（2 列） | 87 ms | 97 ms | 24,206 B |
+| 9（3 列） | 176 ms | 215 ms | 54,332 B |
 
 `gtable()` 是首次合并的完整成本（含每张子图的 `build_plot()` 与 grob 树）；重复
 渲染同一组合时，`scene()` 的指令缓存（`ggcore.perf`）照常生效。IR 体积随子图数

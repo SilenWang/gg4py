@@ -417,10 +417,24 @@ def _sheet(plot: Any, metrics: Any) -> _Sheet:
 
 
 def _wrap_dims(count: int, nrow: int | None, ncol: int | None) -> tuple[int, int]:
-    """`wrap_dims()`：`nrow` / `ncol` 缺省时按 `n2mfrow()`（近方形）。"""
+    """`ggplot2::wrap_dims()`：`nrow` / `ncol` 缺省时按 `n2mfrow()`。
+
+    `n2mfrow()` 不是「近方形」：`n <= 3` 固定 **一行**（`1×2` / `1×3`），其余
+    `ncol = ceiling(sqrt(n))`、`nrow = ceiling(n / ncol)`。实测（R 4.5.3）：
+
+    | n | 2 | 3 | 4 | 5..6 | 7..9 | 10..12 | 13..16 |
+    | --- | --- | --- | --- | --- | --- | --- | --- |
+    | nrow × ncol | 1×2 | 1×3 | 2×2 | 2×3 | 3×3 | 3×4 | 4×4 |
+
+    早期版本用 `nrow = ceil(sqrt(n))` 近似，`p1 + p2` 会变成上下两行（patchwork
+    是并排一行）；审计缺口 1 修的就是这条。
+    """
     if ncol is None and nrow is None:
-        nrow = math.ceil(math.sqrt(count))
-        ncol = math.ceil(count / nrow)
+        if count <= 3:
+            nrow, ncol = 1, count
+        else:
+            ncol = math.ceil(math.sqrt(count))
+            nrow = math.ceil(count / ncol)
     elif ncol is None:
         assert nrow is not None
         ncol = math.ceil(count / nrow)
@@ -592,6 +606,7 @@ def _records(units: _Units) -> tuple[list[Placement], list[Any]]:
 
 
 def _block_box(sizes: Any, area: tuple[int, int, int, int]) -> Box:
+    """一个子图块在页面上的矩形（cm，y 从下往上；design 的 `t` 从**上**往下）。"""
     t, left, _b, _r = area
     widths = sizes.widths_cm
     heights = sizes.heights_cm
@@ -600,22 +615,21 @@ def _block_box(sizes: Any, area: tuple[int, int, int, int]) -> Box:
     width = sum(widths[col0 : col0 + TABLE_COLS])
     height = sum(heights[row0 : row0 + TABLE_ROWS])
     x = sum(widths[:col0])
-    y = sum(heights[:row0])
+    # 行号从上往下、页面坐标从下往上：块底 = 总高 - 该块上方 + 自身高度。
+    y = sum(heights) - sum(heights[: row0 + TABLE_ROWS])
     return Box(x, y, width, height)
 
 
 def _panel_box(sizes: Any, area: tuple[int, int, int, int]) -> Box:
+    """块内 panel 槽位的页面矩形（cm，y 从下往上）。"""
     t, left, _b, _r = area
     widths = sizes.widths_cm
     heights = sizes.heights_cm
     index_col = (left - 1) * TABLE_COLS + (PANEL_COL - 1)
-    index_row = (t - 1) * TABLE_ROWS + (PANEL_ROW - 1)
-    return Box(
-        sum(widths[:index_col]),
-        sum(heights[:index_row]),
-        widths[index_col],
-        heights[index_row],
-    )
+    row0 = (t - 1) * TABLE_ROWS
+    index_row = row0 + (PANEL_ROW - 1)
+    y = sum(heights) - sum(heights[: index_row + 1])
+    return Box(sum(widths[:index_col]), y, widths[index_col], heights[index_row])
 
 
 def _build_gtable(
@@ -693,7 +707,17 @@ def _block_grob(
     from ggcore.grobs import g_tree, viewport
     from ggcore.units import unit
 
-    inner, page_width, page_height = _inner_grobs(plot, block=block, panel=panel, metrics=metrics)
+    # `_inner_grobs()` 用**块内相对坐标**（父容器左下为原点），入参是同一父容器
+    # 的页面坐标。
+    relative_panel = Box(
+        panel.x_cm - block.x_cm,
+        panel.y_cm - block.y_cm,
+        panel.width_cm,
+        panel.height_cm,
+    )
+    inner, page_width, page_height = _inner_grobs(
+        plot, block=block, panel=relative_panel, metrics=metrics
+    )
     return g_tree(
         *inner,
         name=f"plot-{index}-content",
@@ -715,10 +739,15 @@ def _inner_grobs(
 ) -> tuple[list[Any], float, float]:
     """块内的渲染树 + 这张子图实际使用的页面尺寸（cm）。
 
-    页面尺寸**不是**块尺寸：组合表的块宽 = 同列统一槽位和 + panel 列宽，而子图
-    自身的固定槽位可能更窄。按「自身固定槽位 + 目标 panel 宽」渲染，panel 才会
-    与表里的 panel 列逐值相等（同列 / 同行的 panel 矩形因此严格对齐），多出来的
-    统一空间留在块的外侧。
+    页面尺寸**就是块尺寸**（不是「自身固定槽位 + 目标 panel」）：块宽 = 同列
+    统一槽位和 + panel 列宽，子图自身的槽位可能更窄。把表级 panel 矩形（块内
+    相对坐标）交给 `plot_layout(panel_box=…)`，panel 就落在表级位置，多出来的
+    槽位差额被 `plot_layout()` 反推进 `inner` / margin（patchwork
+    `set_border_sizes()` 把子表四条边拉伸到 `table_dims()` 的 max 的等价物）。
+
+    早期版本按「自身固定槽位 + 目标 panel」定页面尺寸、页面贴块左边，结果
+    panel 落在子图自己的 `left` / `bottom`，同列槽位不同时 x / y 会错开（审计
+    缺口 2）。
     """
     if isinstance(plot, Spacer):
         return [], block.width_cm, block.height_cm
@@ -727,32 +756,20 @@ def _inner_grobs(
     build = build_plot(plot)
     if build.metrics is not metrics:
         build = replace(build, metrics=metrics)
-    natural = scene_layout(
+    layout = scene_layout(
         build,
         width_in=block.width_cm / CM_PER_INCH,
         height_in=block.height_cm / CM_PER_INCH,
         metrics=metrics,
+        panel_box=Box(panel.x_cm, panel.y_cm, panel.width_cm, panel.height_cm),
     )
-    left = natural.panel_area.x_cm
-    bottom = natural.panel_area.y_cm
-    right = block.width_cm - natural.panel_area.right
-    top = block.height_cm - natural.panel_area.top
-    page_width = left + panel.width_cm + right
-    page_height = bottom + panel.height_cm + top
-    layout = scene_layout(
-        build,
-        width_in=page_width / CM_PER_INCH,
-        height_in=page_height / CM_PER_INCH,
-        metrics=metrics,
-        panel_box=Box(left, bottom, panel.width_cm, panel.height_cm),
-    )
-    return page_grobs(build, layout, metrics), page_width, page_height
+    return page_grobs(build, layout, metrics), block.width_cm, block.height_cm
 
 
 def _nested_grobs(
     patchwork: Patchwork, *, block: Box, panel: Box, metrics: Any
 ) -> tuple[list[Any], float, float]:
-    """嵌套组合：内层自己的 panel 分配整体缩放到外层给的 panel 框。"""
+    """嵌套组合：内层自己的 panel 分配重映射到块内的表级 panel 矩形。"""
     units = _build_units(patchwork, metrics=metrics)
     ctx = _ctx(metrics)
     natural = (
@@ -760,10 +777,9 @@ def _nested_grobs(
         .layout_spec()
         .resolve(block.width_cm, block.height_cm, ctx=ctx)
     )
-    left, right, bottom, top = _panel_margins(units, natural, block)
-    page_width = left + panel.width_cm + right
-    page_height = bottom + panel.height_cm + top
-    sizes = _rescale_panel(units, natural, panel.width_cm, panel.height_cm)
+    page_width = block.width_cm
+    page_height = block.height_cm
+    sizes = _remap_panel(units, natural, panel, block)
     out: list[Any] = []
     for index, (child, area) in enumerate(zip(units.plots, units.areas, strict=True)):
         child_block = _block_box(sizes, area)
@@ -796,32 +812,41 @@ def _panel_rows(units: _Units) -> list[int]:
     return rows
 
 
-def _panel_margins(units: _Units, sizes: Any, block: Box) -> tuple[float, float, float, float]:
-    cols = _panel_columns(units)
-    rows = _panel_rows(units)
-    left = sum(sizes.widths_cm[: cols[0]])
-    right = block.width_cm - sum(sizes.widths_cm[: cols[-1] + 1])
-    bottom = sum(sizes.heights_cm[: rows[0]])
-    top = block.height_cm - sum(sizes.heights_cm[: rows[-1] + 1])
-    return left, right, bottom, top
+def _remap_panel(units: _Units, sizes: Any, panel: Box, block: Box) -> Any:
+    """把内层的 panel 行 / 列重映射到块内的目标矩形（缩放 + 两侧槽位补差）。
 
-
-def _rescale_panel(units: _Units, sizes: Any, target_width: float, target_height: float) -> Any:
-    """把内层 panel 行 / 列按比例缩放到目标宽高（其它槽位不动）。"""
+    差额补到最外侧列 / 行（`plot.margin` 槽位），与 patchwork `set_border_sizes()`
+    把子表四条边拉伸到统一尺寸同一个意思；内层自己的 panel 分配比例保留。
+    """
     from dataclasses import replace as _replace
 
     widths = list(sizes.widths_cm)
     heights = list(sizes.heights_cm)
     cols = _panel_columns(units)
     rows = _panel_rows(units)
-    old_w = sum(widths[index] for index in cols)
-    old_h = sum(heights[index] for index in rows)
+    # 内层的「panel 块」= 从第一个 panel 列到最后一个 panel 列（含中间的轴 /
+    # spacing），与 patchwork `simplify_gt.gtable_patchwork` 把 panel 块压成一列
+    # 的语义一致：整块拉伸到外层 slot，块内比例不变。
+    col_block = range(cols[0], cols[-1] + 1)
+    row_block = range(rows[0], rows[-1] + 1)
+    old_w = sum(widths[index] for index in col_block)
+    old_h = sum(heights[index] for index in row_block)
     if old_w > 0:
-        scale = target_width / old_w
-        for index in cols:
+        scale = panel.width_cm / old_w
+        for index in col_block:
             widths[index] *= scale
     if old_h > 0:
-        scale = target_height / old_h
-        for index in rows:
+        scale = panel.height_cm / old_h
+        for index in row_block:
             heights[index] *= scale
+    # 左侧 / 右侧槽位补到目标原点与块边界；行号从上往下，所以顶部差额落在
+    # heights[0]、底部差额落在 heights[-1]。
+    left_gap = panel.x_cm - sum(widths[: cols[0]])
+    right_gap = (block.width_cm - panel.right) - sum(widths[cols[-1] + 1 :])
+    top_gap = (block.height_cm - panel.top) - sum(heights[: rows[0]])
+    bottom_gap = panel.y_cm - sum(heights[rows[-1] + 1 :])
+    widths[0] += left_gap
+    widths[-1] += right_gap
+    heights[0] += top_gap
+    heights[-1] += bottom_gap
     return _replace(sizes, widths_cm=tuple(widths), heights_cm=tuple(heights))

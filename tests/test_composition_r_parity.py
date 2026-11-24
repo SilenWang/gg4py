@@ -145,6 +145,25 @@ def test_our_one_by_two_matches_the_r_alignment(tmp_path: Path) -> None:
     assert green[0] > red[0]
 
 
+def test_default_grid_matches_r(tmp_path: Path) -> None:
+    """默认网格（不带 `plot_layout()`）：patchwork 的 3 张图是 1×3（n2mfrow）。"""
+    ref = _reference()
+    panels = _rects(ref["cases"]["default_three"]["panels"])
+    ys = {round(panel[1], 6) for panel in panels.values()}
+    hs = {round(panel[3], 6) for panel in panels.values()}
+    assert len(ys) == 1 and len(hs) == 1  # R：同一行
+    xs = [panels[colour][0] for colour in ("#CC0000", "#00CC00", "#0000CC")]
+    assert xs == sorted(xs) and len(set(xs)) == 3  # 一行三列
+
+    p1, p2, p3, _ = _plots()
+    ours = _svg_rects(p1 + p2 + p3, tmp_path / "default.svg", width_in=6.0, height_in=6.0)
+    left, middle, right = ours["#CC0000"], ours["#00CC00"], ours["#0000CC"]
+    assert math.isclose(left[1], middle[1], abs_tol=1e-6)
+    assert math.isclose(left[3], middle[3], abs_tol=1e-6)
+    assert math.isclose(middle[1], right[1], abs_tol=1e-6)
+    assert left[0] < middle[0] < right[0]
+
+
 def test_our_nested_layout_reproduces_the_cross_layer_gap(tmp_path: Path) -> None:
     """嵌套层的 panel 由内层 layout 分配，与下层单 panel 不同宽（与 R 同向）。"""
     p1, p2, p3, _ = _plots()

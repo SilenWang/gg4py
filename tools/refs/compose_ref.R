@@ -13,7 +13,9 @@
 # - 一列两行（`p1 | p2`）：两个 panel 的 y / h 相等、x 递增；
 # - 嵌套（`(p1 | p2) / p3`）：跨嵌套层的 panel **不保证**对齐 —— 上层的两个
 #   panel 由内层 layout 分配，与下层的单个 panel 宽度不同（patchwork 官方
-#   vignette 的已知行为，SIL-909 实测复现）。
+#   vignette 的已知行为，SIL-909 实测复现）；
+# - 默认网格（`p1 + p2 + p3`，不带 `plot_layout()`）：`wrap_dims()` 的 n2mfrow
+#   规则是 `n <= 3` 固定一行，所以三张图是 1×3 而不是 2×2。
 #
 # panel 矩形从 svglite 的 SVG 里按 `panel.background` 的 fill 颜色读回（pt）。
 
@@ -117,7 +119,10 @@ colours <- c("#CC0000", "#00CC00", "#0000CC", "#CCCC00")
 cases <- list(
   flat_2x2 = list(plot = p1 + p2 + p3 + p4 + plot_layout(ncol = 2), width = 6, height = 6),
   one_by_two = list(plot = p1 | p2, width = 7, height = 5),
-  nested = list(plot = (p1 | p2) / p3, width = 6, height = 6)
+  nested = list(plot = (p1 | p2) / p3, width = 6, height = 6),
+  # 不带 plot_layout()：patchwork 的默认网格（ggplot2::wrap_dims() / n2mfrow()）
+  # 对 3 张图是 1×3（不是「近方形」的 2×2）。
+  default_three = list(plot = p1 + p2 + p3, width = 6, height = 6)
 )
 
 payload <- list(

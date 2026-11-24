@@ -77,20 +77,31 @@ def panelled(fill: str, xlab: str = "x") -> ggplot:
 def panel_boxes(
     plot: Patchwork, *, width_in: float = 7.0, height_in: float = 6.0
 ) -> dict[str, tuple[float, float, float, float]]:
-    """表级 panel 矩形（pt，y 从下往上），按 `panel-area-<row>-<col>` 取名。"""
+    """表级 panel 矩形（pt，y 从下往上），按 `panel-area-<row>-<col>` 取名。
+
+    design 的行号从**上**往下、页面坐标从下往上：第 `t` 行的底部 = 总高 - 前
+    `t` 行之和。表级与 SVG（y 向下）比较时用 :func:`to_svg_y` 换算。
+    """
     table = plot.gtable(metrics=METRICS, width_in=width_in, height_in=height_in)
     sizes = table.resolve(width_in * 2.54, height_in * 2.54, ctx=CTX)
+    total_height = sum(sizes.heights_cm)
     out: dict[str, tuple[float, float, float, float]] = {}
     for row in table.layout:
         if not row.name.startswith("panel-area-"):
             continue
         out[row.name] = (
             sum(sizes.widths_cm[: row.l - 1]) * 72.0 / 2.54,
-            sum(sizes.heights_cm[: row.t - 1]) * 72.0 / 2.54,
+            (total_height - sum(sizes.heights_cm[: row.t])) * 72.0 / 2.54,
             sizes.widths_cm[row.l - 1] * 72.0 / 2.54,
             sizes.heights_cm[row.t - 1] * 72.0 / 2.54,
         )
     return out
+
+
+def to_svg_y(box: tuple[float, float, float, float], height_in: float) -> tuple[float, ...]:
+    """表级矩形（y 向上）→ SVG 的 y 向下。"""
+    page_height = height_in * 72.0
+    return (box[0], page_height - (box[1] + box[3]), box[2], box[3])
 
 
 # ---------------------------------------------------------------------------
@@ -360,8 +371,8 @@ def test_svg_panels_match_the_table(tmp_path: Path) -> None:
     table_boxes = panel_boxes(combined, width_in=7.0, height_in=5.0)
     svg = _svg_panel_rects(combined, tmp_path / "compose.svg", width_in=7.0, height_in=5.0)
     assert set(svg) == {"#CC0000", "#00CC00"}
-    assert svg["#CC0000"] == pytest.approx(table_boxes["panel-area-1-1"], abs=0.02)
-    assert svg["#00CC00"] == pytest.approx(table_boxes["panel-area-1-2"], abs=0.02)
+    assert svg["#CC0000"] == pytest.approx(to_svg_y(table_boxes["panel-area-1-1"], 5.0), abs=0.02)
+    assert svg["#00CC00"] == pytest.approx(to_svg_y(table_boxes["panel-area-1-2"], 5.0), abs=0.02)
 
 
 def test_three_devices_agree_on_the_composition(tmp_path: Path) -> None:
@@ -391,3 +402,95 @@ def test_spacer_block_only_contributes_space() -> None:
     boxes = panel_boxes(base() | plot_spacer(), width_in=7.0, height_in=5.0)
     assert "panel-area-1-2" in boxes
     assert boxes["panel-area-1-2"][2] > 0
+
+
+# ---------------------------------------------------------------------------
+# 默认网格与不同槽位宽度（审计缺口 1 / 2）
+# ---------------------------------------------------------------------------
+
+
+def test_default_grid_matches_wrap_dims() -> None:
+    """`n2mfrow()` 的默认网格（不是「近方形」）：`n <= 3` 固定一行。"""
+    expected = {
+        1: (1, 1),
+        2: (1, 2),
+        3: (1, 3),
+        4: (2, 2),
+        5: (2, 3),
+        6: (2, 3),
+        7: (3, 3),
+        8: (3, 3),
+        9: (3, 3),
+        10: (3, 4),
+        11: (3, 4),
+        12: (3, 4),
+        13: (4, 4),
+        14: (4, 4),
+        15: (4, 4),
+        16: (4, 4),
+    }
+    for count, (rows, cols) in expected.items():
+        table = wrap_plots(*[base() for _ in range(count)]).gtable(metrics=METRICS)
+        assert (table.nrow // TABLE_ROWS, table.ncol // TABLE_COLS) == (rows, cols), count
+
+
+def test_plus_two_plots_is_one_row() -> None:
+    """`p1 + p2` 是并排一行（patchwork 的 `+` 默认 n2mfrow），不是上下两行。"""
+    boxes = panel_boxes(base() + base())
+    assert set(boxes) == {"panel-area-1-1", "panel-area-1-2"}
+    left, right = boxes["panel-area-1-1"], boxes["panel-area-1-2"]
+    assert left[1] == pytest.approx(right[1], abs=1e-9)
+    assert left[3] == pytest.approx(right[3], abs=1e-9)
+    assert right[0] > left[0]
+
+
+def test_plus_three_plots_is_one_row() -> None:
+    boxes = panel_boxes(base() + base() + base())
+    assert set(boxes) == {"panel-area-1-1", "panel-area-1-2", "panel-area-1-3"}
+    for name in ("panel-area-1-2", "panel-area-1-3"):
+        assert boxes[name][1] == pytest.approx(boxes["panel-area-1-1"][1], abs=1e-9)
+
+
+def test_panels_align_with_different_axis_slot_widths(tmp_path: Path) -> None:
+    """审计缺口 2：同列两块 y 轴刻度位宽不同时，panel 原点与表级仍逐值一致。
+
+    左列上方是 `y ∈ 1..8`，下方是 `y ∈ 1e6..8e6`（刻度标签宽得多）；表级左槽位
+    取两行的 max，渲染必须把 panel 放在同一个 x，而不是各自贴自己的左槽位。
+    """
+    data = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "y": [1.0, 3.0, 5.0, 8.0],
+            "ybig": [1e6, 3e6, 5e6, 8e6],
+        }
+    )
+
+    def make(fill: str, y: str) -> ggplot:
+        return (
+            ggplot(data, aes(x="x", y=y))
+            + geom_point()
+            + theme(**{"panel.background": element_rect(fill=fill, colour=None)})
+        )
+
+    plots = [
+        make("#CC0000", "y"),
+        make("#00CC00", "y"),
+        make("#0000CC", "ybig"),
+        make("#CCCC00", "y"),
+    ]
+    combined = (plots[0] + plots[1] + plots[2] + plots[3]) + plot_layout(ncol=2)
+    boxes = panel_boxes(combined, width_in=6.0, height_in=6.0)
+    svg = _svg_panel_rects(combined, tmp_path / "slots.svg", width_in=6.0, height_in=6.0)
+    assert set(svg) == set(_SVG_COLOURS)
+    mapping = {
+        "#CC0000": "panel-area-1-1",
+        "#00CC00": "panel-area-1-2",
+        "#0000CC": "panel-area-2-1",
+        "#CCCC00": "panel-area-2-2",
+    }
+    for colour, name in mapping.items():
+        assert svg[colour] == pytest.approx(to_svg_y(boxes[name], 6.0), abs=0.02), name
+    # 同一列的两块 panel 的 x / w 相同（渲染级，不只是表里相等）。
+    assert svg["#CC0000"][0] == pytest.approx(svg["#0000CC"][0], abs=1e-6)
+    assert svg["#CC0000"][2] == pytest.approx(svg["#0000CC"][2], abs=1e-6)
+    assert svg["#00CC00"][0] == pytest.approx(svg["#CCCC00"][0], abs=1e-6)
