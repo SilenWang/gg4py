@@ -387,6 +387,26 @@ def _rename_aesthetic(name: str) -> str:
     return "colour" if name == "color" else name
 
 
+# --- 多图合并（M3-1，SIL-999 / SIL-1000）-----------------------------------
+# 两者都在 `ggcore` 的合并层，不把 `build` / `gtable` 的重量级 import 拉进
+# `ggcore.plot` 的模块级命名空间（`ggplot` 对象本身不需要它们）。
+def plot_gtable(
+    plot: Any,
+    *,
+    metrics: Any = None,
+    width_in: float = 7.0,
+    height_in: float = 7.0,
+) -> Any:
+    """`ggplotGrob()` 的对等物：一张可合并的 unit-based 整页 gtable（SIL-999）。
+
+    实现与口径见 `ggcore.plot_gtable` 与 `docs/notes/gtable.md`。单图渲染仍走
+    `ggcore.geom.scene` 的 `PlotLayout` 路径；这张表服务多图合并。
+    """
+    from ggcore.plot_gtable import plot_gtable as _plot_gtable
+
+    return _plot_gtable(plot, metrics=metrics, width_in=width_in, height_in=height_in)
+
+
 # 模块级函数与 registry 里的**同一个函数对象**（两个入口，一条注册表）。
 # label 的入口叫 `labs`，没有前缀，其余形如 `geom_point` / `scale_x_log10`。
 def _export_registry_entries() -> list[str]:
@@ -398,6 +418,7 @@ def _export_registry_entries() -> list[str]:
         "arrow",
         "ggplot",
         "gg_add",
+        "plot_gtable",
         "guides",
         "coord_munch",
         "sec_axis",

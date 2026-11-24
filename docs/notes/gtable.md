@@ -190,6 +190,174 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 | grob 必须是 grob 对象 | `stop_input_type()` | 任意对象都可以（M0-6 前没有 grob 类型） |
 | `gtable_row` / `gtable_col` / `gtable_matrix`、`gtable_filter`、`gtable_trim`、`rbind` / `cbind`、`gtable_add_row_space` / `col_space` | 有 | 未实现，等 ggplot2 实际调用面需要时补 |
 
+## 整页表：`plot_gtable()`
+
+`ggcore.plot_gtable.plot_gtable(plot, metrics=None, width_in=7, height_in=7)` 是
+上游 `ggplotGrob()` 的对等物：把 `plot_layout()` 已经算好的 cm 尺寸装进**一张
+命名 gtable**，面板行 / 列留 `null`。它是多图合并（M3-1）真正要合并的东西——
+`patchwork` / `cowplot` 合并的是 `ggplotGrob()` 的整页表，不是面板子表。
+
+**单面板固定 16 行 × 13 列**（`tools/refs/plot_gtable_ref.R` 实测 ggplot2
+4.0.3）。行列语义与 layout 名称：
+
+| 行 | 内容 | 列 | 内容 |
+| --- | --- | --- | --- |
+| 1 | `plot.margin` 上 | 1 | `plot.margin` 左 |
+| 2 | `tag`（`plot.tag.location = "margin"`） | 2 | `tag` |
+| 3 | `title` | 3 | `guide-box-left` |
+| 4 | `subtitle` | 4 | `legend.box.spacing` |
+| 5 | `guide-box-top` | 5 | `ylab-l` |
+| 6 | `legend.box.spacing` | 6 | `axis-l` |
+| 7 | `xlab-t` | 7 | `panel` |
+| 8 | `axis-t` | 8 | `axis-r` |
+| 9 | `panel` | 9 | `ylab-r` |
+| 10 | `axis-b` | 10 | `legend.box.spacing` |
+| 11 | `xlab-b` | 11 | `guide-box-right` |
+| 12 | `legend.box.spacing` | 12 | 空 |
+| 13 | `guide-box-bottom` | 13 | `plot.margin` 右 |
+| 14 | `caption` | | |
+| 15 | 空 | | |
+| 16 | `plot.margin` 下 | | |
+
+两条容易踩的口径：
+
+- **`legend.box.spacing` 不在 guide-box 里**。R 把它放在 guide-box 外侧的独立
+  spacer 行 / 列：有右图例时列 10 = `11points`、列 11 才是 guide-box 的宽度。
+  `plot_layout()` 的 `legend_box_spacing_cm` 就是这一项（SIL-999 新增字段）。
+- **`plot.margin` 与 `tag` 分开**。`PlotLayout.margin_cm` 已把 tag 的尺寸折进
+  margin（`table_add_tag()` 的做法），整页表用**原始** `plot.margin`（主题值），
+  tag 单独占第 2 行 / 第 2 列，否则 tag 会被算两遍。`tag_width_cm` /
+  `tag_height_cm` 是同一任务新增的字段。
+
+分面时 R 把面板区**展开**成逐面板网格，规则按 `facet_wrap` / `facet_grid` 分开
+（SIL-999 审计缺口 1 修的就是这条，早期版本只对「单一面板行 / 列」成立）：
+
+- `facet_wrap`：**每个面板行**一组 `axis-t` + strip + `panel` + `axis-b`，组间才是
+  `panel.spacing.y`；**每个面板列**一组 `axis-l` + `panel` + `axis-r`（right strip
+  夹在 panel 与 axis-r 之间），组间是 `panel.spacing.x`。内轴不画标签：只有最左
+  一条 `axis-l` / 最右一条 `axis-r` 有宽度，其余 `0cm`（R 实测：`axis-l-1-1` =
+  0.3505cm、`axis-l-1-2` = 0cm）。
+- **带高只看外边缘那一行**（`axes = "margins"`）：`axis-b` 只有**最后一个面板行**
+  满高，内部带是字面量 `0cm`；`axis-t` 对称（只有第一行，默认是 0）。ragged
+  （末行不满）时 R 的 `attach_axes()` 先 `bottom[-dim[1], ] <- zeroGrob()`，再由
+  `measure_axes()` 把空洞相邻的带清零——**空洞只挪 grob、不给内部带高度**。早期
+  版本按 `_axis_visible()`（每列最底面板）给带，ragged 的内部带会凭空多出
+  0.4517cm；`dir = "v"` 与 `as.table = FALSE` 走同一条规则。
+- **`axes = "all"` 的内侧带只看刻度**：`axis.labels = "margins"`（默认）时
+  `censor_labels()` 删掉内面板的标签，内侧 `axis-b` / `axis-l` 只剩刻度
+  （R 实测 **0.0967cm**），不能给“tick + label”的满高；`axis.labels = "all"`
+  时内侧才与边缘同高（0.4718cm / 0.3505cm）。`axes = "margins"` 的内侧带仍是
+  字面量 `0cm`。
+- `facet_grid`：每侧**一条**轴 / strip（`seam_table()`）；轴跨整列 / 整行，不是
+  每个面板各插一对。
+
+六个 shape 的实测（R 4.5.3 / ggplot2 4.0.3，7×7in）：
+
+| case | gg4py | R |
+| --- | --- | --- |
+| `facet_wrap(~g)` 1×2 | 17×17 | 17×17 |
+| `facet_wrap(~g, ncol = 1)` 2×1 | 22×13 | 22×13 |
+| `facet_wrap(~four)` 2×2 | 22×17 | 22×17 |
+| `facet_grid(g ~ .)` 2×1 | 18×14 | 18×14 |
+| `facet_grid(. ~ g)` 1×2 | 17×15 | 17×15 |
+| `facet_grid(h ~ g)` 2×2 | 19×16 | 19×16 |
+| `facet_wrap(~five, ncol = 3)` 2×3 ragged | 22×21 | 22×21 |
+| `facet_wrap(~five, ncol = 2)` 3×2 ragged | 27×17 | 27×17 |
+| `facet_wrap(~five, ncol = 2, dir = "v")` | 27×17 | 27×17 |
+
+命名照 R 的实测顺序，注意 **panel 与 axis 的行列顺序相反**；多行 / 多列时每个
+layout 名必须**唯一**——`GTable.grob(name)` / `placements(name)` 取第一个匹配，
+重名会让组合层静默拿到错格（早期 `facet_grid` 多列就踩了这个坑）：
+
+- `panel-{col}-{row}`（`facet_wrap` 两列：`panel-1-1` / `panel-2-1`）；
+- `facet_wrap` 的轴每面板一组：`axis-l-{row}-{col}` / `axis-r-{row}-{col}`、
+  `axis-t-{col}-{row}` / `axis-b-{col}-{row}`；
+- `facet_grid` 的轴每侧一条，名字带**另一维**的编号：`axis-l-{row}` /
+  `axis-r-{row}`、`axis-t-{col}` / `axis-b-{col}`。
+
+`plot.title.position = "plot"` / `plot.caption.position = "plot"` 时 R 的
+title / caption 跨 `guide-box-left .. guide-box-right` 的列范围（13 列的表里是
+3..11，实测），不是整张表；`legend.location = "plot"` 不改变这一点。
+
+**单位与 `metrics`**：panel 行列是 `null`，其余固定尺寸来自 `plot_layout()` 的
+cm；**文字行 / 列**保留成文字度量单位，而不是用占位度量算成 cm：
+
+- 轴标题行 / 列（xlab-t / xlab-b / ylab-l / ylab-r）与 title / subtitle /
+  caption 是 `strheight`（R 里是 `1grobheight`；表按 `UnitContext(fontsize=12)`
+  定义，`amount` 用构建时的 `metrics` 校准到目标 cm）；
+- 图例盒宽度是 `cm 固定部分 + strwidth(最宽标签)`（R 的 guide-box 是嵌套
+  gtable，宽度里含标签的 `stringWidth`）。
+
+于是 `UnitContext` 没有 `metrics` 时 `resolve()` 一律走 `units` 的 `UnitError`
+路径（不静默 0，也不回退到占位度量算出一个看起来正常的表）；`tests/
+test_plot_gtable.py::test_without_metrics_resolve_raises_unit_error` 钉住普通图，
+`::test_legend_width_keeps_strwidth_and_needs_metrics` 钉住图例的 `strwidth`。
+构建与解析必须用**同一个** `metrics`：`strheight` / `strwidth` 的 amount 是按
+构建时度量校准的。
+
+**逐条记录的 cm 对拍**：`tools/refs/plot_gtable_ref.R` 除了 `widths` / `heights`
+的 `as.character()`，还会把表画在 7×7in 视口里、用
+`downViewport("<name>.<t>-<r>-<b>-<l>")` 读回**每条 layout 记录**的宽高（`1null`
+行列因此拿到分配后的真实 cm，而不是 `convertWidth()` 对 null 给的 0）。
+`tests/test_plot_gtable_r_parity.py::test_resolved_records_match_r` 逐条比较，
+容差按「记录是否落在 **null 行**」拆开：
+
+| 分组 | 最大残差（实测） | 容差 |
+| --- | --- | --- |
+| null 行（`1null`） | **0.1013cm**（`titled` 的 `panel` / `axis-l` / `ylab-l` / `guide-box-*`） | 0.105cm |
+| null 列 / 固定行 / 固定列 | 0.0409 / 0.0201 / 0.0201cm | 0.05cm（项目既有口径） |
+
+null 行的残差来自**文字行高**：R 的文字行比我们高，实测（R 行高减该元素的
+margin，按设备 72.27 折 pt）：
+
+| 行 | 字号 | R 文字高 | 我们 | Δ |
+| --- | --- | --- | --- | --- |
+| `title` | 13.2pt | 12.24pt | 11.85pt | −0.39pt（0.0136cm） |
+| `subtitle` | 11pt | 10.36pt | 9.88pt | −0.48pt（0.0169cm） |
+| `xlab-b` | 11pt | 10.36pt | 9.88pt | −0.48pt（0.0169cm） |
+| `caption` | 8.8pt | 8.47pt | 7.90pt | −0.57pt（0.0201cm） |
+| `axis-b` 标签 | 8.8pt | 8.47pt | 7.90pt | −0.57pt（0.0201cm） |
+
+三点落在一条直线 `文字高 ≈ 0.856·size + 0.94pt` 上，而我们用的是纯比例
+（`text_line_cm` 的 0.8945em）——**字号越小亏得越多**。这些负差被高度守恒推进
+null 面板行，`titled` 合计 **0.1012cm**（tag 0.0136 + title 0.0136 +
+subtitle 0.0169 + xlab-b 0.0169 + caption 0.0201 + axis-b 0.0201）。
+所以别把非 null 记录的容差一起放宽：固定行 / 列实测只差 0.0201cm，0.05cm 足够
+抓住 1mm 级的真实结构错。要收掉这 0.02cm 得让 gtable 的文字行按上面那条直线
+算，是独立改动；**不要**顺手改 `TEXT_LINE_EM`（会动 532 份 `expected.svg`）。
+
+`coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
+`1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自
+`FacetTable.height_weights` / `width_weights`。
+
+**表里放的是语义槽位，不是渲染 grob**：`PanelSlot`（面板号 + 在 `FacetTable`
+里的 t/l/b/r）、`StripSlot`（一条 strip）、`PlotCell`（background / 轴 / 标题 /
+guide-box / spacer，带主题元素或 `LegendBoxLayout`）。组合层按名字取行列与尺寸
+即可；单图渲染仍走 `scene_from_build()` 的 `PlotLayout` 绝对 cm 路径（非范围
+包括「改变单图输出外观」）。参考值：
+
+```bash
+pixi run -e refs refs:plot-gtable
+pytest -q tests/test_plot_gtable.py tests/test_plot_gtable_r_parity.py
+```
+
+**已知差异 / 首期不做**：
+
+- **`facet_grid` 的 `axes =` 非默认值不复刻**（`axes = "all" / "all_x" /
+  "all_y"`，`axis.labels =` 同理）：R 会给每条内面板行 / 列各插一条轴带
+  （`axes = "all"` 是 21×18、`all_x` 21×16、`all_y` 19×18，2×2 的
+  `facet_grid(h ~ g)`），`plot_gtable()` 仍按 `axes = "margins"` 的 **19×16**
+  建表——`_seam_*` 每侧只建一条，`axes =` 参数在本路径被忽略；
+  `tests/test_plot_gtable.py::test_grid_non_default_axes_is_a_registered_gap`
+  钉住当前形状，防止以后误以为已对拍。`axis_row_size()` / `axis_col_size()` 的
+  「内侧只留刻度」只服务 `facet_wrap`。
+- `scales = "free"` 的逐面板轴尺寸统一用全局 max（父任务首期要求单 panel 或
+  `scales = "fixed"`）；
+- `strip.placement = "outside"` 仍按 inside 的槽放进表里；
+- stretchy legend key（`unit(1, "null")`）按参考画布把拉伸量落成 cm；
+- `plot.tag.location = "plot"` / `"panel"` 的数值位置只记录覆盖区域，x/y（npc）
+  不属于 gtable 几何。
+
 ## 与后续模块的接口
 
 - **M0-4 viewport / M0-6 grob 渲染**：`boxes()` 给的是 cm 坐标；渲染时按
