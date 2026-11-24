@@ -241,10 +241,14 @@ def _inches(width: Any, height: Any, units: str) -> tuple[str, float, float]:
 
 
 def _scene(plot: Any, width_in: float, height_in: float, metrics: Any) -> ir.Scene:
-    """`ggplot` → `ir.Scene`；`metrics` 缺省取注册后端的那一份。"""
+    """`ggplot` / 组合（`Patchwork`）→ `ir.Scene`；`metrics` 缺省取后端那一份。"""
     resolved = metrics
     if resolved is None:
         resolved = backend_metrics()
+    from ggcore.composition import Patchwork
+
+    if isinstance(plot, Patchwork):
+        return plot.to_scene(metrics=resolved, width_in=width_in, height_in=height_in)
     return scene_from_plot(plot, width_in=width_in, height_in=height_in, metrics=resolved)
 
 

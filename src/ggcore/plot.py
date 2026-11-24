@@ -163,8 +163,29 @@ class ggplot:
         clone.annotations = list(self.annotations)
         return clone
 
-    def __add__(self, component: Any) -> ggplot:
+    def __add__(self, component: Any) -> Any:
         return gg_add(self, component)
+
+    # -- 多图组合（M3-1 / SIL-1001）------------------------------------------
+    # `|` 并排、`/` 上下；Python 的优先级是 `/`/`*` > `+` > `|`，与 patchwork 的
+    # 推荐写法 `(p1 | p2) / p3` 一致。`*` 未实现（见 Patchwork.__mul__）。
+
+    def __or__(self, other: Any) -> Any:
+        from ggcore.composition import wrap_plots
+
+        return wrap_plots(self, other, nrow=1)
+
+    def __truediv__(self, other: Any) -> Any:
+        from ggcore.composition import wrap_plots
+
+        return wrap_plots(self, other, ncol=1)
+
+    def __mul__(self, other: Any) -> Any:
+        from ggcore.composition import Patchwork
+
+        return Patchwork.__mul__(self, other)  # type: ignore[arg-type]
+
+    __rmul__ = __mul__
 
     # -- 调试摘要 -----------------------------------------------------------
 
@@ -224,10 +245,18 @@ def gg_add(plot: Any, component: Any) -> Any:
 
 
 @gg_add.register(ggplot)
-def _gg_add_ggplot(plot: ggplot, component: Any) -> ggplot:
+def _gg_add_ggplot(plot: ggplot, component: Any) -> Any:
     if component is None:
         # ggplot2 的 `p + NULL` 是空操作；这里同样不改变 p，但仍返回新对象。
         return plot.clone()
+    # M3-1：`p + p2` / `p + plot_layout(...)` / `p + plot_spacer()` 进组合层；
+    # 其余组件（layer / scale / theme / coord / facet / guide）仍走单图分派。
+    from ggcore.composition import PatchLayout, is_composable
+
+    if isinstance(component, PatchLayout) or is_composable(component):
+        from ggcore.composition import Patchwork
+
+        return Patchwork(plots=(plot,)) + component
     return _add_component(component, plot)
 
 
@@ -444,3 +473,14 @@ __all__ = _export_registry_entries()
 from ggcore.align import align_scales as align_scales  # noqa: E402
 
 __all__.append("align_scales")
+
+# M3-1（SIL-1001）：组合 API（`wrap_plots` / `plot_layout` / `plot_spacer`）与
+# `Patchwork` 同层挂在 `ggcore.plot`，顶层 `gg4py.*` 由 `__all__` 自动提升。
+from ggcore.composition import PatchLayout as PatchLayout  # noqa: E402
+from ggcore.composition import Patchwork as Patchwork  # noqa: E402
+from ggcore.composition import Spacer as Spacer  # noqa: E402
+from ggcore.composition import plot_layout as plot_layout  # noqa: E402
+from ggcore.composition import plot_spacer as plot_spacer  # noqa: E402
+from ggcore.composition import wrap_plots as wrap_plots  # noqa: E402
+
+__all__ += ["PatchLayout", "Patchwork", "Spacer", "plot_layout", "plot_spacer", "wrap_plots"]

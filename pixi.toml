@@ -333,6 +333,12 @@ r-quantreg = ">=6.1,<7"
 # `adjust_coord()` 逐值跑一遍，产物 `tests/fixtures/align_scales_r_reference.json`
 # 入库；CI 不装 R。口径见 docs/notes/align-scales.md。
 "refs:align" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/align_scales_ref.R"
+# SIL-1001：组合骨架 / panel 几何对齐与 patchwork 1.3.2 的对拍夹具（panel
+# 矩形从 svglite 的 SVG 里按 fill 读回；夹具只记关系，绝对 pt 受字体影响）。
+"refs:compose" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/compose_ref.R"
+# SIL-1001：4 / 9 子图的 build+resolve 时间与 IR 体积（写入
+# docs/notes/composition.md §7；机器相关，所以不挂进 `check`）。
+"compose:report" = "PYTHONPATH=src python tools/compose_report.py"
 # SIL-800：Date 列**不写** `scale_x_date()` 的参考图（默认标度解析）。独立脚本是
 # 刻意的：`refs:cases` 会重写全部历史 expected.svg，这里只产一条新 case。
 "refs:date-default" = "LC_ALL=C.UTF-8 LANG=C.UTF-8 Rscript tools/refs/date_scale_ref.R"
