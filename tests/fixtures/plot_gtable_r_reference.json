@@ -1,0 +1,1224 @@
+{
+  "generator": "tools/refs/plot_gtable_ref.R",
+  "ggplot2": "4.0.3",
+  "size_in": [
+    7,
+    7
+  ],
+  "cases": [
+    {
+      "name": "plain",
+      "nrow": 16,
+      "ncol": 13,
+      "respect": false,
+      "widths": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "sum(0cm, 1null, 0.253851156773211cm, 0null, max(0points, -0.0966514459665145cm), 0.0966514459665145cm)",
+        "1null",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "1null",
+        "sum(0.0966514459665145cm, max(0points, -0.0966514459665145cm), 0null, 0.375136156773213cm, 1null, 0cm)",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 16,
+          "r": 13
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 6,
+          "b": 8,
+          "r": 6
+        },
+        {
+          "name": "axis-l",
+          "t": 9,
+          "l": 6,
+          "b": 9,
+          "r": 6
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 6,
+          "b": 10,
+          "r": 6
+        },
+        {
+          "name": "axis-t",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "panel",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "axis-b",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 7
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 8,
+          "b": 8,
+          "r": 8
+        },
+        {
+          "name": "axis-r",
+          "t": 9,
+          "l": 8,
+          "b": 9,
+          "r": 8
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 8,
+          "b": 10,
+          "r": 8
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 7
+        },
+        {
+          "name": "xlab-b",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "ylab-l",
+          "t": 9,
+          "l": 5,
+          "b": 9,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 9,
+          "l": 9,
+          "b": 9,
+          "r": 9
+        },
+        {
+          "name": "guide-box-right",
+          "t": 9,
+          "l": 11,
+          "b": 9,
+          "r": 11
+        },
+        {
+          "name": "guide-box-left",
+          "t": 9,
+          "l": 3,
+          "b": 9,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 13,
+          "l": 7,
+          "b": 13,
+          "r": 7
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 7
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 7
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 7
+        },
+        {
+          "name": "caption",
+          "t": 14,
+          "l": 7,
+          "b": 14,
+          "r": 7
+        }
+      ]
+    },
+    {
+      "name": "titled",
+      "nrow": 16,
+      "ncol": 13,
+      "respect": false,
+      "widths": [
+        "5.5points",
+        "1grobwidth",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "sum(0cm, 1null, 0.253851156773211cm, 0null, max(0points, -0.0966514459665145cm), 0.0966514459665145cm)",
+        "1null",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "1grobheight",
+        "1grobheight",
+        "1grobheight",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "1null",
+        "sum(0.0966514459665145cm, max(0points, -0.0966514459665145cm), 0null, 0.375136156773213cm, 1null, 0cm)",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "1grobheight",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 16,
+          "r": 13
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 6,
+          "b": 8,
+          "r": 6
+        },
+        {
+          "name": "axis-l",
+          "t": 9,
+          "l": 6,
+          "b": 9,
+          "r": 6
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 6,
+          "b": 10,
+          "r": 6
+        },
+        {
+          "name": "axis-t",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "panel",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "axis-b",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 7
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 8,
+          "b": 8,
+          "r": 8
+        },
+        {
+          "name": "axis-r",
+          "t": 9,
+          "l": 8,
+          "b": 9,
+          "r": 8
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 8,
+          "b": 10,
+          "r": 8
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 7
+        },
+        {
+          "name": "xlab-b",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "ylab-l",
+          "t": 9,
+          "l": 5,
+          "b": 9,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 9,
+          "l": 9,
+          "b": 9,
+          "r": 9
+        },
+        {
+          "name": "guide-box-right",
+          "t": 9,
+          "l": 11,
+          "b": 9,
+          "r": 11
+        },
+        {
+          "name": "guide-box-left",
+          "t": 9,
+          "l": 3,
+          "b": 9,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 13,
+          "l": 7,
+          "b": 13,
+          "r": 7
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 7
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 7
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 7
+        },
+        {
+          "name": "caption",
+          "t": 14,
+          "l": 7,
+          "b": 14,
+          "r": 7
+        },
+        {
+          "name": "tag",
+          "t": 2,
+          "l": 2,
+          "b": 2,
+          "r": 2
+        }
+      ]
+    },
+    {
+      "name": "legend",
+      "nrow": 16,
+      "ncol": 13,
+      "respect": false,
+      "widths": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "sum(0cm, 1null, 0.253851156773211cm, 0null, max(0points, -0.0966514459665145cm), 0.0966514459665145cm)",
+        "1null",
+        "0cm",
+        "0cm",
+        "11points",
+        "sum(0.5null, 0points, 1.36603867579909cm, 0points, 0.5null)",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "0points",
+        "1grobheight",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "1null",
+        "sum(0.0966514459665145cm, max(0points, -0.0966514459665145cm), 0null, 0.375136156773213cm, 1null, 0cm)",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 16,
+          "r": 13
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 6,
+          "b": 8,
+          "r": 6
+        },
+        {
+          "name": "axis-l",
+          "t": 9,
+          "l": 6,
+          "b": 9,
+          "r": 6
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 6,
+          "b": 10,
+          "r": 6
+        },
+        {
+          "name": "axis-t",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "panel",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "axis-b",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 7
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 8,
+          "b": 8,
+          "r": 8
+        },
+        {
+          "name": "axis-r",
+          "t": 9,
+          "l": 8,
+          "b": 9,
+          "r": 8
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 8,
+          "b": 10,
+          "r": 8
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 7
+        },
+        {
+          "name": "xlab-b",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "ylab-l",
+          "t": 9,
+          "l": 5,
+          "b": 9,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 9,
+          "l": 9,
+          "b": 9,
+          "r": 9
+        },
+        {
+          "name": "guide-box-right",
+          "t": 9,
+          "l": 11,
+          "b": 9,
+          "r": 11
+        },
+        {
+          "name": "guide-box-left",
+          "t": 9,
+          "l": 3,
+          "b": 9,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 13,
+          "l": 7,
+          "b": 13,
+          "r": 7
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 7
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 7
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 7
+        },
+        {
+          "name": "caption",
+          "t": 14,
+          "l": 7,
+          "b": 14,
+          "r": 7
+        }
+      ]
+    },
+    {
+      "name": "facet_wrap",
+      "nrow": 17,
+      "ncol": 17,
+      "respect": false,
+      "widths": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "0.350502602739725cm",
+        "1null",
+        "0cm",
+        "5.5points",
+        "0cm",
+        "1null",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "0.607099627092846cm",
+        "1null",
+        "0.471787602739727cm",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 17,
+          "r": 17
+        },
+        {
+          "name": "panel-1-1",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 7
+        },
+        {
+          "name": "panel-2-1",
+          "t": 10,
+          "l": 11,
+          "b": 10,
+          "r": 11
+        },
+        {
+          "name": "axis-t-1-1",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "axis-t-2-1",
+          "t": 8,
+          "l": 11,
+          "b": 8,
+          "r": 11
+        },
+        {
+          "name": "axis-b-1-1",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "axis-b-2-1",
+          "t": 11,
+          "l": 11,
+          "b": 11,
+          "r": 11
+        },
+        {
+          "name": "axis-l-1-2",
+          "t": 10,
+          "l": 10,
+          "b": 10,
+          "r": 10
+        },
+        {
+          "name": "axis-l-1-1",
+          "t": 10,
+          "l": 6,
+          "b": 10,
+          "r": 6
+        },
+        {
+          "name": "axis-r-1-2",
+          "t": 10,
+          "l": 12,
+          "b": 10,
+          "r": 12
+        },
+        {
+          "name": "axis-r-1-1",
+          "t": 10,
+          "l": 8,
+          "b": 10,
+          "r": 8
+        },
+        {
+          "name": "strip-t-1-1",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "strip-t-2-1",
+          "t": 9,
+          "l": 11,
+          "b": 9,
+          "r": 11
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 11
+        },
+        {
+          "name": "xlab-b",
+          "t": 12,
+          "l": 7,
+          "b": 12,
+          "r": 11
+        },
+        {
+          "name": "ylab-l",
+          "t": 10,
+          "l": 5,
+          "b": 10,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 10,
+          "l": 13,
+          "b": 10,
+          "r": 13
+        },
+        {
+          "name": "guide-box-right",
+          "t": 10,
+          "l": 15,
+          "b": 10,
+          "r": 15
+        },
+        {
+          "name": "guide-box-left",
+          "t": 10,
+          "l": 3,
+          "b": 10,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 14,
+          "l": 7,
+          "b": 14,
+          "r": 11
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 11
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 11
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 11
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 11
+        },
+        {
+          "name": "caption",
+          "t": 15,
+          "l": 7,
+          "b": 15,
+          "r": 11
+        }
+      ]
+    },
+    {
+      "name": "facet_grid",
+      "nrow": 18,
+      "ncol": 14,
+      "respect": false,
+      "widths": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "0.350502602739725cm",
+        "1null",
+        "0.607099627092846cm",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "1null",
+        "5.5points",
+        "1null",
+        "0.471787602739727cm",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 18,
+          "r": 14
+        },
+        {
+          "name": "panel-1-1",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "panel-1-2",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "axis-t-1",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "axis-b-1",
+          "t": 12,
+          "l": 7,
+          "b": 12,
+          "r": 7
+        },
+        {
+          "name": "axis-l-1",
+          "t": 9,
+          "l": 6,
+          "b": 9,
+          "r": 6
+        },
+        {
+          "name": "axis-l-2",
+          "t": 11,
+          "l": 6,
+          "b": 11,
+          "r": 6
+        },
+        {
+          "name": "axis-r-1",
+          "t": 9,
+          "l": 9,
+          "b": 9,
+          "r": 9
+        },
+        {
+          "name": "axis-r-2",
+          "t": 11,
+          "l": 9,
+          "b": 11,
+          "r": 9
+        },
+        {
+          "name": "strip-r-1",
+          "t": 9,
+          "l": 8,
+          "b": 9,
+          "r": 8
+        },
+        {
+          "name": "strip-r-2",
+          "t": 11,
+          "l": 8,
+          "b": 11,
+          "r": 8
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 7
+        },
+        {
+          "name": "xlab-b",
+          "t": 13,
+          "l": 7,
+          "b": 13,
+          "r": 7
+        },
+        {
+          "name": "ylab-l",
+          "t": 9,
+          "l": 5,
+          "b": 11,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 9,
+          "l": 10,
+          "b": 11,
+          "r": 10
+        },
+        {
+          "name": "guide-box-right",
+          "t": 9,
+          "l": 12,
+          "b": 11,
+          "r": 12
+        },
+        {
+          "name": "guide-box-left",
+          "t": 9,
+          "l": 3,
+          "b": 11,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 15,
+          "l": 7,
+          "b": 15,
+          "r": 7
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 7
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 9,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 7
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 7
+        },
+        {
+          "name": "caption",
+          "t": 16,
+          "l": 7,
+          "b": 16,
+          "r": 7
+        }
+      ]
+    },
+    {
+      "name": "coord_fixed",
+      "nrow": 16,
+      "ncol": 13,
+      "respect": true,
+      "widths": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0points",
+        "1grobwidth",
+        "sum(0cm, 1null, 0.253851156773211cm, 0null, max(0points, -0.0966514459665145cm), 0.0966514459665145cm)",
+        "1null",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "heights": [
+        "5.5points",
+        "0points",
+        "0cm",
+        "0cm",
+        "0cm",
+        "0points",
+        "0cm",
+        "0cm",
+        "2null",
+        "sum(0.0966514459665145cm, max(0points, -0.0966514459665145cm), 0null, 0.375136156773213cm, 1null, 0cm)",
+        "1grobheight",
+        "0points",
+        "0cm",
+        "0cm",
+        "0points",
+        "5.5points"
+      ],
+      "layout": [
+        {
+          "name": "background",
+          "t": 1,
+          "l": 1,
+          "b": 16,
+          "r": 13
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 6,
+          "b": 8,
+          "r": 6
+        },
+        {
+          "name": "axis-l",
+          "t": 9,
+          "l": 6,
+          "b": 9,
+          "r": 6
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 6,
+          "b": 10,
+          "r": 6
+        },
+        {
+          "name": "axis-t",
+          "t": 8,
+          "l": 7,
+          "b": 8,
+          "r": 7
+        },
+        {
+          "name": "panel",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "axis-b",
+          "t": 10,
+          "l": 7,
+          "b": 10,
+          "r": 7
+        },
+        {
+          "name": "spacer",
+          "t": 8,
+          "l": 8,
+          "b": 8,
+          "r": 8
+        },
+        {
+          "name": "axis-r",
+          "t": 9,
+          "l": 8,
+          "b": 9,
+          "r": 8
+        },
+        {
+          "name": "spacer",
+          "t": 10,
+          "l": 8,
+          "b": 10,
+          "r": 8
+        },
+        {
+          "name": "xlab-t",
+          "t": 7,
+          "l": 7,
+          "b": 7,
+          "r": 7
+        },
+        {
+          "name": "xlab-b",
+          "t": 11,
+          "l": 7,
+          "b": 11,
+          "r": 7
+        },
+        {
+          "name": "ylab-l",
+          "t": 9,
+          "l": 5,
+          "b": 9,
+          "r": 5
+        },
+        {
+          "name": "ylab-r",
+          "t": 9,
+          "l": 9,
+          "b": 9,
+          "r": 9
+        },
+        {
+          "name": "guide-box-right",
+          "t": 9,
+          "l": 11,
+          "b": 9,
+          "r": 11
+        },
+        {
+          "name": "guide-box-left",
+          "t": 9,
+          "l": 3,
+          "b": 9,
+          "r": 3
+        },
+        {
+          "name": "guide-box-bottom",
+          "t": 13,
+          "l": 7,
+          "b": 13,
+          "r": 7
+        },
+        {
+          "name": "guide-box-top",
+          "t": 5,
+          "l": 7,
+          "b": 5,
+          "r": 7
+        },
+        {
+          "name": "guide-box-inside",
+          "t": 9,
+          "l": 7,
+          "b": 9,
+          "r": 7
+        },
+        {
+          "name": "subtitle",
+          "t": 4,
+          "l": 7,
+          "b": 4,
+          "r": 7
+        },
+        {
+          "name": "title",
+          "t": 3,
+          "l": 7,
+          "b": 3,
+          "r": 7
+        },
+        {
+          "name": "caption",
+          "t": 14,
+          "l": 7,
+          "b": 14,
+          "r": 7
+        }
+      ]
+    }
+  ]
+}
+

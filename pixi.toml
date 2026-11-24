@@ -283,6 +283,9 @@ r-quantreg = ">=6.1,<7"
 # gtable 的行列尺寸由 grid 的 calcViewportLayout() 分配，参考值靠设备测量
 # （draw + 视口读回），口径见 docs/notes/gtable.md。
 "refs:gtable" = "Rscript tools/refs/gtable_ref.R"
+# SIL-999：`plot_gtable()` 与 ggplot2 4.0.3 `ggplotGrob()` 的结构对拍（行列数 /
+# layout 名称 / 可静态求值的单位）。
+"refs:plot-gtable" = "Rscript tools/refs/plot_gtable_ref.R"
 # viewport（M0-4）的对拍夹具：push/pop/down 栈 + 变换 + 裁剪 + gpar 继承
 "refs:viewport" = "Rscript tools/refs/viewport_ref.R"
 # 设备侧曲线求值（M0-8）：xspline / grid::curve 的采样点对拍

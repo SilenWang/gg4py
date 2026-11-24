@@ -179,6 +179,7 @@ Python 模块，反之亦然；反过来，标着 `—` 的模块是上游没有
 | --- | --- | --- | --- | --- |
 | `ggcore.units` | `src/library/grid/R/unit.R:25`、`:59`、`:525`；`src/library/grid/src/unit.c:658`、`:1226` | `unit()` / `convertUnit()` / `unit.c()` / `transform()` / `transformFromINCHES()` | 已实现 | M0-3，93 条 R 对拍；`refs:units` |
 | `ggcore.gtable` | `gtable/R/gtable.R:94`、`:291`；`R/add-grob.R:45`；`R/add-rows-cols.R:40`、`:96`；`R/padding.R:29`；`R/grid.R:20`；`src/library/grid/src/layout.c:492` | `gtable()` / `gtable_width()` / `gtable_add_grob()` / `gtable_add_rows()` / `gtable_add_cols()` / `gtable_add_padding()` / `gtable_layout()` / `calcViewportLayout()` | 已实现 | M0-5，22 组 R 设备测量对拍；`refs:gtable` |
+| `ggcore.plot_gtable` | `R/plot-build.R`（`ggplot_gtable.ggplot_built`）、`R/plot-build.R` 的 `plot_table()` | `ggplotGrob()`（整页 gtable：16×13 骨架 + 分面展开） | 已实现 | SIL-999；`refs:plot-gtable` 对拍行列数 / layout 名称 / 可静态求值的尺寸；单图渲染仍走 `ggcore.geom.scene` |
 | `ggcore.viewport` | `src/library/grid/src/viewport.c:213`；`src/library/grid/src/grid.c:139`、`:413`、`:1019`；`src/library/grid/src/matrix.c:96`；`src/library/grid/src/just.c:98`；`src/library/grid/R/grid.R:29`、`:162`；`src/library/grid/R/gpar.R:232` | `calcViewportTransform()` / `doSetViewport()` / `L_setviewport()` / `L_upviewport()` / `trans()` · `multiply()` / `justification()` / `push.vp.viewport()` / `downViewport()` / `set.gpar()` | 已实现 | M0-4，22 个 check 步的 R 对拍 + 手算断言；`refs:viewport` |
 
 ## 运行契约

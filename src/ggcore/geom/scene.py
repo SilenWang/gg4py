@@ -146,6 +146,16 @@ class _FallbackMetrics:
 _FALLBACK_METRICS = _FallbackMetrics()
 
 
+def layout_metrics(metrics: Any = None) -> Any:
+    """版式 / gtable 计算用的字体度量：给了就用，没给退到占位实现。
+
+    `plot_gtable()`（SIL-999）与 `scene_from_build()` 必须用同一套度量，否则
+    整页 gtable 的行高与场景里的轴 / 标题占位对不上。没有 `metrics` 时给的是
+    上面那个固定的 `_FallbackMetrics`（与 `plot_layout()` 的缺省一致）。
+    """
+    return metrics if metrics is not None else _FALLBACK_METRICS
+
+
 @dataclass(frozen=True, slots=True)
 class Box:
     """页面里的一个矩形（cm，y 向上，左下角为原点）。"""
@@ -211,12 +221,22 @@ class PlotLayout:
     #: 与它在页面上的矩形，二者一一对应。
     legend_box_layouts: tuple[Any, ...] = ()
     legend_box_origins: tuple[Box, ...] = ()
+    #: 与 `legend_box_layouts` 一一对应的方位（`"top"` / `"right"` /
+    #: `"bottom"` / `"left"` / `"inside"`）。整页 gtable 按方位把它们放进
+    #: `guide-box-*` 槽位（SIL-999）。
+    legend_box_sides: tuple[str, ...] = ()
+    #: `legend.box.spacing`（cm）：`guide-box-*` 的槽位尺寸 = 盒尺寸 + 这个间距，
+    #: 与 `plot_layout()` 扣减 `content_*` 的口径一致（SIL-999）。
+    legend_box_spacing_cm: float = 0.0
     #: `labs(tag =)` 的锚点（0 尺寸 Box，`x_cm` / `y_cm` 是文字锚点）。
     #: `plot.tag.location` 决定它相对哪块区域定位（margin / panel / plot）。
     tag: Box | None = None
     tag_text: str | None = None
     #: `plot.tag` 的解析后元素（渲染时取字号 / 颜色 / 字体）。
     tag_element: Any = None
+    #: `plot.tag` 的宽高（cm）。整页 gtable 用它给出 `tag` 行 / 列（SIL-999）。
+    tag_width_cm: float = 0.0
+    tag_height_cm: float = 0.0
     #: 版式实际解析用的 facet gtable（含行间 / 列间轴带）。渲染必须复用这同一张
     #: 表：另建一张不带 `axis_x_cm` / `axis_y_cm` 的表会让 strip 与轴按错位的
     #: 行列落点（SIL-816 的 `facet-wrap-with-omitted-inner-axis-labels`）。
@@ -1055,6 +1075,7 @@ def plot_layout(
     legend_boxes: list[Box | None] = [None] * len(guides)
     legend_box_origins: list[Box] = []
     legend_box_layouts: list[Any] = []
+    legend_box_sides: list[str] = []
     for key in (
         key
         for side in ("top", "right", "bottom", "left", "inside")
@@ -1078,6 +1099,7 @@ def plot_layout(
         )
         legend_box_origins.append(origin)
         legend_box_layouts.append(box_layout)
+        legend_box_sides.append(side)
         for offset, index in zip(box_layout.boxes, indices, strict=True):
             legend_boxes[index] = Box(
                 origin.x_cm + offset.x_cm,
@@ -1127,6 +1149,8 @@ def plot_layout(
         legend_boxes=tuple(legend_boxes),
         legend_box_layouts=tuple(legend_box_layouts),
         legend_box_origins=tuple(legend_box_origins),
+        legend_box_sides=tuple(legend_box_sides),
+        legend_box_spacing_cm=spacing,
         guides=guides,
         x_axis_top_cm=x_axis_top,
         y_axis_right_cm=y_axis_right,
@@ -1139,6 +1163,8 @@ def plot_layout(
         tag=tag_box,
         tag_text=tag_text if tag_box is not None else None,
         tag_element=tag_element if tag_box is not None else None,
+        tag_width_cm=tag_w if tag_box is not None else 0.0,
+        tag_height_cm=tag_h if tag_box is not None else 0.0,
         facet_table=table,
     )
 

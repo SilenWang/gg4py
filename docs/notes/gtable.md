@@ -190,6 +190,77 @@ gtable 自己不解析尺寸，R 也没有公开接口读回「算好的行高�
 | grob 必须是 grob 对象 | `stop_input_type()` | 任意对象都可以（M0-6 前没有 grob 类型） |
 | `gtable_row` / `gtable_col` / `gtable_matrix`、`gtable_filter`、`gtable_trim`、`rbind` / `cbind`、`gtable_add_row_space` / `col_space` | 有 | 未实现，等 ggplot2 实际调用面需要时补 |
 
+## 整页表：`plot_gtable()`
+
+`ggcore.plot_gtable.plot_gtable(plot, metrics=None, width_in=7, height_in=7)` 是
+上游 `ggplotGrob()` 的对等物：把 `plot_layout()` 已经算好的 cm 尺寸装进**一张
+命名 gtable**，面板行 / 列留 `null`。它是多图合并（M3-1）真正要合并的东西——
+`patchwork` / `cowplot` 合并的是 `ggplotGrob()` 的整页表，不是面板子表。
+
+**单面板固定 16 行 × 13 列**（`tools/refs/plot_gtable_ref.R` 实测 ggplot2
+4.0.3）。行列语义与 layout 名称：
+
+| 行 | 内容 | 列 | 内容 |
+| --- | --- | --- | --- |
+| 1 | `plot.margin` 上 | 1 | `plot.margin` 左 |
+| 2 | `tag`（`plot.tag.location = "margin"`） | 2 | `tag` |
+| 3 | `title` | 3 | `guide-box-left` |
+| 4 | `subtitle` | 4 | `legend.box.spacing` |
+| 5 | `guide-box-top` | 5 | `ylab-l` |
+| 6 | `legend.box.spacing` | 6 | `axis-l` |
+| 7 | `xlab-t` | 7 | `panel` |
+| 8 | `axis-t` | 8 | `axis-r` |
+| 9 | `panel` | 9 | `ylab-r` |
+| 10 | `axis-b` | 10 | `legend.box.spacing` |
+| 11 | `xlab-b` | 11 | `guide-box-right` |
+| 12 | `legend.box.spacing` | 12 | 空 |
+| 13 | `guide-box-bottom` | 13 | `plot.margin` 右 |
+| 14 | `caption` | | |
+| 15 | 空 | | |
+| 16 | `plot.margin` 下 | | |
+
+两条容易踩的口径：
+
+- **`legend.box.spacing` 不在 guide-box 里**。R 把它放在 guide-box 外侧的独立
+  spacer 行 / 列：有右图例时列 10 = `11points`、列 11 才是 guide-box 的宽度。
+  `plot_layout()` 的 `legend_box_spacing_cm` 就是这一项（SIL-999 新增字段）。
+- **`plot.margin` 与 `tag` 分开**。`PlotLayout.margin_cm` 已把 tag 的尺寸折进
+  margin（`table_add_tag()` 的做法），整页表用**原始** `plot.margin`（主题值），
+  tag 单独占第 2 行 / 第 2 列，否则 tag 会被算两遍。`tag_width_cm` /
+  `tag_height_cm` 是同一任务新增的字段。
+
+分面时 R 把中间的「axis-t / panel / axis-b × axis-l / panel / axis-r」3×3 区域
+**展开**成逐面板网格：
+
+- 行 = `axis-t` + `FacetTable` 的所有行 + `axis-b`；
+- 列 = 每个面板列前插 `axis-l`、组末插 `axis-r`（strip 列归入它所在的面板组；
+  `panel.spacing` 列原样保留）。
+
+于是 `facet_wrap(~g)` 两列 = 17×17、`facet_grid(g ~ .)` 两行 = 18×14，与 R 实测
+一致。内轴不画标签：只有最左一条 `axis-l` / 最右一条 `axis-r` 有宽度，其余为
+`0cm`（R 的 `facet_wrap` 实测：`axis-l-1-1` = 0.3505cm、`axis-l-1-2` = 0cm）。
+
+命名照 R 的实测顺序，注意 **panel 与 axis 的行列顺序相反**：
+
+- `panel-{col}-{row}`（`facet_wrap` 两列：`panel-1-1` / `panel-2-1`）；
+- `axis-l-{row}-{col}`、`axis-t-{col}-{row}`；
+- `facet_grid` 的轴跨整行 / 整列，名字只带行号（`axis-l-1`）。
+
+`coord_fixed(ratio = 2)` 的整页表是 `respect = TRUE` + 面板行 `2null` / 面板列
+`1null`（与 R 的 `g$respect` 和 heights 实测一致），比例来自
+`FacetTable.height_weights` / `width_weights`。
+
+**表里放的是语义槽位，不是渲染 grob**：`PanelSlot`（面板号 + 在 `FacetTable`
+里的 t/l/b/r）、`StripSlot`（一条 strip）、`PlotCell`（background / 轴 / 标题 /
+guide-box / spacer，带主题元素或 `LegendBoxLayout`）。组合层按名字取行列与尺寸
+即可；单图渲染仍走 `scene_from_build()` 的 `PlotLayout` 绝对 cm 路径（非范围
+包括「改变单图输出外观」）。参考值：
+
+```bash
+pixi run -e refs refs:plot-gtable
+pytest -q tests/test_plot_gtable.py tests/test_plot_gtable_r_parity.py
+```
+
 ## 与后续模块的接口
 
 - **M0-4 viewport / M0-6 grob 渲染**：`boxes()` 给的是 cm 坐标；渲染时按
