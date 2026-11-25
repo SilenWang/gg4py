@@ -16,7 +16,7 @@ import pytest
 import gg4py
 from ggcore import composition
 from ggcore.plot import aes, geom_point, ggplot
-from ggcore.units import UnitContext
+from ggcore.units import UnitContext, null_value
 from ggio.frame import from_dict
 from ggskia.text import ShaperMetrics
 
@@ -95,6 +95,104 @@ def test_corner_anchor_matches_aplot_layout_rewrite() -> None:
         ref["width_to_panel"],
         abs=1e-9,
     )
+
+
+def test_even_length_corner_anchor_matches_aplot() -> None:
+    ref = _reference()["even_corner_bottom_right"]
+    combined = gg4py.set_guide_area(
+        gg4py.wrap_plots(_legend_plot(), _legend_plot(), nrow=3, ncol=2, guides="collect"),
+        "bottom-right",
+    )
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None
+    row = (units.guide.area[0] - composition.PANEL_ROW) // composition.TABLE_ROWS + 1
+    col = (units.guide.area[1] - composition.PANEL_COL) // composition.TABLE_COLS + 1
+    assert (row, col) == (ref["row"], ref["col"])
+
+
+def test_side_strip_weights_match_aplot_for_both_edges() -> None:
+    ref = _reference()["side_strips"]
+    wide = gg4py.wrap_plots(
+        _legend_plot(),
+        _legend_plot(),
+        _legend_plot(),
+        ncol=3,
+        widths=[3.0, 2.0, 1.0],
+        guides="collect",
+    )
+    left = composition._build_units(
+        gg4py.set_guide_area(wide, "left"),
+        metrics=METRICS,
+    )
+    right = composition._build_units(
+        gg4py.set_guide_area(wide, "right"),
+        metrics=METRICS,
+    )
+    assert [
+        null_value(left.widths, (col - 1) * composition.TABLE_COLS + composition.PANEL_COL - 1)
+        for col in range(1, left.ncol + 1)
+    ] == pytest.approx(ref["left_widths"])
+    assert [
+        null_value(right.widths, (col - 1) * composition.TABLE_COLS + composition.PANEL_COL - 1)
+        for col in range(1, right.ncol + 1)
+    ] == pytest.approx(ref["right_widths"])
+
+    tall = gg4py.wrap_plots(
+        _legend_plot(),
+        _legend_plot(),
+        nrow=2,
+        heights=[3.0, 1.0],
+        guides="collect",
+    )
+    top = composition._build_units(
+        gg4py.set_guide_area(tall, "top"),
+        metrics=METRICS,
+    )
+    bottom = composition._build_units(
+        gg4py.set_guide_area(tall, "bottom"),
+        metrics=METRICS,
+    )
+    assert [
+        null_value(top.heights, (row - 1) * composition.TABLE_ROWS + composition.PANEL_ROW - 1)
+        for row in range(1, top.nrow + 1)
+    ] == pytest.approx(ref["top_heights"])
+    assert [
+        null_value(bottom.heights, (row - 1) * composition.TABLE_ROWS + composition.PANEL_ROW - 1)
+        for row in range(1, bottom.nrow + 1)
+    ] == pytest.approx(ref["bottom_heights"])
+
+
+def test_legend_layout_is_a_noop_for_aplot_continuous_guides() -> None:
+    ref = _reference()["continuous_legend_layout"]
+    values = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "y": [1.0, 2.0, 3.0, 4.0],
+            "z": [0.1, 0.5, 0.9, 1.0],
+        }
+    )
+    plot = ggplot(values, aes(x="x", y="y", colour="z")) + geom_point()
+    baseline = composition._build_units(
+        gg4py.wrap_plots(plot, guides="collect"),
+        metrics=METRICS,
+    ).guide
+    laid = composition._build_units(
+        gg4py.set_guide_layout(
+            gg4py.wrap_plots(plot, guides="collect"),
+            legend_ncol=2,
+        ),
+        metrics=METRICS,
+    ).guide
+    assert baseline is not None and laid is not None
+    baseline_entry = baseline.entries[0]
+    laid_entry = laid.entries[0]
+    assert baseline_entry.guide_build.guide.kind == "colourbar"
+    assert laid_entry.guide_build.guide.kind == "colourbar"
+    assert laid_entry.legend.bar is not None
+    assert laid_entry.legend.width_cm == pytest.approx(baseline_entry.legend.width_cm)
+    assert laid_entry.legend.height_cm == pytest.approx(baseline_entry.legend.height_cm)
+    assert ref["targets"] == ""
+    assert ref["baseline_box_cm"] == pytest.approx(ref["ncol_box_cm"])
 
 
 def test_guide_box_grid_matches_aplot_guides_ncol() -> None:

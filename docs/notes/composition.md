@@ -29,7 +29,8 @@ gg4py.plot_spacer()  # 占位空格
 gg4py.guide_area()  # 占一格，guides="collect" 时图例放进这一格
 (p1 | p2) + gg4py.plot_layout(guides="collect")  # 同结构图例去重后提到顶层
 (p1 + gg4py.guide_area()) + gg4py.plot_layout(ncol=2, guides="collect")
-pw = gg4py.set_guide_area((p1 | p2) / p3, "bottom-right")  # 角区 / 侧条
+pw = gg4py.wrap_plots(p1, p2, p3, ncol=2, guides="collect")
+pw = gg4py.set_guide_area(pw, "bottom-right")  # 角区 / 侧条
 pw = gg4py.set_guide_layout(pw, legend_ncol=2, guides_ncol=2, guides_direction="horizontal")
 
 pw = (p1 | p2) / p3
@@ -224,17 +225,19 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 - **角区**：`top-right` / `top-left` / `bottom-right` / `bottom-left` 在现有规则
   grid 的空格中找连续矩形区域；取区域中心格作 guide area，找不到就扩展成
   `ComposeError`。现有 API 没有任意 `design`，所以空区来自 `nrow × ncol` 大于
-  子图数时的尾部空格。
+  子图数时的尾部空格。偶数长度使用 aplot 的 `ceiling(n / 2)` anchor。
 - **侧条**：`right` / `left` / `top` / `bottom` 总是新增一行或一列，guide area 的
   `null` 权重固定为 `0.2`（aplot `guide-area.R` 的
   `.guide_area_strip_width/height()`）。锚点跟第一个子图（本仓的非 aplot 对象
   没有 `main_row/main_col`）；右 / 左侧条的锚行、上 / 下侧条的锚列由此决定。
 - **guide area 内排布**：guide area 位置决定顶层图例盒方位（右侧 / 左侧 / 上方 /
   下方）。guide area 使用 panel cell 的矩形，`collected-guide-box` 仍只有一条
-  顶层渲染记录；与 grid 里的 patchwork `guide_area()` 不能同时使用。
+  顶层渲染记录；与 grid 里的 patchwork `guide_area()` 不能同时使用。构建时若
+  本层不是 `guides="collect"`，抛 `ComposeError`，不会生成空白侧条。
 - **单条图例**：`legend_ncol` / `legend_byrow` / `legend_direction` /
   `legend_title_position` / `legend_keywidth` / `legend_keyheight` 写成
-  `GuideLegend` 覆盖；key 宽高和 `legend_spacing_x/y` 按 aplot 的单位使用毫米。
+  `GuideLegend` 覆盖；只作用于 legend 类 guide，连续 colourbar / `guide_bins`
+  保持原 guide。key 宽高和 `legend_spacing_x/y` 按 aplot 的单位使用毫米。
 - **多条图例**：`guides_ncol` / `guides_byrow` / `guides_direction` 把收集后的
   图例排成二维 guide-box；每个行列取最大尺寸（`unit.pmax()` 的结果），列 / 行
   之间插入 `legend.spacing.x/y`，外包 `legend.box.margin`。`byrow` 或

@@ -35,12 +35,14 @@ from ggcore.composition import (
     plot_spacer,
     wrap_plots,
 )
+from ggcore.guide import guide_bins
 from ggcore.plot import (
     aes,
     facet_wrap,
     geom_line,
     geom_point,
     ggplot,
+    guides,
     labs,
     theme_void,
 )
@@ -723,6 +725,62 @@ def test_aplot_guide_area_right_strip_has_twenty_percent_panel_weight() -> None:
     assert guide_width / (guide_width + panel_width) == pytest.approx(0.2 / 2.2, abs=1e-9)
 
 
+def test_aplot_guide_area_even_corner_uses_aplot_ceiling_anchor() -> None:
+    """偶数长度空区取 `ceiling(n/2)`，即 Python 的 `(n - 1) // 2`。"""
+    combined = gg4py.set_guide_area(
+        wrap_plots(legend_plot(), legend_plot(), nrow=3, ncol=2, guides="collect"),
+        "bottom-right",
+    )
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None
+    anchor_row = (units.guide.area[0] - PANEL_ROW) // TABLE_ROWS + 1
+    anchor_col = (units.guide.area[1] - PANEL_COL) // TABLE_COLS + 1
+    assert (anchor_row, anchor_col) == (2, 1)
+
+
+def test_aplot_guide_area_left_and_top_preserve_explicit_panel_weights() -> None:
+    combined = wrap_plots(
+        legend_plot(),
+        legend_plot(),
+        legend_plot(),
+        ncol=3,
+        widths=[3.0, 2.0, 1.0],
+        guides="collect",
+    )
+    left = composition._build_units(
+        gg4py.set_guide_area(combined, "left"),
+        metrics=METRICS,
+    )
+    left_weights = [
+        null_value(left.widths, (col - 1) * TABLE_COLS + PANEL_COL - 1)
+        for col in range(1, left.ncol + 1)
+    ]
+    assert left_weights == [0.2, 3.0, 2.0, 1.0]
+
+    tall = wrap_plots(
+        legend_plot(),
+        legend_plot(),
+        nrow=2,
+        heights=[3.0, 1.0],
+        guides="collect",
+    )
+    top = composition._build_units(
+        gg4py.set_guide_area(tall, "top"),
+        metrics=METRICS,
+    )
+    top_weights = [
+        null_value(top.heights, (row - 1) * TABLE_ROWS + PANEL_ROW - 1)
+        for row in range(1, top.nrow + 1)
+    ]
+    assert top_weights == [0.2, 3.0, 1.0]
+
+
+def test_aplot_guide_area_requires_collect() -> None:
+    combined = gg4py.set_guide_area(wrap_plots(legend_plot(), legend_plot()), "right")
+    with pytest.raises(ComposeError, match="guides='collect'"):
+        composition._build_units(combined, metrics=METRICS)
+
+
 def _three_guide_plot() -> ggplot:
     values = from_dict(
         {
@@ -788,6 +846,59 @@ def test_aplot_guide_layout_configures_individual_legend_keys() -> None:
     legend = units.guide.entries[0].legend
     assert legend.direction == "horizontal"
     assert legend.width_cm > legend.height_cm
+
+
+def _continuous_guide_plot() -> ggplot:
+    values = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "y": [1.0, 2.0, 3.0, 4.0],
+            "z": [0.1, 0.5, 0.9, 1.0],
+        }
+    )
+    return ggplot(values, aes(x="x", y="y", colour="z")) + geom_point()
+
+
+@pytest.mark.parametrize(
+    "layout",
+    [
+        {"legend_spacing_x": 3},
+        {"legend_keywidth": 8},
+        {"legend_title_position": "top"},
+    ],
+)
+def test_aplot_legend_layout_does_not_replace_continuous_colourbar(
+    layout: dict[str, Any],
+) -> None:
+    baseline = composition._build_units(
+        wrap_plots(_continuous_guide_plot(), guides="collect"),
+        metrics=METRICS,
+    ).guide
+    combined = gg4py.set_guide_layout(
+        wrap_plots(_continuous_guide_plot(), guides="collect"),
+        **layout,
+    )
+    units = composition._build_units(combined, metrics=METRICS)
+    assert baseline is not None and units.guide is not None
+    before = baseline.entries[0]
+    entry = units.guide.entries[0]
+    assert entry.guide_build.guide.kind == "colourbar"
+    assert entry.legend.bar is not None
+    assert not entry.legend.keys
+    assert entry.legend.width_cm == pytest.approx(before.legend.width_cm)
+    assert entry.legend.height_cm == pytest.approx(before.legend.height_cm)
+
+
+def test_aplot_legend_layout_does_not_replace_guide_bins() -> None:
+    plot = _continuous_guide_plot() + guides(colour=guide_bins())
+    combined = gg4py.set_guide_layout(
+        wrap_plots(plot, guides="collect"),
+        legend_ncol=2,
+    )
+    units = composition._build_units(combined, metrics=METRICS)
+    assert units.guide is not None
+    entry = units.guide.entries[0]
+    assert entry.guide_build.guide.kind == "bins"
 
 
 def test_aplot_guide_layout_validation() -> None:

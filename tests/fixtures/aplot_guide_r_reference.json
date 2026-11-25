@@ -71,6 +71,56 @@
     "width_to_panel": 1,
     "height_to_panel": 1
   },
+  "even_corner_bottom_right": {
+    "mode": "corner",
+    "position": "bottom-right",
+    "row": 2,
+    "col": 1,
+    "rows": [
+2,
+3
+    ],
+    "cols": [
+1,
+2
+    ]
+  },
+  "side_strips": {
+    "left_widths": [
+0.2,
+3,
+2,
+1
+    ],
+    "right_widths": [
+3,
+2,
+1,
+0.2
+    ],
+    "top_heights": [
+0.2,
+3,
+1
+    ],
+    "bottom_heights": [
+3,
+1,
+0.2
+    ]
+  },
+  "continuous_legend_layout": {
+    "targets": "",
+    "baseline_box_cm": [
+1.80736367579909,
+3.9919047869102
+    ],
+    "ncol_box_cm": [
+1.80736367579909,
+3.9919047869102
+    ]
+  },
+  "guide_bins_targets": "",
   "guide_box": {
     "legend_ncol": 2,
     "legend_byrow": true,

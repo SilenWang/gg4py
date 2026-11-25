@@ -826,25 +826,32 @@ def _apply_guide_layout(
         return guide, theme
 
     old = guide.guide
-    keywidth = unit(layout.legend_keywidth, "mm") if layout.legend_keywidth is not None else None
-    keyheight = unit(layout.legend_keyheight, "mm") if layout.legend_keyheight is not None else None
-    guide = replace(
-        guide,
-        guide=GuideLegend(
-            title=getattr(old, "title", guide.title),
-            direction=layout.legend_direction,
-            position=getattr(old, "position", None),
-            ncol=layout.legend_ncol,
-            byrow=layout.legend_byrow,
-            override_aes=getattr(old, "override_aes", {}),
-            keywidth=keywidth,
-            keyheight=keyheight,
-            reverse=bool(getattr(old, "reverse", False)),
-            order=float(getattr(old, "order", 0.0)),
-            title_position=layout.legend_title_position,
-            theme=getattr(old, "theme", None),
-        ),
-    )
+    if isinstance(old, GuideLegend):
+        guide = replace(
+            guide,
+            guide=GuideLegend(
+                title=getattr(old, "title", guide.title),
+                direction=layout.legend_direction,
+                position=getattr(old, "position", None),
+                ncol=layout.legend_ncol,
+                byrow=layout.legend_byrow,
+                override_aes=getattr(old, "override_aes", {}),
+                keywidth=(
+                    unit(layout.legend_keywidth, "mm")
+                    if layout.legend_keywidth is not None
+                    else None
+                ),
+                keyheight=(
+                    unit(layout.legend_keyheight, "mm")
+                    if layout.legend_keyheight is not None
+                    else None
+                ),
+                reverse=bool(getattr(old, "reverse", False)),
+                order=float(getattr(old, "order", 0.0)),
+                title_position=layout.legend_title_position,
+                theme=getattr(old, "theme", None),
+            ),
+        )
     overrides: dict[str, Any] = {}
     if layout.legend_spacing_x is not None:
         overrides["legend.spacing.x"] = unit(layout.legend_spacing_x, "mm")
@@ -1147,7 +1154,7 @@ def _guide_area_placement(
         current,
         nrow,
         ncol,
-        (rows[len(rows) // 2], cols[len(cols) // 2]),
+        (rows[(len(rows) - 1) // 2], cols[(len(cols) - 1) // 2]),
     )
 
 
@@ -1205,6 +1212,8 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
     plots = tuple(patchwork.plots)
     mode = _effective_guides(patchwork, parent_guides)
     collect = mode == "collect"
+    if patchwork.guide_area is not None and not collect:
+        raise ComposeError("set_guide_area() 需要 guides='collect'")
     nrow = patchwork.layout.nrow
     ncol = patchwork.layout.ncol
     # patchwork `build_patchwork()`：给了多列 weights / 多行 heights 而没给
@@ -1252,22 +1261,18 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
             rows.append(unit(best, "cm"))
 
     # panel 行 / 列换成 null 权重（`set_panel_dimensions()`）。
-    width_weights = _repeat_weights(patchwork.layout.widths, ncol)
-    height_weights = _repeat_weights(patchwork.layout.heights, nrow)
-    if guide_area.strip in ("left", "right"):
-        strip_col = 1 if guide_area.strip == "left" else ncol
-        width_weights = (
-            *width_weights[: strip_col - 1],
-            0.2,
-            *width_weights[strip_col:],
-        )
-    if guide_area.strip in ("top", "bottom"):
-        strip_row = 1 if guide_area.strip == "top" else nrow
-        height_weights = (
-            *height_weights[: strip_row - 1],
-            0.2,
-            *height_weights[strip_row:],
-        )
+    panel_ncol = ncol - (1 if guide_area.strip in ("left", "right") else 0)
+    panel_nrow = nrow - (1 if guide_area.strip in ("top", "bottom") else 0)
+    width_weights = _repeat_weights(patchwork.layout.widths, panel_ncol)
+    height_weights = _repeat_weights(patchwork.layout.heights, panel_nrow)
+    if guide_area.strip == "left":
+        width_weights = (0.2, *width_weights)
+    elif guide_area.strip == "right":
+        width_weights = (*width_weights, 0.2)
+    if guide_area.strip == "top":
+        height_weights = (0.2, *height_weights)
+    elif guide_area.strip == "bottom":
+        height_weights = (*height_weights, 0.2)
     for col in range(ncol):
         columns[col * TABLE_COLS + (PANEL_COL - 1)] = unit(width_weights[col], "null")
     for row in range(nrow):

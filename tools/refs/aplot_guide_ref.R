@@ -130,6 +130,51 @@ corner_gt <- patchworkGrob(as.patchwork(corner))
 corner_guide <- cell_rect(corner_gt, "panel_patch-4", 7, 6)
 corner_panel <- cell_rect(corner_gt, "panel-1", 7, 6)
 
+even_corner <- aplot:::as.aplot(p1)
+even_corner$plotlist <- list(p1, p2)
+even_corner$layout <- matrix(c(1, 2, NA, NA, NA, NA), nrow = 3, byrow = TRUE)
+even_corner$n <- 2
+even_corner$main_row <- 1
+even_corner$main_col <- 1
+even_corner$width <- c(1, 1)
+even_corner$height <- c(1, 1, 1)
+even_corner <- set_guide_area(even_corner, "bottom-right")
+even_corner_spec <- aplot:::.resolve_guide_area(even_corner)
+
+wide <- aplot:::as.aplot(p1)
+wide <- insert_right(insert_right(wide, p2), p3)
+wide$width <- c(3, 2, 1)
+left_widths <- as.numeric(as.patchwork(set_guide_area(wide, "left"))$patches$layout$widths)
+right_widths <- as.numeric(as.patchwork(set_guide_area(wide, "right"))$patches$layout$widths)
+
+tall <- aplot:::as.aplot(p1)
+tall <- insert_bottom(tall, p2)
+tall$height <- c(3, 1)
+top_heights <- as.numeric(as.patchwork(set_guide_area(tall, "top"))$patches$layout$heights)
+bottom_heights <- as.numeric(as.patchwork(set_guide_area(tall, "bottom"))$patches$layout$heights)
+
+continuous_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) + geom_point()
+continuous_targets <- aplot:::.guide_layout_targets(continuous_plot)
+guide_box_size <- function(plot) {
+  grob <- ggplotGrob(plot)
+  index <- which(grob$layout$name == "guide-box-right")[1]
+  c(
+    convertWidth(gtable::gtable_width(grob$grobs[[index]]), "cm", valueOnly = TRUE),
+    convertHeight(gtable::gtable_height(grob$grobs[[index]]), "cm", valueOnly = TRUE)
+  )
+}
+continuous_baseline <- guide_box_size(continuous_plot)
+continuous_ncol <- guide_box_size(
+  aplot:::.apply_legend_layout(
+    list(continuous_plot),
+    list(ncol = 2)
+  )[[1]]
+)
+bins_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) +
+  geom_point() +
+  guides(colour = guide_bins())
+bins_targets <- aplot:::.guide_layout_targets(bins_plot)
+
 guide_plot <- plot_data(d$mpg, "#CC0000")
 guide_aplot <- set_guide_layout(
   aplot:::as.aplot(guide_plot),
@@ -181,6 +226,26 @@ payload <- list(
     width_to_panel = corner_guide$w / corner_panel$w,
     height_to_panel = corner_guide$h / corner_panel$h
   ),
+  even_corner_bottom_right = list(
+    mode = even_corner_spec$mode,
+    position = even_corner_spec$position,
+    row = even_corner_spec$row,
+    col = even_corner_spec$col,
+    rows = even_corner_spec$rows,
+    cols = even_corner_spec$cols
+  ),
+  side_strips = list(
+    left_widths = left_widths,
+    right_widths = right_widths,
+    top_heights = top_heights,
+    bottom_heights = bottom_heights
+  ),
+  continuous_legend_layout = list(
+    targets = continuous_targets,
+    baseline_box_cm = continuous_baseline,
+    ncol_box_cm = continuous_ncol
+  ),
+  guide_bins_targets = bins_targets,
   guide_box = list(
     legend_ncol = guide_spec$legend$ncol,
     legend_byrow = guide_spec$legend$byrow,
