@@ -87,6 +87,7 @@ from ggcore.geom.scene import Box, _box_spacing_cm, _legend_position, page_grobs
 from ggcore.geom.scene import plot_layout as scene_layout
 from ggcore.gtable import GTable, Placement
 from ggcore.guide import (
+    GUIDEABLE_AESTHETICS,
     GuideBuild,
     GuideLegend,
     build_guides,
@@ -94,6 +95,7 @@ from ggcore.guide import (
     legend_box_layout,
     legend_grid_layout,
     legend_layout,
+    scale_guide_is_legend,
 )
 from ggcore.plot_gtable import plot_gtable
 from ggcore.theme import Theme, merge_theme, resolve_theme
@@ -977,17 +979,42 @@ def _guide_fingerprint(guide_build: GuideBuild, theme: Any) -> tuple[Any, ...]:
     )
 
 
+def _legend_layout_targets(build: Any) -> frozenset[str]:
+    """aplot `.guide_layout_targets(plot)` 的对等物（`R/guide-layout.R`）。
+
+    aplot 不读 `plot.guides`，只看 `ggplot_build()` 之后每个非位置标度上的
+    `$guide`（见 :func:`ggcore.guide.scale_guide_is_legend`）。所以连续 colour
+    上显式 `guides(colour = guide_legend())` 的目标集是空的——图例本身仍是
+    legend 型，但 `legend_*` 不会改写它（SIL-1011）。
+    """
+    scales = getattr(build, "scales", None)
+    if scales is None:
+        return frozenset()
+    return frozenset(
+        aesthetic
+        for aesthetic in GUIDEABLE_AESTHETICS
+        if scale_guide_is_legend(scales.scale(aesthetic))
+    )
+
+
 def _apply_guide_layout(
     guide: GuideBuild,
     theme: Any,
     layout: GuideLayout | None,
+    targets: frozenset[str] | None = None,
 ) -> tuple[GuideBuild, Any]:
-    """aplot `.apply_legend_layout()`：把设置写成 guide / theme 覆盖。"""
+    """aplot `.apply_legend_layout()`：把设置写成 guide / theme 覆盖。
+
+    `targets` 是 `.guide_layout_targets()` 的结果：只有命中的美学才会被
+    `legend_*` 改写 guide 参数；`legend.spacing.*` 的 theme 覆盖与 aplot 一样
+    无条件生效。`targets=None` 表示不做目标过滤（旧的直接调用口径）。
+    """
     if layout is None or not layout.has_legend_layout:
         return guide, theme
 
     old = guide.guide
-    if isinstance(old, GuideLegend):
+    targeted = targets is None or not targets.isdisjoint(guide.aesthetics)
+    if isinstance(old, GuideLegend) and targeted:
         guide = replace(
             guide,
             guide=GuideLegend(
@@ -1040,8 +1067,9 @@ def _collect_guides(
     if position in (None, "none"):
         return ()
     out: list[_CollectedGuide] = []
+    targets = _legend_layout_targets(build)
     for guide in build_guides(build):
-        guide, guide_plot_theme = _apply_guide_layout(guide, theme, guide_layout)
+        guide, guide_plot_theme = _apply_guide_layout(guide, theme, guide_layout, targets)
         side = str(guide.position or position)
         out.append(
             _CollectedGuide(

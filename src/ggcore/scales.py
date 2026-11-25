@@ -1350,6 +1350,9 @@ class ScaleBase:
     """标度的公共部分：美学名、参数、训练与映射的接口。"""
 
     discrete: bool = False
+    #: 分箱族人（`scale_*_binned()`）：R 里它们的默认 `guide` 是 `"bins"` /
+    #: `"coloursteps"`，不是 waiver，所以 aplot 的 legend 布局不会落到它们上面。
+    is_binned: bool = False
     #: 只有位置标度有「面板范围」（上游 view_scales_from_scale() 只服务 x / y）。
     is_position: bool = False
     default_expansion: Expansion = CONTINUOUS_EXPANSION
@@ -2011,6 +2014,7 @@ class BinnedScale(ContinuousScale):
     `bins()` 给出「分箱边界 / 每箱颜色 / 图例断点」三件套（issue 验收）。
     """
 
+    is_binned = True
     default_oob = "squish"
     default_na_value: Any = float("nan")
 

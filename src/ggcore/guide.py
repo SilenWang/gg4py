@@ -81,6 +81,7 @@ from ggcore.viewport import NA, gpar, viewport
 
 __all__ = [
     "AUTO",
+    "GUIDEABLE_AESTHETICS",
     "GUIDE_AESTHETICS",
     "BinnedKeys",
     "Guide",
@@ -118,6 +119,7 @@ __all__ = [
     "legend_grob",
     "legend_justification",
     "legend_layout",
+    "scale_guide_is_legend",
 ]
 
 #: 会产出图例的非位置美学，顺序固定（决定默认的图例顺序）。
@@ -954,6 +956,55 @@ def _scale_guide(scale: Any) -> Guide | None:
     """标度上的 `guide=` 参数（`plot.guides` 没有对应条目时的回落）。"""
     params = getattr(scale, "params", None) or {}
     return _guide_from_value(params.get("guide"))
+
+
+#: aplot `.guide_layout_targets()` 认的美学（`R/guide-layout.R` 的 `guideable`）。
+#: 只有这些非位置美学的 scale guide 是 legend 型时，`legend_*` 才会落到它上面。
+GUIDEABLE_AESTHETICS = (
+    "alpha",
+    "colour",
+    "color",
+    "fill",
+    "linetype",
+    "linewidth",
+    "shape",
+    "size",
+    "stroke",
+)
+
+
+def scale_guide_is_legend(scale: Any) -> bool:
+    """`scale$guide` 在 aplot `.is_legend_guide()` 口径下是不是 legend 型。
+
+    R 里 `scale$guide` 的默认值不是 waiver，而是按 scale 族给的：
+    `scale_colour_continuous()` / `scale_fill_continuous()` 是 `"colourbar"`，
+    分箱族是 `"bins"` / `"coloursteps"`，其余（含离散 colour / fill）是
+    `waiver()`（等价于 `"legend"`）。
+
+    所以连续 colour 上显式 `guides(colour = guide_legend())` 时，构建后的
+    `scale$guide` 仍是 `"colourbar"`：ggplot2 会按 plot.guides 画出 legend，
+    但 aplot 的 `.guide_layout_targets()` 返回空，`set_guide_layout(legend_*)`
+    不生效。这里复刻的就是这个「看标度、不看 plot.guides」的口径（SIL-1011）。
+    """
+    if scale is None:
+        return False
+    params = getattr(scale, "params", None) or {}
+    has_param = getattr(scale, "_has_param", None)
+    explicit = bool(has_param("guide")) if callable(has_param) else ("guide" in params)
+    if explicit:
+        value = params.get("guide")
+        if value is None:
+            return False
+        try:
+            return isinstance(_guide_from_value(value), GuideLegend)
+        except GuideError:
+            return False
+    if bool(getattr(scale, "is_binned", False)):
+        return False
+    return not (
+        getattr(scale, "aesthetic", None) in ("colour", "fill")
+        and not bool(getattr(scale, "discrete", False))
+    )
 
 
 def _is_mapped(build: PlotBuild, index: int, aesthetic: str) -> bool:

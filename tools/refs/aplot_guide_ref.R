@@ -175,6 +175,53 @@ bins_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) +
   guides(colour = guide_bins())
 bins_targets <- aplot:::.guide_layout_targets(bins_plot)
 
+# SIL-1011：连续 colour 上显式 guide_legend() —— ggplot2 会画出 legend，
+# 但 scale$guide 仍是默认的 "colourbar"，aplot 的 targets 为空、legend_* 不生效。
+explicit_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) +
+  geom_point() +
+  guides(colour = guide_legend())
+explicit_targets <- aplot:::.guide_layout_targets(explicit_plot)
+explicit_class <- class(
+  suppressMessages(ggplot_build(explicit_plot))$plot@guides$guides[[1]]
+)[1]
+explicit_baseline <- guide_box_size(explicit_plot)
+explicit_ncol <- guide_box_size(
+  aplot:::.apply_legend_layout(list(explicit_plot), list(ncol = 2))[[1]]
+)
+
+# 对照：离散 colour 的 GuideLegend 仍会被 legend_* 改写。
+discrete_plot <- ggplot(mtcars, aes(wt, mpg, colour = factor(cyl))) +
+  geom_point() +
+  guides(colour = guide_legend())
+discrete_targets <- aplot:::.guide_layout_targets(discrete_plot)
+discrete_class <- class(
+  suppressMessages(ggplot_build(discrete_plot))$plot@guides$guides[[1]]
+)[1]
+discrete_baseline <- guide_box_size(discrete_plot)
+discrete_ncol <- guide_box_size(
+  aplot:::.apply_legend_layout(list(discrete_plot), list(ncol = 2))[[1]]
+)
+
+# 对照：guide 写在 scale 上（scale$guide 就是 GuideLegend）时 aplot 会命中。
+scale_legend_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) +
+  geom_point() +
+  scale_colour_continuous(guide = guide_legend())
+scale_legend_targets <- aplot:::.guide_layout_targets(scale_legend_plot)
+scale_legend_baseline <- guide_box_size(scale_legend_plot)
+scale_legend_ncol <- guide_box_size(
+  aplot:::.apply_legend_layout(list(scale_legend_plot), list(ncol = 2))[[1]]
+)
+
+# 对照：分箱 scale 的默认 guide 是 "coloursteps"，同样不在 legend 目标里。
+binned_plot <- ggplot(mtcars, aes(wt, mpg, colour = qsec)) +
+  geom_point() +
+  scale_colour_binned()
+binned_targets <- aplot:::.guide_layout_targets(binned_plot)
+binned_baseline <- guide_box_size(binned_plot)
+binned_ncol <- guide_box_size(
+  aplot:::.apply_legend_layout(list(binned_plot), list(ncol = 2))[[1]]
+)
+
 guide_plot <- plot_data(d$mpg, "#CC0000")
 guide_aplot <- set_guide_layout(
   aplot:::as.aplot(guide_plot),
@@ -246,6 +293,32 @@ payload <- list(
     ncol_box_cm = continuous_ncol
   ),
   guide_bins_targets = bins_targets,
+  continuous_explicit_legend = list(
+    targets = paste(explicit_targets, collapse = ","),
+    final_guide_class = explicit_class,
+    baseline_box_cm = explicit_baseline,
+    ncol_box_cm = explicit_ncol,
+    ncol_changes_box = !isTRUE(all.equal(explicit_baseline, explicit_ncol))
+  ),
+  discrete_explicit_legend = list(
+    targets = paste(discrete_targets, collapse = ","),
+    final_guide_class = discrete_class,
+    baseline_box_cm = discrete_baseline,
+    ncol_box_cm = discrete_ncol,
+    ncol_changes_box = !isTRUE(all.equal(discrete_baseline, discrete_ncol))
+  ),
+  continuous_scale_guide_legend = list(
+    targets = paste(scale_legend_targets, collapse = ","),
+    baseline_box_cm = scale_legend_baseline,
+    ncol_box_cm = scale_legend_ncol,
+    ncol_changes_box = !isTRUE(all.equal(scale_legend_baseline, scale_legend_ncol))
+  ),
+  continuous_binned_default = list(
+    targets = paste(binned_targets, collapse = ","),
+    baseline_box_cm = binned_baseline,
+    ncol_box_cm = binned_ncol,
+    ncol_changes_box = !isTRUE(all.equal(binned_baseline, binned_ncol))
+  ),
   guide_box = list(
     legend_ncol = guide_spec$legend$ncol,
     legend_byrow = guide_spec$legend$byrow,
