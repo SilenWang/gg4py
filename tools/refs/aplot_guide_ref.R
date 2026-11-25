@@ -1,0 +1,208 @@
+#!/usr/bin/env Rscript
+# SIL-1003：aplot 0.3.2 guide area / guide layout 的结构对拍。
+#
+#     pixi run -e refs refs:aplot-guide
+#
+# 产出 tests/fixtures/aplot_guide_r_reference.json。绝对字体尺寸不跨引擎比较；
+# 夹具记录 aplot 自己的 layout 矩阵、guide-box 行列和 guide-cell 相对尺寸。
+
+suppressPackageStartupMessages({
+  library(aplot)
+  library(ggplot2)
+  library(grid)
+  library(patchwork)
+})
+pdf(NULL)
+
+json_escape <- function(text) {
+  text <- gsub("\\\\", "\\\\\\\\", text)
+  gsub('"', '\\\\"', text)
+}
+
+to_json <- function(value, indent = 0) {
+  pad <- strrep(" ", indent)
+  if (is.null(value)) {
+    return("null")
+  }
+  if (is.list(value)) {
+    if (!is.null(names(value))) {
+      items <- vapply(
+        names(value),
+        function(key) {
+          paste0(
+            strrep(" ", indent + 2), '"', json_escape(key), '": ',
+            to_json(value[[key]], indent + 2)
+          )
+        },
+        character(1)
+      )
+      return(paste0("{\n", paste(items, collapse = ",\n"), "\n", pad, "}"))
+    }
+    items <- vapply(value, to_json, character(1), indent = indent + 2)
+    return(paste0("[\n", paste(items, collapse = ",\n"), "\n", pad, "]"))
+  }
+  if (is.character(value)) {
+    return(paste0('"', json_escape(value), '"'))
+  }
+  if (is.logical(value)) {
+    return(if (value) "true" else "false")
+  }
+  if (is.numeric(value)) {
+    if (length(value) != 1) {
+      return(to_json(as.list(value), indent))
+    }
+    return(format(value, digits = 15, scientific = FALSE, trim = TRUE))
+  }
+  paste0('"', json_escape(as.character(value)), '"')
+}
+
+resolve_pt <- function(units, total, horizontal = TRUE) {
+  values <- rep(NA_real_, length(units))
+  for (i in seq_along(units)) {
+    if (!identical(grid::unitType(units[i]), "null")) {
+      values[i] <- if (horizontal) {
+        convertWidth(units[i], "pt", valueOnly = TRUE)
+      } else {
+        convertHeight(units[i], "pt", valueOnly = TRUE)
+      }
+    }
+  }
+  is_null <- is.na(values)
+  free <- total - sum(values, na.rm = TRUE)
+  weights <- rep(0, length(units))
+  for (i in which(is_null)) {
+    weights[i] <- as.numeric(units[i])
+  }
+  values[is_null] <- free * weights[is_null] / sum(weights[is_null])
+  values
+}
+
+cell_rect <- function(gt, name, width_in, height_in) {
+  row <- gt$layout[gt$layout$name == name, ][1, ]
+  widths <- resolve_pt(gt$widths, width_in * 72)
+  heights <- resolve_pt(gt$heights, height_in * 72, horizontal = FALSE)
+  list(
+    t = row$t,
+    l = row$l,
+    b = row$b,
+    r = row$r,
+    x = sum(widths[seq_len(row$l - 1)]),
+    y = sum(heights) - sum(heights[seq_len(row$b)]),
+    w = sum(widths[row$l:row$r]),
+    h = sum(heights[row$t:row$b])
+  )
+}
+
+d <- transform(mtcars, gear_f = factor(gear), cyl_f = factor(cyl))
+plot_data <- function(y, fill) {
+  ggplot(
+    d,
+    aes(wt, y, colour = gear_f, shape = cyl_f, size = wt)
+  ) +
+    geom_point() +
+    labs(colour = "gear", shape = "cyl", size = "gear") +
+    theme(panel.background = element_rect(fill = fill, colour = NA))
+}
+
+p1 <- plot_data(d$mpg, "#CC0000")
+p2 <- plot_data(d$disp, "#00CC00")
+p3 <- plot_data(d$hp, "#0000CC")
+
+side <- aplot:::as.aplot(p1)
+side <- insert_bottom(side, p2)
+side <- set_guide_area(side, "right")
+side_spec <- aplot:::.resolve_guide_area(side)
+side_gt <- patchworkGrob(as.patchwork(side))
+side_guide <- cell_rect(side_gt, "panel_patch-3", 7, 5)
+side_panel <- cell_rect(side_gt, "panel-1", 7, 5)
+
+corner <- aplot:::as.aplot(p1)
+corner$plotlist <- list(p1, p2, p3)
+corner$layout <- matrix(c(1, 2, 3, NA), nrow = 2, byrow = TRUE)
+corner$n <- 3
+corner$main_row <- 1
+corner$main_col <- 1
+corner$width <- c(1, 1)
+corner$height <- c(1, 1)
+corner <- set_guide_area(corner, "bottom-right")
+corner_spec <- aplot:::.resolve_guide_area(corner)
+corner_gt <- patchworkGrob(as.patchwork(corner))
+corner_guide <- cell_rect(corner_gt, "panel_patch-4", 7, 6)
+corner_panel <- cell_rect(corner_gt, "panel-1", 7, 6)
+
+guide_plot <- plot_data(d$mpg, "#CC0000")
+guide_aplot <- set_guide_layout(
+  aplot:::as.aplot(guide_plot),
+  legend_ncol = 2,
+  legend_byrow = TRUE,
+  legend_direction = "horizontal",
+  legend_keywidth = 8,
+  legend_keyheight = 5,
+  legend_spacing_x = 3,
+  legend_spacing_y = 4,
+  guides_ncol = 2,
+  guides_direction = "vertical"
+)
+guide_spec <- aplot:::.resolve_guide_layout(guide_aplot)
+guide_plots <- aplot:::.apply_guide_layout(list(guide_plot), guide_spec$legend)
+guides <- aplot:::.collapse_plot_guides(aplot:::.collect_plot_guides(guide_plots))
+guide_layout <- aplot:::.guides_layout_matrix(length(guides), guide_spec$guides)
+guide_box <- aplot:::.build_guides_gtable(guides, guide_layout, ggplot2::theme_get())
+guide_rows <- which(guide_box$layout$name == "guides")
+
+payload <- list(
+  aplot = as.character(packageVersion("aplot")),
+  patchwork = as.character(packageVersion("patchwork")),
+  ggplot2 = as.character(packageVersion("ggplot2")),
+  side_right = list(
+    mode = side_spec$mode,
+    position = side_spec$position,
+    strip_width = side_spec$width,
+    rows = side_spec$rows,
+    cols = side_spec$cols,
+    guide_indices = side_spec$guide_indices,
+    region_indices = side_spec$region_indices,
+    guide_cell = side_guide,
+    panel_cell = side_panel,
+    width_to_panel = side_guide$w / side_panel$w,
+    height_to_panel = side_guide$h / side_panel$h
+  ),
+  corner_bottom_right = list(
+    mode = corner_spec$mode,
+    position = corner_spec$position,
+    row = corner_spec$row,
+    col = corner_spec$col,
+    rows = corner_spec$rows,
+    cols = corner_spec$cols,
+    guide_indices = corner_spec$guide_indices,
+    region_indices = corner_spec$region_indices,
+    guide_cell = corner_guide,
+    panel_cell = corner_panel,
+    width_to_panel = corner_guide$w / corner_panel$w,
+    height_to_panel = corner_guide$h / corner_panel$h
+  ),
+  guide_box = list(
+    legend_ncol = guide_spec$legend$ncol,
+    legend_byrow = guide_spec$legend$byrow,
+    legend_direction = guide_spec$legend$direction,
+    legend_keywidth_mm = guide_spec$legend$keywidth,
+    legend_keyheight_mm = guide_spec$legend$keyheight,
+    legend_spacing_x_mm = guide_spec$legend$spacing.x,
+    legend_spacing_y_mm = guide_spec$legend$spacing.y,
+    guides_ncol = guide_spec$guides$ncol,
+    guides_direction = guide_spec$guides$direction,
+    count = length(guides),
+    nrow = guide_layout$nrow,
+    ncol = guide_layout$ncol,
+    row = guide_layout$row,
+    col = guide_layout$col,
+    widths_cm = convertWidth(guide_box$widths, "cm", valueOnly = TRUE),
+    heights_cm = convertHeight(guide_box$heights, "cm", valueOnly = TRUE),
+    guide_cells = guide_box$layout[guide_rows, c("t", "l", "b", "r")]
+  )
+)
+
+target <- file.path("tests", "fixtures", "aplot_guide_r_reference.json")
+writeLines(to_json(payload), target)
+dev.off()
+cat("wrote", target, "\n")

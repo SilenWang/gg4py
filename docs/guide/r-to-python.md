@@ -222,12 +222,13 @@ p = (
 
 ## 9. 第三方扩展的等价写法（不做同名 API）
 
-gg4py 只复刻 ggplot2 本体，**不提供**第三方扩展包的名字。下面这些需求用本体能力
-拼出来（版面组合除外，见第一行）：
+gg4py 只复刻 ggplot2 本体；多图组合是刻意的例外，采用 patchwork 的公开 API，
+并补上 aplot 的 guide area / guide layout 语义。其余第三方扩展包不提供同名 API，
+下面这些需求用本体能力拼出来：
 
 | 扩展包 | 需求 | 本体写法 |
 | --- | --- | --- |
-| `patchwork` / `cowplot` | 多图拼版 | 目前**不提供**版面组合 API；一张图一个文件，拼版在文档/报告层做（或后续另立项）。不要伪造 `wrap_plots()` |
+| `patchwork` / `aplot` | 多图拼版 / guide 角区 | `p1 \| p2`、`p1 / p2`、`wrap_plots()`、`plot_layout()`；`set_guide_area()` / `set_guide_layout()`（见 `../notes/composition.md`）。`cowplot` 的画布叠放仍不提供 |
 | `ggrepel` | 标签避让 | `geom_text(check_overlap=True)`；或手动 `nudge_x` / `nudge_y` 调位置，必要时配合 `geom_label()` |
 | `ggforce`（`geom_mark_*` / `facet_zoom`） | 圈注 / 局部放大 | `annotate("rect", ...)` 画框 + `annotate("text", ...)` 写注；放大用第二个 `ggplot()` 单独画，或 `coord_cartesian(xlim=, ylim=)` 裁窗 |
 | `ggforce`（`geom_split_violin`） | 分组小提琴 | 用 `geom_violin(position=position_dodge(width=0.9))` 近似（两半合并成一个）；`position_dodge2(preserve="single")` 可让宽度对齐 |

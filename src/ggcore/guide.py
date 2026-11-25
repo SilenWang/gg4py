@@ -45,6 +45,7 @@ draw.ulim / draw.llim / ticks.colour / frame.colour / title.position / alpha）�
 
 from __future__ import annotations
 
+import math
 import warnings
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import MISSING, dataclass, field, fields, replace
@@ -113,6 +114,7 @@ __all__ = [
     "guide_transform",
     "legend_box_direction",
     "legend_box_layout",
+    "legend_grid_layout",
     "legend_grob",
     "legend_justification",
     "legend_layout",
@@ -2102,6 +2104,8 @@ class LegendBoxLayout:
     col_widths_cm: tuple[float, ...]
     row_heights_cm: tuple[float, ...]
     boxes: tuple[_Box, ...]
+    #: 多列 guide-box 的 `(row, col)`（1 起）；单行 / 单列版式可以为空。
+    cells: tuple[tuple[int, int], ...] = ()
 
 
 def _justification(theme: ResolvedTheme, position: str) -> tuple[float, float]:
@@ -2259,6 +2263,117 @@ def legend_box_layout(
         col_widths_cm=tuple(col_widths),
         row_heights_cm=tuple(row_heights),
         boxes=tuple(boxes),
+    )
+
+
+def legend_grid_layout(
+    layouts: Sequence[LegendLayout],
+    position: str,
+    theme: ResolvedTheme,
+    *,
+    ncol: int,
+    direction: str = "vertical",
+    byrow: bool = False,
+) -> LegendBoxLayout:
+    """按 aplot `set_guide_layout(guides_ncol=)` 的规则排 guide-box。
+
+    `ncol` 是 guide-box 的列数，不是单条图例的键列数；每列 / 行按
+    `unit.pmax()` 取最大尺寸，列 / 行之间插入 `legend.spacing.x/y`。`byrow` 在
+    `direction="horizontal"` 时强制为真（aplot `.guides_layout_matrix()`）。
+    """
+    if not layouts:
+        raise GuideError("legend_grid_layout() 至少需要一张图例")
+    if not isinstance(ncol, int) or isinstance(ncol, bool) or ncol < 1:
+        raise GuideError(f"guides_ncol 必须是正整数，收到 {ncol!r}")
+    if direction not in ("horizontal", "vertical"):
+        raise GuideError(f"guides_direction 只能是 'horizontal' / 'vertical'，收到 {direction!r}")
+
+    count = len(layouts)
+    cols = min(ncol, count)
+    rows = math.ceil(count / cols)
+    order = (
+        [row * cols + col for row in range(rows) for col in range(cols)]
+        if byrow or direction == "horizontal"
+        else [row * cols + col for col in range(cols) for row in range(rows)]
+    )
+    positions = order[:count]
+    rows_for = [cell // cols for cell in positions]
+    cols_for = [cell % cols for cell in positions]
+
+    margin_t, margin_r, margin_b, margin_l = margin_sides_cm(theme.get("legend.box.margin"))
+    spacing = theme.get("legend.spacing")
+    gap_x_value = theme.get("legend.spacing.x")
+    gap_y_value = theme.get("legend.spacing.y")
+    gap_x = _cm_unit(gap_x_value if gap_x_value is not None else spacing, height=False)
+    gap_y = _cm_unit(gap_y_value if gap_y_value is not None else spacing, height=True)
+
+    col_widths = [
+        max(
+            (
+                layout.width_cm
+                for layout, col in zip(layouts, cols_for, strict=True)
+                if col == index
+            ),
+            default=0.0,
+        )
+        for index in range(cols)
+    ]
+    row_heights = [
+        max(
+            (
+                layout.height_cm
+                for layout, row in zip(layouts, rows_for, strict=True)
+                if row == index
+            ),
+            default=0.0,
+        )
+        for index in range(rows)
+    ]
+    grid_widths = [margin_l]
+    for index, width in enumerate(col_widths):
+        if index:
+            grid_widths.append(gap_x)
+        grid_widths.append(width)
+    grid_widths.append(margin_r)
+    grid_heights = [margin_t]
+    for index, height in enumerate(row_heights):
+        if index:
+            grid_heights.append(gap_y)
+        grid_heights.append(height)
+    grid_heights.append(margin_b)
+
+    x_offsets = [margin_l]
+    for width in grid_widths[1:-1]:
+        x_offsets.append(x_offsets[-1] + width)
+    y_from_top = [margin_t]
+    for height in grid_heights[1:-1]:
+        y_from_top.append(y_from_top[-1] + height)
+    total_height = sum(grid_heights)
+
+    boxes: list[_Box] = []
+    for layout, row, col in zip(layouts, rows_for, cols_for, strict=True):
+        cell_x = x_offsets[col * 2]
+        cell_y_top = y_from_top[row * 2]
+        boxes.append(
+            _Box(
+                cell_x + (col_widths[col] - layout.width_cm) / 2.0,
+                total_height
+                - cell_y_top
+                - row_heights[row]
+                + (row_heights[row] - layout.height_cm) / 2.0,
+                layout.width_cm,
+                layout.height_cm,
+            )
+        )
+    return LegendBoxLayout(
+        position=position,
+        direction=direction,
+        width_cm=float(sum(grid_widths)),
+        height_cm=float(sum(grid_heights)),
+        col_widths_cm=tuple(grid_widths),
+        row_heights_cm=tuple(grid_heights),
+        boxes=tuple(boxes),
+        cells=tuple((row + 1, col + 1) for row, col in zip(rows_for, cols_for, strict=True)),
     )
 
 
