@@ -1,13 +1,13 @@
-# 多图合并：组合骨架与 panel 几何对齐（M3-1 / SIL-1001）
+# 多图合并：组合骨架、guide area / layout 与 panel 几何对齐（M3-1）
 
 `ggcore.composition` 是 **pre-IR 层**：`build_plot() → plot_gtable() → composition →
 Scene/IR`。它把多张图合并成一张 unit-based 的 gtable，再走 `scene([gtable], tree)` /
 `plotspec.build_scene({"gtable": …})` 出 IR —— **IR 不改**，也不新增节点。
 
 代码：`src/ggcore/composition.py`。测试：`tests/test_composition.py`（API / 表级 /
-渲染）与 `tests/test_composition_r_parity.py`（与 patchwork 1.3.2 的关系对拍）。
-R 夹具：`tests/fixtures/composition_r_reference.json`，生成命令
-`pixi run -e refs refs:compose`（`tools/refs/compose_ref.R`）。
+渲染）、`tests/test_composition_r_parity.py`（与 patchwork 1.3.2 的关系对拍）与
+`tests/test_aplot_guide_r_parity.py`（aplot 0.3.2 guide area / layout 对拍）。R
+夹具分别由 `pixi run -e refs refs:compose`、`refs:aplot-guide` 生成。
 
 ```
 ggplot 对象们 ──wrap_plots() / + | /──▶ Patchwork ──gtable()──▶ GTable ──scene()──▶ IR
@@ -29,6 +29,9 @@ gg4py.plot_spacer()  # 占位空格
 gg4py.guide_area()  # 占一格，guides="collect" 时图例放进这一格
 (p1 | p2) + gg4py.plot_layout(guides="collect")  # 同结构图例去重后提到顶层
 (p1 + gg4py.guide_area()) + gg4py.plot_layout(ncol=2, guides="collect")
+pw = gg4py.wrap_plots(p1, p2, p3, ncol=2, guides="collect")
+pw = gg4py.set_guide_area(pw, "bottom-right")  # 角区 / 侧条
+pw = gg4py.set_guide_layout(pw, legend_ncol=2, guides_ncol=2, guides_direction="horizontal")
 
 pw = (p1 | p2) / p3
 table = pw.gtable(metrics=metrics, width_in=7, height_in=5)  # GTable
@@ -149,7 +152,7 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 | `wrap_plots()` 给的 `nrow × ncol` 装不下子图 | 抛 `ComposeError` | warning + 丢弃多余的图 | 显式报错，避免静默丢图 |
 | `Patchwork + theme()` / `+ geom_*()` | 抛 `TypeError` | 允许（对 patchwork 内的图批量加组件） | 不在本期验收内 |
 | `guides="collect"` / `guide_area()` | 已实现（§8） | 有 | SIL-1002 |
-| aplot 式 guide area / guide layout | 未实现 | aplot 独有 | SIL-1003 |
+| aplot 式 guide area / guide layout | `set_guide_area()` / `set_guide_layout()`（§9） | patchwork 只有单格 `guide_area()`，无角区搜索 / 侧条 / guide 多列 | SIL-1003 |
 | `panel_spacing` / `insert_*` | 未实现 | aplot / patchwork 语法糖 | SIL-1004 |
 | `&` / `-` / `design` / `area` / 重叠 / inset | 未实现 | 有 | 非本期 |
 | `coord_fixed` 的 `respect` 矩阵 | 子图 panel 的绝对单位在表里保留并参与 max；组合表不设 `respect` | 逐格 respect | 组合层首期不做 |
@@ -213,3 +216,42 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 | `legend.box.background` | 未画 | 画在 guide-box 外框 | 只影响语义槽位外观，不影响图例次数 / 位置 |
 | 顶层 `theme` 的其它元素 | 不应用 | 整体作用于注释层 | 本期只取图例排布相关元素（见 §1） |
 | 轴收集（`axes` / `axis_titles`） | 未实现 | 有 | 仍不在本期 |
+
+## 9. aplot guide area / guide layout（SIL-1003）
+
+`set_guide_area(pw, position)` 与 `set_guide_layout(pw, ...)` 直接在
+`Patchwork` 组合层加字段，不引入 aplot 对象模型。口径照 aplot 0.3.2：
+
+- **角区**：`top-right` / `top-left` / `bottom-right` / `bottom-left` 在现有规则
+  grid 的空格中找连续矩形区域；取区域中心格作 guide area，找不到就扩展成
+  `ComposeError`。现有 API 没有任意 `design`，所以空区来自 `nrow × ncol` 大于
+  子图数时的尾部空格。偶数长度使用 aplot 的 `ceiling(n / 2)` anchor。
+- **侧条**：`right` / `left` / `top` / `bottom` 总是新增一行或一列，guide area 的
+  `null` 权重固定为 `0.2`（aplot `guide-area.R` 的
+  `.guide_area_strip_width/height()`）。锚点跟第一个子图（本仓的非 aplot 对象
+  没有 `main_row/main_col`）；右 / 左侧条的锚行、上 / 下侧条的锚列由此决定。
+- **guide area 内排布**：guide area 位置决定顶层图例盒方位（右侧 / 左侧 / 上方 /
+  下方）。guide area 使用 panel cell 的矩形，`collected-guide-box` 仍只有一条
+  顶层渲染记录；与 grid 里的 patchwork `guide_area()` 不能同时使用。构建时若
+  本层不是 `guides="collect"`，抛 `ComposeError`，不会生成空白侧条。
+- **单条图例**：`legend_ncol` / `legend_byrow` / `legend_direction` /
+  `legend_title_position` / `legend_keywidth` / `legend_keyheight` 写成
+  `GuideLegend` 覆盖；只作用于 legend 类 guide，连续 colourbar / `guide_bins`
+  保持原 guide。key 宽高和 `legend_spacing_x/y` 按 aplot 的单位使用毫米。
+- **多条图例**：`guides_ncol` / `guides_byrow` / `guides_direction` 把收集后的
+  图例排成二维 guide-box；每个行列取最大尺寸（`unit.pmax()` 的结果），列 / 行
+  之间插入 `legend.spacing.x/y`，外包 `legend.box.margin`。`byrow` 或
+  `direction="horizontal"` 时先横排。
+
+对拍夹具 `tests/fixtures/aplot_guide_r_reference.json` 来自
+`pixi run -e refs refs:aplot-guide`。R 实测：
+
+| case | aplot 0.3.2 | 本仓断言 |
+| --- | --- | --- |
+| `set_guide_area(..., "right")` | 新增 `0.2null` 列；guide cell 宽 / panel 宽 = 0.2，高 / panel 高 = 1 | 同一相对矩形 + 只出现 1 份图例 |
+| `set_guide_area(..., "bottom-right")` | 2×2 矩阵右下空格作 anchor，guide cell 与同格 panel 等宽等高 | anchor = `(2, 2)`，宽 / 高比均为 1 |
+| `guides_ncol=2` + 3 条图例 | 默认竖排为 `(1,1),(2,1),(1,2)`；`byrow` / 横向时改为先铺满首行 | `LegendBoxLayout.cells` 与 R 矩阵逐项相同 |
+
+与 patchwork 的边界：patchwork 的 `guide_area()` 只把收集后的单个 guide-box 放进
+一个显式占位格；它没有角区搜索、侧条扩展，也不提供多条图例的二维排布。这三项
+是 SIL-1003 的 aplot 独有语义。

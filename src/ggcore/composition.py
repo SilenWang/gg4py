@@ -1,4 +1,4 @@
-"""多图合并（M3-1 / SIL-1001）：patchwork 式组合骨架 + panel 几何对齐。
+"""多图合并（M3-1）：patchwork 式组合骨架 + aplot guide area/layout。
 
 口径钉 patchwork 1.3.2（`R/plot_patchwork.R` / `R/plot_layout.R` 的实测源码）：
 
@@ -57,6 +57,11 @@ patchwork 的 `plot_table()` 是 `ggplotGrob()` + `add_strips()`：单面板的
 `legend.position` 组装成一个 `guide-box` 放到整张表的外侧；`guide_area()` 占的
 那一格则把图例放进去。`guides="keep"` / `"auto"` 保持每个子图各自画图例。
 轴收集 / `panel_spacing` 仍不在本期（SIL-1004）。
+
+`set_guide_area()` 在规则网格的空角区放图例，或新增一条 `0.2null` 的侧条；
+`set_guide_layout()` 把 aplot 的 `legend_*` / `guides_*` 设置分别作用到单条图例
+和收集后的二维 guide-box。两者都是 :class:`Patchwork` 上的组合层字段，不引入
+aplot 对象模型。
 """
 
 from __future__ import annotations
@@ -74,13 +79,16 @@ from ggcore.geom.scene import plot_layout as scene_layout
 from ggcore.gtable import GTable, Placement
 from ggcore.guide import (
     GuideBuild,
+    GuideLegend,
     build_guides,
     guide_theme,
     legend_box_layout,
+    legend_grid_layout,
     legend_layout,
 )
 from ggcore.plot_gtable import plot_gtable
 from ggcore.theme import Theme, merge_theme, resolve_theme
+from ggcore.theme import theme as theme_spec
 from ggcore.units import (
     CM_PER_INCH,
     Unit,
@@ -99,6 +107,7 @@ __all__ = [
     "TABLE_ROWS",
     "ComposeError",
     "GuideArea",
+    "GuideLayout",
     "PatchLayout",
     "Patchwork",
     "Spacer",
@@ -106,6 +115,8 @@ __all__ = [
     "is_composable",
     "plot_layout",
     "plot_spacer",
+    "set_guide_area",
+    "set_guide_layout",
     "wrap_plots",
 ]
 
@@ -165,6 +176,47 @@ class GuideArea:
     """
 
 
+@dataclass(frozen=True, slots=True)
+class GuideLayout:
+    """aplot `set_guide_layout()` 的组合层设置（不引入 aplot 对象模型）。"""
+
+    legend_ncol: int | None = None
+    legend_byrow: bool = False
+    legend_title_position: str | None = None
+    legend_direction: str | None = None
+    legend_keywidth: float | None = None
+    legend_keyheight: float | None = None
+    legend_spacing_x: float | None = None
+    legend_spacing_y: float | None = None
+    guides_ncol: int | None = None
+    guides_byrow: bool = False
+    guides_direction: str | None = None
+
+    @property
+    def has_legend_layout(self) -> bool:
+        return (
+            any(
+                value is not None
+                for value in (
+                    self.legend_ncol,
+                    self.legend_title_position,
+                    self.legend_direction,
+                    self.legend_keywidth,
+                    self.legend_keyheight,
+                    self.legend_spacing_x,
+                    self.legend_spacing_y,
+                )
+            )
+            or self.legend_byrow
+        )
+
+    @property
+    def has_guides_layout(self) -> bool:
+        return (
+            self.guides_ncol is not None or self.guides_byrow or self.guides_direction is not None
+        )
+
+
 @dataclass(frozen=True)
 class Patchwork:
     """patchwork 对象：子图（`ggplot` / `Patchwork` / `Spacer`）+ 网格设置。"""
@@ -175,6 +227,10 @@ class Patchwork:
     #: 时只用来决定图例盒的 `legend.position` 与排布（`legend.box` / spacing /
     #: justification），不改变各子图自己的主题。
     annotation_theme: Theme | None = None
+    #: aplot `set_guide_area()`：在空角区或新增侧条放收集后的 guide-box。
+    guide_area: str | None = None
+    #: aplot `set_guide_layout()`：单条图例与顶层多图例盒的间距 / 行列设置。
+    guide_layout: GuideLayout | None = None
 
     def __post_init__(self) -> None:
         for item in self.plots:
@@ -260,6 +316,106 @@ def plot_spacer() -> Spacer:
 def guide_area() -> GuideArea:
     """patchwork 的 `guide_area()`：`guides="collect"` 时图例放进这一格。"""
     return GuideArea()
+
+
+def set_guide_area(
+    patchwork: Patchwork,
+    position: str = "top-right",
+) -> Patchwork:
+    """在组合的空角区或新增侧条放 guide area（aplot `set_guide_area()`）。
+
+    角区位置只接受 `top-right` / `top-left` / `bottom-right` /
+    `bottom-left`，要求对应角有连续空格；`right` / `left` / `top` / `bottom`
+    总是新增一条相对权重 `0.2` 的侧条。
+    """
+    choices = (
+        "top-right",
+        "top-left",
+        "bottom-right",
+        "bottom-left",
+        "right",
+        "left",
+        "bottom",
+        "top",
+    )
+    if not isinstance(patchwork, Patchwork):
+        raise ComposeError("set_guide_area() 只接受 Patchwork 组合")
+    if position not in choices:
+        raise ComposeError(
+            "guide area position 只能是 " + " / ".join(choices) + f"，收到 {position!r}"
+        )
+    return replace(patchwork, guide_area=str(position))
+
+
+def set_guide_layout(
+    patchwork: Patchwork,
+    *,
+    legend_ncol: int | None = None,
+    legend_byrow: bool | None = None,
+    legend_title_position: str | None = None,
+    legend_direction: str | None = None,
+    legend_keywidth: float | None = None,
+    legend_keyheight: float | None = None,
+    legend_spacing_x: float | None = None,
+    legend_spacing_y: float | None = None,
+    guides_ncol: int | None = None,
+    guides_byrow: bool | None = None,
+    guides_direction: str | None = None,
+) -> Patchwork:
+    """设置图例键与顶层 guide-box 的排布（aplot `set_guide_layout()`）。
+
+    数值 key / spacing 参数按 aplot 原语义使用毫米。`legend_*` 作用于每条图例
+    的键网格，`guides_*` 作用于收集后多条图例组成的 guide-box。
+    """
+    if not isinstance(patchwork, Patchwork):
+        raise ComposeError("set_guide_layout() 只接受 Patchwork 组合")
+
+    def positive_int(name: str, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ComposeError(f"{name} 必须是正整数，收到 {value!r}")
+        return value
+
+    def non_negative(name: str, value: float | None) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ComposeError(f"{name} 必须是非负数值，收到 {value!r}")
+        number = float(value)
+        if not math.isfinite(number) or number < 0:
+            raise ComposeError(f"{name} 必须是非负有限数值，收到 {value!r}")
+        return number
+
+    def choice(name: str, value: str | None, choices: tuple[str, ...]) -> str | None:
+        if value is not None and value not in choices:
+            raise ComposeError(f"{name} 只能是 " + " / ".join(choices) + f"，收到 {value!r}")
+        return value
+
+    direction = ("horizontal", "vertical")
+    title_positions = ("top", "bottom", "left", "right")
+    for name, value in (("legend_byrow", legend_byrow), ("guides_byrow", guides_byrow)):
+        if value is not None and not isinstance(value, bool):
+            raise ComposeError(f"{name} 必须是 bool，收到 {value!r}")
+    layout = GuideLayout(
+        legend_ncol=positive_int("legend_ncol", legend_ncol),
+        legend_byrow=bool(legend_byrow),
+        legend_title_position=choice(
+            "legend_title_position", legend_title_position, title_positions
+        ),
+        legend_direction=choice("legend_direction", legend_direction, direction),
+        legend_keywidth=non_negative("legend_keywidth", legend_keywidth),
+        legend_keyheight=non_negative("legend_keyheight", legend_keyheight),
+        legend_spacing_x=non_negative("legend_spacing_x", legend_spacing_x),
+        legend_spacing_y=non_negative("legend_spacing_y", legend_spacing_y),
+        guides_ncol=positive_int("guides_ncol", guides_ncol),
+        guides_byrow=bool(guides_byrow),
+        guides_direction=choice("guides_direction", guides_direction, direction),
+    )
+    return replace(
+        patchwork,
+        guide_layout=layout if layout.has_legend_layout or layout.has_guides_layout else None,
+    )
 
 
 def plot_layout(
@@ -568,6 +724,7 @@ def _sheet_plan(
     metrics: Any,
     *,
     parent_guides: str,
+    guide_layout: GuideLayout | None = None,
 ) -> tuple[_Sheet, tuple[_CollectedGuide, ...]]:
     """任意可组合对象 → 18×15 子表 + 这一层要收集的图例。
 
@@ -592,7 +749,12 @@ def _sheet_plan(
     sheet = _sheet_from_table(table, metrics=metrics, clear_guides=collect)
     if not collect:
         return sheet, ()
-    return sheet, _collect_guides(build, _build_theme(build), metrics)
+    return sheet, _collect_guides(
+        build,
+        _build_theme(build),
+        metrics,
+        guide_layout=guide_layout,
+    )
 
 
 def _sheet(plot: Any, metrics: Any) -> _Sheet:
@@ -654,22 +816,80 @@ def _guide_fingerprint(guide_build: GuideBuild, theme: Any) -> tuple[Any, ...]:
     )
 
 
-def _collect_guides(build: Any, theme: Any, metrics: Any) -> tuple[_CollectedGuide, ...]:
+def _apply_guide_layout(
+    guide: GuideBuild,
+    theme: Any,
+    layout: GuideLayout | None,
+) -> tuple[GuideBuild, Any]:
+    """aplot `.apply_legend_layout()`：把设置写成 guide / theme 覆盖。"""
+    if layout is None or not layout.has_legend_layout:
+        return guide, theme
+
+    old = guide.guide
+    if isinstance(old, GuideLegend):
+        guide = replace(
+            guide,
+            guide=GuideLegend(
+                title=getattr(old, "title", guide.title),
+                direction=layout.legend_direction,
+                position=getattr(old, "position", None),
+                ncol=layout.legend_ncol,
+                byrow=layout.legend_byrow,
+                override_aes=getattr(old, "override_aes", {}),
+                keywidth=(
+                    unit(layout.legend_keywidth, "mm")
+                    if layout.legend_keywidth is not None
+                    else None
+                ),
+                keyheight=(
+                    unit(layout.legend_keyheight, "mm")
+                    if layout.legend_keyheight is not None
+                    else None
+                ),
+                reverse=bool(getattr(old, "reverse", False)),
+                order=float(getattr(old, "order", 0.0)),
+                title_position=layout.legend_title_position,
+                theme=getattr(old, "theme", None),
+            ),
+        )
+    overrides: dict[str, Any] = {}
+    if layout.legend_spacing_x is not None:
+        overrides["legend.spacing.x"] = unit(layout.legend_spacing_x, "mm")
+    if layout.legend_spacing_y is not None:
+        overrides["legend.spacing.y"] = unit(layout.legend_spacing_y, "mm")
+    if overrides:
+        base = getattr(theme, "theme", None)
+        if base is not None:
+            theme = resolve_theme(
+                merge_theme(base, theme_spec(**overrides)),
+                getattr(theme, "metrics", None),
+            )
+    return guide, theme
+
+
+def _collect_guides(
+    build: Any,
+    theme: Any,
+    metrics: Any,
+    *,
+    guide_layout: GuideLayout | None = None,
+) -> tuple[_CollectedGuide, ...]:
     """一张子图的全部图例（`add_guides(collect = TRUE)` 收集的那些）。"""
     position = _legend_position(theme)
     if position in (None, "none"):
         return ()
     out: list[_CollectedGuide] = []
     for guide in build_guides(build):
+        guide, guide_plot_theme = _apply_guide_layout(guide, theme, guide_layout)
         side = str(guide.position or position)
         out.append(
             _CollectedGuide(
                 build=build,
-                theme=theme,
+                theme=guide_plot_theme,
                 guide_build=guide,
-                legend=legend_layout(guide, theme, side, metrics=metrics),
+                legend=legend_layout(guide, guide_plot_theme, side, metrics=metrics),
                 side=side,
-                key=_guide_fingerprint(guide, theme),
+                key=_guide_fingerprint(guide, guide_plot_theme),
             )
         )
     return tuple(out)
@@ -858,6 +1078,86 @@ def _design(count: int, nrow: int, ncol: int, byrow: bool) -> list[tuple[int, in
     return areas[:count]
 
 
+@dataclass(frozen=True, slots=True)
+class _GuideAreaPlacement:
+    """aplot guide-area 解析后的 layout 与锚点（行 / 列都从 1 起）。"""
+
+    areas: tuple[tuple[int, int, int, int], ...]
+    nrow: int
+    ncol: int
+    anchor: tuple[int, int]
+    strip: str | None = None
+
+
+def _guide_area_placement(
+    areas: Sequence[tuple[int, int, int, int]],
+    nrow: int,
+    ncol: int,
+    position: str | None,
+) -> _GuideAreaPlacement:
+    """aplot `guide-area.R`：角区连续空区搜索 / 四侧 strip 扩展。"""
+    current = tuple(areas)
+    if position is None:
+        return _GuideAreaPlacement(current, nrow, ncol, (-1, -1))
+    if not current:
+        raise ComposeError("guide area 无法从空 layout 中解析")
+
+    if position in ("left", "right", "top", "bottom"):
+        row_shift = 1 if position == "top" else 0
+        col_shift = 1 if position == "left" else 0
+        shifted = tuple(
+            (t + row_shift, left + col_shift, b + row_shift, right + col_shift)
+            for t, left, b, right in current
+        )
+        rows = nrow + (1 if position in ("top", "bottom") else 0)
+        cols = ncol + (1 if position in ("left", "right") else 0)
+        main_t, main_l, _main_b, _main_r = shifted[0]
+        if position == "right":
+            anchor = (main_t, cols)
+        elif position == "left":
+            anchor = (main_t, 1)
+        elif position == "top":
+            anchor = (1, main_l)
+        else:
+            anchor = (rows, main_l)
+        return _GuideAreaPlacement(shifted, rows, cols, anchor, strip=position)
+
+    occupied = {
+        (row, col)
+        for t, left, b, right in current
+        for row in range(t, b + 1)
+        for col in range(left, right + 1)
+    }
+    row_order = list(range(1, nrow + 1)) if position.startswith("top") else list(range(nrow, 0, -1))
+    col_order = list(range(1, ncol + 1)) if position.endswith("left") else list(range(ncol, 0, -1))
+    first_row, first_col = row_order[0], col_order[0]
+    if (first_row, first_col) in occupied:
+        raise ComposeError(f"所选角区 {position!r} 没有连续空区")
+
+    row_extent = 0
+    for row in row_order:
+        if (row, first_col) in occupied:
+            break
+        row_extent += 1
+    col_extent = 0
+    for col in col_order:
+        if (first_row, col) in occupied:
+            break
+        col_extent += 1
+    if row_extent == 0 or col_extent == 0:
+        raise ComposeError(f"所选角区 {position!r} 没有连续空区")
+    rows = sorted(row_order[:row_extent])
+    cols = sorted(col_order[:col_extent])
+    if any((row, col) in occupied for row in rows for col in cols):
+        raise ComposeError(f"所选角区 {position!r} 不是矩形空区")
+    return _GuideAreaPlacement(
+        current,
+        nrow,
+        ncol,
+        (rows[(len(rows) - 1) // 2], cols[(len(cols) - 1) // 2]),
+    )
+
+
 def _repeat_weights(values: tuple[float, ...] | None, size: int) -> tuple[float, ...]:
     if values is None:
         return (1.0,) * size
@@ -912,6 +1212,8 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
     plots = tuple(patchwork.plots)
     mode = _effective_guides(patchwork, parent_guides)
     collect = mode == "collect"
+    if patchwork.guide_area is not None and not collect:
+        raise ComposeError("set_guide_area() 需要 guides='collect'")
     nrow = patchwork.layout.nrow
     ncol = patchwork.layout.ncol
     # patchwork `build_patchwork()`：给了多列 weights / 多行 heights 而没给
@@ -922,8 +1224,17 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
         nrow = len(patchwork.layout.heights)
     nrow, ncol = _wrap_dims(len(plots), nrow, ncol)
     areas = _design(len(plots), nrow, ncol, patchwork.layout.byrow is not False)
+    guide_area = _guide_area_placement(areas, nrow, ncol, patchwork.guide_area)
+    areas = list(guide_area.areas)
+    nrow, ncol = guide_area.nrow, guide_area.ncol
     plans = [
-        _sheet_plan(plot, metrics, parent_guides="collect" if collect else "auto") for plot in plots
+        _sheet_plan(
+            plot,
+            metrics,
+            parent_guides="collect" if collect else "auto",
+            guide_layout=patchwork.guide_layout,
+        )
+        for plot in plots
     ]
     sheets = [sheet for sheet, _entries in plans]
     collected = [entry for _sheet, entries in plans for entry in entries]
@@ -950,8 +1261,18 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
             rows.append(unit(best, "cm"))
 
     # panel 行 / 列换成 null 权重（`set_panel_dimensions()`）。
-    width_weights = _repeat_weights(patchwork.layout.widths, ncol)
-    height_weights = _repeat_weights(patchwork.layout.heights, nrow)
+    panel_ncol = ncol - (1 if guide_area.strip in ("left", "right") else 0)
+    panel_nrow = nrow - (1 if guide_area.strip in ("top", "bottom") else 0)
+    width_weights = _repeat_weights(patchwork.layout.widths, panel_ncol)
+    height_weights = _repeat_weights(patchwork.layout.heights, panel_nrow)
+    if guide_area.strip == "left":
+        width_weights = (0.2, *width_weights)
+    elif guide_area.strip == "right":
+        width_weights = (*width_weights, 0.2)
+    if guide_area.strip == "top":
+        height_weights = (0.2, *height_weights)
+    elif guide_area.strip == "bottom":
+        height_weights = (*height_weights, 0.2)
     for col in range(ncol):
         columns[col * TABLE_COLS + (PANEL_COL - 1)] = unit(width_weights[col], "null")
     for row in range(nrow):
@@ -970,6 +1291,9 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
             nrow=nrow,
             ncol=ncol,
             metrics=metrics,
+            guide_area_anchor=(
+                guide_area.anchor if guide_area.strip is not None or patchwork.guide_area else None
+            ),
         )
     return _Units(
         widths=unit_c(*columns),
@@ -1009,6 +1333,7 @@ def _plan_guide(
     nrow: int,
     ncol: int,
     metrics: Any,
+    guide_area_anchor: tuple[int, int] | None,
 ) -> _GuidePlan | None:
     """顶层 guide 盒：尺寸写回大表向量，或占用 `guide_area()` 那一格。
 
@@ -1019,14 +1344,42 @@ def _plan_guide(
       槽位）加「间距 + 盒」列 / 行，`t..b` / `l..r` 跨 panel 行 / 列。
     """
     theme = _top_theme(patchwork, metrics)
-    position = _top_legend_position(theme)
+    if patchwork.guide_area is None:
+        position = _top_legend_position(theme)
+    else:
+        position = (
+            "left"
+            if patchwork.guide_area in ("top-left", "bottom-left", "left")
+            else "top"
+            if patchwork.guide_area == "top"
+            else "bottom"
+            if patchwork.guide_area == "bottom"
+            else "right"
+        )
     if position not in ("right", "left", "top", "bottom"):
         # `none` / `inside`：patchwork 的 `attach_guides()` 同样不加到外侧。
         return None
-    layout = legend_box_layout([entry.legend for entry in entries], position, theme)
+    guide_layout = patchwork.guide_layout
+    if guide_layout is not None and guide_layout.has_guides_layout:
+        direction = guide_layout.guides_direction or "vertical"
+        guide_ncol = guide_layout.guides_ncol
+        if guide_ncol is None:
+            guide_ncol = len(entries) if direction == "horizontal" else 1
+        layout = legend_grid_layout(
+            [entry.legend for entry in entries],
+            position,
+            theme,
+            ncol=guide_ncol,
+            direction=direction,
+            byrow=guide_layout.guides_byrow,
+        )
+    else:
+        layout = legend_box_layout([entry.legend for entry in entries], position, theme)
     spacing = _box_spacing_cm(theme)
 
     guide_areas = [index for index, plot in enumerate(plots) if isinstance(plot, GuideArea)]
+    if patchwork.guide_area is not None and guide_areas:
+        raise ComposeError("set_guide_area() 与 grid 里的 guide_area() 不能同时使用")
     if len(guide_areas) > 1:
         warnings.warn(
             "组合里有多个 guide_area()，只用第一个（与 patchwork 的 warning 一致）",
@@ -1037,6 +1390,17 @@ def _plan_guide(
         t, left = area[0], area[1]
         row = (t - 1) * TABLE_ROWS + PANEL_ROW
         col = (left - 1) * TABLE_COLS + PANEL_COL
+        return _GuidePlan(
+            entries=entries,
+            position=position,
+            layout=layout,
+            area=(row, col, row, col),
+            guide_area=True,
+            theme=theme,
+        )
+    if guide_area_anchor is not None:
+        row = (guide_area_anchor[0] - 1) * TABLE_ROWS + PANEL_ROW
+        col = (guide_area_anchor[1] - 1) * TABLE_COLS + PANEL_COL
         return _GuidePlan(
             entries=entries,
             position=position,
@@ -1121,6 +1485,27 @@ def _records(units: _Units) -> tuple[list[Placement], list[Any]]:
                 )
             )
             grobs.append(ZeroGrob())
+    if (
+        units.guide is not None
+        and units.guide.guide_area
+        and not any(
+            area[0] <= units.guide.area[0] <= area[2] and area[1] <= units.guide.area[1] <= area[3]
+            for area in units.areas
+        )
+    ):
+        t, left, b, right = units.guide.area
+        layout.append(
+            Placement(
+                t=t,
+                l=left,
+                b=b,
+                r=right,
+                z=0.5,
+                clip="off",
+                name="panel-area-guide",
+            )
+        )
+        grobs.append(ZeroGrob())
     return layout, grobs
 
 
@@ -1359,7 +1744,11 @@ def _nested_grobs(
 def _panel_columns(units: _Units) -> list[int]:
     columns: list[int] = []
     for col in range(1, units.ncol + 1):
-        if any(area[1] == col for area in units.areas):
+        if any(area[1] == col for area in units.areas) or (
+            units.guide is not None
+            and units.guide.guide_area
+            and units.guide.area[1] == (col - 1) * TABLE_COLS + PANEL_COL
+        ):
             columns.append((col - 1) * TABLE_COLS + (PANEL_COL - 1))
     return columns
 
@@ -1367,7 +1756,11 @@ def _panel_columns(units: _Units) -> list[int]:
 def _panel_rows(units: _Units) -> list[int]:
     rows: list[int] = []
     for row in range(1, units.nrow + 1):
-        if any(area[0] == row for area in units.areas):
+        if any(area[0] == row for area in units.areas) or (
+            units.guide is not None
+            and units.guide.guide_area
+            and units.guide.area[0] == (row - 1) * TABLE_ROWS + PANEL_ROW
+        ):
             rows.append((row - 1) * TABLE_ROWS + (PANEL_ROW - 1))
     return rows
 

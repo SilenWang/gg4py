@@ -477,21 +477,27 @@ __all__.append("align_scales")
 # M3-1（SIL-1001）：组合 API（`wrap_plots` / `plot_layout` / `plot_spacer`）与
 # `Patchwork` 同层挂在 `ggcore.plot`，顶层 `gg4py.*` 由 `__all__` 自动提升。
 from ggcore.composition import GuideArea as GuideArea  # noqa: E402
+from ggcore.composition import GuideLayout as GuideLayout  # noqa: E402
 from ggcore.composition import PatchLayout as PatchLayout  # noqa: E402
 from ggcore.composition import Patchwork as Patchwork  # noqa: E402
 from ggcore.composition import Spacer as Spacer  # noqa: E402
 from ggcore.composition import guide_area as guide_area  # noqa: E402
 from ggcore.composition import plot_layout as plot_layout  # noqa: E402
 from ggcore.composition import plot_spacer as plot_spacer  # noqa: E402
+from ggcore.composition import set_guide_area as set_guide_area  # noqa: E402
+from ggcore.composition import set_guide_layout as set_guide_layout  # noqa: E402
 from ggcore.composition import wrap_plots as wrap_plots  # noqa: E402
 
 __all__ += [
     "GuideArea",
+    "GuideLayout",
     "PatchLayout",
     "Patchwork",
     "Spacer",
     "guide_area",
     "plot_layout",
     "plot_spacer",
+    "set_guide_area",
+    "set_guide_layout",
     "wrap_plots",
 ]
