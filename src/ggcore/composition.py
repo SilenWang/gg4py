@@ -56,12 +56,21 @@ patchwork 的 `plot_table()` 是 `ggplotGrob()` + `add_strips()`：单面板的
 去重，再用**顶层主题**（默认 `Theme()`，`Patchwork + theme(...)` 覆盖）的
 `legend.position` 组装成一个 `guide-box` 放到整张表的外侧；`guide_area()` 占的
 那一格则把图例放进去。`guides="keep"` / `"auto"` 保持每个子图各自画图例。
-轴收集 / `panel_spacing` 仍不在本期（SIL-1004）。
+轴收集仍不在本期。
 
 `set_guide_area()` 在规则网格的空角区放图例，或新增一条 `0.2null` 的侧条；
 `set_guide_layout()` 把 aplot 的 `legend_*` / `guides_*` 设置分别作用到单条图例
 和收集后的二维 guide-box。两者都是 :class:`Patchwork` 上的组合层字段，不引入
 aplot 对象模型。
+
+## panel spacing / insert（SIL-1004）
+
+`set_panel_spacing(pw, spacing)` 按 layout 邻接给每个子图写 `spacing / 2` 的
+外沿 margin（毫米；洞不算邻居），`"asis"` 保留原子图 margin。`insert_left/right/
+top/bottom(data, plot, ...)` 按 aplot 的 layout matrix 语义，在主图所在行 / 列
+旁边插入一张图，其余格子留空；`width` / `height` 是 `null` 权重。两者都只改
+组合层字段（`Patchwork.panel_spacing` / `Patchwork.design`），不引入 aplot 对象
+模型；与 `align_scales()` / `guides="collect"` / `set_guide_area()` 可组合。
 """
 
 from __future__ import annotations
@@ -112,11 +121,16 @@ __all__ = [
     "Patchwork",
     "Spacer",
     "guide_area",
+    "insert_bottom",
+    "insert_left",
+    "insert_right",
+    "insert_top",
     "is_composable",
     "plot_layout",
     "plot_spacer",
     "set_guide_area",
     "set_guide_layout",
+    "set_panel_spacing",
     "wrap_plots",
 ]
 
@@ -231,6 +245,12 @@ class Patchwork:
     guide_area: str | None = None
     #: aplot `set_guide_layout()`：单条图例与顶层多图例盒的间距 / 行列设置。
     guide_layout: GuideLayout | None = None
+    #: 显式 layout 矩阵（`insert_*` 的产物）：每个子图占的 `(t, l, b, r)`（1 起）。
+    #: `None` 时按 `plot_layout()` 的规则网格生成；空格（洞）用缺省的行列坐标。
+    design: tuple[tuple[int, int, int, int], ...] | None = None
+    #: aplot `set_panel_spacing()`：相邻 panel 的半间距 margin（毫米）；`"asis"`
+    #: 保留子图自己的 `plot.margin`，`None` 表示没调用过（同样保留）。
+    panel_spacing: float | str | None = None
 
     def __post_init__(self) -> None:
         for item in self.plots:
@@ -240,6 +260,12 @@ class Patchwork:
                     "可组合：ggplot / Patchwork / plot_spacer() / guide_area()"
                 )
         object.__setattr__(self, "plots", tuple(self.plots))
+        if self.design is not None:
+            if len(self.design) != len(self.plots):
+                raise ComposeError("design 的格子数必须与子图数相同")
+            for t, left, b, right in self.design:
+                if not (1 <= t <= b and 1 <= left <= right):
+                    raise ComposeError(f"design 的格子坐标非法：{(t, left, b, right)!r}")
 
     # -- 组合 ---------------------------------------------------------------
 
@@ -415,6 +441,141 @@ def set_guide_layout(
     return replace(
         patchwork,
         guide_layout=layout if layout.has_legend_layout or layout.has_guides_layout else None,
+    )
+
+
+def set_panel_spacing(
+    patchwork: Patchwork,
+    spacing: float | str = 0,
+) -> Patchwork:
+    """按 layout 邻接给每个子图写 `plot.margin`（aplot `set_panel_spacing()`）。
+
+    `spacing` 是**相邻 panel 之间的完整间距**（毫米）：内部边各占一半，外沿
+    （没有邻居的一侧）为 0。`"asis"` 保留子图自己的 `plot.margin`；默认 `0`
+    与 aplot 一样把子图 margin 清零。
+
+    与 patchwork 的区别：patchwork 直接用子图自己的 `plot.margin` 决定块间距；
+    aplot 的 `set_panel_spacing()` 则是按 layout 邻接**覆盖**每个子图的
+    `plot.margin`，并且只看上下左右是否真的存在相邻格子（洞 = `NA`，不算邻居）。
+    """
+    if not isinstance(patchwork, Patchwork):
+        raise ComposeError("set_panel_spacing() 只接受 Patchwork 组合")
+    return replace(patchwork, panel_spacing=_panel_spacing_value(spacing))
+
+
+def insert_left(data: Any, plot: Any, width: float = 1) -> Patchwork:
+    """在**主图**（layout 第一格）左侧插入一张图（aplot `insert_left()`）。"""
+    return _insert_lr(data, plot, width=width, side="left")
+
+
+def insert_right(data: Any, plot: Any, width: float = 1) -> Patchwork:
+    """在**主图**（layout 第一格）右侧插入一张图（aplot `insert_right()`）。"""
+    return _insert_lr(data, plot, width=width, side="right")
+
+
+def insert_top(data: Any, plot: Any, height: float = 1) -> Patchwork:
+    """在**主图**（layout 第一格）上方插入一张图（aplot `insert_top()`）。"""
+    return _insert_tb(data, plot, height=height, side="top")
+
+
+def insert_bottom(data: Any, plot: Any, height: float = 1) -> Patchwork:
+    """在**主图**（layout 第一格）下方插入一张图（aplot `insert_bottom()`）。"""
+    return _insert_tb(data, plot, height=height, side="bottom")
+
+
+def _panel_spacing_value(spacing: float | str | None) -> float | str | None:
+    """aplot `.validate_panel_spacing()`：非负有限数值或 `"asis"`。"""
+    if spacing is None:
+        return None
+    if isinstance(spacing, str):
+        if spacing == "asis":
+            return spacing
+        raise ComposeError(f"'spacing' 只能是非负数值或 'asis'，收到 {spacing!r}")
+    if isinstance(spacing, bool) or not isinstance(spacing, (int, float)):
+        raise ComposeError(f"'spacing' 只能是非负数值或 'asis'，收到 {spacing!r}")
+    number = float(spacing)
+    if not math.isfinite(number) or number < 0:
+        raise ComposeError(f"'spacing' 只能是非负有限数值或 'asis'，收到 {spacing!r}")
+    return number
+
+
+def _as_insertable(data: Any, name: str) -> Patchwork:
+    from ggcore.plot import ggplot
+
+    if isinstance(data, Patchwork):
+        return data
+    if isinstance(data, ggplot):
+        return Patchwork(plots=(data,))
+    raise ComposeError(f"{name}() 只接受 ggplot / Patchwork，收到 {type(data).__name__}")
+
+
+def _insert_plot(plot: Any, name: str) -> Any:
+    if isinstance(plot, GuideArea):
+        raise ComposeError(f"{name}() 不接受 guide_area()；它由 set_guide_area() 控制")
+    if not is_composable(plot):
+        raise ComposeError(f"{name}() 只接受可组合对象，收到 {type(plot).__name__}")
+    return plot
+
+
+def _insert_lr(data: Any, plot: Any, *, width: float, side: str) -> Patchwork:
+    name = f"insert_{side}"
+    base = _as_insertable(data, name)
+    plot = _insert_plot(plot, name)
+    weight = _weights([width], "width")[0]
+    areas, nrow, ncol = _grid_areas(base)
+    widths = list(_repeat_weights(base.layout.widths, ncol))
+    heights = list(_repeat_weights(base.layout.heights, nrow))
+    main_row = areas[0][0]
+    if side == "left":
+        shifted = tuple((t, left + 1, b, right + 1) for t, left, b, right in areas)
+        new_area = (main_row, 1, main_row, 1)
+        widths = [weight, *widths]
+    else:
+        shifted = areas
+        new_area = (main_row, ncol + 1, main_row, ncol + 1)
+        widths = [*widths, weight]
+    return replace(
+        base,
+        plots=(*base.plots, plot),
+        design=(*shifted, new_area),
+        layout=replace(
+            base.layout,
+            ncol=ncol + 1,
+            nrow=nrow,
+            widths=tuple(widths),
+            heights=tuple(heights),
+        ),
+    )
+
+
+def _insert_tb(data: Any, plot: Any, *, height: float, side: str) -> Patchwork:
+    name = f"insert_{side}"
+    base = _as_insertable(data, name)
+    plot = _insert_plot(plot, name)
+    weight = _weights([height], "height")[0]
+    areas, nrow, ncol = _grid_areas(base)
+    widths = list(_repeat_weights(base.layout.widths, ncol))
+    heights = list(_repeat_weights(base.layout.heights, nrow))
+    main_col = areas[0][1]
+    if side == "top":
+        shifted = tuple((t + 1, left, b + 1, right) for t, left, b, right in areas)
+        new_area = (1, main_col, 1, main_col)
+        heights = [weight, *heights]
+    else:
+        shifted = areas
+        new_area = (nrow + 1, main_col, nrow + 1, main_col)
+        heights = [*heights, weight]
+    return replace(
+        base,
+        plots=(*base.plots, plot),
+        design=(*shifted, new_area),
+        layout=replace(
+            base.layout,
+            ncol=ncol,
+            nrow=nrow + 1,
+            widths=tuple(widths),
+            heights=tuple(heights),
+        ),
     )
 
 
@@ -1078,6 +1239,32 @@ def _design(count: int, nrow: int, ncol: int, byrow: bool) -> list[tuple[int, in
     return areas[:count]
 
 
+def _grid_areas(patchwork: Patchwork) -> tuple[tuple[tuple[int, int, int, int], ...], int, int]:
+    """组合的 base layout（insert 之前、guide area 之前）的格子 + 行列数。
+
+    `Patchwork.design` 是 `insert_*()` 写下的显式 layout 矩阵；没有它时按
+    `plot_layout()` 的规则网格（`_wrap_dims()` + `_design()`）生成。guide area
+    的侧条 / 角区不在这里展开 —— aplot 的 `insert_*` / spacing 都按基础 layout
+    计算，guide area 由 `_guide_area_placement()` 后加。
+    """
+    if patchwork.design is not None:
+        areas = tuple(patchwork.design)
+        nrow = max(area[2] for area in areas)
+        ncol = max(area[3] for area in areas)
+        return areas, nrow, ncol
+    nrow = patchwork.layout.nrow
+    ncol = patchwork.layout.ncol
+    # patchwork `build_patchwork()`：给了多列 weights / 多行 heights 而没给
+    # ncol / nrow 时，长度就是网格的列数 / 行数。
+    if ncol is None and patchwork.layout.widths is not None and len(patchwork.layout.widths) > 1:
+        ncol = len(patchwork.layout.widths)
+    if nrow is None and patchwork.layout.heights is not None and len(patchwork.layout.heights) > 1:
+        nrow = len(patchwork.layout.heights)
+    nrow, ncol = _wrap_dims(len(patchwork.plots), nrow, ncol)
+    areas = tuple(_design(len(patchwork.plots), nrow, ncol, patchwork.layout.byrow is not False))
+    return areas, nrow, ncol
+
+
 @dataclass(frozen=True, slots=True)
 class _GuideAreaPlacement:
     """aplot guide-area 解析后的 layout 与锚点（行 / 列都从 1 起）。"""
@@ -1164,6 +1351,43 @@ def _repeat_weights(values: tuple[float, ...] | None, size: int) -> tuple[float,
     return tuple(values[index % len(values)] for index in range(size))
 
 
+def _apply_panel_spacing(
+    sheets: Sequence[_Sheet],
+    areas: Sequence[tuple[int, int, int, int]],
+    spacing: float | str | None,
+) -> list[_Sheet]:
+    """aplot `.apply_panel_spacing()`：按邻接把半间距写进每个子图的外沿 margin。
+
+    aplot 用 `theme(plot.margin = margin(...))` **覆盖**子图自己的 margin；这里
+    直接改 18×15 子表的第 1 / 最后一条行高、列宽（`plot_gtable()` 的
+    `plot.margin` 上 / 右 / 下 / 左槽位），效果相同，而且对嵌套 `Patchwork`
+    子块也成立。`"asis"` / `None` 保留原值。
+    """
+    if spacing is None or spacing == "asis":
+        return list(sheets)
+    half = float(spacing) / 2.0
+    occupied = {
+        (row, col)
+        for t, left, b, right in areas
+        for row in range(t, b + 1)
+        for col in range(left, right + 1)
+    }
+    out: list[_Sheet] = []
+    for sheet, (t, left, b, right) in zip(sheets, areas, strict=True):
+        top = half if (t - 1, left) in occupied else 0.0
+        bottom = half if (b + 1, left) in occupied else 0.0
+        left_mm = half if (t, left - 1) in occupied else 0.0
+        right_mm = half if (t, right + 1) in occupied else 0.0
+        widths = list(sheet.widths)
+        heights = list(sheet.heights)
+        widths[0] = unit(left_mm, "mm")
+        widths[-1] = unit(right_mm, "mm")
+        heights[0] = unit(top, "mm")
+        heights[-1] = unit(bottom, "mm")
+        out.append(replace(sheet, widths=tuple(widths), heights=tuple(heights)))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # 合并：单位向量
 # ---------------------------------------------------------------------------
@@ -1214,17 +1438,10 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
     collect = mode == "collect"
     if patchwork.guide_area is not None and not collect:
         raise ComposeError("set_guide_area() 需要 guides='collect'")
-    nrow = patchwork.layout.nrow
-    ncol = patchwork.layout.ncol
-    # patchwork `build_patchwork()`：给了多列 weights / 多行 heights 而没给
-    # ncol / nrow 时，长度就是网格的列数 / 行数。
-    if ncol is None and patchwork.layout.widths is not None and len(patchwork.layout.widths) > 1:
-        ncol = len(patchwork.layout.widths)
-    if nrow is None and patchwork.layout.heights is not None and len(patchwork.layout.heights) > 1:
-        nrow = len(patchwork.layout.heights)
-    nrow, ncol = _wrap_dims(len(plots), nrow, ncol)
-    areas = _design(len(plots), nrow, ncol, patchwork.layout.byrow is not False)
-    guide_area = _guide_area_placement(areas, nrow, ncol, patchwork.guide_area)
+    # `insert_*()` 的行 / 列权重已经写进 layout.widths / heights，长度与 design
+    # 一致；没有 design 时仍按 patchwork 的规则网格推断。
+    base_areas, nrow, ncol = _grid_areas(patchwork)
+    guide_area = _guide_area_placement(list(base_areas), nrow, ncol, patchwork.guide_area)
     areas = list(guide_area.areas)
     nrow, ncol = guide_area.nrow, guide_area.ncol
     plans = [
@@ -1237,6 +1454,13 @@ def _build_units(patchwork: Patchwork, *, metrics: Any, parent_guides: str = "au
         for plot in plots
     ]
     sheets = [sheet for sheet, _entries in plans]
+    # aplot `set_panel_spacing()`：按 base layout（guide area 之前）的邻接写
+    # 每个子图的外沿 margin。放在取 max 之前，内部边两侧各半、外沿为 0。
+    sheets = _apply_panel_spacing(
+        sheets,
+        base_areas,
+        patchwork.panel_spacing,
+    )
     collected = [entry for _sheet, entries in plans for entry in entries]
 
     # 同一 layout 列的子图逐槽位取 max（mm/cm 都能比）。

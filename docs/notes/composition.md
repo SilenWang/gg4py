@@ -32,6 +32,9 @@ gg4py.guide_area()  # 占一格，guides="collect" 时图例放进这一格
 pw = gg4py.wrap_plots(p1, p2, p3, ncol=2, guides="collect")
 pw = gg4py.set_guide_area(pw, "bottom-right")  # 角区 / 侧条
 pw = gg4py.set_guide_layout(pw, legend_ncol=2, guides_ncol=2, guides_direction="horizontal")
+pw = gg4py.set_panel_spacing(pw, 6)  # 相邻 panel 6mm（aplot 的 plot.margin 覆盖）
+pw = gg4py.insert_left(p1, p2, width=2)  # 主图左侧插入、列权重 2
+pw = gg4py.insert_bottom(pw, p3, height=1)
 
 pw = (p1 | p2) / p3
 table = pw.gtable(metrics=metrics, width_in=7, height_in=5)  # GTable
@@ -153,8 +156,8 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 | `Patchwork + theme()` / `+ geom_*()` | 抛 `TypeError` | 允许（对 patchwork 内的图批量加组件） | 不在本期验收内 |
 | `guides="collect"` / `guide_area()` | 已实现（§8） | 有 | SIL-1002 |
 | aplot 式 guide area / guide layout | `set_guide_area()` / `set_guide_layout()`（§9） | patchwork 只有单格 `guide_area()`，无角区搜索 / 侧条 / guide 多列 | SIL-1003 |
-| `panel_spacing` / `insert_*` | 未实现 | aplot / patchwork 语法糖 | SIL-1004 |
-| `&` / `-` / `design` / `area` / 重叠 / inset | 未实现 | 有 | 非本期 |
+| `panel_spacing` / `insert_*` | 已实现（§10） | aplot 的 `set_panel_spacing()` / `insert_*` | SIL-1004 |
+| `&` / `-` / 公开 `design` / `area` / 重叠 / inset | 未实现（`insert_*` 内部用显式 design） | 有 | 非本期 |
 | `coord_fixed` 的 `respect` 矩阵 | 子图 panel 的绝对单位在表里保留并参与 max；组合表不设 `respect` | 逐格 respect | 组合层首期不做 |
 
 `align_scales()` 的约束照旧：组合层要保证 tick 的页面坐标一致，调用方必须传
@@ -167,12 +170,15 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 
 | 子图数 | `gtable()`（构建 + resolve + 渲染树） | `to_scene()` | IR（CBOR） |
 | --- | --- | --- | --- |
-| 4（2 列） | 87 ms | 97 ms | 24,206 B |
-| 9（3 列） | 176 ms | 215 ms | 54,332 B |
+| 4（2 列） | 88 ms | 89 ms | 24,206 B |
+| 9（3 列） | 181 ms | 203 ms | 54,332 B |
+| 5（2×2 + `insert_bottom` + `set_panel_spacing(6)`） | 100 ms | 111 ms | 30,267 B |
 
 `gtable()` 是首次合并的完整成本（含每张子图的 `build_plot()` 与 grob 树）；重复
 渲染同一组合时，`scene()` 的指令缓存（`ggcore.perf`）照常生效。IR 体积随子图数
-线性增长，没有逐元素 JSON。
+线性增长，没有逐元素 JSON。`insert_*` 只改 layout 表、`set_panel_spacing()` 只改
+子表 margin 槽位，都不新增渲染阶段：5 图组合的耗时 / IR 与前两行同量级（第四次
+运行，`pixi run compose:report`；绝对数字随机器变化）。
 
 ## 8. 图例：`guides="collect"` / `guide_area()`
 
@@ -255,3 +261,68 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 与 patchwork 的边界：patchwork 的 `guide_area()` 只把收集后的单个 guide-box 放进
 一个显式占位格；它没有角区搜索、侧条扩展，也不提供多条图例的二维排布。这三项
 是 SIL-1003 的 aplot 独有语义。
+
+
+## 10. panel spacing 与 insert_*（SIL-1004）
+
+### 10.1 `set_panel_spacing(pw, spacing)`
+
+照 aplot 0.3.2 `R/spacing.R` 的 `.compute_panel_margins()` / `.apply_panel_spacing()`：
+
+- `spacing` 是**相邻 panel 的完整间距**（毫米）：两个相邻格各拿 `spacing / 2`，
+  外沿（没有邻居的一侧）为 `0`。`spacing = 0` 就是清零所有子图的
+  `plot.margin`；`"asis"` 保留子图自己的 margin。
+- 邻接按**基础 layout** 判断（`insert_*` 之后的 layout、guide area 之前）：洞
+  （`NA` 格）不算邻居，所以它旁边的一侧 margin 为 0。
+- 与 patchwork 的区别：patchwork 直接使用子图自己的 `plot.margin`；aplot 的
+  `set_panel_spacing()` 会**覆盖**它。本实现不调用 `theme(plot.margin=…)`，而是
+  把半间距写进子图 18×15 子表的第 1 / 末条行高、列宽（`plot_gtable()` 的
+  `plot.margin` 槽位）。随后照常 `table_dims()` 取 max，于是同一 layout 行 /
+  列共享 margin 槽位 —— 与 aplot 走 patchwork 合并时完全一致，嵌套 `Patchwork`
+  子块也能生效。
+- aplot 的 legacy 分支（没调用过 `set_panel_spacing()` 时读
+  `getOption("space.between.plots")`）不实现：`None`（没调用）保留子图 margin，
+  与 aplot 的默认值 `0` 不同，见 §10.4。
+
+### 10.2 `insert_left` / `insert_right` / `insert_top` / `insert_bottom`
+
+照 aplot `R/insert.R` 的 `insert_lr()` / `insert_tb()`，只做 layout matrix 语法糖，
+不引入 aplot 对象模型：
+
+- 锚点是**主图**（`plots[0]`）所在的格。`insert_left` / `insert_top` 新增一列 /
+  一行并平移现有格子；`main_row` / `main_col` 随插入更新，所以连续的插入仍以
+  第一张图为准。
+- 新图只占主图所在的那一行 / 列，其余格子是**洞**；洞不画 panel、不参与
+  spacing 邻接，`set_guide_area()` 的角区搜索可以把洞当空格。
+- `width` / `height` 是相对权重（`unit(w, "null")`），默认 `1`；插入时把现值
+  物化成完整向量（`[width, *old]` / `[*old, width]`），已有 `plot_layout(widths=)`
+  不会丢。
+- 接受 `ggplot` 或 `Patchwork` 作为被插入的组合；`insert_left(p1, p2)` 等价于
+  一个 1×2 的 `Patchwork`。与 `align_scales()` 组合时直接传
+  `aligned[0]` / `aligned[1]` 等克隆图。
+
+### 10.3 R 对拍
+
+夹具 `tests/fixtures/aplot_spacing_r_reference.json` 由
+`pixi run -e refs refs:aplot-spacing` 生成（`tools/refs/aplot_spacing_ref.R`）。
+Python 断言在 `tests/test_aplot_spacing_r_parity.py`。
+
+- `panel_spacing`：`2×2`、`1×3` 与带洞的 layout，`.compute_panel_margins()` 的
+  `(t, r, b, l)` 毫米值与 R 逐值相等；`spacing = 0` 全 0，`"asis"` 全是 `null`。
+- 渲染增量（2×2，7×5 in）：spacing `0 → 10` 时内部边 gap +10mm
+  （28.35pt），panel 宽 / 高各少 5mm（14.17pt），外沿不动。R 与本仓的增量逐值
+  相等（容差 0.02pt；R 侧由 SVG 矩形读出）。
+- `insert_*`：8 个 case 的 layout 矩阵、`width` / `height` 权重、main row / col
+  与 aplot 逐值相同；SVG 渲染后 panel 的 x / y 顺序、等宽 / 等高关系、宽高比
+  （panel null 权重）与 R 逐对相同。
+
+### 10.4 已知差异 / 非范围
+
+| 项 | 本实现 | aplot 0.3.2 | 说明 |
+| --- | --- | --- | --- |
+| 没调用 `set_panel_spacing()` | 保留子图 `plot.margin` | 默认 `spacing = 0`（覆盖为 0）；旧版还读 `getOption("space.between.plots")` | 显式 API 更可预测；需要 aplot 默认行为时写 `set_panel_spacing(pw, 0)` |
+| `spacing = 0` 的实现位置 | 子表 margin 槽位 | `theme(plot.margin = margin(0, 0, 0, 0))` | 合并结果一致 |
+| `insert_*` 的输入 | `ggplot` / `Patchwork` | `aplot` / `gg` + ggtree taxa 重排 | 不做 ggtree；`insert_*` 返回 `Patchwork` |
+| 任意单元格插入 | 只按主图行 / 列插入 | 同左 | 不支持 `main_row` / `main_col` 之外的锚点 |
+| 公开 `design` / `area` | 无公开 API | patchwork 有 | `insert_*` 内部使用 `Patchwork.design`，与 `area` / 重叠 / inset 一起留待后续 |
+| guide area 与 spacing | guide area 不参与 spacing 邻接 | 同左（spacing 在 guide area 之前应用） | 一致 |
