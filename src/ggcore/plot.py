@@ -482,10 +482,15 @@ from ggcore.composition import PatchLayout as PatchLayout  # noqa: E402
 from ggcore.composition import Patchwork as Patchwork  # noqa: E402
 from ggcore.composition import Spacer as Spacer  # noqa: E402
 from ggcore.composition import guide_area as guide_area  # noqa: E402
+from ggcore.composition import insert_bottom as insert_bottom  # noqa: E402
+from ggcore.composition import insert_left as insert_left  # noqa: E402
+from ggcore.composition import insert_right as insert_right  # noqa: E402
+from ggcore.composition import insert_top as insert_top  # noqa: E402
 from ggcore.composition import plot_layout as plot_layout  # noqa: E402
 from ggcore.composition import plot_spacer as plot_spacer  # noqa: E402
 from ggcore.composition import set_guide_area as set_guide_area  # noqa: E402
 from ggcore.composition import set_guide_layout as set_guide_layout  # noqa: E402
+from ggcore.composition import set_panel_spacing as set_panel_spacing  # noqa: E402
 from ggcore.composition import wrap_plots as wrap_plots  # noqa: E402
 
 __all__ += [
@@ -495,9 +500,14 @@ __all__ += [
     "Patchwork",
     "Spacer",
     "guide_area",
+    "insert_bottom",
+    "insert_left",
+    "insert_right",
+    "insert_top",
     "plot_layout",
     "plot_spacer",
     "set_guide_area",
     "set_guide_layout",
+    "set_panel_spacing",
     "wrap_plots",
 ]

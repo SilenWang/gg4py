@@ -18,10 +18,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pytest
 
 import gg4py
 from ggcore import composition, plotspec
+from ggcore.axis import axis_ticks
+from ggcore.build import build_plot
 from ggcore.composition import (
     PANEL_COL,
     PANEL_ROW,
@@ -31,8 +34,13 @@ from ggcore.composition import (
     Patchwork,
     Spacer,
     guide_area,
+    insert_bottom,
+    insert_left,
+    insert_right,
+    insert_top,
     plot_layout,
     plot_spacer,
+    set_panel_spacing,
     wrap_plots,
 )
 from ggcore.guide import guide_bins
@@ -918,3 +926,311 @@ def test_patchwork_plus_theme_is_the_annotation_theme() -> None:
     labels = legend_labels(combined + plot_layout(guides="collect"))
     title = next(item for item in labels if item[0] == "g")
     assert title[2] > 5.0 * 72.0 * 0.6
+
+
+# ---------------------------------------------------------------------------
+# panel spacing / insert_*（SIL-1004）
+# ---------------------------------------------------------------------------
+
+MM_TO_PT = 72.0 / 25.4
+
+
+def _row_gap(
+    boxes: dict[str, tuple[float, float, float, float]], row: int, left: int, right: int
+) -> float:
+    a = boxes[f"panel-area-{row}-{left}"]
+    b = boxes[f"panel-area-{row}-{right}"]
+    return b[0] - (a[0] + a[2])
+
+
+def _column_gap(
+    boxes: dict[str, tuple[float, float, float, float]], col: int, top: int, bottom: int
+) -> float:
+    """上下相邻两个 panel 的竖直间隙（页面 y 向上）。"""
+    upper = boxes[f"panel-area-{top}-{col}"]
+    lower = boxes[f"panel-area-{bottom}-{col}"]
+    return upper[1] - (lower[1] + lower[3])
+
+
+def test_set_panel_spacing_puts_half_spacing_on_internal_edges() -> None:
+    combined = wrap_plots(
+        panelled("#CC0000"),
+        panelled("#00CC00"),
+        panelled("#0000CC"),
+        panelled("#CCCC00"),
+        ncol=2,
+    )
+    zero = panel_boxes(set_panel_spacing(combined, 0), width_in=7.0, height_in=5.0)
+    ten = panel_boxes(set_panel_spacing(combined, 10), width_in=7.0, height_in=5.0)
+
+    for row in (1, 2):
+        # 内部竖直边：两侧各 5mm，合计 10mm。
+        assert _row_gap(ten, row, 1, 2) - _row_gap(zero, row, 1, 2) == pytest.approx(
+            10.0 * MM_TO_PT, abs=0.02
+        )
+    for col in (1, 2):
+        assert _column_gap(ten, col, 1, 2) - _column_gap(zero, col, 1, 2) == pytest.approx(
+            10.0 * MM_TO_PT, abs=0.02
+        )
+
+
+def test_set_panel_spacing_leaves_outer_edges_alone() -> None:
+    combined = wrap_plots(
+        panelled("#CC0000"),
+        panelled("#00CC00"),
+        panelled("#0000CC"),
+        panelled("#CCCC00"),
+        ncol=2,
+    )
+    zero = panel_boxes(set_panel_spacing(combined, 0), width_in=7.0, height_in=5.0)
+    ten = panel_boxes(set_panel_spacing(combined, 10), width_in=7.0, height_in=5.0)
+
+    # 没有邻居的外沿 margin = 0：左 / 下（页面原点）与上 / 右 page 边界不动。
+    assert ten["panel-area-1-1"][0] == pytest.approx(zero["panel-area-1-1"][0], abs=1e-9)
+    assert ten["panel-area-2-1"][1] == pytest.approx(zero["panel-area-2-1"][1], abs=1e-9)
+    top = ten["panel-area-1-1"]
+    assert top[1] + top[3] == pytest.approx(
+        zero["panel-area-1-1"][1] + zero["panel-area-1-1"][3], abs=1e-9
+    )
+    right = ten["panel-area-1-2"]
+    assert right[0] + right[2] == pytest.approx(
+        zero["panel-area-1-2"][0] + zero["panel-area-1-2"][2], abs=1e-9
+    )
+    # 内部边占掉的空间从 panel 尺寸里扣除：整页少 10mm，两个 panel 列各少 5mm。
+    assert zero["panel-area-1-1"][2] - ten["panel-area-1-1"][2] == pytest.approx(
+        5.0 * MM_TO_PT, abs=0.02
+    )
+
+
+def test_set_panel_spacing_asis_keeps_subplot_margins() -> None:
+    combined = wrap_plots(panelled("#CC0000"), panelled("#00CC00"), ncol=2)
+    plain = panel_boxes(combined, width_in=7.0, height_in=5.0)
+    asis = panel_boxes(set_panel_spacing(combined, "asis"), width_in=7.0, height_in=5.0)
+    for key, box in plain.items():
+        assert asis[key] == pytest.approx(box)
+
+
+def _sheet_margins_mm(patchwork: Patchwork) -> list[tuple[float, float, float, float]]:
+    """每个子图外沿 `(上, 右, 下, 左)` 的毫米值（`_apply_panel_spacing()` 的结果）。"""
+    sheets = [
+        composition._sheet_plan(plot, METRICS, parent_guides="auto")[0] for plot in patchwork.plots
+    ]
+    areas, _nrow, _ncol = composition._grid_areas(patchwork)
+    applied = composition._apply_panel_spacing(sheets, areas, patchwork.panel_spacing)
+    out: list[tuple[float, float, float, float]] = []
+    for sheet in applied:
+        top = composition._cm(sheet.heights[0], CTX, axis="y")
+        bottom = composition._cm(sheet.heights[-1], CTX, axis="y")
+        left = composition._cm(sheet.widths[0], CTX, axis="x")
+        right = composition._cm(sheet.widths[-1], CTX, axis="x")
+        out.append(
+            (
+                float(np.asarray(top).sum()) * 10.0,
+                float(np.asarray(right).sum()) * 10.0,
+                float(np.asarray(bottom).sum()) * 10.0,
+                float(np.asarray(left).sum()) * 10.0,
+            )
+        )
+    return out
+
+
+def test_panel_spacing_ignores_layout_holes() -> None:
+    """洞（`insert_left` 留下的空格）不算邻居：没有邻居的一侧 margin = 0。"""
+    base = insert_bottom(panelled("#CC0000"), panelled("#00CC00"))
+    hole = insert_left(base, panelled("#0000CC"))
+    margins = _sheet_margins_mm(set_panel_spacing(hole, 10))
+
+    # `patchwork.plots` 顺序仍是 (p1, p2, p3)：
+    # p1 右上：左 / 下都是邻居（5mm），右侧外沿 0；
+    # p2 右下：上面是 p1，左侧是洞（0）；
+    # p3 左上：右侧是 p1（5mm），下面是洞（0）。
+    assert margins[0] == pytest.approx((0.0, 0.0, 5.0, 5.0))
+    assert margins[1] == pytest.approx((5.0, 0.0, 0.0, 0.0))
+    assert margins[2] == pytest.approx((0.0, 5.0, 0.0, 0.0))
+
+    # 渲染层：共享的 margin 槽位（patchwork `table_dims()` 取 max）让同一行 /
+    # 同一列的 panel 仍然对齐。
+    boxes = panel_boxes(set_panel_spacing(hole, 10), width_in=7.0, height_in=5.0)
+    assert boxes["panel-area-1-1"][1] == pytest.approx(boxes["panel-area-1-2"][1], abs=1e-9)
+    assert boxes["panel-area-1-2"][0] == pytest.approx(boxes["panel-area-2-2"][0], abs=1e-9)
+
+
+def test_set_panel_spacing_validation() -> None:
+    combined = wrap_plots(panelled("#CC0000"), panelled("#00CC00"))
+    for spacing in (-1, float("nan"), float("inf"), True, "half"):
+        with pytest.raises(ComposeError, match="spacing"):
+            set_panel_spacing(combined, spacing)  # type: ignore[arg-type]
+    with pytest.raises(ComposeError, match="Patchwork"):
+        set_panel_spacing(panelled("#CC0000"), 0)  # type: ignore[arg-type]
+
+
+def test_insert_left_and_right_place_the_new_plot_around_main() -> None:
+    left = insert_left(panelled("#CC0000"), panelled("#00CC00"), width=2)
+    boxes = panel_boxes(left, width_in=7.0, height_in=5.0)
+    assert set(boxes) == {"panel-area-1-1", "panel-area-1-2"}
+    inserted, main = boxes["panel-area-1-1"], boxes["panel-area-1-2"]
+    assert inserted[0] < main[0]
+    assert inserted[1] == pytest.approx(main[1], abs=1e-9)
+    assert inserted[3] == pytest.approx(main[3], abs=1e-9)
+    assert inserted[2] / main[2] == pytest.approx(2.0, rel=1e-9)
+
+    right = insert_right(panelled("#CC0000"), panelled("#00CC00"), width=3)
+    boxes = panel_boxes(right, width_in=7.0, height_in=5.0)
+    main, inserted = boxes["panel-area-1-1"], boxes["panel-area-1-2"]
+    assert inserted[0] > main[0]
+    assert inserted[2] / main[2] == pytest.approx(3.0, rel=1e-9)
+
+
+def test_insert_top_and_bottom_place_the_new_plot_around_main() -> None:
+    top = insert_top(panelled("#CC0000"), panelled("#00CC00"), height=2)
+    boxes = panel_boxes(top, width_in=7.0, height_in=5.0)
+    inserted, main = boxes["panel-area-1-1"], boxes["panel-area-2-1"]
+    assert inserted[1] > main[1]
+    assert inserted[0] == pytest.approx(main[0], abs=1e-9)
+    assert inserted[2] == pytest.approx(main[2], abs=1e-9)
+    assert inserted[3] / main[3] == pytest.approx(2.0, rel=1e-9)
+
+    bottom = insert_bottom(panelled("#CC0000"), panelled("#00CC00"), height=2)
+    boxes = panel_boxes(bottom, width_in=7.0, height_in=5.0)
+    main, inserted = boxes["panel-area-1-1"], boxes["panel-area-2-1"]
+    assert inserted[1] < main[1]
+    assert inserted[3] / main[3] == pytest.approx(2.0, rel=1e-9)
+
+
+def test_insert_keeps_existing_column_weights() -> None:
+    base = wrap_plots(panelled("#CC0000"), panelled("#00CC00"), ncol=2, widths=[2, 1])
+    combined = insert_left(base, panelled("#0000CC"), width=3)
+    assert combined.layout.widths == (3.0, 2.0, 1.0)
+    boxes = panel_boxes(combined, width_in=7.0, height_in=5.0)
+    widths = [boxes[f"panel-area-1-{col}"][2] for col in (1, 2, 3)]
+    assert widths[0] / widths[1] == pytest.approx(3.0 / 2.0, rel=1e-9)
+    assert widths[1] / widths[2] == pytest.approx(2.0 / 1.0, rel=1e-9)
+
+
+def test_insert_validation() -> None:
+    plot = panelled("#CC0000")
+    with pytest.raises(ComposeError, match="ggplot / Patchwork"):
+        insert_left(42, plot)  # type: ignore[arg-type]
+    for width in (0, -1, float("inf")):
+        with pytest.raises(ComposeError, match="width"):
+            insert_left(plot, plot, width=width)
+    with pytest.raises(ComposeError, match="guide_area"):
+        insert_left(plot, guide_area())
+    with pytest.raises(ComposeError, match="可组合"):
+        insert_top(plot, "not a plot")  # type: ignore[arg-type]
+    # 原有组合对象不被修改（frozen dataclass / replace）。
+    base = wrap_plots(plot, plot)
+    insert_right(base, plot)
+    assert len(base.plots) == 2 and base.design is None
+
+
+def test_integration_alignment_guides_spacing_and_insert(tmp_path: Path) -> None:
+    """组合 + 刻度对齐 + guide collect/guide_area + panel spacing 的端到端 case。"""
+
+    def ranged(lo: float, hi: float, fill: str) -> ggplot:
+        values = from_dict(
+            {
+                "x": [lo, (lo + hi) / 2.0, hi, lo],
+                "y": [2.0, 4.0, 3.0, 5.0],
+                "g": ["a", "b", "a", "b"],
+            }
+        )
+        return (
+            ggplot(values, aes(x="x", y="y", colour="g"))
+            + geom_point()
+            + theme(**{"panel.background": element_rect(fill=fill, colour=None)})
+        )
+
+    # 同一 panel 背景 / 主题：guide 结构完全相同，collect 后应合并成一条图例。
+    plots = [
+        ranged(0.0, 3.0, "#CC0000"),
+        ranged(2.0, 8.0, "#CC0000"),
+        ranged(-1.0, 4.0, "#CC0000"),
+        ranged(1.0, 6.0, "#CC0000"),
+    ]
+    aligned = gg4py.align_scales(plots, axis="x", expand="first")
+    limits = {plot.scales["x"].params["limits"] for plot in aligned}
+    assert len(limits) == 1
+    ticks = set()
+    for plot in aligned:
+        build = build_plot(plot)
+        tick_set = axis_ticks(build.scales.scale("x"), build.panel_params, "bottom")
+        ticks.add(tuple(tick_set.labels))
+    assert len(ticks) == 1
+
+    combined = gg4py.wrap_plots(*aligned, ncol=2)
+    combined = combined + plot_layout(guides="collect")
+    # 主图下面新增一行；右下的洞留给 guide area（aplot 角区搜索）。
+    combined = insert_bottom(combined, aligned[0], height=1)
+    combined = gg4py.set_guide_area(combined, "bottom-right")
+    combined = set_panel_spacing(combined, 6)
+
+    units = composition._build_units(combined, metrics=METRICS)
+    assert (units.nrow, units.ncol) == (3, 2)
+    assert units.guide is not None and units.guide.guide_area
+    assert units.guide.area == (
+        2 * TABLE_ROWS + PANEL_ROW,
+        TABLE_COLS + PANEL_COL,
+        2 * TABLE_ROWS + PANEL_ROW,
+        TABLE_COLS + PANEL_COL,
+    )
+
+    boxes = {
+        key: value
+        for key, value in panel_boxes(combined, width_in=7.0, height_in=5.0).items()
+        if key != "panel-area-guide"
+    }
+    assert set(boxes) == {
+        "panel-area-1-1",
+        "panel-area-1-2",
+        "panel-area-2-1",
+        "panel-area-2-2",
+        "panel-area-3-1",
+    }
+    # 同列 x / w、同行 y / h（第 3 行只有插入的一张图，guide area 在同行的空格）。
+    assert boxes["panel-area-1-1"][0] == pytest.approx(boxes["panel-area-2-1"][0], abs=1e-9)
+    assert boxes["panel-area-1-1"][2] == pytest.approx(boxes["panel-area-2-1"][2], abs=1e-9)
+    assert boxes["panel-area-1-2"][0] == pytest.approx(boxes["panel-area-2-2"][0], abs=1e-9)
+    assert boxes["panel-area-1-2"][2] == pytest.approx(boxes["panel-area-2-2"][2], abs=1e-9)
+    assert boxes["panel-area-1-1"][1] == pytest.approx(boxes["panel-area-1-2"][1], abs=1e-9)
+    assert boxes["panel-area-1-1"][3] == pytest.approx(boxes["panel-area-1-2"][3], abs=1e-9)
+
+    # spacing：与 spacing=0 的同一组合相比，第 1 / 2 行的内部边各多 6mm；
+    # 第 3 行下面是空的，没有下 / 右邻居（不参与增量）。
+    baseline = set_panel_spacing(
+        gg4py.set_guide_area(
+            insert_bottom(
+                gg4py.wrap_plots(*aligned, ncol=2) + plot_layout(guides="collect"),
+                aligned[0],
+                height=1,
+            ),
+            "bottom-right",
+        ),
+        0,
+    )
+    base_boxes = {
+        key: value
+        for key, value in panel_boxes(baseline, width_in=7.0, height_in=5.0).items()
+        if key != "panel-area-guide"
+    }
+    for row in (1, 2):
+        assert _row_gap(boxes, row, 1, 2) - _row_gap(base_boxes, row, 1, 2) == pytest.approx(
+            6.0 * MM_TO_PT, abs=0.02
+        )
+    for col in (1, 2):
+        assert _column_gap(boxes, col, 1, 2) - _column_gap(base_boxes, col, 1, 2) == pytest.approx(
+            6.0 * MM_TO_PT, abs=0.02
+        )
+    # 第 3 行的插入图没有下邻居：相对 spacing=0 没有下 margin。
+    assert boxes["panel-area-3-1"][1] == pytest.approx(base_boxes["panel-area-3-1"][1], abs=1e-9)
+
+    # 图例 collect 后只出现一次（同一份 legend 文本 a）。
+    assert [item[0] for item in legend_labels(combined)].count("a") == 1
+
+    # 组合能落到 SVG：5 张子图的 panel 背景各画一次。
+    out = tmp_path / "integration.svg"
+    gg4py.ggsave(combined, out, width=7.0, height=5.0)
+    text = out.read_text()
+    # 5 张子图（2×2 + 插入的一行）的 panel 背景都画出来；legend.key 也继承
+    # 同一个 fill，所以只断言下限。
+    assert text.count('fill="#C00"') >= 5
