@@ -244,6 +244,17 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
   `legend_title_position` / `legend_keywidth` / `legend_keyheight` 写成
   `GuideLegend` 覆盖；只作用于 legend 类 guide，连续 colourbar / `guide_bins`
   保持原 guide。key 宽高和 `legend_spacing_x/y` 按 aplot 的单位使用毫米。
+- **legend 目标（SIL-1011）**：aplot `.guide_layout_targets()` 看的是
+  `ggplot_build()` 之后每个非位置标度上的 `$guide`，**不看** `plot.guides`。
+  R 里 `scale$guide` 的默认值按标度族给：连续 colour / fill 是 `"colourbar"`，
+  分箱族是 `"coloursteps"` / `"bins"`，其余（含离散 colour / fill）是
+  `waiver()`（等价 `"legend"`）。因此连续 colour 上显式
+  `guides(colour = guide_legend())` 时最终图例**仍是 legend**，但
+  `legend_*` 不会改写它；把 `guide = guide_legend()` 写在
+  `scale_colour_continuous()` 上时 `scale$guide` 本身就是 legend 型，
+  `legend_*` 才生效。本仓对应
+  `ggcore.guide.scale_guide_is_legend()` + `composition._legend_layout_targets()`，
+  `legend.spacing.*` 的 theme 覆盖与 aplot 一样无条件生效。
 - **多条图例**：`guides_ncol` / `guides_byrow` / `guides_direction` 把收集后的
   图例排成二维 guide-box；每个行列取最大尺寸（`unit.pmax()` 的结果），列 / 行
   之间插入 `legend.spacing.x/y`，外包 `legend.box.margin`。`byrow` 或
@@ -257,6 +268,10 @@ panel 矩形验证渲染与表一致（容差 0.02pt）。这一条覆盖**槽�
 | `set_guide_area(..., "right")` | 新增 `0.2null` 列；guide cell 宽 / panel 宽 = 0.2，高 / panel 高 = 1 | 同一相对矩形 + 只出现 1 份图例 |
 | `set_guide_area(..., "bottom-right")` | 2×2 矩阵右下空格作 anchor，guide cell 与同格 panel 等宽等高 | anchor = `(2, 2)`，宽 / 高比均为 1 |
 | `guides_ncol=2` + 3 条图例 | 默认竖排为 `(1,1),(2,1),(1,2)`；`byrow` / 横向时改为先铺满首行 | `LegendBoxLayout.cells` 与 R 矩阵逐项相同 |
+| 连续 colour + `guides(colour = guide_legend())` + `legend_ncol=2` | 最终 `GuideLegend`，但 targets 为空、guide-box 尺寸不变（1.807×3.382 → 1.807×3.382 cm） | 同样不改写，尺寸与 baseline 相同（SIL-1011） |
+| 离散 colour + `guides(colour = guide_legend())` + `legend_ncol=2` | targets = `colour`；2.078×2.773 → 2.539×2.163 cm | `ncol=2` 生效，宽变大、高变小（SIL-1011） |
+| 连续 colour + `scale_colour_continuous(guide = guide_legend())` | targets = `colour`；1.807×3.382 → 3.421×2.163 cm | `ncol=2` 生效（SIL-1011） |
+| 连续 colour + `scale_colour_binned()`（默认 `coloursteps`） | targets 为空，尺寸不变 | 不应用 `legend_*`（SIL-1011） |
 
 与 patchwork 的边界：patchwork 的 `guide_area()` 只把收集后的单个 guide-box 放进
 一个显式占位格；它没有角区搜索、侧条扩展，也不提供多条图例的二维排布。这三项

@@ -247,3 +247,106 @@ def test_side_strip_and_guide_grid_are_aplot_only_extensions() -> None:
     assert default_box is not None and grid_box is not None
     assert len(default_box.layout.col_widths_cm) == 3
     assert len(grid_box.layout.col_widths_cm) == 5
+
+
+# ---------------------------------------------------------------------------
+# SIL-1011：aplot 的 legend_* 目标只看 scale$guide，不看 plot.guides
+# ---------------------------------------------------------------------------
+
+
+def _colour_plot(discrete: bool, extra: Any = None) -> ggplot:
+    values = from_dict(
+        {
+            "x": [1.0, 2.0, 3.0, 4.0],
+            "y": [1.0, 2.0, 3.0, 4.0],
+            "g": ["a", "b", "a", "b"] if discrete else [0.1, 0.5, 0.9, 1.0],
+        }
+    )
+    plot = ggplot(values, aes(x="x", y="y", colour="g")) + geom_point()
+    return plot if extra is None else plot + extra
+
+
+def _collected(plot: ggplot, **layout: Any) -> Any:
+    combined = gg4py.wrap_plots(plot, guides="collect")
+    if layout:
+        combined = gg4py.set_guide_layout(combined, **layout)
+    guide = composition._build_units(combined, metrics=METRICS).guide
+    assert guide is not None
+    return guide.entries[0]
+
+
+def _targets(plot: ggplot) -> frozenset[str]:
+    from ggcore.build import build_plot
+
+    return composition._legend_layout_targets(build_plot(plot))
+
+
+def test_continuous_explicit_guide_legend_ignores_legend_layout() -> None:
+    """连续 colour + `guides(colour = guide_legend())`：aplot 的 legend_* 不生效。"""
+    ref = _reference()["continuous_explicit_legend"]
+    assert ref["targets"] == ""
+    assert ref["final_guide_class"] == "GuideLegend"
+    assert ref["ncol_changes_box"] is False
+
+    plot = _colour_plot(discrete=False, extra=gg4py.guides(colour=gg4py.guide_legend()))
+    assert _targets(plot) == frozenset()
+
+    baseline = _collected(plot)
+    laid = _collected(plot, legend_ncol=2)
+    assert baseline.guide_build.guide.kind == "legend"
+    assert laid.guide_build.guide.kind == "legend"
+    assert getattr(laid.guide_build.guide, "ncol", None) is None
+    assert laid.legend.width_cm == pytest.approx(baseline.legend.width_cm)
+    assert laid.legend.height_cm == pytest.approx(baseline.legend.height_cm)
+
+
+def test_discrete_explicit_guide_legend_still_takes_legend_layout() -> None:
+    """对照：离散 colour 的 GuideLegend 仍会被 legend_* 改写。"""
+    ref = _reference()["discrete_explicit_legend"]
+    assert ref["targets"] == "colour"
+    assert ref["final_guide_class"] == "GuideLegend"
+    assert ref["ncol_changes_box"] is True
+
+    plot = _colour_plot(discrete=True, extra=gg4py.guides(colour=gg4py.guide_legend()))
+    assert _targets(plot) == frozenset({"colour"})
+
+    baseline = _collected(plot)
+    laid = _collected(plot, legend_ncol=2)
+    assert laid.guide_build.guide.kind == "legend"
+    assert laid.guide_build.guide.ncol == 2
+    assert laid.legend.width_cm > baseline.legend.width_cm
+    assert laid.legend.height_cm < baseline.legend.height_cm
+
+
+def test_continuous_scale_guide_legend_takes_legend_layout() -> None:
+    """guide 写在 scale 上时 scale$guide 就是 GuideLegend，aplot 会命中。"""
+    ref = _reference()["continuous_scale_guide_legend"]
+    assert ref["targets"] == "colour"
+    assert ref["ncol_changes_box"] is True
+
+    plot = _colour_plot(
+        discrete=False,
+        extra=gg4py.scale_colour_continuous(guide=gg4py.guide_legend()),
+    )
+    assert _targets(plot) == frozenset({"colour"})
+
+    baseline = _collected(plot)
+    laid = _collected(plot, legend_ncol=2)
+    assert laid.guide_build.guide.ncol == 2
+    assert laid.legend.width_cm > baseline.legend.width_cm
+    assert laid.legend.height_cm < baseline.legend.height_cm
+
+
+def test_binned_scale_default_guide_is_not_a_legend_layout_target() -> None:
+    """分箱 colour 的默认 guide 是 coloursteps：同样不在 legend 目标里。"""
+    ref = _reference()["continuous_binned_default"]
+    assert ref["targets"] == ""
+    assert ref["ncol_changes_box"] is False
+
+    plot = _colour_plot(discrete=False, extra=gg4py.scale_colour_binned())
+    assert _targets(plot) == frozenset()
+
+    baseline = _collected(plot)
+    laid = _collected(plot, legend_ncol=2)
+    assert laid.legend.width_cm == pytest.approx(baseline.legend.width_cm)
+    assert laid.legend.height_cm == pytest.approx(baseline.legend.height_cm)

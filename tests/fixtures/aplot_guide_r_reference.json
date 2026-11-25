@@ -121,6 +121,56 @@
     ]
   },
   "guide_bins_targets": "",
+  "continuous_explicit_legend": {
+    "targets": "",
+    "final_guide_class": "GuideLegend",
+    "baseline_box_cm": [
+1.80736367579909,
+3.3823047869102
+    ],
+    "ncol_box_cm": [
+1.80736367579909,
+3.3823047869102
+    ],
+    "ncol_changes_box": false
+  },
+  "discrete_explicit_legend": {
+    "targets": "colour",
+    "final_guide_class": "GuideLegend",
+    "baseline_box_cm": [
+2.07813995053272,
+2.7727047869102
+    ],
+    "ncol_box_cm": [
+2.53877445966514,
+2.1631047869102
+    ],
+    "ncol_changes_box": true
+  },
+  "continuous_scale_guide_legend": {
+    "targets": "colour",
+    "baseline_box_cm": [
+1.80736367579909,
+3.3823047869102
+    ],
+    "ncol_box_cm": [
+3.42142445966514,
+2.1631047869102
+    ],
+    "ncol_changes_box": true
+  },
+  "continuous_binned_default": {
+    "targets": "",
+    "baseline_box_cm": [
+1.80736367579909,
+3.9919047869102
+    ],
+    "ncol_box_cm": [
+1.80736367579909,
+3.9919047869102
+    ],
+    "ncol_changes_box": false
+  },
   "guide_box": {
     "legend_ncol": 2,
     "legend_byrow": true,
