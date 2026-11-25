@@ -17,6 +17,7 @@
 | `pixi run snapshots:check` | `tools/upstream/snapshots.py` | 上游 311 份 SVG 快照里有条目没处置、缺口没归口、或已纳管 case 的 `expected.svg` 与上游不再逐字节相同 | 改了 `docs/cases/upstream-*/expected.svg` |
 | `pixi run snapshots:report:check` | `tools/upstream/snapshots.py --check-report` | 清单没重生成；或表头 / burndown 逐簇相加 / `snapshots.toml` 的 group owner / `matrix.md` 的上游快照表四处口径对不上（SIL-822） | 单条 owner 移交 m3 但 group owner 还写 m2-closeout |
 | `pixi run tiers:check` | `tools/cases/snapshot_tiers.py` | 某个 case 声明的容差超过它所在文本负载档位的上限（SIL-745 #3） | `text-light` case 写 `tolerance = { png = 0.05 }` |
+| `pixi run viewer:parity:report:check` | `tools/viewer/parity.py --check-report` | `docs/notes/viewer-parity.md` 与 `docs/cases` 实测不同源，或结论行 / 失败名单 / 机读摘要任一处被手改（SIL-1017）；CI 里跑 `:check:measure` 再加一层真跑逐条比对 | 报告还写着 82 条、清单已经 532 条；或把 `pass 513` 改成 `pass 532`；或把一条失败一致地改写成通过 |
 
 `pixi run check` = `lint` + `test` + 几道门全部。
 

@@ -119,7 +119,15 @@ ggsave = "PYTHONPATH=src python -m ggskia.cli.ggsave"
 # M2-12：同一份 IR 的两条渲染腿对拍 —— skia SVG 设备 vs 浏览器 DOM SVG。
 # 归一化属性后：样式集合必须相等、墨迹包围盒 ≤ 0.5 pt、resvg 像素差 ≤ 0.5%。
 # 全量写报告进 docs/notes/viewer-parity.md；CI 只跑代表性子集、不写文件。
+# SIL-1017：报告不再是「手跑完提交」的快照——`:report` 是唯一生成入口。
+# CI 跑 `:report:check:measure`：先真跑全量（本机 ≈1.5 min）再与报告逐条比
+# status 与失败名单（不比浮点，渲染抖动不假红）。`:report:check` 是同一套
+# 静态判据（重算 docs/cases 清单 + 表格 / 结论行 / 机读摘要三处交叉，几毫秒），
+# 本地快速自查用；两层都能抓「case 涨了报告没重生成」与手改计数。
 "viewer:parity" = "PYTHONPATH=src python tools/viewer/parity.py"
+"viewer:parity:report" = { cmd = "PYTHONPATH=src python tools/viewer/parity.py", depends-on = ["viewer:build", "viewer:browsers"] }
+"viewer:parity:report:check" = "PYTHONPATH=src python tools/viewer/parity.py --check-report"
+"viewer:parity:report:check:measure" = { cmd = "PYTHONPATH=src python tools/viewer/parity.py --check-report --measure", depends-on = ["viewer:build", "viewer:browsers"] }
 "viewer:parity:ci" = { cmd = "PYTHONPATH=src python tools/viewer/parity.py --sample 12 --no-report --selftest", depends-on = ["viewer:build", "viewer:browsers"] }
 # SIL-828（M3-7）：gallery 链接全量检查。先 `pixi run viewer:cases` 生成
 # `web/viewer/dist/gallery.html` 与资产，再逐条 GET 每个链接（含 viewer 随后
@@ -472,4 +480,9 @@ check = { depends-on = [
   "docs:theme:check",
   "docs:guide:check",
   "docs:upstream-map:check",
+  # SIL-1017：入库 parity 报告必须与实测一致。`:check` 是不用浏览器的静态层
+  # （几毫秒：重算 docs/cases 清单 + 三处交叉）；CI 跑 `:check:measure`，它先
+  # 真跑全量（本机 ≈1.5 min）再逐条比 status 与失败名单。只比 status / 名单、
+  # 不比浮点，渲染抖动不会假红；静态层单独跑仍能几秒内抓到手改计数。
+  "viewer:parity:report:check:measure",
 ] }

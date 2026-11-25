@@ -287,9 +287,14 @@ M2-12 新增的 4 条专攻渲染器本身（`viewer-linetype-all` 0.43% /
 
 ### 10.2 两条渲染腿对拍（M2-12）
 
-`pixi run viewer:parity` 把**同一份 IR** 分别交给 `SkiaSvgDevice` 与浏览器查看器，
-再比归一化后的结果（报告入库：`docs/notes/viewer-parity.md`；
-CI 只跑 12 条子集：`viewer:parity:ci`，挂在 `pixi run check` 上）。
+`pixi run viewer:parity:report` 把**同一份 IR** 分别交给 `SkiaSvgDevice` 与浏览器查看器，
+再比归一化后的结果，全量重写 `docs/notes/viewer-parity.md`（SIL-1017 起这是唯一生成
+入口，报告不再手改）。CI 里跑两条：`viewer:parity:ci` 抽样 12 条（+ 负向对照）判红绿；
+`viewer:parity:report:check`（CI 跑 `:check:measure` 变体）重算 `docs/cases` 清单，
+与报告的表格 / 结论行 / 机读摘要三处交叉比对；measure 变体还会真跑全量、
+逐条比 status 与失败名单——清单漂移、手改计数、或把一条失败一致地改写成通过
+都会红。静态层不用 Chromium（几毫秒），measure 层本机 ≈1.5 min、只比 status
+与名单不比浮点。
 
 为什么不逐元素比字符串：两条腿的元素切分口径不同——skia 的矢量后端把文字画成
 **每个字形一条 `<path>`**，查看器写 `<text>`（对拍前用 `ggdiff.svgtext.inline_text_paths`
@@ -324,7 +329,10 @@ SIL-869 起 `--selftest` 还多跑一组**非缺省 `lineheight` 的双腿对拍
 缺省 1.2 的渲染结果逐字节不变：`text-multiline` 的浏览器 DOM SVG 在改动前后
 sha256 相同（`adf55be1…`），`viewer:cases` 仍是 1.34% / 0.29%。
 
-2026-11-03 结果：**82 / 82 pass**，最大墨迹差 0.238%（`docs/notes/viewer-parity.md`）。
+2026-11-03 时是 82 / 82 pass、最大墨迹差 0.238%；case 涨到几百条后报告没有随之
+重生成，于是停在旧数字（SIL-1017）。现在报告由 `viewer:parity:report` 全量生成、
+由 `viewer:parity:report:check` 守住，当前实测见 `docs/notes/viewer-parity.md` 的
+「结论」行与 `## 未通过` 名单。
 
 ## 11. 测试
 

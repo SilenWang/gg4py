@@ -16,6 +16,8 @@ on:
     #   docs/notes/theme.md               theme 派生区块新鲜度（docs:theme:check）
     #   docs/notes/upstream.md            上游 pin，tests 校验 `- commit:` 行
     #   docs/notes/extension.md           文档里的代码块就是 doctest，tests 直接执行
+    #   docs/notes/viewer-parity.md       parity 报告必须与实测一致
+    #                                     （viewer:parity:report:check:measure，SIL-1017）
     # 其余 docs/**（`docs/notes/` 的纯 prose、`docs/spike/**/report.md` 等）不触发；
     # `docs/notes/snapshot-tiers.md` 也在其中——`tiers:check` 只读 meta.toml 的档位声明，
     # 不读这份生成物（若将来给它加新鲜度门禁，记得把它加进例外）。
@@ -31,6 +33,7 @@ on:
       - "docs/notes/theme.md"
       - "docs/notes/upstream.md"
       - "docs/notes/extension.md"
+      - "docs/notes/viewer-parity.md"
   push:
     branches: [main]
   workflow_dispatch:
