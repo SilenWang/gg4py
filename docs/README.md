@@ -67,7 +67,7 @@
 | [`notes/viewer.md`](notes/viewer.md) | 浏览器查看器：IR → DOM SVG，零 wasm |
 | [`notes/gallery.md`](notes/gallery.md) | 画廊的三种看法：静态 gallery（`viewer:gallery`，不要 Chromium）/ 本地服务 / 像素验证 |
 | [`notes/editor.md`](notes/editor.md) | 浏览器代码编辑器：CodeMirror + Pyodide 执行 + 导出（M3-4） |
-| [`notes/viewer-parity.md`](notes/viewer-parity.md) | 两条渲染腿的语义对拍（生成物：`pixi run viewer:parity`） |
+| [`notes/viewer-parity.md`](notes/viewer-parity.md) | 两条渲染腿的语义对拍。生成物：`pixi run viewer:parity:report`；CI 用 `viewer:parity:report:check` 校验报告与 `docs/cases` 同源（SIL-1017） |
 | [`notes/gallery-audit.md`](notes/gallery-audit.md) | r-graph-gallery 35 图人工核对与逐张归因 |
 
 ## 5. 快照与覆盖率

@@ -142,6 +142,9 @@ numpy / skia 版本；只有包集合不同。
 | `viewer:cases` / `viewer:cases:ci` | case → IR → DOM SVG → 与 expected.svg 像素对拍；CI 跑 12 条 |
 | `gallery:check` | 先 `viewer:cases` 生成 gallery，再逐条请求 gallery.html 的链接（含 scene IR）并核对卡片 ↔ case |
 | `viewer:parity` / `viewer:parity:ci` | skia SVG 与 DOM SVG 两条腿的语义对拍（`docs/notes/viewer-parity.md`） |
+| `viewer:parity:report` | 全量重生成入库报告（唯一生成入口，SIL-1017） |
+| `viewer:parity:report:check` | 报告与 `docs/cases` 清单 / 计数 / 失败名单同源（静态层，几毫秒） |
+| `viewer:parity:report:check:measure` | 真跑全量（≈1.5 min）再逐条比 status 与失败名单；`pixi run check` 里跑这个 |
 | `spike:corpus` / `spike:e1` / `e2` / `e3` | M-1 可行性实验，见 `docs/spike/README.md` |
 | `assets:canvaskit` / `spike:assets` | 取 CanvasKit（npm，wasm） |
 
