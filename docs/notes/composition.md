@@ -67,6 +67,18 @@ Python 的优先级是 `/` / `*` > `+` > `|`，与 patchwork 的推荐写法一�
 说明改用 `|` / `/` 的错误。`/` 与 `*` 同级这件事只影响表达式解析，不影响本实现的
 语义。
 
+### 与 `ggsave()` 的交接
+
+`ggsave()`（以及 `save_ir()` / `export_ir_json()`）直接接受 `Patchwork`：它们
+共用 `ggcore.io._scene()`，命中 `Patchwork.to_scene(metrics=…, width_in=…,
+height_in=…)` 后交给设备，所以组合本身不需要任何落盘代码。
+
+第三方组合库不必并入本模块：按 `docs/notes/io.md` §1.1 的鸭子类型契约实现
+`to_scene(*, width_in, height_in, metrics=None) -> ir.Scene`，就能被同一个
+`ggsave()` 落盘。这条缝刻意不引入拼版 API，也不改 IR —— 组合层只负责产出
+`Scene`，自研拼版 API 不在本模块范围内。
+需要逐格操作版式的库可以用 `plot_gtable()` 拿 `GTable` 自己做。
+
 ## 2. 18×15 规范化
 
 patchwork 1.3.2 的 `plot_table()` = `ggplotGrob()` + `add_strips()`：单面板的

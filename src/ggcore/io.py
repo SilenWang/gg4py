@@ -241,15 +241,31 @@ def _inches(width: Any, height: Any, units: str) -> tuple[str, float, float]:
 
 
 def _scene(plot: Any, width_in: float, height_in: float, metrics: Any) -> ir.Scene:
-    """`ggplot` / 组合（`Patchwork`）→ `ir.Scene`；`metrics` 缺省取后端那一份。"""
+    """`ggplot` / 组合（`Patchwork`）/ 任何交出 `to_scene()` 的对象 → `ir.Scene`。
+
+    `metrics` 缺省取后端那一份。`to_scene()` 是**鸭子类型契约**（不是基类）：
+    第三方组合库自己完成版面布局，只要按关键字交出 `ir.Scene` 就能被本模块
+    落盘；返回类型在这里校验，避免错误推迟到设备渲染阶段。契约见
+    `docs/notes/io.md` §1.1。
+    """
     resolved = metrics
     if resolved is None:
         resolved = backend_metrics()
     from ggcore.composition import Patchwork
 
     if isinstance(plot, Patchwork):
-        return plot.to_scene(metrics=resolved, width_in=width_in, height_in=height_in)
-    return scene_from_plot(plot, width_in=width_in, height_in=height_in, metrics=resolved)
+        scene = plot.to_scene(metrics=resolved, width_in=width_in, height_in=height_in)
+    else:
+        to_scene = getattr(plot, "to_scene", None)
+        if not callable(to_scene):
+            return scene_from_plot(plot, width_in=width_in, height_in=height_in, metrics=resolved)
+        scene = to_scene(metrics=resolved, width_in=width_in, height_in=height_in)
+    if not isinstance(scene, ir.Scene):
+        raise SaveError(
+            f"{type(plot).__name__}.to_scene() 必须返回 ir.Scene，"
+            f"收到 {type(scene).__name__}（契约见 docs/notes/io.md §1.1）"
+        )
+    return scene
 
 
 def _write(path: Path, data: bytes) -> None:
