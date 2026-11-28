@@ -82,6 +82,38 @@ p = (
 只在**两维都 free** 时允许（`scales="free"` + `space="free"`），`free_x` / `free_y`
 配 `space` 会报错（与上游 4.0.3 实测一致）。
 
+### `margins`：边际面板
+
+| 写法 | 效果 |
+| --- | --- |
+| `margins=True` | 每一维都加 `(all)`：整行汇总 + 整列汇总 + 一个全汇总面板 |
+| `margins="drv"` / `margins=["drv", "year"]` | 只给点名的变量加 `(all)`，只影响它所在的那一维 |
+
+`(all)` 是一个分面值（上游 `reshape_margins()`），strip 上照常显示它在末尾。2×2
+网格 + `margins=True` 得到 3×3 = 9 个面板（4 个普通 + 2 个行 margin + 2 个列
+margin + 1 个全 margin）；一行数据会同时进普通面板和它所属的每个 margin 面板
+（`reshape_add_margins()` 的复制语义）。`margins` 里写了不在分面变量中的名字会在
+构图时抛 `FacetError`。
+
+```python
+from gg4py import aes, facet_grid, geom_point, ggplot, labs, theme_minimal, to_column_table
+
+DATA = {
+    "x": [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4],
+    "y": [1.1, 2.3, 2.0, 3.4, 2.2, 1.6, 2.8, 2.4, 3.0, 4.1, 3.6, 5.0, 0.9, 1.8, 1.5, 2.2],
+    "drv": ["4"] * 8 + ["f"] * 8,
+    "year": ["1999"] * 4 + ["2008"] * 4 + ["1999"] * 4 + ["2008"] * 4,
+}
+
+p = (
+    ggplot(to_column_table(DATA), aes(x="x", y="y"))
+    + geom_point(size=2.2, colour="#4C78A8")
+    + facet_grid(rows="drv", cols="year", margins=True)
+    + labs(title="facet_grid(rows = 'drv', cols = 'year', margins = TRUE)", x="x", y="y")
+    + theme_minimal()
+)
+```
+
 ## 3. 自由标度
 
 ```python
@@ -153,6 +185,6 @@ p = (
 - `strip.position` 支持 `"top"` / `"bottom"` / `"left"` / `"right"`（SIL-871）；
   换边后的 strip 在 `strip.placement = "outside"` 下按 `"inside"` 画（与
   `facet_grid(switch=)` 同一口径）。
-- `facet_grid(margins=)` 未实现。
 - 极坐标 / 放射坐标 + `space="free"` 会报错（上游自身在 4.0.3 里也失败）。
-- 带点的参数名（`as.table`、`strip.position`）用 `**{"as.table": False}` 传。
+- 带点的参数名（`as.table`、`strip.position`）可以用 `**{"as.table": False}` 传；
+  下划线写法（`as_table` / `strip_position`）同样认，两种等价。
