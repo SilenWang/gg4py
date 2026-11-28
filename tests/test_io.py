@@ -337,6 +337,79 @@ def test_ir_json_view_rejects_non_scenes() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 组合对象：原生 Patchwork 与鸭子类型 to_scene()（SIL-896）
+# ---------------------------------------------------------------------------
+
+
+class _ThirdPartyComposition:
+    """只按契约实现 `to_scene()`，不继承 gg4py 的任何组合类型。"""
+
+    def __init__(self, scene: ir.Scene) -> None:
+        self.scene = scene
+        self.calls: list[tuple[float, float, object]] = []
+
+    def to_scene(self, *, width_in: float, height_in: float, metrics: object = None):
+        self.calls.append((width_in, height_in, metrics))
+        return self.scene
+
+
+class _NotAScene:
+    def to_scene(self, *, width_in: float, height_in: float, metrics: object = None) -> str:
+        return "not a scene"
+
+
+def test_to_scene_duck_typing_saves_three_devices(tmp_path: Path, metrics: ShaperMetrics) -> None:
+    """第三方组合对象只要交出 Scene，就能被 ggsave 落盘（三路设备）。"""
+    expected = scene_from_plot(plot(), width_in=6.0, height_in=4.0, metrics=metrics)
+    combined = _ThirdPartyComposition(expected)
+    for suffix in ("png", "svg", "pdf"):
+        target = tmp_path / f"third.{suffix}"
+        result = ggsave(combined, target, width=6.0, height=4.0, metrics=metrics)
+        assert target.exists() and target.stat().st_size > 0
+        assert (result.width_pt, result.height_pt) == (432.0, 288.0)
+        if suffix == "png":
+            assert result.size_px == (432, 288)
+            assert png_size(target.read_bytes()) == (432, 288)
+    # 契约：三个参数一律按关键字传，metrics 原样转交。
+    assert combined.calls == [(6.0, 4.0, metrics)] * 3
+
+
+def test_to_scene_duck_typing_also_feeds_ir_exports(tmp_path: Path, metrics: ShaperMetrics) -> None:
+    """`save_ir()` / `export_ir_json()` 共用 `_scene()`，鸭子出口同样生效。"""
+    expected = scene_from_plot(plot(), width_in=7.0, height_in=5.0, metrics=metrics)
+    combined = _ThirdPartyComposition(expected)
+    result = save_ir(combined, tmp_path / "third.ggir.cbor", metrics=metrics)
+    assert result.format == "cbor" and result.device is None
+    assert ir.scene_equal(ir.decode(result.path.read_bytes()), expected)
+
+    view = export_ir_json(combined, tmp_path / "third.ir.json", metrics=metrics)
+    assert view.format == "json"
+    assert combined.calls == [(7.0, 5.0, metrics), (7.0, 5.0, metrics)]
+
+
+def test_to_scene_must_return_an_ir_scene(tmp_path: Path, metrics: ShaperMetrics) -> None:
+    """返回类型在 `_scene()` 就校验，错误不推迟到设备渲染阶段。"""
+    with pytest.raises(SaveError, match=r"ir\.Scene") as error:
+        ggsave(_NotAScene(), tmp_path / "bad.svg", metrics=metrics)
+    message = str(error.value)
+    assert "_NotAScene" in message and "str" in message
+    assert not (tmp_path / "bad.svg").exists()
+
+
+def test_patchwork_shares_the_same_scene_check(
+    tmp_path: Path, metrics: ShaperMetrics, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """原生 `Patchwork` 仍走自己的分支，返回值同样受 `ir.Scene` 校验。"""
+    from ggcore.composition import Patchwork
+
+    monkeypatch.setattr(Patchwork, "to_scene", lambda self, **kwargs: "nope")
+    combined = plot() | plot()
+    with pytest.raises(SaveError, match=r"ir\.Scene") as error:
+        ggsave(combined, tmp_path / "patchwork.svg", metrics=metrics)
+    assert "Patchwork" in str(error.value)
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 

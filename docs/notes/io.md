@@ -34,6 +34,40 @@ export_ir_json(p, "out.ir.json")  # 调试视图（§5）
 | `device=SkiaSvgDevice(...)`（实例） | 用这个设备，但页面尺寸必须与场景一致，否则 `SaveError` |
 | `device=callable` | 按 `(width_pt, height_pt, *, dpi)` 造设备 |
 
+### 1.1 组合对象：原生 `Patchwork` 与第三方 `to_scene()` 契约
+
+`ggsave()` / `save_ir()` / `export_ir_json()` 都走同一个 `_scene()`
+（`src/ggcore/io.py`），它能接受的输入有三类：
+
+1. `ggplot` —— 走 `scene_from_plot()`；
+2. gg4py 自己的 `Patchwork`（`wrap_plots()` / `+ | /` 的产物）—— 走
+   `Patchwork.to_scene()`，多图拼接能力由组合层负责；
+3. **任何有可调用 `to_scene()` 的对象** —— 鸭子类型出口，供第三方组合库接入。
+
+契约（不要求继承任何基类，也不需要 import gg4py 的内部类型）：
+
+```python
+class ThirdPartyComposition:
+    def to_scene(self, *, width_in, height_in, metrics=None) -> ir.Scene:
+        # 自己完成版面布局，交出已解析几何
+        ...
+```
+
+- 三个参数一律按**关键字**传；`metrics` 可能是 `None`（没有注册后端时），
+  也可能是一份后端度量对象；`width_in` / `height_in` 就是 `ggsave()` 解析
+  单位后的页面尺寸（英寸）。
+- 返回值**必须**是 `ggcore.ir.Scene`。否则 `_scene()` 立刻抛 `SaveError`，
+  消息里带实际类型名 —— 不让错误推迟到设备渲染阶段。这条校验对 `Patchwork`
+  同样生效。
+- 对象只有 `to_scene` 但不可调用时不算命中，仍按普通图走 `scene_from_plot()`
+  的原路径（错误行为不变）。
+- `ggsave()` 的三路设备（PNG / SVG / PDF）与 IR 导出共享这条路径；组合对象
+  不参与 `IR` 的任何改动，`Scene` 仍是所有渲染端的唯一入口。
+
+`plot_gtable()` 是更底层的出口（上游 `ggplotGrob()` 的对等物）：需要逐格操作
+版的第三方库可以拿 `GTable` 自己做布局，再自行转成 `Scene`；只想落盘的话用
+`to_scene()` 即可。组合层本身的 API 与 R 对拍见 `docs/notes/composition.md`。
+
 ## 2. 分层：设备在包外，编排在内核
 
 `src/ggcore/io.py` 只 import 标准库 / numpy / `ggcore`（X1 白名单），所以它
